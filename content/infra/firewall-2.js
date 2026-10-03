@@ -1,0 +1,38 @@
+AP2.add('infra-firewall', [
+  ['h', 'DMZ (Demilitarized Zone)'],
+  ['p', 'Server, die **aus dem Internet erreichbar** sein müssen (Webserver, Mailserver, Reverse-Proxy), sind besonders gefährdet. Wird einer gehackt, soll der Angreifer **nicht direkt ins interne Netz** gelangen. Deshalb stellt man diese Server in eine **DMZ**, ein eigenes Netz **zwischen** Internet und LAN. Aus der DMZ darf man nicht ins LAN, vom LAN nur gezielt in die DMZ.'],
+  ['diagram', {w: 780, h: 250, keep: 640, cap: 'DMZ mit zwei Firewalls: Eine äußere Firewall zum Internet, eine innere zum LAN.', nodes: [
+    {id: 'net', k: 'oval', x: 70, y: 125, t: 'Internet', w: 100, h: 60, s: 'soft'}, {id: 'fw1', k: 'box', x: 210, y: 125, t: ['Firewall', 'außen'], w: 90, h: 56, s: 'bad'}, {id: 'dmz', k: 'group', x: 400, y: 125, w: 190, h: 200, t: 'DMZ', s: 'soft'},
+    {id: 'web', k: 'round', x: 400, y: 95, t: 'Webserver', w: 130, h: 40}, {id: 'mail', k: 'round', x: 400, y: 160, t: 'Mailgateway', w: 130, h: 40}, {id: 'fw2', k: 'box', x: 590, y: 125, t: ['Firewall', 'innen'], w: 90, h: 56, s: 'bad'}, {id: 'lan', k: 'group', x: 710, y: 125, w: 130, h: 140, t: 'LAN', s: 'soft'}, {id: 'srv', k: 'round', x: 710, y: 110, t: 'Server', w: 90, h: 36}, {id: 'pc', k: 'round', x: 710, y: 160, t: 'Clients', w: 90, h: 36},
+  ], edges: [{a: 'net', b: 'fw1', ea: 'none'}, {a: 'fw1', b: 'dmz', ea: 'none'}, {a: 'dmz', b: 'fw2', ea: 'none'}, {a: 'fw2', b: 'lan', ea: 'none'}]}],
+  ['procon', 'DMZ', ['Angriffe auf öffentliche Server erreichen das interne Netz nicht direkt', 'Klare Trennung und Kontrolle des Verkehrs', 'Zusätzliche Überwachungspunkte'], ['Höherer Aufwand und höhere Kosten (zweite Firewall, Pflege)', 'Komplexere Konfiguration und Fehleranfälligkeit', 'DMZ-Server müssen trotzdem gut gehärtet und gepatcht werden']],
+  ['h', 'IDS, IPS, Proxy und VPN'],
+  ['kv', [
+    ['IDS (Intrusion Detection System)', 'Erkennt Angriffe und **meldet** sie (Alarm). Greift nicht ein.'],
+    ['IPS (Intrusion Prevention System)', 'Erkennt Angriffe und **blockiert** sie automatisch.'],
+    ['Proxy / Reverse Proxy', 'Vermittler. Der **Forward-Proxy** leitet Anfragen interner Nutzer ins Internet (Filter, Cache). Der **Reverse-Proxy** steht vor Servern, nimmt Anfragen aus dem Internet entgegen und verteilt sie (Lastverteilung, Schutz, TLS-Abschluss).'],
+    ['VPN (Virtual Private Network)', 'Verschlüsselter **Tunnel** über ein unsicheres Netz. **Site-to-Site:** verbindet zwei Standorte. **Remote Access:** verbindet einen einzelnen Benutzer (Homeoffice) mit dem Firmennetz. Protokolle: IPsec, OpenVPN, WireGuard.'],
+    ['NAT', 'Adressübersetzung, versteckt interne Adressen. NAT ist **keine Sicherheitsfunktion**, sondern ein Nebeneffekt.'],
+  ]],
+  ['h', 'Zero Trust: Vertraue nie, prüfe immer'],
+  ['p', 'Das **klassische Modell** ("Burg und Graben") vertraut allem **innerhalb** des Firmennetzes und schützt nur den Rand (**Perimeter**). Das Problem: Wer einmal drin ist (gestohlenes Passwort, infizierter Laptop, Homeoffice, Cloud), hat freie Bahn. **Zero Trust** nimmt an, dass das Netz **bereits kompromittiert** ist, und prüft **jeden Zugriff einzeln**, unabhängig vom Standort.'],
+  ['table', ['Grundsatz', 'Bedeutung', 'Umsetzung'], [
+    ['**Never trust, always verify**', 'Kein Gerät und kein Benutzer ist per se vertrauenswürdig, auch nicht im internen Netz', 'Jede Anfrage wird authentifiziert und autorisiert'],
+    ['**Least Privilege**', 'Minimale Rechte, nur so lange wie nötig', 'Rollen, zeitlich begrenzte Rechte (Just-in-Time)'],
+    ['**Assume breach**', 'Man geht vom Einbruch aus und begrenzt den Schaden', 'Mikrosegmentierung, Protokollierung, Erkennung'],
+    ['**Explizite Verifikation**', 'Mehrere Signale prüfen: Identität, Gerätezustand, Ort, Verhalten', 'MFA, Gerätezertifikat, Compliance-Prüfung'],
+  ]],
+  ['table', ['Kriterium', 'Perimeter-Modell', 'Zero Trust'], [['Vertrauen', 'Innen = vertrauenswürdig', 'Niemand ist vertrauenswürdig'], ['Schutz', 'Am Netzwerkrand', 'An jeder Ressource und jedem Zugriff'], ['Segmentierung', 'Grob (LAN, DMZ)', 'Fein (Mikrosegmentierung bis zur einzelnen Anwendung)'], ['Remote-Zugriff', 'VPN ins gesamte LAN', 'Zugriff nur auf einzelne Anwendungen (ZTNA)'], ['Authentifizierung', 'Einmal am Perimeter', 'Laufend, kontextabhängig']]],
+  ['h', 'Aufgaben im Prüfungsstil'],
+  ['qa', 'Erklären Sie den Unterschied zwischen einer zustandslosen (stateless) und einer zustandsbehafteten (stateful) Firewall.', 'Die **stateless Firewall** prüft jedes Paket **einzeln** anhand der Regeln und kennt keine Zusammenhänge. Die **stateful Firewall** merkt sich den **Verbindungszustand**: Antwortpakete auf eine erlaubte ausgehende Anfrage werden automatisch erlaubt, unaufgeforderte eingehende Pakete verworfen. Das ist sicherer und einfacher zu konfigurieren.', 4],
+  ['qa', 'Ein Unternehmen betreibt einen Webserver, der aus dem Internet erreichbar sein soll. Wo platzieren Sie ihn und warum?', 'In einer **DMZ**, getrennt vom internen Netz durch eine Firewall. Wird der Webserver kompromittiert, kann der Angreifer nicht direkt auf interne Systeme zugreifen, denn die Firewall verbietet den Verkehr von der DMZ ins LAN.', 4],
+  ['qa', 'Formulieren Sie eine Firewall-Regel, die HTTPS aus dem Internet zum Webserver 203.0.113.10 erlaubt, und nennen Sie die letzte Regel eines sicheren Regelwerks.', ['Regel: **Quelle** beliebig, **Ziel** 203.0.113.10, **Protokoll** TCP, **Port** 443, **Aktion** Allow.', 'Letzte Regel: **Deny all** (alles andere verbieten, Default Deny).'], 4],
+  ['qa', 'Nennen Sie drei Prinzipien von Zero Trust.', ['- Never trust, always verify: jeder Zugriff wird geprüft.', '- Least Privilege: minimale Rechte.', '- Assume breach: Mikrosegmentierung und Überwachung zur Schadensbegrenzung.'], 3],
+  ['quiz', [
+    {q: 'Welche Regel steht am Ende eines sicheren Firewall-Regelwerks?', o: ['Deny all (alles verbieten)', 'Allow all', 'Reboot', 'Log only'], a: 0, e: 'Default Deny: Alles, was nicht ausdrücklich erlaubt ist, wird verboten.'},
+    {q: 'Was ist eine DMZ?', o: ['Ein Netzbereich zwischen Internet und LAN für öffentliche Server', 'Ein Passwort', 'Ein Kabeltyp', 'Ein Backup-Verfahren'], a: 0, e: 'Die DMZ trennt öffentlich erreichbare Server vom internen Netz.'},
+    {q: 'Worin unterscheiden sich IDS und IPS?', o: ['IDS meldet Angriffe, IPS blockiert sie', 'IDS blockiert, IPS meldet', 'Es gibt keinen Unterschied', 'IDS ist ein Kabel'], a: 0, e: 'Detection erkennt, Prevention verhindert aktiv.'},
+    {q: 'Was bedeutet "Zero Trust"?', o: ['Keinem Zugriff wird automatisch vertraut, alles wird geprüft', 'Kein Vertrauen zu Lieferanten', 'Nur Passwörter prüfen', 'Keine Firewall nötig'], a: 0, e: 'Never trust, always verify.'},
+    {q: 'Wie werden Firewall-Regeln abgearbeitet?', o: ['Von oben nach unten, die erste passende Regel entscheidet', 'Alle gleichzeitig', 'Von unten nach oben', 'Zufällig'], a: 0, e: 'Die erste passende Regel wird angewendet, daher ist die Reihenfolge wichtig.'},
+  ]],
+]);

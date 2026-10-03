@@ -1,0 +1,30 @@
+AP2.page('ps-lastenheft', {
+  b: 'ps', g: 'Anforderungsanalyse', t: 'Lastenheft und Pflichtenheft',
+  d: 'Das **Lastenheft** beschreibt, **was** der Auftraggeber **braucht und wofür** (seine Forderungen). Das **Pflichtenheft** beschreibt, **wie und womit** der Auftragnehmer diese Forderungen umsetzt (die vertragliche Lösung). Das Lastenheft schreibt der Kunde, das Pflichtenheft der Entwickler.',
+  m: '**Last = Wunsch des Kunden (WAS), Pflicht = Versprechen des Entwicklers (WIE).** Reihenfolge: erst Lastenheft, dann Pflichtenheft. Der Kunde "lädt Last ab", der Entwickler "übernimmt Pflicht".',
+  cheat: [
+    ['Lastenheft', ['Wer: **Auftraggeber**', 'Inhalt: Anforderungen, Ziele, Rahmenbedingungen', 'Frage: **Was** und **wofür**?', 'Grundlage für Angebot und Ausschreibung']],
+    ['Pflichtenheft', ['Wer: **Auftragnehmer**', 'Inhalt: konkrete Umsetzung, Architektur, Funktionen', 'Frage: **Wie** und **womit**?', 'Vertragsbestandteil, Basis für Abnahme']],
+    ['Anforderungsarten', ['**Funktional:** was das System tut', '**Nichtfunktional:** wie gut (Performance, Sicherheit, Bedienbarkeit)', '**Randbedingungen:** Recht, Budget, Technik']],
+    ['Qualität einer Anforderung', ['eindeutig, vollständig, testbar', 'widerspruchsfrei, realisierbar', 'Muss / Soll / Kann klar gekennzeichnet']],
+  ],
+  blocks: [
+    ['h', 'Warum gibt es zwei Dokumente?'],
+    ['p', 'Missverständnisse zwischen Kunde und Entwickler sind die häufigste Ursache für gescheiterte Projekte. Der Kunde denkt in seinem Geschäft ("Ich möchte Aufträge schneller bearbeiten"), der Entwickler in Technik ("REST-Schnittstelle, Datenbank"). Die Dokumente übersetzen schrittweise: **Lastenheft** = Sprache des Kunden, **Pflichtenheft** = Sprache der Umsetzung. Beides wird schriftlich festgehalten, damit später klar ist, was vereinbart war.'],
+    ['diagram', AP2.dg.flow(['Kunde schreibt Lastenheft', 'Entwickler prüft, schreibt Angebot', 'Entwickler schreibt Pflichtenheft', 'Kunde nimmt Pflichtenheft ab', 'Umsetzung'], {w: 760, h: 120, nh: 64, styles: ['accent', 'soft', 'accent', 'ok', 'solid'], cap: 'Vom Lastenheft zum Projekt'})],
+    ['h', 'Unterschiede im Überblick'],
+    ['table', ['Merkmal', 'Lastenheft', 'Pflichtenheft'], [
+      ['Verfasser', 'Auftraggeber (Kunde)', 'Auftragnehmer (Entwickler)'],
+      ['Leitfrage', 'Was soll das Produkt leisten? Wofür?', 'Wie und womit wird es realisiert?'],
+      ['Detailtiefe', 'Grob bis mittel, aus Sicht des Anwenders', 'Detailliert, technisch umsetzbar'],
+      ['Zeitpunkt', 'Am Anfang, vor dem Angebot', 'Nach dem Lastenheft, vor der Entwicklung'],
+      ['Rechtliche Rolle', 'Grundlage für Ausschreibung und Angebot', 'Meist Vertragsbestandteil, Maßstab bei der Abnahme'],
+      ['Beispiel', '"Kunden müssen online Termine buchen können."', '"Buchung über ein Webformular, Speicherung in PostgreSQL, Bestätigung per E-Mail innerhalb 30 Sekunden."'],
+    ]],
+    ['h', 'Was steht im Lastenheft?'],
+    ['list', ['**Ausgangssituation und Ziele:** Was ist das Problem? Was soll erreicht werden?', '**Funktionale Anforderungen:** Was muss das System tun? (zum Beispiel Kunden anlegen, Rechnung drucken)', '**Nichtfunktionale Anforderungen:** Qualität, zum Beispiel Antwortzeit unter 2 Sekunden, 99,5 Prozent Verfügbarkeit', '**Rahmenbedingungen:** Budget, Termin, vorhandene Systeme, Gesetze (zum Beispiel DSGVO)', '**Abnahmekriterien:** Woran messen wir, dass es fertig ist?']],
+    ['h', 'Was steht im Pflichtenheft?'],
+    ['p', 'Das Pflichtenheft übernimmt jede Forderung des Lastenhefts und ergänzt, **wie** sie erfüllt wird. Typische Gliederung (nach dem bekannten Aufbau):'],
+    ['steps', ['**Zielbestimmung:** Musskriterien (zwingend), Wunschkriterien (nur wenn möglich), Abgrenzungskriterien (was nicht geliefert wird)', '**Produkteinsatz:** Anwendungsbereiche, Zielgruppen, Betriebsbedingungen', '**Produktfunktionen:** Detaillierte Beschreibung (zum Beispiel mit Anwendungsfällen)', '**Produktdaten:** Datenmodell (ER-Modell, Datenbank), Datenmengen', '**Produktleistungen und Qualität:** Antwortzeiten, Zuverlässigkeit, Sicherheit, Bedienbarkeit', '**Benutzeroberfläche:** Wireframes, Bedienkonzept', '**Technische Umgebung:** Hardware, Software, Schnittstellen, Entwicklungsumgebung', '**Abnahme- und Testszenarien, Glossar**']],
+  ],
+});

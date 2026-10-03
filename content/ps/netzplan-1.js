@@ -1,0 +1,41 @@
+AP2.page('ps-netzplan', {
+  b: 'ps', g: 'Projektmanagement', t: 'Netzplantechnik',
+  d: 'Ein **Netzplan** stellt alle Vorgänge eines Projekts und ihre Abhängigkeiten als Netz dar. Mit **Vorwärtsrechnung** (früheste Zeiten) und **Rückwärtsrechnung** (späteste Zeiten) findet man die **Gesamtdauer**, die **Puffer** und den **kritischen Pfad**. Der kritische Pfad ist der längste Weg durch das Netz: Eine Verzögerung dort verschiebt das Projektende.',
+  m: '**Vorwärts: FAZ = max der Vorgänger-FEZ, FEZ = FAZ + Dauer. Rückwärts: SEZ = min der Nachfolger-SAZ, SAZ = SEZ - Dauer.** Beim Zusammenlaufen vorwärts das **Maximum**, rückwärts das **Minimum**. Kritisch heißt: Gesamtpuffer = 0.',
+  cheat: [
+    ['Abkürzungen', ['**D** = Dauer', '**FAZ / FEZ** = frühester Anfangs- / Endzeitpunkt', '**SAZ / SEZ** = spätester Anfangs- / Endzeitpunkt', '**GP** = Gesamtpuffer, **FP** = freier Puffer']],
+    ['Vorwärtsrechnung', ['Start: FAZ = 0 (erster Vorgang)', 'FEZ = FAZ + D', 'FAZ des Nachfolgers = FEZ des Vorgängers', 'Mehrere Vorgänger: **größter** FEZ zählt']],
+    ['Rückwärtsrechnung', ['Start: SEZ letzter Vorgang = sein FEZ', 'SAZ = SEZ - D', 'SEZ des Vorgängers = SAZ des Nachfolgers', 'Mehrere Nachfolger: **kleinster** SAZ zählt']],
+    ['Puffer', ['**GP = SAZ - FAZ** (oder SEZ - FEZ)', '**FP = kleinster FAZ der Nachfolger - FEZ**', 'GP = 0: kritischer Vorgang', 'Kritischer Pfad: Kette aus Vorgängen mit GP = 0']],
+  ],
+  blocks: [
+    ['h', 'Wozu braucht man einen Netzplan?'],
+    ['p', 'Ein einfacher Terminplan sagt nur: "Aufgabe A dauert 3 Tage." Ein Netzplan sagt zusätzlich: **Welche Aufgaben müssen vorher fertig sein?** Dadurch erkennt man, welche Aufgaben parallel laufen können, wie lange das Projekt mindestens dauert und welche Aufgaben **nicht** verspätet werden dürfen.'],
+    ['p', 'Netzpläne werden nach der **Vorgangsknoten-Methode** (CPM, Critical Path Method) gezeichnet: Jeder **Vorgang** ist ein Kasten (Knoten), die Pfeile zeigen die Reihenfolge. Die Prüfung arbeitet fast immer mit dieser Darstellung.'],
+    ['h', 'Wichtige Begriffe'],
+    ['table', ['Begriff', 'Abkürzung', 'Bedeutung'], [
+      ['Vorgang', 'V', 'Eine Aufgabe mit Dauer, zum Beispiel "Datenbank entwerfen".'],
+      ['Dauer', 'D', 'Wie lange der Vorgang dauert (Tage, Wochen, Stunden).'],
+      ['Frühester Anfangszeitpunkt', 'FAZ', 'Frühestens wann kann der Vorgang starten?'],
+      ['Frühester Endzeitpunkt', 'FEZ', 'Frühestens wann kann er fertig sein? FEZ = FAZ + D.'],
+      ['Spätester Anfangszeitpunkt', 'SAZ', 'Spätestens wann muss er starten, damit das Projektende hält?'],
+      ['Spätester Endzeitpunkt', 'SEZ', 'Spätestens wann muss er fertig sein? SEZ = SAZ + D.'],
+      ['Gesamtpuffer', 'GP', 'Um wie viel darf sich der Vorgang verzögern, ohne das Projektende zu verschieben?'],
+      ['Freier Puffer', 'FP', 'Um wie viel darf er sich verzögern, ohne dass der **nächste** Vorgang später starten muss?'],
+      ['Kritischer Vorgang', '-', 'Ein Vorgang mit GP = 0: kein Spielraum.'],
+      ['Kritischer Pfad', '-', 'Kette aller kritischen Vorgänge von Start bis Ende. Bestimmt die Projektdauer.'],
+    ]],
+    ['h', 'So liest man einen Knoten'],
+    ['diagram', {w: 520, h: 190, cap: 'Aufbau eines Vorgangsknotens (Standardform in der IHK-Prüfung)', nodes: [
+      {id: 'n', x: 200, y: 95, w: 300, h: 150, k: 'box', s: 'plain', t: ''},
+      {id: 'l1', x: 110, y: 50, t: 'FAZ  (früheste Startzeit)', k: 'text', fs: 12},
+      {id: 'l2', x: 295, y: 50, t: 'FEZ  (früheste Endzeit)', k: 'text', fs: 12},
+      {id: 'l3', x: 200, y: 95, t: 'Nr.  Bezeichnung  /  Dauer D', k: 'text', fs: 13, b: true},
+      {id: 'l4', x: 110, y: 140, t: 'SAZ  (späteste Startzeit)', k: 'text', fs: 12},
+      {id: 'l5', x: 295, y: 140, t: 'SEZ  (späteste Endzeit)', k: 'text', fs: 12},
+      {id: 'gp', x: 440, y: 70, t: ['GP: Gesamtpuffer', 'FP: Freier Puffer'], k: 'note', s: 'accent', w: 140, h: 50, fs: 12},
+    ], edges: [
+      {a: [50, 72], b: [350, 72], ea: 'none', s: 'border', w: 1}, {a: [50, 118], b: [350, 118], ea: 'none', s: 'border', w: 1}, {a: [200, 22], b: [200, 72], ea: 'none', s: 'border', w: 1}, {a: [200, 118], b: [200, 168], ea: 'none', s: 'border', w: 1},
+    ]}],
+  ],
+});

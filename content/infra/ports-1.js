@@ -1,0 +1,40 @@
+AP2.page('infra-ports', {
+  b: 'infra', g: 'Netzwerke', t: 'Protokolle und Ports: HTTP, FTP, DNS, DHCP, ODBC',
+  d: 'Anwendungsprotokolle regeln die Kommunikation zwischen Programmen. Jedes hat einen **Standardport**: **HTTP 80, HTTPS 443, FTP 21 (Daten 20), SSH 22, SMTP 25, DNS 53, DHCP 67/68, POP3 110, IMAP 143**. **DNS** übersetzt Namen in IP-Adressen, **DHCP** vergibt automatisch IP-Konfigurationen, **ODBC** ist eine einheitliche Schnittstelle zu Datenbanken.',
+  m: 'Webmerker: **80 unsicher, 443 sicher** (das S in HTTPS). E-Mail: **SMTP sendet (25), POP3 holt ab (110), IMAP verwaltet auf dem Server (143)**. **DHCP = DORA**: Discover, Offer, Request, Acknowledge.',
+  cheat: [
+    ['Wichtige Ports (TCP/UDP)', ['**20/21** FTP (Daten/Steuerung), **22** SSH/SFTP', '**23** Telnet, **25** SMTP', '**53** DNS (UDP und TCP)', '**67/68** DHCP (UDP), **80** HTTP, **443** HTTPS', '**110** POP3, **143** IMAP, **123** NTP (UDP)']],
+    ['Weitere Ports', ['**389** LDAP, **636** LDAPS', '**445** SMB, **3389** RDP', '**3306** MySQL, **5432** PostgreSQL, **1433** MS SQL, **1521** Oracle', '**88** Kerberos, **1812** RADIUS', '**161** SNMP, **514** Syslog']],
+    ['Sichere Varianten', ['HTTP → **HTTPS** (TLS)', 'FTP → **FTPS** / **SFTP** (über SSH)', 'Telnet → **SSH**', 'SMTP/POP3/IMAP → **SMTPS/POP3S/IMAPS** (465/995/993)']],
+    ['ODBC', ['Open Database Connectivity', 'Einheitliche **Treiber-Schnittstelle** für Datenbanken', 'Anwendung unabhängig vom DB-Hersteller', 'Kein eigener Port: Port ist der der Datenbank']],
+  ],
+  blocks: [
+    ['h', 'Anwendungsprotokolle und ihre Ports im Überblick'],
+    ['table', ['Protokoll', 'Port', 'Transport', 'Aufgabe', 'Sicher?'], [
+      ['**HTTP**', '80', 'TCP', 'Webseiten abrufen', 'nein'],
+      ['**HTTPS**', '443', 'TCP', 'HTTP über TLS (verschlüsselt)', 'ja'],
+      ['**FTP**', '21 (Steuerung), 20 (Daten)', 'TCP', 'Dateiübertragung', 'nein (Klartext)'],
+      ['**SFTP**', '22', 'TCP', 'Dateiübertragung über SSH', 'ja'],
+      ['**SSH**', '22', 'TCP', 'Verschlüsselte Fernwartung', 'ja'],
+      ['**Telnet**', '23', 'TCP', 'Fernwartung im Klartext (veraltet)', 'nein'],
+      ['**SMTP**', '25 (587, 465)', 'TCP', 'E-Mail **senden** und weiterleiten', 'optional TLS'],
+      ['**POP3**', '110 (995)', 'TCP', 'E-Mail **abholen** (meist vom Server löschen)', 'mit TLS: 995'],
+      ['**IMAP**', '143 (993)', 'TCP', 'E-Mail **auf dem Server verwalten**, mehrere Geräte', 'mit TLS: 993'],
+      ['**DNS**', '53', 'UDP (und TCP)', 'Namen in IP-Adressen übersetzen', 'DNSSEC optional'],
+      ['**DHCP**', '67 (Server), 68 (Client)', 'UDP', 'Automatische IP-Vergabe', 'nein'],
+      ['**NTP**', '123', 'UDP', 'Uhrzeit synchronisieren', 'nein'],
+      ['**SNMP**', '161/162', 'UDP', 'Netzwerkgeräte überwachen', 'v3 sicher'],
+      ['**LDAP**', '389 (636 LDAPS)', 'TCP', 'Verzeichnisdienst (Benutzer, Gruppen)', 'LDAPS'],
+      ['**RDP**', '3389', 'TCP', 'Remote Desktop (Windows)', 'ja (mit NLA)'],
+    ]],
+    ['h', 'DNS: Namensauflösung'],
+    ['p', 'Menschen merken sich Namen (`www.example.org`), Computer brauchen IP-Adressen. Das **Domain Name System (DNS)** ist das "Telefonbuch des Internets". Ein **Resolver** fragt dazu eine Hierarchie von Servern: Root-Server, Top-Level-Domain-Server (.org), und den **zuständigen Nameserver** der Domain.'],
+    ['seq', {w: 760, actors: ['Client', 'Lokaler DNS-Server', 'Root / TLD', 'Nameserver example.org'], cap: 'Rekursive Auflösung von www.example.org (vereinfacht). Die Antwort wird vom lokalen DNS-Server zwischengespeichert (Cache).', steps: [
+      [0, 1, 'www.example.org?', 's'], [1, 2, 'Wer ist zuständig für .org?', 's'], [2, 1, 'Nameserver von example.org', 'r'], [1, 3, 'www.example.org?', 's'], [3, 1, 'A: 203.0.113.10', 'r'], [1, 0, 'Antwort: 203.0.113.10', 'r'],
+    ]}],
+    ['table', ['Record-Typ', 'Bedeutung', 'Beispiel'], [
+      ['**A**', 'Name zu IPv4-Adresse', 'www.example.org A 203.0.113.10'], ['**AAAA**', 'Name zu IPv6-Adresse', 'www.example.org AAAA 2001:db8::10'], ['**CNAME**', 'Alias auf einen anderen Namen', 'shop.example.org CNAME www.example.org'],
+      ['**MX**', 'Mailserver der Domain', 'example.org MX 10 mail.example.org'], ['**NS**', 'Zuständiger Nameserver', 'example.org NS ns1.example.org'], ['**PTR**', 'IP-Adresse zu Name (Reverse-Lookup)', '10.113.0.203 PTR www.example.org'], ['**TXT**', 'Freitext (SPF, DKIM, Verifizierung)', 'v=spf1 mx -all'],
+    ]],
+  ],
+});

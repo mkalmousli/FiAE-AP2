@@ -1,0 +1,34 @@
+AP2.add('infra-pki', [
+  ['h', 'Wie bekommt man ein Zertifikat? Der CSR'],
+  ['p', 'Ein Server-Admin erzeugt zuerst ein **Schlüsselpaar**. Der **private Schlüssel bleibt geheim auf dem Server**. Aus dem öffentlichen Schlüssel und den Angaben (Domain, Organisation) entsteht ein **Certificate Signing Request (CSR)**, ein **Antrag auf Zertifikat**. Die CA prüft die Identität (Domain-Kontrolle, bei höherer Stufe die Organisation) und stellt das signierte Zertifikat aus.'],
+  ['seq', {w: 780, actors: ['Server-Admin', 'Registration Authority', 'Certificate Authority (CA)'], cap: 'Ablauf der Zertifikatsbeantragung. Der private Schlüssel verlässt den Server nie.', steps: [
+    [0, 0, 'Schlüsselpaar erzeugen', 's'], [0, 1, 'CSR (öffentlicher Schlüssel, Domain)', 's'], [1, 1, 'Identität / Domain prüfen', 's'], [1, 2, 'Freigabe zur Ausstellung', 's'], [2, 2, 'Zertifikat mit CA-Schlüssel signieren', 's'], [2, 0, 'Zertifikat (öffentlich)', 'r'], [0, 0, 'Zertifikat + privaten Schlüssel installieren', 's'],
+  ]}],
+  ['code', 'text', `# CSR erzeugen mit OpenSSL (Beispiel)
+openssl req -new -newkey rsa:2048 -nodes \\
+  -keyout server.key -out server.csr \\
+  -subj "/C=DE/O=Beispiel GmbH/CN=www.example.org"
+
+# server.key  = PRIVATER Schlüssel, geheim halten
+# server.csr  = Antrag, wird an die CA geschickt`],
+  ['h', 'Zertifikatstypen'],
+  ['table', ['Typ', 'Prüfung durch die CA', 'Einsatz'], [['**DV** (Domain Validated)', 'Nur: Kontrolliert der Antragsteller die Domain?', 'Automatisiert, günstig oder kostenlos (zum Beispiel Let\'s Encrypt, ACME-Protokoll). Verschlüsselung, aber keine Aussage zur Organisation'], ['**OV** (Organization Validated)', 'Zusätzlich: Existiert die Organisation?', 'Firmenwebseiten'], ['**EV** (Extended Validation)', 'Strenge Prüfung der Organisation', 'Banken, selten genutzt (Browser zeigen keinen besonderen Hinweis mehr)'], ['**Wildcard**', 'Gilt für alle Subdomains (*.example.org)', 'Viele Subdomains. Ein Schlüssel für alle ist riskanter'], ['**Selbstsigniert**', 'Keine CA: Aussteller = Inhaber', 'Tests, interne Systeme. Browser warnen'], ['**Client- / Code-Signing-Zertifikate**', 'Identität einer Person oder eines Entwicklers', 'Anmeldung (mTLS), signierte E-Mail (S/MIME), Software signieren']]],
+  ['h', 'Zertifikate sperren (Revocation)'],
+  ['p', 'Wird der **private Schlüssel gestohlen** oder die Domain aufgegeben, muss das Zertifikat **vor Ablauf ungültig** gemacht werden. Dafür gibt es zwei Verfahren:'],
+  ['table', ['Verfahren', 'Wie?', 'Vorteil', 'Nachteil'], [['**CRL** (Certificate Revocation List)', 'Die CA veröffentlicht regelmäßig eine **Liste gesperrter Seriennummern**. Clients laden sie herunter.', 'Einfach, offline nutzbar', 'Liste kann groß und veraltet sein'], ['**OCSP** (Online Certificate Status Protocol)', 'Der Client (oder der Server per **OCSP Stapling**) fragt die CA **online** nach dem Status **eines** Zertifikats.', 'Aktuell, kleine Abfragen', 'Datenschutz (CA sieht Besuche), Abhängigkeit von der Erreichbarkeit; **Stapling** löst das']]],
+  ['note', 'Zertifikate haben eine **begrenzte Gültigkeit**. Für öffentliche Webserver wird sie schrittweise **verkürzt** (zuletzt auf unter ein Jahr, mit weiterer Verkürzung geplant), damit Fehler und kompromittierte Schlüssel weniger lange Schaden anrichten. Automatische Erneuerung (ACME) ist heute Standard. **Abgelaufene Zertifikate** sind eine häufige Ursache für Ausfälle.'],
+  ['h', 'Interne PKI und HSM'],
+  ['list', ['**Interne PKI** (zum Beispiel Active Directory Certificate Services): Firma betreibt eigene CAs für Server, Geräte (802.1X) und Mitarbeiter. Das Root-Zertifikat wird auf allen Geräten als vertrauenswürdig installiert.', '**Offline-Root-CA:** Der Root-Schlüssel liegt auf einem **ausgeschalteten, gesicherten** System und signiert nur selten Zwischen-CAs.', '**HSM** (Hardware Security Module): Spezialhardware, die Schlüssel sicher speichert und Signaturen darin berechnet, ohne den Schlüssel herauszugeben.']],
+  ['h', 'Aufgaben im Prüfungsstil'],
+  ['qa', 'Wozu dient ein digitales Zertifikat und was enthält es?', 'Ein Zertifikat **bestätigt, dass ein öffentlicher Schlüssel zu einer bestimmten Identität gehört**. Es enthält u. a. den Namen des Inhabers (Subject), dessen öffentlichen Schlüssel, den Aussteller (CA), die Gültigkeitsdauer, die Seriennummer und die **digitale Signatur der CA**.', 4],
+  ['qa', 'Erklären Sie das Prinzip der Zertifikatskette. Warum gibt es Zwischenzertifizierungsstellen?', 'Der Browser vertraut einigen **Root-CAs**. Die Root-CA signiert **Intermediate-CAs**, diese signieren die **Serverzertifikate**. Ein Serverzertifikat ist vertrauenswürdig, wenn die Kette lückenlos bis zu einer bekannten Root reicht. Zwischen-CAs schützen den **Root-Schlüssel**: Er kann offline bleiben, und bei Kompromittierung einer Zwischen-CA muss nur diese ersetzt werden.', 5],
+  ['qa', 'Ein Webadministrator beantragt ein TLS-Zertifikat. Beschreiben Sie den Ablauf und nennen Sie, was an die CA gesendet wird und was nicht.', ['1. Er erzeugt ein **Schlüsselpaar** auf dem Server.', '2. Er erstellt einen **CSR** (öffentlicher Schlüssel, Domainname, Organisation) und sendet ihn an die CA. **Der private Schlüssel wird nie gesendet.**', '3. Die CA prüft die Identität bzw. Domainkontrolle und signiert.', '4. Das Zertifikat wird auf dem Server zusammen mit dem privaten Schlüssel installiert.'], 5],
+  ['qa', 'Der private Schlüssel eines Serverzertifikats wurde gestohlen. Was ist zu tun?', 'Das Zertifikat muss bei der CA **sofort gesperrt (revoked)** werden (Sperrung in CRL/OCSP). Ein **neues Schlüsselpaar** erzeugen, ein **neues Zertifikat** beantragen und installieren. Die Ursache klären (wie wurde der Schlüssel entwendet?).', 4],
+  ['quiz', [
+    {q: 'Was ist ein CSR?', o: ['Ein Antrag auf Ausstellung eines Zertifikats', 'Ein Passwort', 'Ein gesperrtes Zertifikat', 'Ein Verschlüsselungsalgorithmus'], a: 0, e: 'Certificate Signing Request: enthält den öffentlichen Schlüssel und Angaben zum Antragsteller.'},
+    {q: 'Welcher Schlüssel wird NIE an die CA gesendet?', o: ['Der private Schlüssel', 'Der öffentliche Schlüssel', 'Der CSR', 'Das Zertifikat'], a: 0, e: 'Der private Schlüssel bleibt immer beim Inhaber.'},
+    {q: 'Womit prüft ein Client, ob ein Zertifikat gesperrt ist?', o: ['CRL oder OCSP', 'DHCP', 'DNS', 'ARP'], a: 0, e: 'CRL (Sperrliste) oder OCSP (Online-Abfrage).'},
+    {q: 'Was ist ein Vertrauensanker?', o: ['Ein Root-Zertifikat im Trust Store', 'Ein Firewall-Regelsatz', 'Ein Backup', 'Ein Router'], a: 0, e: 'Root-Zertifikate sind selbstsigniert und im System als vertrauenswürdig hinterlegt.'},
+    {q: 'Was bedeutet eine Browser-Warnung bei einem selbstsignierten Zertifikat?', o: ['Es gibt keine vertrauenswürdige CA, die den Server bestätigt', 'Der Server ist verschlüsselt', 'Der Browser ist kaputt', 'Das Internet ist langsam'], a: 0, e: 'Ohne Kette zu einer bekannten Root kann der Browser die Identität nicht bestätigen.'},
+  ]],
+]);

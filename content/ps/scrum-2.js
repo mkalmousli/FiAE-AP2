@@ -1,0 +1,35 @@
+AP2.add('ps-scrum', [
+  ['h', 'Die Ereignisse im Detail'],
+  ['kv', [
+    ['Sprint', 'Feste Zeitspanne von **höchstens einem Monat** (meist 2 Wochen). Während des Sprints werden keine Änderungen am Sprintziel vorgenommen, die es gefährden. Am Ende steht ein **Inkrement**.'],
+    ['Sprint Planning', 'Das Team plant: **Warum** ist der Sprint wertvoll (Sprintziel)? **Was** wird aus dem Product Backlog genommen? **Wie** wird es umgesetzt? Ergebnis: Sprint Backlog.'],
+    ['Daily Scrum', '**15 Minuten** am selben Ort zur selben Zeit. Die Developers synchronisieren sich: Was ist auf dem Weg zum Sprintziel? Gibt es Hindernisse?'],
+    ['Sprint Review', 'Das Team zeigt das Inkrement den Stakeholdern und holt **Feedback**. Das Product Backlog wird angepasst. Es ist ein Arbeitsgespräch, keine Abnahmeprüfung.'],
+    ['Sprint Retrospektive', 'Das Team reflektiert **seine eigene Zusammenarbeit**: Was lief gut? Was nicht? Welche Verbesserung setzen wir im nächsten Sprint um?'],
+  ]],
+  ['h', 'Die Artefakte und ihre Verpflichtungen'],
+  ['table', ['Artefakt', 'Inhalt', 'Verpflichtung (Commitment)'], [
+    ['Product Backlog', 'Geordnete Liste aller Anforderungen, Ideen und Fehler. Wird ständig gepflegt. Oben stehen die wichtigsten Einträge.', 'Product Goal (langfristiges Ziel)'],
+    ['Sprint Backlog', 'Die für den Sprint ausgewählten Einträge plus Plan, wie sie umgesetzt werden.', 'Sprint Goal (Ziel des Sprints)'],
+    ['Inkrement', 'Summe aller fertigen Einträge. Ist nutzbar und erfüllt die Definition of Done.', 'Definition of Done (DoD)'],
+  ]],
+  ['h3', 'User Stories und Story Points'],
+  ['p', 'Anforderungen im Product Backlog werden oft als **User Story** formuliert: "Als **Rolle** möchte ich **Funktion**, um **Nutzen** zu erreichen." Beispiel: "Als Kunde möchte ich mein Passwort zurücksetzen, damit ich mich wieder anmelden kann." Dazu gehören **Akzeptanzkriterien**: Woran erkennt man, dass die Story erfüllt ist? Der Aufwand wird in **Story Points** (relative Größe, zum Beispiel 1, 2, 3, 5, 8, 13) geschätzt. Die **Velocity** ist die Summe der Story Points, die ein Team pro Sprint schafft. Sie dient der Planung.'],
+  ['chart', {kind: 'line', w: 720, h: 320, labels: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'], series: [{n: 'Ideal', d: [40, 36, 32, 28, 24, 20, 16, 12, 8, 4, 0], k: 'text3', dash: '6 5'}, {n: 'Tatsächlich', d: [40, 38, 33, 33, 27, 22, 19, 13, 9, 3, 0], k: 'accent'}], yl: 'Offene Story Points', cap: 'Burndown-Chart: Die Linie zeigt, wie viele Story Points im Sprint (Tage 0 bis 10) noch offen sind.'}],
+  ['h', 'Kanban'],
+  ['p', 'Kanban (japanisch: Signalkarte) kommt aus der Fertigung bei Toyota. Auf einem **Board** stehen Spalten wie "Offen", "In Arbeit", "Review", "Fertig". Jede Aufgabe ist eine Karte. Wichtig ist das **WIP-Limit** (Work in Progress): In einer Spalte dürfen höchstens zum Beispiel 3 Karten gleichzeitig liegen. Ist das Limit erreicht, muss erst etwas fertig werden. Das vermeidet Überlastung und Multitasking.'],
+  ['diagram', {w: 720, h: 260, cap: 'Kanban-Board mit WIP-Limits. In der Spalte "In Arbeit" dürfen nur 2 Karten liegen.', nodes: [
+    {id: 'c1', x: 100, y: 130, w: 170, h: 220, k: 'group', t: 'Offen (Backlog)', s: 'soft'}, {id: 'c2', x: 290, y: 130, w: 170, h: 220, k: 'group', t: 'In Arbeit (WIP 2)', s: 'soft'},
+    {id: 'c3', x: 480, y: 130, w: 170, h: 220, k: 'group', t: 'Review (WIP 2)', s: 'soft'}, {id: 'c4', x: 640, y: 130, w: 150, h: 220, k: 'group', t: 'Fertig', s: 'soft'},
+    {id: 'k1', x: 100, y: 90, w: 140, h: 36, t: 'Login-Seite', k: 'round'}, {id: 'k2', x: 100, y: 138, w: 140, h: 36, t: 'Export CSV', k: 'round'}, {id: 'k3', x: 100, y: 186, w: 140, h: 36, t: 'Suchfunktion', k: 'round'},
+    {id: 'k4', x: 290, y: 90, w: 140, h: 36, t: 'Passwort-Reset', k: 'round', s: 'accent'}, {id: 'k5', x: 290, y: 138, w: 140, h: 36, t: 'Rechnung PDF', k: 'round', s: 'accent'},
+    {id: 'k6', x: 480, y: 90, w: 140, h: 36, t: 'Profilseite', k: 'round', s: 'accent'}, {id: 'k7', x: 640, y: 90, w: 120, h: 36, t: 'Impressum', k: 'round', s: 'ok'}, {id: 'k8', x: 640, y: 138, w: 120, h: 36, t: 'Warenkorb', k: 'round', s: 'ok'},
+  ], edges: []}],
+  ['table', ['Kriterium', 'Scrum', 'Kanban'], [
+    ['Zeitrahmen', 'Feste Sprints (meist 1 bis 4 Wochen)', 'Kontinuierlicher Fluss, kein Sprint'],
+    ['Rollen', 'Product Owner, Scrum Master, Developers', 'Keine vorgeschrieben'],
+    ['Änderungen im Lauf', 'Während des Sprints vermeiden, im nächsten Sprint einplanen', 'Jederzeit möglich, solange WIP-Limit passt'],
+    ['Kennzahlen', 'Velocity, Burndown', 'Durchlaufzeit (Lead Time), Durchsatz, WIP'],
+    ['Geeignet für', 'Produktentwicklung mit planbaren Zielen', 'Wartung, Support, wechselnde Aufgaben'],
+  ]],
+]);

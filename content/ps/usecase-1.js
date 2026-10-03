@@ -1,0 +1,46 @@
+AP2.page('ps-usecase', {
+  b: 'ps', g: 'Anforderungsanalyse', t: 'Anwendungsfalldiagramm (Use Case)',
+  d: 'Ein **Anwendungsfalldiagramm** (Use-Case-Diagramm) zeigt, **welche Akteure** (Benutzer oder Fremdsysteme) **welche Funktionen** (Anwendungsfälle) eines Systems nutzen. Es beschreibt das **Verhalten von außen** und nicht, wie das System intern funktioniert.',
+  m: '**Strichmännchen = Akteur, Oval = Anwendungsfall, Rechteck = Systemgrenze.** include = **muss** dazu (immer), extend = **kann** dazu (manchmal). Der Pfeil bei include zeigt zur **enthaltenen** Funktion, bei extend zur **erweiterten** Funktion.',
+  cheat: [
+    ['Elemente', ['**Akteur:** Strichmännchen (Person, System, Zeit)', '**Anwendungsfall:** Oval mit Verb ("Artikel suchen")', '**Systemgrenze:** Rechteck um die Fälle', '**Assoziation:** Linie Akteur - Fall']],
+    ['Beziehungen', ['**include:** gestrichelter Pfeil, immer ausgeführt', '**extend:** gestrichelter Pfeil, optional, unter Bedingung', '**Generalisierung:** Pfeil mit leerem Dreieck']],
+    ['Namensgebung', ['Fälle: Verb + Objekt', 'Akteure: Rolle (nicht Person)', 'Aus Sicht des Nutzers formulieren']],
+    ['Wofür?', ['Anforderungen erfassen', 'Kunde und Entwickler verstehen sich', 'Grundlage für Pflichtenheft und Tests']],
+  ],
+  blocks: [
+    ['h', 'Wofür braucht man Use Cases?'],
+    ['p', 'Zu Beginn eines Projekts will man wissen: **Was soll das System für wen leisten?** Technische Details sind noch egal. Das Use-Case-Diagramm beantwortet genau das auf einer Seite, sodass auch Kunden es verstehen. Es ist ein Diagramm der **UML** (Unified Modeling Language), der Standardsprache für Software-Modelle.'],
+    ['h', 'Die Elemente'],
+    ['kv', [
+      ['Akteur', 'Eine Rolle außerhalb des Systems, die mit ihm interagiert, zum Beispiel "Kunde", "Administrator" oder ein Zahlungssystem. Gezeichnet als Strichmännchen mit dem Rollennamen.'],
+      ['Anwendungsfall (Use Case)', 'Eine Funktion, die für einen Akteur ein **sinnvolles Ergebnis** liefert, zum Beispiel "Bestellung aufgeben". Als Oval, Name mit Verb.'],
+      ['Systemgrenze', 'Rechteck mit dem Systemnamen. Alles innen gehört zum System, Akteure stehen außerhalb.'],
+      ['Assoziation', 'Einfache Linie: Der Akteur nutzt den Anwendungsfall.'],
+      ['include (enthält)', 'Der Basisfall **enthält immer** den anderen Fall. "Bestellen" enthält "Bezahlen". Pfeil gestrichelt zeigt vom Basisfall zum enthaltenen Fall.'],
+      ['extend (erweitert)', 'Ein Fall **kann** unter einer Bedingung den Basisfall erweitern. "Rabattcode einlösen" erweitert "Bestellen". Pfeil zeigt vom erweiternden Fall zum Basisfall.'],
+    ]],
+    ['diagram', {w: 760, h: 430, keep: 640, cap: 'Use-Case-Diagramm eines Online-Shops.', nodes: [
+      {id: 'sys', k: 'group', x: 395, y: 215, w: 520, h: 400, t: 'Online-Shop', s: 'soft'},
+      {id: 'kunde', k: 'actor', x: 60, y: 200, t: 'Kunde', w: 40, h: 56}, {id: 'admin', k: 'actor', x: 720, y: 200, t: 'Administrator', w: 40, h: 56},
+      {id: 'such', k: 'oval', x: 300, y: 85, t: 'Artikel suchen', w: 160, h: 46}, {id: 'korb', k: 'oval', x: 300, y: 160, t: 'In den Warenkorb legen', w: 190, h: 46},
+      {id: 'best', k: 'oval', x: 300, y: 250, t: 'Bestellen', w: 140, h: 46, s: 'accent'}, {id: 'zahl', k: 'oval', x: 530, y: 290, t: 'Bezahlen', w: 130, h: 46},
+      {id: 'rabatt', k: 'oval', x: 300, y: 345, t: 'Rabattcode einlösen', w: 180, h: 46}, {id: 'verw', k: 'oval', x: 560, y: 110, t: 'Artikel verwalten', w: 170, h: 46},
+      {id: 'vers', k: 'oval', x: 560, y: 200, t: 'Bestellung versenden', w: 190, h: 46},
+    ], edges: [
+      {a: 'kunde', b: 'such', ea: 'none'}, {a: 'kunde', b: 'korb', ea: 'none'}, {a: 'kunde', b: 'best', ea: 'none'},
+      {a: 'admin', b: 'verw', ea: 'none'}, {a: 'admin', b: 'vers', ea: 'none'},
+      {a: 'best', b: 'zahl', k: 'dash', ea: 'open', t: '«include»'}, {a: 'rabatt', b: 'best', k: 'dash', ea: 'open', t: '«extend»', lo: [30, 0]},
+    ]}],
+    ['h', 'Anwendungsfälle genau beschreiben'],
+    ['p', 'Das Diagramm zeigt nur die Übersicht. Die Einzelheiten stehen in einer **Anwendungsfall-Beschreibung** (Use-Case-Spezifikation). Diese Vorlage kommt in der Prüfung oft vor:'],
+    ['table', ['Feld', 'Beispiel "Bestellen"'], [
+      ['Name', 'Bestellen'],
+      ['Akteur', 'Kunde (primär), Zahlungsdienst (sekundär)'],
+      ['Vorbedingung', 'Kunde ist angemeldet, Warenkorb enthält mindestens einen Artikel'],
+      ['Standardablauf', '1. Kunde klickt "Zur Kasse". 2. System zeigt Zusammenfassung. 3. Kunde bestätigt. 4. System startet "Bezahlen". 5. System speichert die Bestellung und sendet eine E-Mail.'],
+      ['Alternativablauf', '4a. Zahlung schlägt fehl: System zeigt Meldung, Bestellung wird nicht gespeichert.'],
+      ['Nachbedingung', 'Bestellung ist gespeichert, Lagerbestand wurde reduziert'],
+    ]],
+  ],
+});

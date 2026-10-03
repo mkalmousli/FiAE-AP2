@@ -1,0 +1,41 @@
+AP2.add('wiso-kreislauf', [
+  ['h', 'Der erweiterte Wirtschaftskreislauf'],
+  ['diagram', {w: 760, h: 380, keep: 620, cap: 'Erweiterter Wirtschaftskreislauf mit fünf Sektoren (vereinfacht). Die Pfeile zeigen Geldströme.', nodes: [
+    {id: 'h', k: 'round', x: 130, y: 100, t: ['Private', 'Haushalte'], w: 150, h: 64, s: 'accent'}, {id: 'u', k: 'round', x: 630, y: 100, t: 'Unternehmen', w: 150, h: 64, s: 'solid'},
+    {id: 's', k: 'round', x: 380, y: 30, t: 'Staat', w: 130, h: 44, s: 'ok'}, {id: 'b', k: 'round', x: 380, y: 190, t: ['Banken', '(Vermögensänderung)'], w: 190, h: 56, s: 'soft'}, {id: 'a', k: 'round', x: 380, y: 330, t: 'Ausland', w: 150, h: 44, s: 'soft'},
+  ], edges: [
+    {a: 'h', b: 'u', t: 'Konsum', lo: [0, -12], via: [[130, 135], [630, 135]]}, {a: 'u', b: 'h', t: 'Einkommen', lo: [0, 12], via: [[630, 65], [130, 65]]}, {a: 'h', b: 's', t: 'Steuern', ea: 'arrow'}, {a: 's', b: 'h', t: 'Transfers', via: [[200, 30]], lo: [0, -10]},
+    {a: 'u', b: 's', t: 'Steuern', ea: 'arrow'}, {a: 's', b: 'u', t: 'Aufträge, Subventionen', via: [[560, 30]], lo: [0, -10]}, {a: 'h', b: 'b', t: 'Sparen', ea: 'arrow', via: [[200, 190]]}, {a: 'b', b: 'u', t: 'Kredite (Investitionen)', ea: 'arrow', via: [[560, 190]]},
+    {a: 'u', b: 'a', t: 'Export (Einnahmen)', ea: 'arrow', via: [[630, 330]]}, {a: 'a', b: 'u', t: 'Import (Ausgaben)', ea: 'arrow', via: [[500, 330], [560, 250]]},
+  ]}],
+  ['table', ['Sektor', 'Aufgabe', 'Einnahmen', 'Ausgaben'], [
+    ['**Private Haushalte**', 'Konsumieren, bieten Arbeit an, sparen', 'Einkommen (Löhne), Transfers (Kindergeld, Rente)', 'Konsum, Steuern, Sozialbeiträge, **Sparen**'],
+    ['**Unternehmen**', 'Produzieren Güter und Dienstleistungen', 'Verkaufserlöse (Konsum, Staat, Export)', 'Löhne, Zinsen, Steuern, **Investitionen**, Importe'],
+    ['**Staat**', 'Öffentliche Güter, Infrastruktur, Sozialleistungen', 'Steuern, Sozialbeiträge', 'Staatsausgaben, **Transfers** (Rente, Bürgergeld), **Subventionen**'],
+    ['**Banken / Vermögensänderung**', 'Verbinden Sparer und Investoren', 'Spareinlagen', 'Kredite, Investitionsfinanzierung'],
+    ['**Ausland**', 'Handelspartner', 'Importe aus Deutschland (unser **Export**)', 'Exporte nach Deutschland (unser **Import**)'],
+  ]],
+  ['kv', [
+    ['Sparen und Investieren', 'Haushalte **sparen** einen Teil des Einkommens. Banken **verleihen** es als Kredit an Unternehmen, die **investieren** (Maschinen, Software, Gebäude). Im Gleichgewicht gilt: **Ersparnis = Investition**. Investieren Unternehmen weniger als gespart wird, **sinkt die Nachfrage** und die Wirtschaft schrumpft.'],
+    ['Staat', 'Zieht **Steuern** und **Sozialbeiträge** ein und zahlt **Staatsausgaben** (Beamte, Straßen, Bildung) und **Transferleistungen** (Rente, Kindergeld, Bürgergeld: **ohne Gegenleistung**). Er beeinflusst über Steuern und Ausgaben die **Konjunktur** (Fiskalpolitik).'],
+    ['Außenwirtschaft', '**Exporte** bringen Geld ins Land, **Importe** kosten Geld. Deutschland ist **Exportland** (Autos, Maschinen). **Außenbeitrag = Exporte minus Importe.**'],
+    ['Transferleistungen', 'Zahlungen **ohne direkte Gegenleistung** (Kindergeld, Rente, Bürgergeld, Subventionen) sind **keine Entgelte für Produktion** und werden daher im BIP **nicht** als Produktion gezählt.'],
+  ]],
+  ['h', 'Bruttoinlandsprodukt (BIP)'],
+  ['p', 'Das **BIP** misst den **Gesamtwert aller Waren und Dienstleistungen**, die in einem Land **innerhalb eines Jahres** hergestellt werden (nach Abzug der Vorleistungen). Es gibt es drei Berechnungsweisen:'],
+  ['table', ['Sicht', 'Frage', 'Rechnung'], [['**Entstehung**', 'Wer produziert?', 'Summe der **Wertschöpfung** aller Branchen'], ['**Verwendung**', 'Wofür wird es verwendet?', '**BIP = C + I + G + (Ex - Im)**: Konsum + Investitionen + Staatsausgaben + Außenbeitrag'], ['**Verteilung**', 'Wer bekommt das Einkommen?', 'Arbeitnehmerentgelte + Unternehmens- und Vermögenseinkommen']]],
+  ['ex', ['**Beispiel (Verwendung, in Milliarden Euro):** Konsum 2.400, Investitionen 800, Staatsausgaben 900, Exporte 1.800, Importe 1.600. **BIP = 2.400 + 800 + 900 + (1.800 - 1.600) = 4.300 Mrd. Euro.**', '**Wachstumsrate:** BIP im Vorjahr 4.200, in diesem Jahr 4.300: Wachstum = (4.300 - 4.200) / 4.200 = **2,4 Prozent** (nominal). **Real** bedeutet **preisbereinigt**, zum Beispiel BIP nominal +2,4 %, Inflation 2,0 % ergibt real nur etwa **+0,4 %**.']],
+  ['warn', 'Das BIP misst **nicht** alles Wertvolle: **Hausarbeit**, **Ehrenamt**, **Schwarzarbeit**, **Umweltschäden** und **Verteilung** bleiben unberücksichtigt. Es ist ein Maß für **Wirtschaftsleistung**, nicht für **Wohlstand oder Glück**. Ergänzend gibt es den **Index der menschlichen Entwicklung** und das **Nationale Wohlfahrtsindex**.'],
+  ['h', 'Aufgaben im Prüfungsstil'],
+  ['qa', 'Beschreiben Sie den einfachen Wirtschaftskreislauf mit zwei Sektoren.', 'Die **Haushalte** stellen den Unternehmen **Produktionsfaktoren** (vor allem Arbeit) zur Verfügung und erhalten dafür **Einkommen** (Löhne, Gehälter). Mit dem Einkommen kaufen sie **Güter und Dienstleistungen** der **Unternehmen** (Konsumausgaben). Die Unternehmen erhalten so Erlöse, mit denen sie die Faktoren bezahlen. Gegenläufig fließen **Realströme** (Arbeit, Güter) und **Geldströme** (Einkommen, Konsum).', 5],
+  ['qa', 'Welche zusätzlichen Sektoren enthält der erweiterte Wirtschaftskreislauf und welche Ströme kommen hinzu?', ['- **Staat:** Steuern und Sozialbeiträge fließen zum Staat; Staatsausgaben, Transfers und Subventionen fließen zu Haushalten und Unternehmen.', '- **Banken (Vermögensänderung):** Ersparnisse der Haushalte fließen zu den Banken; diese vergeben Kredite für Investitionen.', '- **Ausland:** Exporte (Einnahmen) und Importe (Ausgaben).'], 6],
+  ['qa', 'Berechnen Sie das BIP: Konsum 2.000, Investitionen 600, Staatsausgaben 700, Exporte 1.100, Importe 900 (in Mrd. Euro).', ['BIP = 2.000 + 600 + 700 + (1.100 - 900) = **3.500 Mrd. Euro** (Außenbeitrag +200).'], 4],
+  ['qa', 'Nennen Sie zwei Gründe, warum das BIP kein vollständiges Wohlstandsmaß ist.', ['- Unbezahlte Arbeit (Hausarbeit, Ehrenamt) und Schwarzarbeit sind nicht enthalten.', '- Umweltzerstörung und Verteilung der Einkommen werden nicht berücksichtigt; Reparaturkosten von Schäden erhöhen sogar das BIP.'], 4],
+  ['quiz', [
+    {q: 'Was fließt im einfachen Wirtschaftskreislauf von den Unternehmen an die Haushalte?', o: ['Einkommen (Löhne) sowie Güter und Dienstleistungen', 'Nur Steuern', 'Kredite', 'Exporte'], a: 0, e: 'Unternehmen zahlen Einkommen und liefern Güter.'},
+    {q: 'Welcher Sektor kommt im erweiterten Kreislauf NICHT hinzu?', o: ['Betriebsrat', 'Staat', 'Ausland', 'Banken'], a: 0, e: 'Erweitert: Staat, Banken (Vermögensänderung), Ausland.'},
+    {q: 'Welche Formel beschreibt das BIP (Verwendung)?', o: ['C + I + G + (Ex - Im)', 'C - I', 'Steuern + Löhne', 'Sparen minus Konsum'], a: 0, e: 'Konsum + Investitionen + Staatsausgaben + Außenbeitrag.'},
+    {q: 'Was gilt im Gleichgewicht zwischen Haushalten, Banken und Unternehmen?', o: ['Ersparnis = Investition', 'Sparen > Konsum', 'Steuern = Konsum', 'Import = 0'], a: 0, e: 'Alles Gesparte wird als Kredit investiert.'},
+    {q: 'Was sind Transferleistungen?', o: ['Zahlungen ohne direkte Gegenleistung, zum Beispiel Kindergeld', 'Löhne', 'Importe', 'Steuern'], a: 0, e: 'Transfers sind Sozialleistungen, die nicht für Produktion gezahlt werden.'},
+  ]],
+]);

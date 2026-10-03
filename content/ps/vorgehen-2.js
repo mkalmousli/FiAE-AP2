@@ -1,0 +1,40 @@
+AP2.add('ps-vorgehen', [
+  ['h', 'V-Modell'],
+  ['p', 'Das V-Modell erweitert den Wasserfall. Auf der **linken Seite** wird die Software immer genauer entworfen (von grob nach fein). Auf der **rechten Seite** wird sie getestet (von klein nach groß). Der wichtige Gedanke: **Jede Entwurfsstufe hat eine passende Teststufe.** Was in der Anforderungsanalyse festgelegt wurde, prüft am Ende der Abnahmetest.'],
+  ['diagram', {w: 760, h: 380, keep: 640, cap: 'V-Modell: Die gestrichelten Linien zeigen, welche Teststufe welche Entwurfsstufe prüft (Verifikation und Validierung).', nodes: [
+    {id: 'l1', x: 100, y: 40, t: 'Anforderungsanalyse', s: 'accent', k: 'round', w: 176, h: 42},
+    {id: 'l2', x: 190, y: 120, t: 'Systementwurf', s: 'accent', k: 'round', w: 176, h: 42},
+    {id: 'l3', x: 280, y: 200, t: 'Komponentenentwurf', s: 'accent', k: 'round', w: 176, h: 42},
+    {id: 'l4', x: 380, y: 300, t: 'Implementierung (Code)', s: 'solid', k: 'round', w: 200, h: 46},
+    {id: 'r3', x: 480, y: 200, t: 'Modultest (Unit)', s: 'ok', k: 'round', w: 176, h: 42},
+    {id: 'r2', x: 570, y: 120, t: 'Integrationstest', s: 'ok', k: 'round', w: 176, h: 42},
+    {id: 'r1', x: 660, y: 40, t: 'Abnahmetest', s: 'ok', k: 'round', w: 176, h: 42},
+  ], edges: [
+    {a: 'l1', b: 'l2'}, {a: 'l2', b: 'l3'}, {a: 'l3', b: 'l4'}, {a: 'l4', b: 'r3'}, {a: 'r3', b: 'r2'}, {a: 'r2', b: 'r1'},
+    {a: 'l1', b: 'r1', k: 'dash', ea: 'none', t: 'prüft gegen Anforderungen'}, {a: 'l2', b: 'r2', k: 'dash', ea: 'none'}, {a: 'l3', b: 'r3', k: 'dash', ea: 'none'},
+  ]}],
+  ['table', ['Entwurfsstufe (links)', 'Teststufe (rechts)', 'Prüft ...'], [
+    ['Anforderungsanalyse (Lastenheft)', 'Abnahmetest (beim Kunden)', 'Erfüllt das System die Wünsche des Kunden?'],
+    ['Systementwurf (Pflichtenheft, Architektur)', 'Systemtest / Integrationstest', 'Funktioniert das Gesamtsystem wie entworfen?'],
+    ['Komponentenentwurf (Module, Klassen)', 'Modultest / Unit-Test', 'Funktioniert jedes einzelne Modul korrekt?'],
+  ]],
+  ['tip', 'Das V-Modell XT ist der Standard für Projekte der öffentlichen Hand in Deutschland. Das Wort "V" kommt von der Form: links runter (entwerfen), rechts rauf (testen).'],
+  ['h', 'Weitere klassische Modelle in Kürze'],
+  ['kv', [
+    ['Spiralmodell', 'Wiederholte Zyklen aus Zielsetzung, Risikoanalyse, Entwicklung und Bewertung. Stärke: Risiken werden früh behandelt. Für große, riskante Projekte.'],
+    ['Prototyping', 'Früh ein ausführbares Muster bauen, damit der Kunde reagieren kann. Gut, wenn Anforderungen unklar sind. Gefahr: Der Prototyp wird versehentlich zum Produkt.'],
+    ['Iterativ / inkrementell', 'Iterativ: etwas immer wieder verbessern. Inkrementell: Funktion für Funktion Stück für Stück liefern. Grundlage der agilen Modelle.'],
+  ]],
+  ['h', 'Agile Modelle'],
+  ['p', 'Agile Methoden (zum Beispiel **Scrum** und **Kanban**) gehen davon aus, dass sich Anforderungen ändern. Statt alles am Anfang zu planen, wird in kurzen **Iterationen (Sprints)** gearbeitet. Nach jedem Sprint gibt es ein **lauffähiges Teilprodukt** und Feedback vom Kunden. Das Agile Manifest betont: Menschen und Zusammenarbeit vor Prozessen, funktionierende Software vor umfassender Dokumentation, Zusammenarbeit mit dem Kunden vor Vertragsverhandlung, Reagieren auf Veränderung vor dem Befolgen eines Plans.'],
+  ['procon', 'Klassisch (Wasserfall/V-Modell) oder agil?', ['**Klassisch:** gute Planbarkeit von Kosten und Terminen', '**Klassisch:** passt zu Festpreisverträgen und Zulassungen', '**Agil:** schnelle Reaktion auf Änderungen', '**Agil:** früher Nutzen durch frühe Auslieferung'], ['**Klassisch:** Änderungen spät teuer, Kunde sieht Ergebnis spät', '**Agil:** Aufwand und Endtermin schwerer vorab festzulegen', '**Agil:** braucht aktive Mitarbeit des Kunden und selbstorganisierte Teams', '**Agil:** weniger Dokumentation kann ein Problem werden']],
+  ['h', 'Aufgaben im Prüfungsstil'],
+  ['qa', 'Ein Kunde möchte eine Software, deren Funktionen er noch nicht genau beschreiben kann. Welches Vorgehensmodell empfehlen Sie und warum?', 'Ein agiles Vorgehen (zum Beispiel Scrum). Da die Anforderungen unklar sind und sich ändern werden, liefert man in kurzen Sprints lauffähige Teile, holt regelmäßig Feedback ein und passt die Planung an. Ein Wasserfallmodell wäre riskant, weil Fehler in den Anforderungen erst spät auffallen.', 4],
+  ['qa', 'Nennen Sie die Stufen des V-Modells und ordnen Sie jeder Entwurfsstufe eine Teststufe zu.', ['- Anforderungsanalyse: Abnahmetest', '- Systementwurf: System- bzw. Integrationstest', '- Komponentenentwurf: Modultest', '- Ganz unten liegt die Implementierung.'], 4],
+  ['quiz', [
+    {q: 'Was ist das wichtigste Merkmal des Wasserfallmodells?', o: ['Phasen laufen strikt nacheinander.', 'Es wird in kurzen Sprints gearbeitet.', 'Der Kunde ist ständig im Team.', 'Es gibt keine Dokumente.'], a: 0, e: 'Wasserfall: Eine Phase muss fertig sein, bevor die nächste startet.'},
+    {q: 'Welche Teststufe prüft im V-Modell die Anforderungsanalyse?', o: ['Abnahmetest', 'Modultest', 'Integrationstest', 'Kompiliertest'], a: 0, e: 'Der Abnahmetest prüft gegen die ursprünglichen Anforderungen des Kunden.'},
+    {q: 'Für welche Situation sind agile Modelle besonders gut geeignet?', o: ['Anforderungen ändern sich häufig.', 'Alle Anforderungen sind fix und für Jahre unveränderlich.', 'Es gibt keinen Kunden.', 'Es darf kein Feedback geben.'], a: 0, e: 'Agil reagiert auf Änderungen durch kurze Iterationen und häufiges Feedback.'},
+    {q: 'Was ist ein Nachteil des Wasserfallmodells?', o: ['Änderungen sind spät sehr teuer.', 'Es gibt zu viele Meetings.', 'Es kann nicht dokumentiert werden.', 'Es braucht keine Planung.'], a: 0, e: 'Weil Phasen abgeschlossen werden, sind spätere Änderungen aufwendig.'},
+  ]],
+]);

@@ -1,0 +1,30 @@
+AP2.add('infra-isms', [
+  ['h', 'Risikoanalyse im ISMS'],
+  ['steps', ['**Werte (Assets) erfassen:** Daten, Systeme, Anwendungen, Gebäude, Personal.', '**Schutzbedarf feststellen** nach CIA: **normal, hoch, sehr hoch** (zum Beispiel Personaldaten haben hohen Schutzbedarf bei Vertraulichkeit).', '**Bedrohungen und Schwachstellen** identifizieren (Hackerangriff, Feuer, Fehlbedienung, veraltete Software).', '**Risiko bewerten**: Eintrittswahrscheinlichkeit mal Schadenshöhe.', '**Risiken behandeln:** vermeiden, vermindern, übertragen oder akzeptieren (Restrisiko dokumentieren).', '**Maßnahmen umsetzen und Wirksamkeit prüfen** (zurück zum PDCA).']],
+  ['h', 'Maßnahmenarten (TOM)'],
+  ['table', ['Art', 'Beispiele'], [
+    ['**Technische** Maßnahmen', 'Firewall, Verschlüsselung, Zugriffskontrolle, Backup, Patchmanagement, Virenschutz, Protokollierung'],
+    ['**Organisatorische** Maßnahmen', 'Sicherheitsleitlinie, Berechtigungskonzept, Vier-Augen-Prinzip, Notfallplan, Schulungen, Besucherregelung'],
+    ['**Bauliche / physische** Maßnahmen', 'Zutrittskontrolle, Serverraum, Brandschutz, USV, Videoüberwachung'],
+    ['**Personelle** Maßnahmen', 'Auswahl und Verpflichtung von Personal, Vertretungsregelungen, Awareness-Training'],
+  ]],
+  ['h', 'Weitere wichtige Begriffe'],
+  ['kv', [
+    ['Sicherheitsleitlinie (Policy)', 'Vom Management verabschiedetes Dokument mit Zielen und Grundsätzen der Informationssicherheit.'],
+    ['Audit', 'Systematische Prüfung, ob Vorgaben eingehalten werden. **Intern** (eigene Mitarbeiter) oder **extern** (Zertifizierer).'],
+    ['Awareness', 'Sicherheitsbewusstsein der Mitarbeiter durch Schulung (Phishing-Erkennung, sichere Passwörter).'],
+    ['Business Continuity Management (BCM)', 'Planung, wie wichtige Geschäftsprozesse bei Notfällen weiterlaufen (Notfallplan, Wiederanlauf, siehe RTO/RPO).'],
+    ['NIS-2', 'EU-Richtlinie zur Cybersicherheit für wichtige und besonders wichtige Einrichtungen: Pflicht zu Risikomanagement-Maßnahmen und Meldung von Vorfällen.'],
+  ]],
+  ['h', 'Aufgaben im Prüfungsstil'],
+  ['qa', 'Erklären Sie den PDCA-Zyklus am Beispiel der Einführung einer Backup-Strategie.', ['**Plan:** Anforderungen (RPO/RTO) und Risiken analysieren, Backup-Konzept festlegen.', '**Do:** Backup-Software und Medien einrichten, Backups laufen lassen, Mitarbeiter einweisen.', '**Check:** Restore-Tests und Auswertung der Backup-Protokolle: Funktioniert alles? Werden RPO/RTO eingehalten?', '**Act:** Festgestellte Mängel beheben (zum Beispiel zu seltene Sicherung), Konzept anpassen. Danach beginnt der Zyklus von vorn.'], 6],
+  ['qa', 'Nennen Sie zwei Vorteile eines Informationssicherheits-Managementsystems nach ISO 27001.', ['- Systematischer, dauerhafter Umgang mit Sicherheitsrisiken statt Einzelmaßnahmen; klare Verantwortlichkeiten.', '- Nachweisbare Qualität gegenüber Kunden und Aufsicht durch die Zertifizierung; Unterstützung bei der Erfüllung gesetzlicher Anforderungen.'], 4],
+  ['qa', 'Was ist der Unterschied zwischen ISO 27001 und ISO 27002?', 'ISO 27001 beschreibt die **Anforderungen** an ein ISMS und ist **zertifizierbar**. ISO 27002 ist ein **Leitfaden mit Umsetzungshinweisen** zu den Sicherheitsmaßnahmen (Controls) und nicht zertifizierbar.', 3],
+  ['quiz', [
+    {q: 'Wofür steht PDCA?', o: ['Plan, Do, Check, Act', 'Protect, Detect, Contain, Analyze', 'Plan, Design, Create, Approve', 'Protocol, Data, Cloud, Access'], a: 0, e: 'Plan (Planen), Do (Umsetzen), Check (Prüfen), Act (Verbessern).'},
+    {q: 'Welche Norm beschreibt die Anforderungen an ein ISMS und ist zertifizierbar?', o: ['ISO/IEC 27001', 'ISO 9241', 'DIN 5008', 'ISO 27002'], a: 0, e: 'ISO 27001 ist zertifizierbar. ISO 27002 ist der Maßnahmenleitfaden.'},
+    {q: 'In welcher PDCA-Phase werden interne Audits durchgeführt?', o: ['Check', 'Plan', 'Do', 'Act'], a: 0, e: 'Audits prüfen die Wirksamkeit der Maßnahmen (Check).'},
+    {q: 'Welche Behandlung gehört NICHT zur klassischen Risikobehandlung?', o: ['Ignorieren ohne Dokumentation', 'Vermeiden', 'Vermindern', 'Übertragen'], a: 0, e: 'Risiken werden vermieden, vermindert, übertragen oder bewusst (dokumentiert) akzeptiert.'},
+    {q: 'Wer trägt die Gesamtverantwortung für die Informationssicherheit?', o: ['Die Geschäftsführung', 'Nur die IT-Abteilung', 'Der Praktikant', 'Der Kunde'], a: 0, e: 'Informationssicherheit ist Chefsache; die Leitung trägt die Verantwortung.'},
+  ]],
+]);

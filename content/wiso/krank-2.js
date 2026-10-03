@@ -1,0 +1,30 @@
+AP2.add('wiso-krank', [
+  ['h', 'Krankengeld und weitere Leistungen'],
+  ['table', ['Leistung', 'Wer zahlt?', 'Höhe', 'Dauer'], [
+    ['**Entgeltfortzahlung**', 'Arbeitgeber', '**100 %** des Entgelts', 'bis **6 Wochen** je Krankheit'],
+    ['**Krankengeld**', 'Gesetzliche Krankenkasse', '**70 %** des Bruttoentgelts, höchstens **90 %** des Nettoentgelts (Beitragsbemessungsgrenze beachten)', 'ab **7. Woche**, bis **78 Wochen** innerhalb von 3 Jahren (wegen derselben Krankheit), Entgeltfortzahlung wird angerechnet'],
+    ['**Verletztengeld**', 'Berufsgenossenschaft (bei Arbeitsunfall/Berufskrankheit)', '**80 %** des Bruttoentgelts, höchstens Nettoentgelt', 'ab dem Ende der Entgeltfortzahlung'],
+    ['**Kinderkrankengeld**', 'Krankenkasse', '90 % des Nettoentgelts', 'je Kind und Elternteil **15 Arbeitstage pro Jahr** (bei mehreren Kindern bis zu 35), für Kinder bis 12 Jahre (Stand 2025/26 prüfen)'],
+    ['**Erwerbsminderungsrente**', 'Rentenversicherung', 'Je nach Rentenanspruch', 'Bei dauerhaft geminderter Erwerbsfähigkeit'],
+  ]],
+  ['h', 'Berechnungsbeispiele'],
+  ['ex', ['**Beispiel 1:** Ein Mitarbeiter (Monatsbrutto 3.000 Euro, Nettogehalt 2.100 Euro) ist ab 1. März krank. Er bekommt **6 Wochen** das volle Gehalt vom Arbeitgeber. Ab der 7. Woche zahlt die Krankenkasse **Krankengeld: 70 % von 3.000 Euro = 2.100 Euro brutto**; es darf aber höchstens **90 % des Nettos** = 1.890 Euro betragen. Krankengeld wird also auf **1.890 Euro** (brutto, daraus werden noch Sozialbeiträge abgezogen) begrenzt.', '**Beispiel 2:** Beginn der Krankheit am 12. Mai. Der Anspruch auf Entgeltfortzahlung endet nach 42 Kalendertagen am **22. Juni**.']],
+  ['table', ['Situation', 'Beurteilung'], [
+    ['Azubi bricht sich beim Fußballspielen in der Freizeit den Arm.', '**Unverschuldet** im Sinne des Gesetzes: Entgeltfortzahlung (6 Wochen).'],
+    ['Arbeitnehmer verursacht unter Alkoholeinfluss einen Autounfall und liegt 3 Wochen im Krankenhaus.', '**Verschuldet** (grobes Verschulden): **kein** Anspruch auf Entgeltfortzahlung.'],
+    ['Arbeitnehmer meldet sich nicht und kommt nach drei Tagen mit Attest.', 'Verstoß gegen die **unverzügliche Meldepflicht**; Abmahnung möglich. Entgeltfortzahlung besteht, wenn Attest vorgelegt wird.'],
+    ['Arbeitnehmer ist 6 Wochen mit Rückenleiden krank, nach 3 Monaten erneut wegen Rückenleiden.', 'Gleiche Krankheit, **weniger als 6 Monate** dazwischen: **kein neuer** Anspruch auf 6 Wochen (Zeiten werden zusammengerechnet).'],
+    ['Neuer Mitarbeiter erkrankt in der 2. Woche.', 'Wartezeit von 4 Wochen **nicht erfüllt**: Kein Anspruch gegen den Arbeitgeber, aber **Krankengeld** von der Krankenkasse.'],
+  ]],
+  ['h', 'Aufgaben im Prüfungsstil'],
+  ['qa', 'Ein Arbeitnehmer erkrankt am Montag. Wann muss er welche Pflichten erfüllen?', ['**Unverzüglich** (Montagmorgen) beim Arbeitgeber melden, voraussichtliche Dauer nennen.', 'Dauert die Krankheit **länger als 3 Kalendertage** (also über Mittwoch hinaus), muss die ärztliche Bescheinigung **spätestens am darauffolgenden Arbeitstag (Donnerstag)** vorliegen (bzw. eAU wird abgerufen), wenn der Arbeitgeber nichts anderes verlangt.'], 5],
+  ['qa', 'Wie lange und in welcher Höhe zahlt der Arbeitgeber bei Krankheit und wer zahlt danach?', 'Der Arbeitgeber zahlt **bis zu 6 Wochen zu 100 %** des Entgelts. Danach zahlt die **gesetzliche Krankenkasse Krankengeld** (70 % des Brutto, höchstens 90 % des Netto) für bis zu 78 Wochen.', 4],
+  ['qa', 'Nennen Sie zwei Voraussetzungen für die Entgeltfortzahlung im Krankheitsfall.', ['- Das Arbeitsverhältnis besteht seit mindestens vier Wochen.', '- Die Arbeitsunfähigkeit wurde nicht grob schuldhaft herbeigeführt und ist durch eine ärztliche Bescheinigung nachgewiesen (bei mehr als drei Kalendertagen).'], 4],
+  ['quiz', [
+    {q: 'Wie lange zahlt der Arbeitgeber das Entgelt im Krankheitsfall weiter?', o: ['Bis zu 6 Wochen', 'Bis zu 3 Wochen', 'Bis zu 12 Wochen', 'Bis zu 6 Monate'], a: 0, e: 'Entgeltfortzahlung: bis zu 6 Wochen (42 Tage).'},
+    {q: 'Ab wann ist spätestens eine ärztliche Bescheinigung vorzulegen (gesetzlich)?', o: ['Wenn die Krankheit länger als 3 Kalendertage dauert (am folgenden Arbeitstag)', 'Ab dem 1. Tag immer', 'Erst nach 2 Wochen', 'Nie'], a: 0, e: 'Der Arbeitgeber darf aber schon ab dem ersten Tag eine Bescheinigung verlangen.'},
+    {q: 'Wer zahlt ab der 7. Krankheitswoche?', o: ['Die Krankenkasse (Krankengeld)', 'Der Arbeitgeber', 'Das Finanzamt', 'Die Rentenversicherung'], a: 0, e: 'Krankengeld: 70 % des Brutto, max. 90 % des Netto.'},
+    {q: 'Wie lange muss ein Arbeitsverhältnis bestehen, damit der Anspruch auf Entgeltfortzahlung entsteht?', o: ['4 Wochen', '6 Monate', '1 Tag', '1 Jahr'], a: 0, e: 'Wartezeit: 4 Wochen.'},
+    {q: 'Was bedeutet eAU?', o: ['Elektronische Arbeitsunfähigkeitsbescheinigung', 'Einfache Arbeits-Urlaubs-Abrechnung', 'Eigene Arbeitsunfall-Meldung', 'Einheitliche Abfindungs-Umlage'], a: 0, e: 'Seit 2023 übermittelt der Arzt die Daten digital an die Krankenkasse.'},
+  ]],
+]);

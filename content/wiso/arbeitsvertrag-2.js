@@ -1,0 +1,33 @@
+AP2.add('wiso-arbeitsvertrag', [
+  ['h', 'Überstunden, Mindestlohn, Gleichbehandlung'],
+  ['kv', [
+    ['Überstunden', 'Arbeit **über die vertraglich vereinbarte** Zeit hinaus. Pflicht dazu nur, wenn **vereinbart** oder im **Notfall**. Vergütung oder **Freizeitausgleich** je nach Vertrag/Tarif. Mitbestimmung des Betriebsrats (§ 87 BetrVG).'],
+    ['Mindestlohn', 'Gesetzlicher **Mindestlohn** (MiLoG) gilt für Arbeitnehmer (Ausnahmen: zum Beispiel Auszubildende, die die Mindestausbildungsvergütung bekommen, Pflichtpraktika). **2026: 13,90 Euro pro Stunde** (Stand prüfen; steigt 2027 auf 14,60 Euro).'],
+    ['Allgemeines Gleichbehandlungsgesetz (AGG)', 'Verbietet **Benachteiligung** wegen Rasse, ethnischer Herkunft, Geschlecht, Religion, Behinderung, Alter oder sexueller Identität (Bewerbung, Lohn, Kündigung). Betroffene haben Anspruch auf **Schadensersatz/Entschädigung**.'],
+    ['Wettbewerbsverbot', 'Während des Arbeitsverhältnisses darf der Arbeitnehmer **keine Konkurrenztätigkeit** ausüben. **Nachvertraglich** nur mit **Karenzentschädigung** (mindestens die Hälfte des letzten Gehalts), höchstens **2 Jahre**.'],
+    ['Nebentätigkeit', 'Grundsätzlich erlaubt, **wenn** die Hauptarbeit nicht leidet, keine Konkurrenz entsteht und die **Höchstarbeitszeit** eingehalten wird. Oft **anzeigepflichtig**.'],
+    ['Arbeitszeugnis', 'Anspruch auf ein **einfaches** oder **qualifiziertes** Zeugnis (§ 109 GewO), **wohlwollend** und **wahrheitsgemäß**.'],
+    ['Datenschutz im Beschäftigungsverhältnis', 'Der Arbeitgeber darf Daten nur verarbeiten, soweit es für das Arbeitsverhältnis **erforderlich** ist (§ 26 BDSG, DSGVO).'],
+  ]],
+  ['table', ['Befristung ja oder nein?', 'Beurteilung'], [
+    ['Vertretung einer Kollegin in Elternzeit', '**Zulässig mit Sachgrund**, Dauer bis zur Rückkehr'],
+    ['Neu eingestellt, ohne Sachgrund auf 18 Monate befristet', '**Zulässig** (bis 2 Jahre), noch 3 Verlängerungen möglich'],
+    ['Befristung nur mündlich vereinbart', '**Unwirksam**: gilt als unbefristet (Schriftform nötig)'],
+    ['Ehemaliger Azubi wird sachgrundlos auf 12 Monate befristet übernommen', '**Zulässig**: Ein Berufsausbildungsverhältnis gilt nicht als "Vorbeschäftigung" im Sinne des Gesetzes. Bei einem früheren **Arbeitsverhältnis** (zum Beispiel Werkstudent) wäre es **nicht** zulässig'],
+  ]],
+  ['h', 'Berechnungen zur Arbeitszeit'],
+  ['ex', ['**Aufgabe:** Ein Mitarbeiter arbeitet von 8:00 bis 17:30 Uhr mit einer Mittagspause von 45 Minuten. Wie lang ist die **Arbeitszeit**? Reicht die Pause nach dem ArbZG?', '**Lösung:** Anwesenheit 9,5 Stunden minus 0,75 Stunden Pause = **8,75 Stunden** Arbeitszeit. Bei mehr als 6 bis 9 Stunden sind **30 Minuten** Pause nötig, 45 Minuten reichen **aus**. (Bei mehr als 9 Stunden Arbeitszeit wären es 45 Minuten.) Die tägliche Höchstarbeitszeit von 8 Stunden wird um 0,75 Stunden überschritten, das ist bis 10 Stunden zulässig, wenn im Durchschnitt 8 Stunden eingehalten werden.']],
+  ['ex', ['**Aufgabe:** Eine Schicht endet um 23 Uhr. Wann darf die nächste frühestens beginnen?', '**Lösung:** Ruhezeit **11 Stunden**: **10 Uhr** am nächsten Tag.']],
+  ['h', 'Aufgaben im Prüfungsstil'],
+  ['qa', 'Nennen Sie drei Pflichten des Arbeitnehmers und drei des Arbeitgebers aus dem Arbeitsvertrag.', ['**Arbeitnehmer:** Arbeitsleistung persönlich erbringen, Verschwiegenheit/Treue, Befolgen berechtigter Weisungen.', '**Arbeitgeber:** Vergütung zahlen, Fürsorgepflicht (zum Beispiel Arbeitsschutz), Beschäftigung und Urlaub gewähren, Zeugnis ausstellen.'], 6],
+  ['qa', 'Ein Arbeitnehmer hat 11 Stunden gearbeitet und seine Schicht um 20 Uhr beendet. Um 6 Uhr am nächsten Tag soll er wieder anfangen. Welche Verstöße gibt es?', ['- **Tägliche Arbeitszeit:** 11 Stunden überschreiten die zulässigen **10 Stunden**.', '- **Ruhezeit:** Zwischen 20 Uhr und 6 Uhr liegen nur **10 Stunden**, nötig sind **11 Stunden**.'], 4],
+  ['qa', 'Welche Ruhepausen sind bei 6,5 Stunden, bei 9,5 Stunden Arbeitszeit vorgeschrieben?', ['- Bei 6,5 Stunden (mehr als 6 bis 9): mindestens **30 Minuten**.', '- Bei 9,5 Stunden (mehr als 9): mindestens **45 Minuten**.'], 3],
+  ['qa', 'Was ist das Direktionsrecht des Arbeitgebers und wo liegen seine Grenzen?', 'Das Direktionsrecht (§ 106 GewO) erlaubt dem Arbeitgeber, **Inhalt, Ort und Zeit der Arbeitsleistung** nach billigem Ermessen näher zu bestimmen. Grenzen: **Arbeitsvertrag, Tarifvertrag, Betriebsvereinbarung, Gesetze** (zum Beispiel Arbeitszeitgesetz) und das **Gebot der Angemessenheit**. Es kann nicht verlangt werden, was im Vertrag nicht vorgesehen ist (zum Beispiel völlig andere Tätigkeit).', 5],
+  ['quiz', [
+    {q: 'Wie viele Stunden darf ein Erwachsener werktäglich grundsätzlich arbeiten?', o: ['8 (bis 10 mit Ausgleich)', '6', '12', '14'], a: 0, e: '8 Stunden, verlängerbar auf 10 bei Ausgleich in 6 Monaten.'},
+    {q: 'Welche Pause steht bei mehr als 9 Stunden Arbeitszeit mindestens zu?', o: ['45 Minuten', '30 Minuten', '60 Minuten', '15 Minuten'], a: 0, e: '30 Minuten ab mehr als 6, 45 Minuten ab mehr als 9 Stunden.'},
+    {q: 'Wie lang ist die Ruhezeit nach Ende der täglichen Arbeit mindestens?', o: ['11 Stunden', '8 Stunden', '12 Stunden', '10 Stunden'], a: 0, e: 'ArbZG: 11 Stunden (Jugendliche: 12).'},
+    {q: 'Wie lange darf eine Befristung ohne Sachgrund höchstens dauern?', o: ['2 Jahre', '6 Monate', '5 Jahre', '1 Jahr'], a: 0, e: 'Bis zu 2 Jahre, mit höchstens drei Verlängerungen.'},
+    {q: 'Wie lang ist die Kündigungsfrist in der vereinbarten Probezeit?', o: ['2 Wochen', '4 Wochen', '1 Tag', '3 Monate'], a: 0, e: '§ 622 Abs. 3 BGB: 2 Wochen während einer vereinbarten Probezeit (maximal 6 Monate).'},
+  ]],
+]);

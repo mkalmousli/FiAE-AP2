@@ -1,0 +1,35 @@
+AP2.add('infra-subnetting', [
+  ['h', 'Aufgabentyp 2: Ein Netz in n gleich große Subnetze teilen'],
+  ['p', 'Aufgabe: Das Netz **192.168.1.0/24** soll in **4 Subnetze** geteilt werden.'],
+  ['steps', ['**Bits borgen:** Gesucht ist b mit 2^b ≥ 4. Das ist **b = 2** (2^2 = 4).', '**Neue Maske:** 24 + 2 = **/26** (255.255.255.192).', '**Blockgröße:** 256 - 192 = **64**.', '**Hosts pro Subnetz:** Hostbits = 32 - 26 = 6, also 2^6 - 2 = **62**.', 'Die Subnetze beginnen bei 0, 64, 128, 192.']],
+  ['table', ['Subnetz', 'Netzadresse', 'Erste Host-IP', 'Letzte Host-IP', 'Broadcast'], [
+    ['1', '192.168.1.0/26', '192.168.1.1', '192.168.1.62', '192.168.1.63'],
+    ['2', '192.168.1.64/26', '192.168.1.65', '192.168.1.126', '192.168.1.127'],
+    ['3', '192.168.1.128/26', '192.168.1.129', '192.168.1.190', '192.168.1.191'],
+    ['4', '192.168.1.192/26', '192.168.1.193', '192.168.1.254', '192.168.1.255'],
+  ]],
+  ['note', 'Für **6** Subnetze braucht man b = 3 (2^3 = 8 ≥ 6), also /27 mit je 30 Hosts. Zwei Subnetze bleiben übrig. Es gilt immer: Es entstehen **2^b Subnetze**, auch wenn man weniger braucht.'],
+  ['h', 'Aufgabentyp 3: Passende Maske für eine Hostanzahl finden'],
+  ['p', 'Aufgabe: Eine Abteilung hat **50 Geräte**. Welche Maske braucht das Subnetz mindestens?'],
+  ['steps', ['Suche die kleinste Zahl Hostbits h mit **2^h - 2 ≥ 50**. 2^5 - 2 = 30 (zu klein), 2^6 - 2 = 62 (reicht). Also **h = 6**.', 'Maske = 32 - 6 = **/26** (255.255.255.192).']],
+  ['table', ['Benötigte Hosts', 'Hostbits h', 'Maske', 'Nutzbare Hosts'], [
+    ['bis 2', '2', '/30', '2'], ['bis 6', '3', '/29', '6'], ['bis 14', '4', '/28', '14'], ['bis 30', '5', '/27', '30'], ['bis 62', '6', '/26', '62'], ['bis 126', '7', '/25', '126'], ['bis 254', '8', '/24', '254'], ['bis 510', '9', '/23', '510'], ['bis 1022', '10', '/22', '1022'],
+  ]],
+  ['h', 'Aufgabentyp 4: VLSM (Subnetze unterschiedlicher Größe)'],
+  ['p', 'Bei **VLSM** bekommt jedes Subnetz genau die Größe, die es braucht. Aufgabe: Aus **192.168.100.0/24** sollen Subnetze gebildet werden für Abteilung A (100 Hosts), B (50), C (25), D (10) und eine Router-Verbindung (2 Hosts).'],
+  ['steps', ['**Maske je Subnetz bestimmen:** A: 100 Hosts, h = 7, **/25**. B: 50, h = 6, **/26**. C: 25, h = 5, **/27**. D: 10, h = 4, **/28**. Link: 2, h = 2, **/30**.', '**Nach Größe absteigend sortieren** (größtes zuerst). Das verhindert Lücken und Überlappungen.', '**Nacheinander vergeben:** Jedes Subnetz beginnt direkt nach dem Ende des vorherigen.']],
+  ['table', ['Subnetz', 'Bedarf', 'Netzadresse / Maske', 'Host-Bereich', 'Broadcast'], [
+    ['A', '100', '192.168.100.0 /25', '.1 bis .126', '192.168.100.127'],
+    ['B', '50', '192.168.100.128 /26', '.129 bis .190', '192.168.100.191'],
+    ['C', '25', '192.168.100.192 /27', '.193 bis .222', '192.168.100.223'],
+    ['D', '10', '192.168.100.224 /28', '.225 bis .238', '192.168.100.239'],
+    ['Link', '2', '192.168.100.240 /30', '.241 bis .242', '192.168.100.243'],
+  ]],
+  ['diagram', {w: 700, h: 130, keep: 560, cap: 'Der Adressraum 192.168.100.0/24 (letztes Oktett 0 bis 255), maßstäblich nach VLSM aufgeteilt. Rechts bleibt Platz für später.', nodes: [
+    {id: 'a', k: 'box', x: 180, y: 56, w: 320, h: 56, t: ['A  /25', '.0 bis .127'], s: 'accent'}, {id: 'b', k: 'box', x: 420, y: 56, w: 160, h: 56, t: ['B  /26', '.128 bis .191'], s: 'solid', fs: 12},
+    {id: 'c', k: 'box', x: 540, y: 56, w: 80, h: 56, t: ['C /27', '.192'], s: 'ok', fs: 11}, {id: 'd', k: 'box', x: 600, y: 56, w: 40, h: 56, t: ['D', '.224'], s: 'accent', fs: 10},
+    {id: 'l', k: 'box', x: 625, y: 56, w: 10, h: 56, t: '', s: 'bad'}, {id: 'f', k: 'box', x: 645, y: 56, w: 30, h: 56, t: '', s: 'soft'},
+    {id: 'n1', k: 'text', x: 625, y: 104, t: 'Link .240', fs: 10, tc: 'bad'}, {id: 'n2', k: 'text', x: 660, y: 104, t: 'frei', fs: 10, tc: 'text3'},
+  ], edges: []}],
+  ['warn', 'Typischer Fehler bei VLSM: Mit dem **kleinsten** Subnetz zu beginnen. Dann passen die größeren nicht mehr an gültige Blockgrenzen, es entstehen Lücken oder Überlappungen. Beginne immer mit dem **größten Bedarf**.'],
+]);

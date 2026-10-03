@@ -1,0 +1,43 @@
+AP2.add('ps-orga', [
+  ['h3', '2. Matrix-Projektorganisation'],
+  ['p', 'Hier haben Mitarbeiter **zwei Vorgesetzte**. Der **Abteilungsleiter** (fachliche Führung, zum Beispiel "wie wird sauber programmiert") und der **Projektleiter** (projektbezogene Führung: was, bis wann). Die Zuständigkeiten werden in einer Matrix aus Abteilungen (Zeilen) und Projekten (Spalten) dargestellt.'],
+  ['diagram', {w: 720, h: 300, cap: 'Matrixorganisation: Jede Zelle ist ein Mitarbeiter mit zwei Vorgesetzten (Abteilung und Projektleiter).', nodes: [
+    {id: 'p1', x: 330, y: 40, t: 'Projekt Shop (PL 1)', s: 'accent', k: 'round', w: 190, h: 40},
+    {id: 'p2', x: 560, y: 40, t: 'Projekt App (PL 2)', s: 'accent', k: 'round', w: 190, h: 40},
+    {id: 'd1', x: 90, y: 120, t: 'Entwicklung', s: 'solid', k: 'round', w: 150, h: 40},
+    {id: 'd2', x: 90, y: 190, t: 'Test', s: 'solid', k: 'round', w: 150, h: 40},
+    {id: 'd3', x: 90, y: 260, t: 'Design', s: 'solid', k: 'round', w: 150, h: 40},
+    ...[[330, 120], [560, 120], [330, 190], [560, 190], [330, 260], [560, 260]].map((pos, i) => ({id: 'c' + i, x: pos[0], y: pos[1], t: 'Mitarbeiter', s: 'plain', k: 'round', w: 150, h: 40})),
+  ], edges: [
+    {a: 'd1', b: 'c0', ea: 'none'}, {a: 'c0', b: 'c1', ea: 'none'}, {a: 'd2', b: 'c2', ea: 'none'}, {a: 'c2', b: 'c3', ea: 'none'}, {a: 'd3', b: 'c4', ea: 'none'}, {a: 'c4', b: 'c5', ea: 'none'},
+    {a: 'p1', b: 'c0', ea: 'none', k: 'dash'}, {a: 'c0', b: 'c2', ea: 'none', k: 'dash'}, {a: 'c2', b: 'c4', ea: 'none', k: 'dash'},
+    {a: 'p2', b: 'c1', ea: 'none', k: 'dash'}, {a: 'c1', b: 'c3', ea: 'none', k: 'dash'}, {a: 'c3', b: 'c5', ea: 'none', k: 'dash'},
+  ]}],
+  ['procon', 'Matrix-Projektorganisation', ['Fachwissen der Abteilungen wird genutzt', 'Mitarbeiter können auf mehrere Projekte verteilt werden (gute Auslastung)', 'Flexibel bei wechselndem Bedarf'], ['Zwei Chefs: Konflikte um Priorität und Zeit', 'Abstimmungsaufwand hoch', 'Verantwortung kann verwischen']],
+  ['h3', '3. Reine Projektorganisation'],
+  ['p', 'Für das Projekt wird ein **eigenes Team** gebildet. Die Mitarbeiter werden für die Projektdauer **aus ihren Abteilungen herausgelöst** und unterstehen **nur dem Projektleiter**. Das ist wie eine eigene kleine Firma auf Zeit. Es eignet sich für große, wichtige oder geheime Projekte.'],
+  ['diagram', {w: 720, h: 230, cap: 'Reine Projektorganisation: Das Team gehört voll zum Projekt.', nodes: [
+    {id: 'gf', x: 360, y: 34, t: 'Geschäftsführung', s: 'solid', k: 'round', w: 180, h: 40},
+    {id: 'ab', x: 150, y: 120, t: 'Fachabteilungen (ohne Projektmitarbeiter)', s: 'soft', k: 'round', w: 240, h: 44},
+    {id: 'pl', x: 520, y: 120, t: 'Projektleiter', s: 'accent', k: 'round', w: 170, h: 44},
+    {id: 't1', x: 390, y: 200, t: 'Teammitglied', s: 'plain', k: 'round', w: 130, h: 36},
+    {id: 't2', x: 520, y: 200, t: 'Teammitglied', s: 'plain', k: 'round', w: 130, h: 36},
+    {id: 't3', x: 650, y: 200, t: 'Teammitglied', s: 'plain', k: 'round', w: 130, h: 36},
+  ], edges: [{a: 'gf', b: 'ab', ea: 'none'}, {a: 'gf', b: 'pl', ea: 'none'}, {a: 'pl', b: 't1', ea: 'none'}, {a: 'pl', b: 't2', ea: 'none'}, {a: 'pl', b: 't3', ea: 'none'}]}],
+  ['procon', 'Reine Projektorganisation', ['Volle Weisungsbefugnis, klare Verantwortung', 'Schnelle Entscheidungen, hohe Identifikation mit dem Projekt', 'Keine Konflikte mit Abteilungsaufgaben'], ['Teuer, weil Mitarbeiter ganz gebunden sind', 'Know-how-Verlust in den Abteilungen', 'Nach Projektende: Wiedereingliederung der Mitarbeiter schwierig']],
+  ['table', ['Kriterium', 'Einfluss-PO', 'Matrix-PO', 'Reine PO'], [
+    ['Weisungsbefugnis des Projektleiters', 'keine', 'geteilt (Was und Wann)', 'voll'],
+    ['Mitarbeiter', 'bleiben in der Abteilung', 'Abteilung und Projekt', 'wechseln ins Projekt'],
+    ['Organisationsaufwand', 'gering', 'mittel', 'hoch'],
+    ['Konfliktpotenzial', 'gering', 'hoch', 'gering'],
+    ['Eignung', 'kleine Projekte', 'mehrere parallele Projekte', 'große, strategische Projekte'],
+  ]],
+  ['h', 'Aufgaben im Prüfungsstil'],
+  ['qa', 'Nennen Sie zwei Vorteile und zwei Nachteile der Matrix-Projektorganisation.', ['**Vorteile:** Fachwissen der Abteilungen wird genutzt; gute Auslastung, weil Mitarbeiter flexibel auf Projekte verteilt werden.', '**Nachteile:** Mitarbeiter haben zwei Vorgesetzte, daher Konflikte und Abstimmungsaufwand; Verantwortung kann unklar werden.'], 4],
+  ['qa', 'Für ein großes, firmenkritisches Projekt wird eine Organisationsform gesucht. Empfehlen Sie eine Form und begründen Sie.', 'Die reine Projektorganisation. Der Projektleiter hat volle Weisungsbefugnis, das Team arbeitet fokussiert und ohne Konflikte mit Abteilungsaufgaben. Das ist teurer, aber bei hoher Bedeutung des Projekts gerechtfertigt.', 3],
+  ['quiz', [
+    {q: 'Bei welcher Form hat der Projektleiter KEINE Weisungsbefugnis?', o: ['Einfluss-Projektorganisation', 'Reine Projektorganisation', 'Matrix-Projektorganisation, immer', 'Bei keiner'], a: 0, e: 'In der Einfluss-PO ist der Projektleiter Stabsstelle und koordiniert nur.'},
+    {q: 'Welches Problem ist typisch für die Matrixorganisation?', o: ['Mitarbeiter haben zwei Vorgesetzte.', 'Es gibt keinen Projektleiter.', 'Das Team ist immer zu klein.', 'Projekte dürfen nur einen Tag dauern.'], a: 0, e: 'Die Doppelunterstellung führt zu Prioritäts- und Zeitkonflikten.'},
+    {q: 'Welche Form löst Mitarbeiter für die Projektdauer komplett aus der Abteilung?', o: ['Reine Projektorganisation', 'Einfluss-Projektorganisation', 'Linienorganisation', 'Keine'], a: 0, e: 'Die reine PO bildet ein eigenes Team unter dem Projektleiter.'},
+  ]],
+]);

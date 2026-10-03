@@ -1,0 +1,30 @@
+AP2.add('infra-medien', [
+  ['procon', 'Kupfer (Twisted Pair) gegenüber Glasfaser', ['**Kupfer:** günstig, einfach zu verlegen und zu montieren', '**Kupfer:** PoE möglich (Strom über das Kabel)', '**Glasfaser:** sehr hohe Bandbreite, große Reichweite', '**Glasfaser:** unempfindlich gegen Störungen und Blitzschlag, abhörsicher, galvanisch trennend'], ['**Kupfer:** max. 100 m, störanfällig, abstrahlend (abhörbar)', '**Kupfer:** Dämpfung begrenzt Datenrate und Länge', '**Glasfaser:** teurer, aufwendige Montage, empfindlich bei Knicken', '**Glasfaser:** keine Stromversorgung über das Kabel']],
+  ['h', 'WLAN (IEEE 802.11)'],
+  ['p', '**WLAN** überträgt Daten per **Funk** zwischen Geräten und einem **Access Point**. Das Medium (die Luft) wird von **allen geteilt**, nur ein Gerät kann gleichzeitig senden (Zugriffsverfahren **CSMA/CA**). Funk ist **flexibel und bequem**, aber langsamer, störanfälliger und leichter **abhörbar** als Kabel.'],
+  ['table', ['Standard', 'Handelsname', 'Frequenz', 'Max. Datenrate (theoretisch)'], [
+    ['802.11n', 'Wi-Fi 4', '2,4 und 5 GHz', 'bis 600 Mbit/s'], ['802.11ac', 'Wi-Fi 5', '5 GHz', 'bis ca. 6,9 Gbit/s'], ['802.11ax', 'Wi-Fi 6 / 6E', '2,4, 5 (und 6) GHz', 'bis ca. 9,6 Gbit/s'], ['802.11be', 'Wi-Fi 7', '2,4, 5 und 6 GHz', 'bis ca. 46 Gbit/s'],
+  ]],
+  ['table', ['Frequenzband', 'Reichweite', 'Geschwindigkeit', 'Störungen'], [['2,4 GHz', 'hoch, durchdringt Wände gut', 'geringer', 'viele Störquellen (Mikrowelle, Bluetooth, Nachbarn), nur 3 überlappungsfreie Kanäle'], ['5 GHz', 'mittel', 'höher', 'weniger Störungen, mehr Kanäle'], ['6 GHz', 'geringer', 'sehr hoch', 'kaum Störungen (neu)']]],
+  ['h3', 'WLAN-Sicherheit'],
+  ['table', ['Verfahren', 'Sicherheit', 'Anmerkung'], [['WEP', 'unsicher', 'Veraltet, in Minuten knackbar, **nie verwenden**'], ['WPA', 'veraltet', 'Übergangslösung (TKIP)'], ['**WPA2** (AES/CCMP)', 'gut', 'Standard der letzten Jahre; **Personal** (gemeinsames Passwort) oder **Enterprise** (802.1X, RADIUS)'], ['**WPA3**', 'sehr gut', 'Neuer Standard, besserer Schutz gegen Passwort-Raten (SAE)']]],
+  ['list', ['**SSID** ist der Netzwerkname. Das Verstecken der SSID ist **kein** echter Schutz.', '**Gastnetz** trennen (eigenes VLAN), damit Gäste nicht an interne Systeme kommen.', '**WPA2/WPA3 Enterprise** mit individuellem Login (RADIUS) in Firmen statt gemeinsamem Passwort.', '**Reichweite und Kanalplanung:** Access Points so platzieren und Kanäle wählen, dass sie sich nicht stören; **Roaming** zwischen Access Points ermöglichen.']],
+  ['h', 'Weitere Medien'],
+  ['kv', [
+    ['Koaxialkabel', 'Früher Bus-Netze (10BASE2), heute noch bei Kabelfernsehen und Kabelinternet (DOCSIS).'],
+    ['Powerline (PLC)', 'Datenübertragung über das Stromnetz. Komfortabel, aber störanfällig und langsam.'],
+    ['Mobilfunk (LTE, 5G)', 'Weitverkehrsfunk, Zugang zum Internet über Funkzellen.'],
+    ['Bluetooth, NFC', 'Funk im Nahbereich (Peripherie, Bezahlen).'],
+  ]],
+  ['h', 'Aufgaben im Prüfungsstil'],
+  ['qa', 'Zwei Gebäude im Abstand von 800 m sollen mit einem Netzwerk verbunden werden. Welches Medium empfehlen Sie und warum?', 'Ein **Singlemode-Glasfaserkabel**. Kupfer ist auf 100 m begrenzt, Multimode reicht je nach Datenrate nur bis einige hundert Meter. Glasfaser ist zudem unempfindlich gegen Blitzschlag und Potenzialunterschiede zwischen Gebäuden (galvanische Trennung) und bietet hohe Bandbreite.', 4],
+  ['qa', 'Nennen Sie drei Maßnahmen, um ein WLAN abzusichern.', ['- Verschlüsselung mit **WPA2 oder WPA3** (kein WEP), starkes Passwort oder WPA-Enterprise mit RADIUS', '- Eigenes **Gastnetz** (VLAN) für Besucher', '- Standardpasswort des Access Points ändern, Firmware aktualisieren, nicht benötigte Funktionen (WPS) deaktivieren'], 3],
+  ['qa', 'Nennen Sie je zwei Vor- und Nachteile von WLAN gegenüber einer Kabelverbindung.', ['**Vorteile:** Mobilität und Flexibilität; keine Verkabelung nötig.', '**Nachteile:** Geteiltes Medium: geringere und schwankende Datenrate; störanfällig; leichter abhörbar, Sicherheitsmaßnahmen nötig.'], 4],
+  ['quiz', [
+    {q: 'Wie lang darf ein Twisted-Pair-Segment für Ethernet maximal sein?', o: ['100 m', '10 m', '1 km', '500 m'], a: 0, e: 'Die maximale Segmentlänge beträgt 100 m.'},
+    {q: 'Welches Medium ist unempfindlich gegen elektromagnetische Störungen?', o: ['Glasfaser', 'Ungeschirmtes Kupferkabel', 'WLAN', 'Powerline'], a: 0, e: 'Lichtsignale werden nicht von elektromagnetischen Feldern beeinflusst.'},
+    {q: 'Welche WLAN-Verschlüsselung ist heute NICHT mehr sicher?', o: ['WEP', 'WPA2', 'WPA3', 'WPA2 Enterprise'], a: 0, e: 'WEP ist völlig unsicher.'},
+    {q: 'Welche Glasfaserart eignet sich für Strecken von vielen Kilometern?', o: ['Singlemode', 'Multimode', 'Koax', 'Cat5e'], a: 0, e: 'Singlemode hat einen sehr dünnen Kern und geringe Dämpfung.'},
+    {q: 'Was bedeutet PoE?', o: ['Power over Ethernet', 'Packet over Ethernet', 'Port of Entry', 'Protocol over Encryption'], a: 0, e: 'Stromversorgung über das Netzwerkkabel.'},
+  ]],
+]);

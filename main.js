@@ -1,55 +1,25 @@
-// AP2 Lernwerkzeug - Haupteinstieg (Loader)
-window.AP2 = {};
-const scripts = [
-  'state.js', 'theme.js', 'styles.js', 'dom.js', 'layout.js',
-  'router.js', 'store.js', 'search.js',
-  // Enhanced components
-  'components/button.js', 'components/card.js', 'components/defbox.js',
-  'components/table.js', 'components/tabs.js', 'components/code-block.js',
-  'components/figure.js', 'components/enhanced-card.js',
-  'components/quiz-interactive.js', 'components/pro-con-table.js',
-  'components/pagerenderer.js',
-  'components/flashcard.js', 'components/sidebar.js', 'components/topbar.js',
-  'viz/svgKit.js', 'viz/graph.js', 'viz/uml.js', 'viz/er.js', 'viz/chart.js',
-  'viz/layers.js', 'tools/manifest-tools.js',
-  'tools/subnet-calc.js', 'tools/subnet-ui.js',
-  'tools/raid-calc.js', 'tools/raid-ui.js',
-  // Content - Exam topics
-  'content/pages/home.js', 'content/pages/glossar.js',
-  'content/infra/osi-modell.js', 'content/infra/tcp-ip.js',
-  'content/infra/subnetting-grundlagen.js', 'content/infra/raid.js',
-  'content/infra/security-basics.js', 'content/infra/ports-protokolle.js',
-  'content/eua/grundlagen.js', 'content/eua/sortieralgorithmen.js',
-  'content/eua/oop.js', 'content/eua/sql-basics.js', 'content/eua/design-patterns.js',
-  'content/ps/projektmanagement.js', 'content/ps/uml-klassen.js',
-  'content/ps/er-modell.js', 'content/ps/normalisierung.js', 'content/ps/testing-qa.js',
-  'content/wiso/arbeitsrecht-basics.js', 'content/wiso/wirtschaft-grundlagen.js',
-  'content/deutsch/kommunikation.js',
-  // Crash courses
-  'content/crashcourses/sql.js',
-  'content/crashcourses/python.js',
-  'content/crashcourses/html-css.js',
-  'content/crashcourses/csharp.js',
-  'content/crashcourses/java.js',
-  // Quiz registry and data
-  'content/quizzes.js',
-  'content/quizzes-infra.js',
-  'content/quizzes-lang.js',
-  'content/quizzes-exam.js',
-  'content/manifest.js', 'app.js'
-];
-let loaded = 0;
-const loadScript = (src) => {
-  const s = document.createElement('script');
-  s.src = src;
-  s.onload = () => { loaded++; if (loaded === scripts.length) start(); };
-  s.onerror = () => console.error('Failed to load ' + src);
-  document.head.appendChild(s);
-};
-scripts.forEach(loadScript);
-const start = () => {
-  document.addEventListener('DOMContentLoaded', () => {
-    if (AP2.app && AP2.app.start) AP2.app.start();
-  }, { once: true });
-  if (document.readyState !== 'loading') AP2.app && AP2.app.start && AP2.app.start();
-};
+// Einstieg: lädt alle Manifeste, danach alle darin gelisteten Dateien in fester Reihenfolge.
+window.AP2 = {files: [], blocks: {}, tools: {}};
+// Seitenteile: pages('ps', {phasen: 3}) lädt content/ps/phasen-1.js bis phasen-3.js.
+AP2.pages = (dir, spec) => Object.keys(spec).forEach((name) => {
+  for (let i = 1; i <= spec[name]; i++) AP2.files.push('content/' + dir + '/' + name + '-' + i + '.js');
+});
+(function () {
+  const names = ['core', 'ui', 'viz', 'tools', 'ps', 'infra', 'eua', 'wiso', 'de', 'exam', 'course', 'ref', 'last'];
+  const loadList = (list, done) => {
+    let idx = 0;
+    const next = () => {
+      if (idx >= list.length) return done();
+      const el = document.createElement('script');
+      el.src = list[idx++];
+      el.onload = next;
+      el.onerror = () => { console.error('Ladefehler: ' + el.src); next(); };
+      document.head.appendChild(el);
+    };
+    next();
+  };
+  const boot = () => AP2.app.start();
+  const ready = () => (document.readyState === 'loading'
+    ? document.addEventListener('DOMContentLoaded', boot) : boot());
+  loadList(names.map((name) => 'manifest/' + name + '.js'), () => loadList(AP2.files, ready));
+})();

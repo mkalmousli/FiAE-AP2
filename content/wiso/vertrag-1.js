@@ -1,0 +1,40 @@
+AP2.page('wiso-vertrag', {
+  b: 'wiso', g: 'Ausbildung und Beruf', t: 'Ausbildungsvertrag, Probezeit, Kündigung und Übernahme',
+  d: 'Der **Ausbildungsvertrag** wird **schriftlich** zwischen **Ausbildendem** und **Auszubildendem** geschlossen (bei Minderjährigen mit Zustimmung der **gesetzlichen Vertreter**) und bei der **IHK eingetragen**. Die **Probezeit** dauert **1 bis 4 Monate**; in dieser Zeit kann **jederzeit ohne Frist und ohne Begründung** gekündigt werden. Nach der Probezeit kann der **Betrieb nur aus wichtigem Grund** kündigen, der **Azubi** mit **4 Wochen Frist**, wenn er die Ausbildung aufgibt oder den Beruf wechseln will.',
+  m: '**Probezeit 1 bis 4 Monate: beide Seiten jederzeit, ohne Frist, ohne Grund (schriftlich).** Danach: **Betrieb = nur fristlos aus wichtigem Grund. Azubi = 4 Wochen bei Aufgabe oder Berufswechsel.** Kündigung immer **schriftlich** und mit **Gründen** (nach der Probezeit).',
+  cheat: [
+    ['Ausbildungsvertrag (§ 11)', ['**Schriftlich**, vor Beginn', 'Berufsbild, **Gliederung**, Beginn und **Dauer**', 'Ausbildungsstätte, **Arbeitszeit**, **Probezeit**', '**Vergütung**, **Urlaub**', 'Kündigungsvoraussetzungen, Hinweis auf Tarifvertrag', 'Eintragung bei der **IHK**']],
+    ['Probezeit (§ 20)', ['**1 bis 4 Monate**', 'Kündigung **jederzeit**, ohne Frist, ohne Grund', '**Schriftform** nötig', 'Verlängerung bei längerer Unterbrechung möglich']],
+    ['Kündigung nach der Probezeit (§ 22)', ['**Ausbildender:** nur **fristlos aus wichtigem Grund** (Grund nennen, innerhalb **2 Wochen** ab Kenntnis)', '**Azubi:** fristlos aus wichtigem Grund **oder 4 Wochen**, wenn **Aufgabe** oder **Berufswechsel**', 'Immer **schriftlich**, mit **Angabe der Gründe**']],
+    ['Ende / Übernahme', ['Ende mit **bestandener Prüfung** (§ 21)', 'Bei Weiterbeschäftigung ohne Vereinbarung: **unbefristetes Arbeitsverhältnis** (§ 24)', '**Kein Anspruch** auf Übernahme (Ausnahme: JAV-Mitglieder)', 'Anspruch auf **Zeugnis**']],
+  ],
+  blocks: [
+    ['h', 'Der Ausbildungsvertrag'],
+    ['p', 'Bevor die Ausbildung beginnt, muss der Ausbildende den **wesentlichen Inhalt des Vertrags schriftlich niederlegen** (§ 11 BBiG) und dem Azubi **aushändigen**. Der Vertrag wird dann von Ausbildendem, Azubi und bei Minderjährigen von den **gesetzlichen Vertretern (Eltern)** unterschrieben. Anschließend wird er in das **Verzeichnis der Berufsausbildungsverhältnisse** der IHK eingetragen. Ohne Eintragung kann man nicht zur Abschlussprüfung zugelassen werden.'],
+    ['table', ['Inhalt (Mindestangaben)', 'Beispiel'], [
+      ['Art, sachliche und zeitliche Gliederung der Ausbildung', 'Fachinformatiker/in Anwendungsentwicklung, Ausbildungsplan'],
+      ['Beginn und Dauer der Ausbildung', '01.09.2026, 3 Jahre'],
+      ['Ausbildungsstätte', 'Firma Muster GmbH, Göppingen'],
+      ['Tägliche / wöchentliche Arbeitszeit', '40 Stunden, Montag bis Freitag'],
+      ['Dauer der Probezeit', '4 Monate'],
+      ['Höhe und Fälligkeit der Vergütung', '1. Jahr 1.000 Euro, jeweils zum Monatsende'],
+      ['Dauer des Urlaubs', '30 Tage'],
+      ['Voraussetzungen der Kündigung', 'Hinweis auf § 22 BBiG'],
+      ['Hinweis auf Tarifvertrag, Betriebs- und Dienstvereinbarungen', '-'],
+    ]],
+    ['h', 'Probezeit'],
+    ['p', 'Die ersten Monate dienen dem **gegenseitigen Kennenlernen**: Der Betrieb prüft die Eignung, der Azubi, ob der Beruf zu ihm passt. Sie muss **mindestens einen Monat** und darf **höchstens vier Monate** dauern (§ 20 BBiG). **Während der Probezeit** kann **jede Seite ohne Einhaltung einer Frist und ohne Angabe von Gründen kündigen**. Die Kündigung muss **schriftlich** erfolgen.'],
+    ['diagram', {w: 760, h: 200, keep: 640, cap: 'Zeitleiste der Ausbildung: Probezeit (1 bis 4 Monate), danach eingeschränktes Kündigungsrecht.', nodes: [
+      {id: 'p', k: 'box', x: 150, y: 90, w: 220, h: 60, t: ['Probezeit', '1 bis 4 Monate'], s: 'ok'}, {id: 'a', k: 'box', x: 480, y: 90, w: 360, h: 60, t: ['Ausbildungszeit nach der Probezeit', '(Gesamtdauer 3 Jahre bei FiAE)'], s: 'accent'}, {id: 'e', k: 'term', x: 700, y: 90, w: 70, h: 36, t: 'Prüfung', s: 'solid', fs: 12},
+      {id: 'l1', k: 'text', x: 150, y: 150, t: 'jederzeit kündbar, ohne Frist und Grund', fs: 12, tc: 'ok', b: true}, {id: 'l2', k: 'text', x: 480, y: 150, t: 'Betrieb: nur aus wichtigem Grund. Azubi: 4 Wochen (Aufgabe/Berufswechsel)', fs: 12, tc: 'text2', b: true},
+    ], edges: []}],
+    ['h', 'Kündigung nach der Probezeit'],
+    ['table', ['', 'Ausbildender (Betrieb)', 'Auszubildende/r'], [
+      ['Ordentliche Kündigung (mit Frist)', '**Nicht möglich**', '**4 Wochen**, nur wenn er die **Ausbildung aufgeben** oder sich für eine **andere Berufstätigkeit ausbilden** lassen will'],
+      ['Außerordentliche (fristlose) Kündigung', 'Nur aus **wichtigem Grund** (zum Beispiel Diebstahl, wiederholte schwere Pflichtverletzung nach Abmahnung)', 'Aus **wichtigem Grund** (zum Beispiel Ausbilder missachtet Pflichten dauerhaft, Mobbing, Gefährdung der Gesundheit)'],
+      ['Form', '**Schriftlich** mit **Angabe der Kündigungsgründe**', '**Schriftlich** mit **Angabe der Kündigungsgründe**'],
+      ['Frist für fristlose Kündigung', 'Innerhalb von **2 Wochen**, nachdem die Tatsachen bekannt wurden', 'Innerhalb von **2 Wochen**'],
+    ]],
+    ['tip', 'Praxisbeispiel: Ein Azubi im 2. Ausbildungsjahr wird dreimal wegen Zuspätkommens **abgemahnt** und kommt weiterhin zu spät. Eine fristlose Kündigung kann dann als **verhaltensbedingte Kündigung aus wichtigem Grund** gerechtfertigt sein. Ein **einmaliges** Zuspätkommen reicht dafür **nicht**. In Ausbildungsverhältnissen gilt außerdem: Der Betrieb muss besonders **abwägen** und Hilfe anbieten (Gespräch, Ausbildungsberater).'],
+  ],
+});

@@ -1,0 +1,40 @@
+AP2.page('ps-sequenz', {
+  b: 'ps', g: 'UML-Modellierung', t: 'Sequenzdiagramm',
+  d: 'Ein **Sequenzdiagramm** zeigt, **in welcher zeitlichen Reihenfolge** Objekte (oder Akteure) **Nachrichten** austauschen. Die Zeit läuft von oben nach unten. Jedes Objekt hat eine **Lebenslinie**, die Nachrichten sind Pfeile dazwischen.',
+  m: '**Senkrecht = Zeit (von oben nach unten), waagerecht = Beteiligte.** Durchgezogener Pfeil mit gefüllter Spitze = **synchroner Aufruf** (Aufrufer wartet). Gestrichelter Pfeil = **Rückgabe**.',
+  cheat: [
+    ['Elemente', ['**Teilnehmer:** Kasten oben mit Name', '**Lebenslinie:** gestrichelte senkrechte Linie', '**Aktivierungsbalken:** schmales Rechteck (Objekt arbeitet)', '**Nachricht:** waagerechter Pfeil mit Beschriftung']],
+    ['Pfeilarten', ['**Synchron:** durchgezogen, gefüllte Spitze (Aufrufer wartet)', '**Asynchron:** durchgezogen, offene Spitze (Aufrufer arbeitet weiter)', '**Rückgabe:** gestrichelt, offene Spitze', '**Selbstaufruf:** Pfeil zurück zum selben Objekt']],
+    ['Fragmente', ['**alt:** Alternativen (if/else)', '**opt:** optional (if)', '**loop:** Schleife', '**par:** parallel']],
+    ['Wann benutzen?', ['Ablauf eines Anwendungsfalls', 'Zusammenspiel von Klassen', 'Protokolle und Schnittstellen']],
+  ],
+  blocks: [
+    ['h', 'Wofür braucht man Sequenzdiagramme?'],
+    ['p', 'Das Klassendiagramm zeigt, welche Klassen es gibt. Das Sequenzdiagramm zeigt, **wie sie im Ablauf zusammenarbeiten**: Wer ruft wen auf? In welcher Reihenfolge? Was kommt zurück? Es ist besonders gut, um den Ablauf eines **einzelnen Szenarios** zu verstehen, zum Beispiel "Benutzer meldet sich an".'],
+    ['h', 'Beispiel: Anmeldung an einer Webanwendung'],
+    ['seq', {w: 760, actors: ['Benutzer', 'Oberfläche', 'Server', 'Datenbank'], cap: 'Sequenzdiagramm einer Anmeldung mit Alternative.', steps: [
+      [0, 1, 'Zugangsdaten eingeben', 's'], [1, 2, 'anmelden(name, passwort)', 's'], [2, 3, 'SELECT Benutzer', 's'], [3, 2, 'Benutzerdaten', 'r'], [2, 2, 'Passwort-Hash prüfen', 's'],
+      ['sep', 'alt: Daten korrekt'], [2, 1, 'Token', 'r'], [1, 0, 'Startseite anzeigen', 'r'],
+      ['sep', 'else: Daten falsch'], [2, 1, 'Fehler 401', 'r'], [1, 0, 'Fehlermeldung anzeigen', 'r'],
+    ]}],
+    ['p', 'Lies von oben nach unten. Der Benutzer gibt Daten ein, die Oberfläche ruft den Server auf, der die Datenbank fragt. Die **gestrichelten Pfeile** sind Rückgaben. Der Server prüft das Passwort (**Selbstaufruf**). Der Abschnitt "alt" zeigt zwei Alternativen: Je nach Ergebnis kommt ein Token oder ein Fehler zurück.'],
+    ['h', 'Die Bausteine im Detail'],
+    ['kv', [
+      ['Teilnehmer', 'Ein Objekt, eine Klasse oder ein Akteur. Oben als Kasten mit dem Namen (Objektname: Klasse, zum Beispiel "k1: Konto").'],
+      ['Lebenslinie', 'Gestrichelte Linie nach unten: So lange existiert der Teilnehmer.'],
+      ['Aktivierung', 'Schmaler Balken auf der Lebenslinie: Das Objekt führt gerade eine Methode aus.'],
+      ['Synchrone Nachricht', 'Durchgezogener Pfeil mit **gefüllter** Spitze. Der Aufrufer **wartet**, bis die Methode zurückkehrt. Normalfall bei Methodenaufrufen.'],
+      ['Asynchrone Nachricht', 'Durchgezogener Pfeil mit **offener** Spitze. Der Aufrufer macht sofort weiter (zum Beispiel Nachricht in eine Warteschlange stellen).'],
+      ['Rückgabe', 'Gestrichelter Pfeil. Wird oft weggelassen, wenn es offensichtlich ist.'],
+      ['Objekt erzeugen / zerstören', 'Pfeil auf den Kasten (erzeugt neu) oder ein X am Ende der Lebenslinie (zerstört).'],
+    ]],
+    ['h', 'Kombinierte Fragmente'],
+    ['table', ['Fragment', 'Bedeutung', 'Entspricht im Code'], [
+      ['alt', 'Alternativen, getrennt durch gestrichelte Linie, mit Bedingungen in [..]', 'if / else'],
+      ['opt', 'Wird nur ausgeführt, wenn die Bedingung stimmt', 'if ohne else'],
+      ['loop', 'Wiederholung, mit Bedingung oder Anzahl', 'for / while'],
+      ['par', 'Zweige laufen gleichzeitig', 'Threads'],
+      ['ref', 'Verweis auf ein anderes Diagramm', 'Methodenaufruf'],
+    ]],
+  ],
+});

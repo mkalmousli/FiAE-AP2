@@ -1,0 +1,36 @@
+AP2.add('infra-backup', [
+  ['h', 'Backup-Rechenbeispiel'],
+  ['ex', ['Montag Vollsicherung (100 GB). Täglich ändern sich 10 GB neue Daten. Am Donnerstag fällt der Server aus.', '**Inkrementell:** Wiederherstellung = Voll (Mo) + Inkrement Di (10 GB) + Mi (10 GB) = 3 Medien nötig.', '**Differenziell:** Di sichert 10 GB, Mi sichert 20 GB (seit Voll). Wiederherstellung = Voll + **nur** Differenz von Mi (20 GB) = 2 Medien nötig.', '**Fazit:** Inkrementell spart Backup-Zeit und Platz, Restore ist aufwendiger. Differenziell braucht mehr Platz, der Restore geht schneller.']],
+  ['h', 'RPO und RTO'],
+  ['diagram', {w: 760, h: 200, keep: 640, cap: 'Zeitleiste eines Ausfalls: RPO misst rückwärts (Datenverlust), RTO misst vorwärts (Ausfalldauer).', nodes: [
+    {id: 'lb', k: 'text', x: 150, y: 40, t: 'Letztes Backup', fs: 12, b: true}, {id: 'fa', k: 'text', x: 380, y: 40, t: 'Ausfall', fs: 12, b: true, tc: 'bad'}, {id: 'wb', k: 'text', x: 620, y: 40, t: 'System wieder in Betrieb', fs: 12, b: true, tc: 'ok'},
+    {id: 'p1', k: 'dot', x: 150, y: 100}, {id: 'p2', k: 'dot', x: 380, y: 100, s: 'bad'}, {id: 'p3', k: 'dot', x: 620, y: 100},
+    {id: 'rpo', k: 'text', x: 265, y: 140, t: 'RPO: Datenverlust (Zeit seit letztem Backup)', fs: 12, tc: 'accent', b: true}, {id: 'rto', k: 'text', x: 500, y: 165, t: 'RTO: Ausfalldauer bis zur Wiederherstellung', fs: 12, tc: 'accent', b: true},
+  ], edges: [{a: 'p1', b: 'p2', ea: 'none', s: 'accent', w: 2.5}, {a: 'p2', b: 'p3', ea: 'none', s: 'ok', w: 2.5}]}],
+  ['table', ['Kennzahl', 'Frage', 'Beispiel', 'Folge für die Planung'], [
+    ['**RPO** (Recovery Point Objective)', 'Wie viele Daten (in Zeit) dürfen im Notfall höchstens verloren gehen?', 'RPO = 1 Stunde: Alle Daten bis höchstens 1 Stunde vor dem Ausfall müssen wiederherstellbar sein', 'Backup oder Replikation mindestens **stündlich**'],
+    ['**RTO** (Recovery Time Objective)', 'Wie lange darf das System höchstens ausfallen, bis es wieder läuft?', 'RTO = 4 Stunden', 'Schnelle Wiederherstellung nötig: Ersatzsystem bereit, Images, Cluster'],
+  ]],
+  ['kv', [
+    ['MTD / MAO', 'Maximum Tolerable Downtime: Wie lange darf der Prozess maximal ausfallen, bevor dem Unternehmen Existenzgefahr droht? RTO muss kleiner sein.'],
+    ['Disaster Recovery (DR)', 'Notfallkonzept für Katastrophen: zweiter Standort, Wiederanlaufplan, regelmäßige Übungen.'],
+    ['Replikation', 'Laufende Kopie auf ein zweites System. Kleiner RPO (nahe 0) möglich, aber **schützt nicht vor Löschen/Ransomware**, weil Änderungen mitrepliziert werden.'],
+    ['Snapshot', 'Momentaufnahme eines Systems oder Dateisystems, schnell erstellt. Gut für kurzfristige Rücksicherung, **kein vollwertiges Backup** (liegt auf demselben System).'],
+    ['Image-Backup', 'Komplettes Abbild eines Systems (Betriebssystem und Daten). Schnelle Wiederherstellung auf ähnlicher Hardware oder in virtueller Umgebung.'],
+  ]],
+  ['h', 'Backup-Konzept: Was gehört dazu?'],
+  ['steps', ['**Was** wird gesichert? (kritische Daten, Datenbanken, Konfigurationen, E-Mails)', '**Wie oft** (RPO bestimmt die Häufigkeit) und **welche Art** (Voll, Differenziell, Inkrementell)?', '**Wohin**? (Medien, Standort, 3-2-1)', '**Wie lange** aufbewahren? (Generationenprinzip, gesetzliche Fristen, DSGVO-Löschpflichten)', '**Wer** ist verantwortlich? Wer prüft Meldungen?', '**Verschlüsselung** der Sicherungen und Schutz vor Manipulation (zum Beispiel unveränderbare Backups gegen Ransomware).', '**Restore-Test** regelmäßig durchführen und dokumentieren.']],
+  ['procon', 'Backup in der Cloud', ['Automatisch offsite, skalierbar, keine eigene Hardware', 'Gute Ergänzung zur 3-2-1-Regel'], ['Wiederherstellung großer Datenmengen dauert (Bandbreite, RTO)', 'Datenschutz (DSGVO): Standort, Verschlüsselung, Vertrag zur Auftragsverarbeitung', 'Laufende Kosten, Abhängigkeit vom Anbieter']],
+  ['h', 'Aufgaben im Prüfungsstil'],
+  ['qa', 'Erklären Sie die 3-2-1-Regel am Beispiel eines Firmenservers.', ['- **3 Kopien:** Original auf dem Server, Kopie 1 auf einem NAS, Kopie 2 in der Cloud.', '- **2 Medien:** Festplatte im NAS und zum Beispiel Band oder Cloud-Objektspeicher.', '- **1 Offsite:** Die Cloud-Kopie liegt an einem anderen Ort und schützt bei Brand oder Diebstahl.'], 4],
+  ['qa', 'Ein Unternehmen sichert täglich um 22:00 Uhr. Um 15:00 Uhr fällt der Server aus. Wie viel Datenverlust ist im ungünstigsten Fall entstanden? Welchen RPO hat das Backup-Verfahren?', ['Im ungünstigsten Fall (Ausfall kurz vor dem nächsten Backup) gehen **fast 24 Stunden** Daten verloren. Konkret hier: seit 22:00 des Vortages bis 15:00 = **17 Stunden**.', 'Der **RPO** des Verfahrens beträgt **24 Stunden** (Sicherungsintervall). Für kleinere RPO muss öfter gesichert oder repliziert werden.'], 5],
+  ['qa', 'Nennen Sie je einen Vor- und Nachteil der inkrementellen und der differenziellen Sicherung.', ['**Inkrementell:** Vorteil: geringster Zeit- und Platzbedarf pro Backup. Nachteil: Wiederherstellung braucht Vollsicherung plus alle Inkremente (aufwendig, ein defektes Inkrement gefährdet die Kette).', '**Differenziell:** Vorteil: Wiederherstellung nur mit Vollsicherung plus der letzten Differenzsicherung. Nachteil: Backup wird mit der Zeit größer und länger.'], 4],
+  ['qa', 'Warum reicht eine Spiegelung auf einen zweiten Server (Replikation) nicht als Backup?', 'Bei der Replikation werden Änderungen **sofort mit kopiert**, auch Löschungen, Fehler und Ransomware-Verschlüsselung. Ein Backup bewahrt dagegen **frühere Stände** auf, aus denen man zurückkehren kann.', 3],
+  ['quiz', [
+    {q: 'Was besagt die 3-2-1-Regel?', o: ['3 Kopien, 2 Medien, 1 Kopie extern', '3 Server, 2 Netze, 1 Router', '3 Passwörter, 2 Faktoren, 1 Schlüssel', '3 Tage, 2 Wochen, 1 Monat'], a: 0, e: 'Drei Kopien auf zwei verschiedenen Medien, davon eine an einem anderen Ort.'},
+    {q: 'Was gibt der RPO an?', o: ['Den maximal tolerierbaren Datenverlust (in Zeit)', 'Die maximale Ausfalldauer', 'Die Größe des Backups', 'Die Anzahl der Bänder'], a: 0, e: 'RPO = Recovery Point Objective, bestimmt die Backup-Häufigkeit.'},
+    {q: 'Bei welcher Sicherungsart ist die Wiederherstellung am einfachsten?', o: ['Vollsicherung', 'Inkrementell', 'Differenziell', 'Gar keine'], a: 0, e: 'Bei der Vollsicherung ist nur ein Sicherungssatz nötig.'},
+    {q: 'Was sichert eine inkrementelle Sicherung?', o: ['Änderungen seit dem letzten Backup (egal welcher Art)', 'Alle Daten', 'Nur gelöschte Daten', 'Änderungen seit der letzten Vollsicherung'], a: 0, e: 'Differenziell sichert seit der letzten Vollsicherung, inkrementell seit dem letzten Backup.'},
+    {q: 'Warum sollte man Restore-Tests durchführen?', o: ['Um sicherzustellen, dass Backups wirklich wiederherstellbar sind', 'Um Speicher zu sparen', 'Um den Server zu beschleunigen', 'Gar nicht nötig'], a: 0, e: 'Ein ungetestetes Backup bietet keine Sicherheit.'},
+  ]],
+]);

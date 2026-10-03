@@ -1,0 +1,37 @@
+AP2.add('wiso-kv', [
+  ['h', 'Der Beitrag in der GKV'],
+  ['kv', [
+    ['Allgemeiner Beitragssatz', '**14,6 %** des beitragspflichtigen Einkommens (bis zur Beitragsbemessungsgrenze), davon trägt jede Seite **7,3 %**.'],
+    ['Zusatzbeitrag', 'Jede Krankenkasse legt einen **eigenen Zusatzbeitrag** fest (Durchschnitt 2026: **2,9 %**). Er wird **je zur Hälfte** von Arbeitgeber und Arbeitnehmer getragen. Wer wechselt, kann sparen (Sonderkündigungsrecht bei Erhöhung).'],
+    ['Gesundheitsfonds', 'Alle Beiträge fließen in den **Gesundheitsfonds**. Die Kassen erhalten daraus **Zuweisungen** (je Versicherten, nach Alter, Geschlecht, Krankheit: **Risikostrukturausgleich**).'],
+    ['Familienversicherung', 'Der **Ehepartner** und **Kinder** ohne eigenes (höheres) Einkommen sind **beitragsfrei** mitversichert (Kinder bis 18, in Ausbildung bis 25).'],
+    ['Freiwillig gesetzlich Versicherte', 'Wer die Pflichtgrenze überschreitet und in der GKV bleibt, zahlt den **vollen** Beitrag nach dem Einkommen (Arbeitgeberzuschuss).'],
+  ]],
+  ['h', 'Leistungen der GKV im Überblick'],
+  ['table', ['Bereich', 'Beispiele', 'Eigenbeteiligung'], [
+    ['**Vorsorge und Früherkennung**', 'Impfungen, Check-up, Krebsvorsorge, Zahnvorsorge', 'in der Regel keine'],
+    ['**Ärztliche Behandlung**', 'Hausarzt, Facharzt, Krankenhaus', 'Krankenhaus: 10 Euro/Tag (max. 28 Tage)'],
+    ['**Arznei-, Heil- und Hilfsmittel**', 'Medikamente, Physiotherapie, Brille (eingeschränkt), Rollstuhl', 'Zuzahlung **10 %**, mindestens **5**, höchstens **10 Euro** je Mittel; Belastungsgrenze **2 % der Bruttoeinnahmen** (chronisch Kranke 1 %)'],
+    ['**Zahnersatz**', 'Kronen, Brücken', '**Festzuschuss** (60 % der Regelversorgung, mit Bonusheft bis 75 %)'],
+    ['**Krankengeld**', 'Nach 6 Wochen Entgeltfortzahlung', '70 % brutto, höchstens 90 % netto'],
+    ['**Mutterschaft**', 'Schwangerschaftsvorsorge, Entbindung, Mutterschaftsgeld', '-'],
+    ['**Medizinische Rehabilitation, Kuren**', 'Reha, Anschlussheilbehandlung', 'Zuzahlung (10 Euro/Tag)'],
+  ]],
+  ['kv', [
+    ['Elektronische Gesundheitskarte (eGK)', 'Ausweis beim Arzt (Sachleistungsprinzip). Seit 2025 ist die **elektronische Patientenakte (ePA)** für alle gesetzlich Versicherten angelegt (Widerspruch möglich).'],
+    ['Beitragsbemessung', 'Nur **Arbeitseinkommen** bis zur Beitragsbemessungsgrenze (5.812,50 Euro im Monat 2026) wird verbeitragt. **Nicht beitragspflichtig** sind zum Beispiel Mieteinnahmen bei Pflichtversicherten (bei freiwillig Versicherten schon).'],
+    ['Befreiung von Zuzahlungen', 'Bei Überschreiten der **Belastungsgrenze** (2 % des Jahresbrutto, chronisch Kranke 1 %) kann man sich für das Jahr **befreien** lassen.'],
+  ]],
+  ['h', 'Aufgaben im Prüfungsstil'],
+  ['qa', 'Erklären Sie das Solidarprinzip in der gesetzlichen Krankenversicherung.', 'Der **Beitrag** richtet sich nach der **finanziellen Leistungsfähigkeit** (Prozentsatz vom Einkommen), die **Leistung** nach dem **Bedarf**, unabhängig von der Beitragshöhe. Gesunde helfen Kranken, Gutverdiener Geringverdienern, Alleinstehende Familien (beitragsfreie Familienversicherung).', 4],
+  ['qa', 'Nennen Sie vier Unterschiede zwischen gesetzlicher und privater Krankenversicherung.', ['- GKV: einkommensabhängiger Beitrag; PKV: risikoabhängiger Beitrag (Alter, Gesundheit, Tarif).', '- GKV: Familienmitglieder beitragsfrei mitversichert; PKV: jede Person eigener Beitrag.', '- GKV: Sachleistungsprinzip; PKV: Kostenerstattung.', '- GKV: gesetzlicher Leistungskatalog, Umlageverfahren; PKV: vertraglich vereinbarte Leistungen, Kapitaldeckung.'], 4],
+  ['qa', 'Eine Auszubildende bekommt 1.100 Euro Vergütung. Wie hoch ist ihr Anteil zur Krankenversicherung bei einem Zusatzbeitrag von 2,9 %?', ['AN-Satz = 7,3 % + 1,45 % = **8,75 %**.', '1.100 mal 8,75 % = **96,25 Euro**. Der Arbeitgeber zahlt noch einmal **96,25 Euro**.'], 4],
+  ['qa', 'Unter welchen Voraussetzungen kann ein Angestellter von der GKV in die PKV wechseln?', 'Wenn sein regelmäßiges Jahresarbeitsentgelt **die Versicherungspflichtgrenze (Jahresarbeitsentgeltgrenze) überschreitet** (2026: 77.400 Euro; in der Regel muss das **in drei aufeinanderfolgenden Jahren** der Fall sein, oder man ist **selbstständig oder Beamter**). Dann endet die Versicherungspflicht in der GKV.', 4],
+  ['quiz', [
+    {q: 'Wie hoch ist der allgemeine Beitragssatz der GKV (ohne Zusatzbeitrag)?', o: ['14,6 %', '18,6 %', '3,6 %', '2,6 %'], a: 0, e: '14,6 %: je 7,3 % AG und AN, dazu der kassenindividuelle Zusatzbeitrag.'},
+    {q: 'Welche Personen sind in der GKV beitragsfrei mitversichert?', o: ['Ehepartner und Kinder ohne eigenes Einkommen (Familienversicherung)', 'Alle Verwandten', 'Nur Beamte', 'Niemand'], a: 0, e: 'Familienversicherung ist ein Kennzeichen der GKV.'},
+    {q: 'Was bedeutet Sachleistungsprinzip?', o: ['Der Patient erhält die Leistung direkt, die Kasse zahlt den Arzt', 'Der Patient zahlt zuerst und bekommt Geld zurück', 'Der Arzt zahlt', 'Medikamente sind kostenlos'], a: 0, e: 'Kostenerstattung ist dagegen das Prinzip der PKV.'},
+    {q: 'Wer ist typischerweise privat krankenversichert?', o: ['Beamte, Selbstständige, Besserverdiener', 'Alle Azubis', 'Arbeitslose', 'Rentner'], a: 0, e: 'Pflichtversicherte in der GKV sind Arbeitnehmer bis zur Versicherungspflichtgrenze.'},
+    {q: 'Welche Zuzahlung gilt grundsätzlich bei Medikamenten?', o: ['10 %, mindestens 5 und höchstens 10 Euro', '50 %', 'Keine', 'Immer 100 Euro'], a: 0, e: 'Die gesetzliche Zuzahlung beträgt 10 %, min. 5, max. 10 Euro je Mittel.'},
+  ]],
+]);

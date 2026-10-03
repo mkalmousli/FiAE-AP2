@@ -1,0 +1,37 @@
+AP2.page('wiso-kuendigung', {
+  b: 'wiso', g: 'Arbeitsrecht', t: 'Kündigung, Kündigungsfristen und Kündigungsschutzgesetz',
+  d: 'Eine **Kündigung** beendet das Arbeitsverhältnis **einseitig**. Sie muss **schriftlich** erfolgen (§ 623 BGB, **eigenhändige Unterschrift**). Die **ordentliche Kündigung** wahrt **Fristen** (§ 622 BGB: **4 Wochen zum 15. oder Monatsende**, für Arbeitgeber **länger je Betriebszugehörigkeit**). Die **außerordentliche (fristlose) Kündigung** braucht einen **wichtigen Grund** (§ 626 BGB). Das **Kündigungsschutzgesetz (KSchG)** verlangt bei einer Arbeitgeberkündigung (Betrieb **mehr als 10 Arbeitnehmer**, Arbeitsverhältnis **länger als 6 Monate**) einen **sozial gerechtfertigten Grund**.',
+  m: '**Schriftlich, Frist, Grund (bei KSchG).** Grundfrist: **4 Wochen zum 15. oder zum Ende des Monats.** Verlängerung nur für den **Arbeitgeber**: **2 J = 1 Monat, 5 J = 2, 8 J = 3, 10 J = 4, 12 J = 5, 15 J = 6, 20 J = 7 (jeweils zum Monatsende)**. KSchG: **mehr als 10 AN, mehr als 6 Monate. Klage binnen 3 Wochen!**',
+  cheat: [
+    ['Formen', ['**Ordentlich:** mit Frist, ggf. mit Kündigungsgrund', '**Außerordentlich (fristlos):** wichtiger Grund, **innerhalb 2 Wochen**', '**Änderungskündigung:** Kündigung + neues Angebot', '**Aufhebungsvertrag:** einvernehmlich', '**Befristung**: endet automatisch']],
+    ['Fristen (§ 622 BGB)', ['**Grundfrist 4 Wochen** zum **15.** oder **Monatsende**', 'Arbeitgeber nach Betriebszugehörigkeit: **2 J: 1 Monat, 5 J: 2, 8 J: 3, 10 J: 4, 12 J: 5, 15 J: 6, 20 J: 7** zum **Monatsende**', '**Probezeit:** 2 Wochen', 'Arbeitnehmer: **immer 4 Wochen** (im Vertrag kann mehr vereinbart sein)']],
+    ['KSchG-Voraussetzungen', ['**Mehr als 10 Arbeitnehmer** im Betrieb (ohne Azubis, Teilzeit anteilig)', 'Arbeitsverhältnis **länger als 6 Monate** (Wartezeit)', 'Kündigung nur **sozial gerechtfertigt**: personen-, verhaltens- oder betriebsbedingt']],
+    ['Verfahren', ['**Schriftform**, Unterschrift', '**Betriebsrat anhören** (sonst unwirksam, § 102 BetrVG)', 'Klage beim Arbeitsgericht **innerhalb 3 Wochen** nach Zugang', '**Meldung bei der Agentur für Arbeit** (spätestens 3 Tage nach Kenntnis)']],
+  ],
+  blocks: [
+    ['h', 'Wege, ein Arbeitsverhältnis zu beenden'],
+    ['table', ['Art', 'Wie?', 'Beispiel'], [
+      ['**Ordentliche Kündigung**', 'Einseitige schriftliche Erklärung **mit Frist**', 'Arbeitnehmer kündigt zum Monatsende, Arbeitgeber kündigt betriebsbedingt'],
+      ['**Außerordentliche (fristlose) Kündigung**', 'Einseitig, **ohne Frist**, nur bei **wichtigem Grund**, **innerhalb von 2 Wochen** nach Kenntnis (§ 626 BGB)', 'Diebstahl, tätlicher Angriff, hartnäckige Arbeitsverweigerung'],
+      ['**Änderungskündigung**', 'Kündigung **verbunden mit Angebot** zu geänderten Bedingungen', 'Weniger Stunden oder anderer Standort'],
+      ['**Aufhebungsvertrag**', 'Beide Seiten **vereinbaren** das Ende (schriftlich)', 'Einvernehmliche Trennung mit Abfindung. **Achtung:** Sperrzeit beim Arbeitslosengeld möglich'],
+      ['**Befristung / Zweckerreichung**', 'Ende **automatisch** zum vereinbarten Zeitpunkt', 'Vertretung bis Rückkehr'],
+      ['**Tod, Rente**', 'Tod des Arbeitnehmers; Erreichen der Regelaltersgrenze (wenn vereinbart)', ''],
+    ]],
+    ['h', 'Die Form: Schriftlich'],
+    ['p', 'Jede Kündigung und jeder Aufhebungsvertrag braucht die **Schriftform** (§ 623 BGB): ein **Schreiben auf Papier mit eigenhändiger Unterschrift**. **E-Mail, SMS, WhatsApp oder Fax reichen nicht**. Eine mündliche Kündigung ist **unwirksam**. Die Kündigung muss dem anderen **zugehen** (in den Briefkasten oder per Übergabe). Wichtig für den Beginn der **Fristen**.'],
+    ['h', 'Kündigungsfristen nach § 622 BGB'],
+    ['p', 'Die gesetzliche **Grundkündigungsfrist** beträgt **vier Wochen zum 15. oder zum Ende eines Kalendermonats**. Sie gilt für **beide Seiten**. Je länger der Arbeitnehmer im Betrieb ist, desto länger wird die Frist **nur für den Arbeitgeber**. Die Frist beginnt mit dem **Zugang** der Kündigung. Der Arbeitnehmer kann dagegen weiter mit vier Wochen kündigen (der Vertrag kann längere Fristen vereinbaren, aber für den Arbeitnehmer nicht länger als für den Arbeitgeber).'],
+    ['table', ['Betriebszugehörigkeit', 'Kündigungsfrist des Arbeitgebers', 'Termin'], [
+      ['bis 2 Jahre', '4 Wochen', 'zum 15. oder zum Monatsende'],
+      ['**2 Jahre**', '**1 Monat**', 'zum Monatsende'],
+      ['**5 Jahre**', '**2 Monate**', 'zum Monatsende'],
+      ['**8 Jahre**', '**3 Monate**', 'zum Monatsende'],
+      ['**10 Jahre**', '**4 Monate**', 'zum Monatsende'],
+      ['**12 Jahre**', '**5 Monate**', 'zum Monatsende'],
+      ['**15 Jahre**', '**6 Monate**', 'zum Monatsende'],
+      ['**20 Jahre**', '**7 Monate**', 'zum Monatsende'],
+    ], {mark: [0]}],
+    ['tool', 'kuendigung'],
+  ],
+});

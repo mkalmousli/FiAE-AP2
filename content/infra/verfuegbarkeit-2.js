@@ -1,0 +1,38 @@
+AP2.add('infra-verfuegbarkeit', [
+  ['h', 'Reihen- und Parallelschaltung'],
+  ['p', 'Besteht ein System aus mehreren Komponenten, hängt die **Gesamtverfügbarkeit** von der Anordnung ab.'],
+  ['diagram', {w: 720, h: 270, keep: 540, cap: 'Oben: Reihenschaltung, jede Komponente muss laufen. Unten: Parallelschaltung (Redundanz), nur eine muss laufen.', nodes: [
+    {id: 'a1', k: 'round', x: 130, y: 50, t: ['Server', '99 %'], w: 120, h: 50}, {id: 'a2', k: 'round', x: 330, y: 50, t: ['Switch', '99 %'], w: 120, h: 50}, {id: 'a3', k: 'round', x: 530, y: 50, t: ['Datenbank', '99 %'], w: 120, h: 50}, {id: 'ta', k: 'text', x: 360, y: 105, t: 'Reihe: 0,99 mal 0,99 mal 0,99 = 97,03 %', fs: 12, b: true, tc: 'bad'},
+    {id: 'b1', k: 'round', x: 280, y: 170, t: ['Server 1', '99 %'], w: 120, h: 44}, {id: 'b2', k: 'round', x: 280, y: 230, t: ['Server 2', '99 %'], w: 120, h: 44}, {id: 'in', k: 'dot', x: 130, y: 200}, {id: 'out', k: 'dot', x: 430, y: 200}, {id: 'tb', k: 'text', x: 580, y: 200, t: ['Parallel: 1 - 0,01 mal 0,01', '= 99,99 %'], fs: 12, b: true, tc: 'ok'},
+  ], edges: [{a: 'a1', b: 'a2'}, {a: 'a2', b: 'a3'}, {a: 'in', b: 'b1', via: [[130, 170]], ea: 'none'}, {a: 'in', b: 'b2', via: [[130, 230]], ea: 'none'}, {a: 'b1', b: 'out', via: [[430, 170]], ea: 'none'}, {a: 'b2', b: 'out', via: [[430, 230]], ea: 'none'}]}],
+  ['table', ['Schaltung', 'Formel', 'Beispiel (jeweils 99 %)', 'Wirkung'], [
+    ['**Reihe** (alle müssen laufen)', 'V = V1 mal V2 mal ... mal Vn', '0,99 mal 0,99 = 0,9801 = **98,01 %**', 'Verfügbarkeit **sinkt**, weil jede Komponente ausfallen kann'],
+    ['**Parallel** (eine genügt)', 'V = 1 - (1 - V1) mal (1 - V2)', '1 - 0,01 mal 0,01 = 0,9999 = **99,99 %**', 'Verfügbarkeit **steigt** durch Redundanz'],
+  ]],
+  ['tip', 'Merke: Eine **Kette ist so stark wie ihr schwächstes Glied** (Reihe: Gesamtwert immer kleiner als jeder Einzelwert). **Redundanz** (parallel) macht das System **besser** als jede Einzelkomponente.'],
+  ['h', 'SLA (Service Level Agreement)'],
+  ['p', 'Ein **SLA** ist ein Vertrag zwischen Anbieter (zum Beispiel Rechenzentrum, Cloud-Anbieter) und Kunde. Er legt messbar fest, **welche Servicequalität** geschuldet ist und **was passiert, wenn sie nicht erreicht wird**.'],
+  ['table', ['Inhalt eines SLA', 'Beispiel'], [
+    ['Verfügbarkeit', '99,9 % pro Monat, gemessen an der Erreichbarkeit des Dienstes'],
+    ['Messzeitraum und Wartungsfenster', 'Wartung zählt nicht als Ausfall, wenn sie sonntags 2 bis 4 Uhr stattfindet'],
+    ['Reaktionszeit', 'Störungen der Priorität 1 werden innerhalb von 30 Minuten bearbeitet'],
+    ['Wiederherstellungszeit (MTTR / RTO)', 'Kritische Störungen innerhalb von 4 Stunden behoben'],
+    ['Servicezeiten', '24/7 oder Montag bis Freitag 8 bis 18 Uhr'],
+    ['Sanktionen', 'Gutschrift von 10 Prozent der Monatsgebühr bei Unterschreitung'],
+    ['Berichte und Kennzahlen', 'Monatlicher Verfügbarkeitsbericht'],
+  ]],
+  ['h', 'Wie erhöht man die Verfügbarkeit?'],
+  ['list', ['**Redundanz** aller kritischen Komponenten: Netzteile, Netzwerkkarten, Festplatten (RAID), Server (Cluster), Netzwerkpfade, Internetanbindung.', '**Cluster und Load Balancer:** Mehrere Server teilen sich die Last und übernehmen bei Ausfall (**Failover**).', '**Georedundanz:** Zweiter Standort für den Notfall (Disaster Recovery).', '**USV und Notstrom:** Unterbrechungsfreie Stromversorgung, Generator.', '**Monitoring und Alarmierung:** Ausfälle schnell erkennen (senkt MTTR).', '**Wartungsverträge, Ersatzteile (Spares)** und klare Prozesse: schneller reparieren.', '**Gutes Änderungs- und Patchmanagement:** viele Ausfälle entstehen durch Fehler bei Änderungen.']],
+  ['h', 'Aufgaben im Prüfungsstil'],
+  ['qa', 'Ein Server hat eine MTBF von 4.000 Stunden und eine MTTR von 8 Stunden. Berechnen Sie die Verfügbarkeit und die jährliche Ausfallzeit (8.760 Stunden).', ['V = MTBF / (MTBF + MTTR) = 4000 / (4000 + 8) = 4000 / 4008 = 0,998 = **99,8 %**.', 'Ausfallzeit pro Jahr = (1 - 0,998) mal 8760 h = 0,002 mal 8760 = ca. **17,5 Stunden**.'], 5],
+  ['qa', 'Ein SLA garantiert 99,9 % Verfügbarkeit pro Jahr. Wie viele Minuten Ausfall sind pro Jahr maximal erlaubt?', ['Erlaubter Ausfall = 0,1 % von 8760 Stunden = 8,76 Stunden.', '8,76 h mal 60 = **525,6 Minuten** (ca. 8 Stunden 45 Minuten).'], 3],
+  ['qa', 'Ein System besteht aus zwei in Reihe geschalteten Komponenten mit je 99,5 % Verfügbarkeit. Wie hoch ist die Gesamtverfügbarkeit? Wie ändert sie sich, wenn jede Komponente doppelt (parallel) vorhanden ist?', ['**Reihe:** 0,995 mal 0,995 = 0,990025 = **99,0 %**.', '**Je Komponente parallel doppelt:** 1 - 0,005 mal 0,005 = 0,999975 = 99,9975 %. Zwei solche Paare in Reihe: 0,999975 mal 0,999975 = ca. **99,995 %**.'], 6],
+  ['qa', 'Nennen Sie vier Maßnahmen zur Erhöhung der Verfügbarkeit eines Servers.', ['- Redundante Festplatten (RAID) und Netzteile', '- Cluster mit Failover und Load Balancer', '- USV und Notstromversorgung', '- Monitoring, schnelle Ersatzteilversorgung und Wartungsvertrag'], 4],
+  ['quiz', [
+    {q: 'Wie lautet die Formel für die Verfügbarkeit?', o: ['MTBF / (MTBF + MTTR)', 'MTTR / MTBF', 'MTBF mal MTTR', 'MTBF - MTTR'], a: 0, e: 'Verfügbarkeit = Betriebszeit geteilt durch (Betriebszeit plus Reparaturzeit).'},
+    {q: 'Wie viel Ausfall pro Jahr bedeutet 99,9 % ungefähr?', o: ['8,76 Stunden', '87,6 Stunden', '52 Minuten', '5 Minuten'], a: 0, e: '0,1 Prozent von 8760 Stunden = 8,76 Stunden.'},
+    {q: 'Wie verändert sich die Gesamtverfügbarkeit bei Reihenschaltung zweier Komponenten?', o: ['Sie sinkt', 'Sie steigt', 'Sie bleibt gleich', 'Sie wird 100 Prozent'], a: 0, e: 'Das Produkt von Zahlen kleiner 1 ist kleiner als jede einzelne.'},
+    {q: 'Was legt ein SLA fest?', o: ['Zugesagte Servicequalität (zum Beispiel Verfügbarkeit, Reaktionszeit)', 'Den Preis für Hardware', 'Die IP-Adressen', 'Die Netzwerktopologie'], a: 0, e: 'Ein Service Level Agreement beschreibt messbare Leistungsmerkmale und Folgen bei Nichterfüllung.'},
+    {q: 'Was bedeutet SPOF?', o: ['Single Point of Failure', 'Secure Port of Firewall', 'System Power Off Function', 'Simple Protocol of Files'], a: 0, e: 'Eine einzelne Komponente, deren Ausfall das ganze System stoppt.'},
+  ]],
+]);

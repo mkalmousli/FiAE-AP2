@@ -1,0 +1,42 @@
+AP2.page('ps-ide', {
+  b: 'ps', g: 'Entwicklungsumgebungen', t: 'Auswahl von IDE, Frameworks und Bibliotheken',
+  d: 'Eine **IDE** (Integrated Development Environment, Entwicklungsumgebung) vereint **Editor, Compiler/Interpreter, Debugger** und weitere Werkzeuge in einem Programm. **Frameworks** (Gerüst mit Regeln, "Hollywood-Prinzip") und **Bibliotheken** (Sammlung von Funktionen) liefern fertige Bausteine. Man wählt sie nach **Kriterien** wie Eignung, Kosten, Lizenz, Verbreitung und Zukunftssicherheit.',
+  m: '**Bibliothek: DU rufst sie auf. Framework: ES ruft DICH auf** (Inversion of Control). Auswahl immer mit **Kriterien und Gewichtung** (Nutzwertanalyse): Eignung, Kosten, Lizenz, Support, Know-how, Zukunft.',
+  cheat: [
+    ['IDE-Bestandteile', ['**Editor** mit Syntax-Hervorhebung, Autovervollständigung', '**Compiler / Interpreter**', '**Debugger** (Haltepunkte)', '**Build-Werkzeug** und **Versionsverwaltung**', 'Refactoring, Test-Integration']],
+    ['Auswahlkriterien', ['Unterstützte Sprachen/Plattformen', 'Funktionsumfang, Performance', '**Kosten und Lizenz**', 'Erweiterbarkeit, Plugins', 'Community, Dokumentation, Support', 'Vorhandenes Know-how im Team']],
+    ['Framework vs. Bibliothek', ['**Bibliothek:** Aufruf durch eigenen Code', '**Framework:** gibt Struktur vor, ruft eigenen Code auf', 'Framework: schneller Start, aber Abhängigkeit']],
+    ['Umgebungen', ['**DEV:** Entwicklung', '**TEST / STAGING:** Prüfung', '**PROD:** Produktivbetrieb']],
+  ],
+  blocks: [
+    ['h', 'Was ist eine Entwicklungsumgebung?'],
+    ['p', 'Früher schrieb man Code in einem einfachen Texteditor und rief den Compiler in der Konsole auf. Eine **IDE** fasst alles zusammen: Du schreibst Code, bekommst **Fehler sofort angezeigt**, startest das Programm mit einem Klick, kannst es mit dem **Debugger** Schritt für Schritt ausführen und die **Versionsverwaltung** bedienen. Das spart Zeit und verringert Fehler.'],
+    ['table', ['Bestandteil', 'Aufgabe'], [
+      ['Editor', 'Code schreiben, Syntaxfarben, Autovervollständigung (IntelliSense), Codeformatierung'],
+      ['Compiler / Interpreter', 'Übersetzt den Quellcode in ausführbaren Code (Compiler) oder führt ihn direkt aus (Interpreter)'],
+      ['Debugger', 'Programm anhalten (Haltepunkte), Variablen beobachten, Schritt für Schritt ausführen'],
+      ['Build-System', 'Baut das Projekt: Abhängigkeiten laden, kompilieren, Pakete erstellen (Maven, Gradle, npm, MSBuild)'],
+      ['Versionsverwaltung', 'Änderungen speichern, Zweige verwalten (Git)'],
+      ['Testwerkzeuge', 'Unit-Tests ausführen, Abdeckung messen'],
+      ['Refactoring', 'Code umbauen, ohne das Verhalten zu ändern (Umbenennen, Methode extrahieren)'],
+    ]],
+    ['table', ['IDE / Editor', 'Typischer Einsatz', 'Kosten / Lizenz'], [
+      ['Visual Studio', 'C#, .NET, C++', 'Community-Edition kostenlos, Professional kostenpflichtig'],
+      ['Visual Studio Code', 'Viele Sprachen über Erweiterungen (leichtgewichtiger Editor)', 'Kostenlos, Open Source (MIT-Basis)'],
+      ['IntelliJ IDEA', 'Java, Kotlin', 'Community kostenlos, Ultimate kostenpflichtig'],
+      ['Eclipse', 'Java, viele Plugins', 'Kostenlos, Open Source'],
+      ['PyCharm', 'Python', 'Community kostenlos, Professional kostenpflichtig'],
+    ]],
+    ['h', 'Kriterien für die Auswahl'],
+    ['table', ['Kriterium', 'Frage', 'Beispiel'], [
+      ['Eignung / Sprachunterstützung', 'Unterstützt das Werkzeug unsere Sprache und Plattform?', 'Für .NET: Visual Studio'],
+      ['Funktionsumfang', 'Debugger, Refactoring, Testintegration, Git, Datenbankwerkzeuge?', 'Debugger vorhanden?'],
+      ['Kosten und Lizenz', 'Lizenzkosten? Darf es kommerziell genutzt werden?', 'Community-Lizenz nur für kleine Firmen'],
+      ['Erweiterbarkeit', 'Gibt es Plugins und Schnittstellen?', 'Docker-Plugin'],
+      ['Performance', 'Läuft es flüssig auch mit großen Projekten?', 'Ressourcenverbrauch'],
+      ['Verbreitung und Community', 'Gibt es Dokumentation, Foren, Fachleute?', 'Viele Tutorials'],
+      ['Know-how im Team', 'Kennen die Entwickler das Werkzeug? Einarbeitungskosten?', 'Standard im Unternehmen'],
+      ['Zukunftssicherheit', 'Wird es weiterentwickelt? Langfristiger Support?', 'LTS-Versionen'],
+    ]],
+  ],
+});

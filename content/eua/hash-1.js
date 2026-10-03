@@ -1,0 +1,30 @@
+AP2.page('eua-hash', {
+  b: 'eua', g: 'Datenstrukturen', t: 'Hashtabellen',
+  d: 'Eine **Hashtabelle** speichert **Schlüssel-Wert-Paare** und findet einen Eintrag über eine **Hashfunktion**, die aus dem Schlüssel direkt den **Index** (die Position) in einem Array berechnet. Zugriff, Einfügen und Löschen sind im Mittel in **O(1)** möglich. Wenn zwei Schlüssel denselben Index ergeben, spricht man von einer **Kollision**, die man mit **Verkettung (Chaining)** oder **offener Adressierung (Probing)** löst.',
+  m: '**Hashfunktion = Schrank-Nummer aus dem Namen berechnen.** Typisch: **index = schluessel mod m**. **Kollision** = zwei Schlüssel, derselbe Index. Chaining: pro Fach eine **Liste**. Probing: **nächstes freies Fach suchen**. Laufzeit **O(1)** im Mittel, **O(n)** im schlechtesten Fall.',
+  cheat: [
+    ['Prinzip', ['**Schlüssel** in **Hashfunktion** ergibt **Index**', 'Wert in Array-Feld `tabelle[index]`', 'Suche: gleicher Weg, **kein Durchsuchen**', 'Mittel **O(1)** für put, get, remove']],
+    ['Hashfunktion', ['Einfach: `h(k) = k mod m`', 'Soll **gleichmäßig verteilen**', 'Gleicher Schlüssel, **gleicher Hash**', 'm oft Primzahl']],
+    ['Kollisionsbehandlung', ['**Chaining:** verkettete Liste je Feld', '**Open Addressing:** nächstes freies Feld (lineares Sondieren: +1, +2, ...)', '**Füllgrad (Load Factor)** = Einträge / Felder, bei ca. 0,7 vergrößern (Rehashing)']],
+    ['Eigenschaften', ['**Keine Ordnung** der Einträge', 'Gut für **Suche nach Schlüssel**', 'Java `HashMap`, C# `Dictionary`, Python `dict`, `set`', 'Schlechter Fall: viele Kollisionen: **O(n)**']],
+  ],
+  blocks: [
+    ['h', 'Die Idee'],
+    ['p', 'In einem Telefonbuch suchst du einen Namen, indem du **durchblätterst** (O(n)) oder **halbierst** (sortiert, O(log n)). Eine Hashtabelle **berechnet** dagegen direkt aus dem Namen, **wo** der Eintrag liegt, wie eine **Garderobe**: Aus deiner Marke ergibt sich dein Haken. Dadurch ist der Zugriff **unabhängig von der Anzahl** der gespeicherten Daten (O(1)).'],
+    ['diagram', AP2.dg.flow(['Schlüssel "Mia"', 'Hashfunktion h(k)', 'Index 3', 'tabelle[3]', 'Wert (Eintrag)'], {w: 780, h: 100, styles: ['accent', 'solid', 'soft', 'ok', 'ok'], cap: 'Aus dem Schlüssel wird mit der Hashfunktion direkt der Speicherplatz berechnet.'})],
+    ['h', 'Hashfunktion'],
+    ['p', 'Eine einfache Hashfunktion für ganze Zahlen ist der **Divisionsrest**: `index = schluessel mod m` (m = Größe der Tabelle). Für Texte berechnet man aus den Zeichencodes eine Zahl (zum Beispiel Summe oder Polynom über die Zeichen) und nimmt dann `mod m`. Eine **gute** Hashfunktion ist **schnell**, **deterministisch** (gleicher Schlüssel, gleicher Hash) und verteilt die Schlüssel **gleichmäßig**.'],
+    ['h', 'Kollisionen'],
+    ['p', 'Es gibt mehr mögliche Schlüssel als Felder. Deshalb können **zwei verschiedene Schlüssel denselben Index** bekommen: eine **Kollision**. Das lässt sich nicht verhindern, nur behandeln. Beispiel: Tabelle mit **m = 7** Feldern, Einfügen der Schlüssel **10, 25, 3, 18, 31**. Indizes: 10 mod 7 = 3, 25 mod 7 = 4, 3 mod 7 = 3 (Kollision!), 18 mod 7 = 4 (Kollision!), 31 mod 7 = 3 (Kollision!).'],
+    ['h3', 'Verfahren 1: Verkettung (Chaining)'],
+    ['p', 'Jedes Feld enthält eine **Liste** aller Einträge mit diesem Index. Bei einer Kollision wird einfach **an die Liste angehängt**.'],
+    ['diagram', {w: 760, h: 330, keep: 560, cap: 'Chaining: Jedes Feld der Tabelle verweist auf eine verkettete Liste.', nodes: [0, 1, 2, 3, 4, 5, 6].map((i) => ({id: 'f' + i, k: 'box', x: 60, y: 30 + i * 42, w: 70, h: 36, t: String(i), s: [3, 4].includes(i) ? 'accent' : 'soft'})).concat([
+      {id: 'a1', k: 'box', x: 190, y: 156, w: 60, h: 34, t: '10', s: 'ok'}, {id: 'a2', k: 'box', x: 280, y: 156, w: 60, h: 34, t: '3', s: 'ok'}, {id: 'a3', k: 'box', x: 370, y: 156, w: 60, h: 34, t: '31', s: 'ok'},
+      {id: 'b1', k: 'box', x: 190, y: 198, w: 60, h: 34, t: '25', s: 'ok'}, {id: 'b2', k: 'box', x: 280, y: 198, w: 60, h: 34, t: '18', s: 'ok'},
+    ]), edges: [{a: 'f3', b: 'a1'}, {a: 'a1', b: 'a2'}, {a: 'a2', b: 'a3'}, {a: 'f4', b: 'b1'}, {a: 'b1', b: 'b2'}]}],
+    ['h3', 'Verfahren 2: Offene Adressierung (lineares Sondieren)'],
+    ['p', 'Ist das berechnete Feld **belegt**, probiert man das **nächste** (Index + 1, + 2, ... mit Umlauf am Ende). Beim Suchen folgt man derselben Folge, bis man den Schlüssel oder ein **leeres Feld** findet.'],
+    ['steps', ['**10:** Index 3 frei, also Feld 3.', '**25:** Index 4 frei, also Feld 4.', '**3:** Index 3 belegt, 4 belegt, **5 frei**, also Feld 5.', '**18:** Index 4 belegt, 5 belegt, **6 frei**, also Feld 6.', '**31:** Index 3 belegt, 4, 5, 6 belegt, Umlauf zu **0 frei**, also Feld 0.']],
+    ['table', ['Feld', '0', '1', '2', '3', '4', '5', '6'], [['Inhalt', '31', '-', '-', '10', '25', '3', '18']], {first: true}],
+  ],
+});

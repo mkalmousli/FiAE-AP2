@@ -1,0 +1,32 @@
+AP2.add('ps-er', [
+  ['h', 'Weitere Begriffe'],
+  ['kv', [
+    ['Primärschlüssel (PK)', 'Ein oder mehrere Attribute, die jede Zeile **eindeutig** machen und nie NULL sein dürfen. Beispiel: KundenNr.'],
+    ['Fremdschlüssel (FK)', 'Attribut, das auf den Primärschlüssel einer anderen Tabelle verweist. Stellt die Beziehung her. Beispiel: Bestellung.KundenNr verweist auf Kunde.KundenNr.'],
+    ['Kandidatenschlüssel', 'Jedes Attribut (oder Kombination), das als Primärschlüssel geeignet wäre (eindeutig und minimal). Einer wird zum Primärschlüssel gewählt.'],
+    ['Zusammengesetzter Schlüssel', 'Mehrere Attribute gemeinsam, zum Beispiel (BestellNr, ArtikelNr) bei Bestellpositionen.'],
+    ['Surrogatschlüssel', 'Künstlicher Schlüssel ohne fachliche Bedeutung (laufende Nummer, UUID). Vorteil: stabil, kurz.'],
+    ['Schwache Entität', 'Entität, die ohne eine andere nicht existieren kann und sich nicht allein identifiziert. Beispiel: Bestellposition hängt an der Bestellung.'],
+    ['Mehrwertiges Attribut', 'Attribut mit mehreren Werten (zum Beispiel mehrere Telefonnummern). Muss in eine eigene Tabelle ausgelagert werden.'],
+    ['Abgeleitetes Attribut', 'Attribut, das berechnet werden kann (Alter aus Geburtsdatum). Wird meist nicht gespeichert.'],
+  ]],
+  ['h', 'Vorgehen: ER-Modell aus einem Text entwickeln'],
+  ['steps', ['**Substantive** im Text markieren: Das sind Kandidaten für Entitäten (Kunde, Artikel, Bestellung).', '**Verben** markieren: Das sind Kandidaten für Beziehungen (bestellt, enthält, liefert).', 'Für jede Entität die nötigen **Attribute** sammeln und einen **Primärschlüssel** bestimmen.', 'Für jede Beziehung die **Kardinalität** in beiden Richtungen bestimmen.', '**n:m-Beziehungen** erkennen und notieren (später Zwischentabelle). Attribute der Beziehung (zum Beispiel Menge) beachten.', 'Modell prüfen: Gibt es Entitäten ohne Beziehung? Fehlt etwas aus dem Text?']],
+  ['h', 'Vollständiges Beispiel: Webshop'],
+  ['p', 'Text: "Ein Kunde kann mehrere Bestellungen aufgeben. Eine Bestellung enthält mehrere Artikel, ein Artikel kann in mehreren Bestellungen vorkommen. Zu jeder Bestellposition wird die Menge gespeichert."'],
+  ['diagram', {w: 780, h: 330, keep: 640, cap: 'ER-Diagramm in Krähenfuß-Notation. Die n:m-Beziehung zwischen Bestellung und Artikel wird durch die Entität Position aufgelöst.', nodes: [
+    {id: 'k', k: 'cls', x: 100, y: 130, w: 170, t: {name: 'Kunde', attrs: ['PK  kunden_id', 'name', 'email']}}, {id: 'b', k: 'cls', x: 330, y: 130, w: 170, t: {name: 'Bestellung', attrs: ['PK  bestell_id', 'datum', 'FK  kunden_id']}},
+    {id: 'p', k: 'cls', x: 560, y: 130, w: 170, t: {name: 'Position', attrs: ['PK  bestell_id', 'PK  artikel_id', 'menge']}}, {id: 'a', k: 'cls', x: 560, y: 275, w: 170, t: {name: 'Artikel', attrs: ['PK  artikel_id', 'bezeichnung', 'preis']}},
+  ], edges: [{a: 'k', b: 'b', sa: 'one', ea: 'zeromany', ea2: 1}, {a: 'b', b: 'p', sa: 'one', ea: 'many'}, {a: 'a', b: 'p', sa: 'one', ea: 'zeromany', via: []}]}],
+  ['p', 'Lies: **Ein** Kunde hat **keine bis viele** Bestellungen. **Eine** Bestellung hat **mindestens eine** Position. **Ein** Artikel kommt in **keiner bis vielen** Positionen vor. Die Position löst die n:m-Beziehung auf und trägt die Menge.'],
+  ['h', 'Aufgaben im Prüfungsstil'],
+  ['qa', 'Ein Krankenhaus speichert Patienten, Ärzte und Behandlungen. Ein Arzt behandelt viele Patienten, ein Patient wird von mehreren Ärzten behandelt. Zu jeder Behandlung werden Datum und Diagnose gespeichert. Bestimmen Sie Entitäten, Beziehung und Kardinalität.', ['**Entitäten:** Patient, Arzt (und als Auflösung der Beziehung: Behandlung).', '**Beziehung:** Arzt behandelt Patient, Kardinalität **n:m**.', '**Auflösung:** Behandlung(**behandlung_id**, FK arzt_id, FK patient_id, datum, diagnose). Die Attribute Datum und Diagnose gehören zur Beziehung und damit zur Zwischentabelle.'], 6],
+  ['qa', 'Erklären Sie den Unterschied zwischen Primär- und Fremdschlüssel.', 'Der **Primärschlüssel** identifiziert jede Zeile einer Tabelle eindeutig (eindeutig, nicht NULL). Ein **Fremdschlüssel** ist ein Attribut, das auf den Primärschlüssel einer anderen Tabelle verweist und so die Beziehung zwischen den Tabellen herstellt. Er sorgt für **referentielle Integrität**: Es darf nur auf vorhandene Datensätze verwiesen werden.', 4],
+  ['quiz', [
+    {q: 'Welche Kardinalität hat die Beziehung "Student besucht Kurs" (viele Studenten, viele Kurse)?', o: ['n:m', '1:1', '1:n', '0:0'], a: 0, e: 'Ein Student besucht mehrere Kurse und ein Kurs hat mehrere Studenten: n:m.'},
+    {q: 'Wie wird eine n:m-Beziehung in der Datenbank umgesetzt?', o: ['Mit einer Zwischentabelle', 'Mit einem Attribut', 'Gar nicht', 'Mit einer Sicht (View)'], a: 0, e: 'Die Zwischentabelle (Verbindungstabelle) enthält die Fremdschlüssel beider Tabellen.'},
+    {q: 'Was bedeutet (1,n)?', o: ['Mindestens eine, beliebig viele', 'Genau eine', 'Keine oder eine', 'Keine oder viele'], a: 0, e: 'Minimum 1 (Pflicht), Maximum n (beliebig).'},
+    {q: 'Was sind Entitäten meist im Text einer Aufgabe?', o: ['Substantive', 'Verben', 'Zahlen', 'Adjektive'], a: 0, e: 'Substantive (Kunde, Artikel) werden zu Entitäten, Verben zu Beziehungen.'},
+    {q: 'Was macht ein Primärschlüssel?', o: ['Identifiziert jede Zeile eindeutig', 'Verschlüsselt die Daten', 'Sortiert die Tabelle', 'Löscht Duplikate automatisch'], a: 0, e: 'Der Primärschlüssel ist eindeutig und darf nicht NULL sein.'},
+  ]],
+]);

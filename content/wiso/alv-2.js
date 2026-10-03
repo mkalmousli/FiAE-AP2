@@ -1,0 +1,27 @@
+AP2.add('wiso-alv', [
+  ['h', 'Weitere Leistungen der Arbeitsförderung'],
+  ['kv', [
+    ['Kurzarbeitergeld (Kug)', 'Bei **vorübergehendem erheblichem Arbeitsausfall** (Auftragsmangel, Krisen) zahlt die Agentur den Arbeitnehmern **60 %** (mit Kind **67 %**) des **Nettoentgeltausfalls**. Der Betrieb **behält** die Beschäftigten (Kündigungen werden vermieden). Der Arbeitgeber zahlt die Sozialbeiträge anteilig. Bedeutung in der **Finanzkrise 2009** und **Corona-Pandemie**.'],
+    ['Insolvenzgeld', 'Wird der Arbeitgeber **zahlungsunfähig**, erhalten Arbeitnehmer **bis zu 3 Monate Nettoentgelt** (Insolvenzgeldumlage zahlen die Arbeitgeber).'],
+    ['Qualifizierung und Weiterbildung', 'Weiterbildungskosten und Lebensunterhalt werden bei **Weiterbildung** gefördert (Qualifizierungsgeld, **Bildungsgutschein**).'],
+    ['Gründungszuschuss', 'Förderung beim **Schritt in die Selbstständigkeit** (ALG I plus Zuschuss).'],
+    ['Förderung der Ausbildung', '**Berufsberatung**, **Berufsausbildungsbeihilfe (BAB)** für Azubis mit Wohnkosten, **Assistierte Ausbildung**.'],
+  ]],
+  ['h', 'Nach dem ALG I: Bürgergeld (SGB II)'],
+  ['p', 'Wer **erwerbsfähig** ist, aber **kein oder zu wenig ALG I** bekommt und **bedürftig** ist (Einkommen und Vermögen reichen nicht), erhält **Bürgergeld** (früher **Arbeitslosengeld II / Hartz IV**) von den **Jobcentern**. Das Bürgergeld deckt den **Regelbedarf** (Lebensunterhalt) plus **Kosten der Unterkunft und Heizung**. Es ist **steuerfinanziert** und **bedürftigkeitsgeprüft** (Fürsorge), anders als das beitragsfinanzierte ALG I (Versicherung). Es gibt Mitwirkungspflichten und **Leistungsminderungen** bei Pflichtverletzungen. (Die Grundsicherung wird derzeit reformiert; Details prüfen.)'],
+  ['table', ['', 'Arbeitslosengeld I (SGB III)', 'Bürgergeld (SGB II)'], [['Art', '**Versicherungsleistung** (Beitrag)', '**Fürsorgeleistung** (Steuer, Bedürftigkeit)'], ['Voraussetzung', 'Anwartschaftszeit (12 Monate in 30 Monaten)', 'Erwerbsfähig und **bedürftig**'], ['Höhe', '60/67 % des pauschalierten Nettos', 'Pauschaler **Regelbedarf** + Wohnkosten'], ['Dauer', '6 bis 24 Monate', 'Solange Bedürftigkeit besteht'], ['Zuständig', '**Agentur für Arbeit**', '**Jobcenter**'], ['Vermögensprüfung', 'Nein', 'Ja (mit Schonvermögen)']]],
+  ['h', 'Wie viel Arbeitslosenversicherung zahlt man?'],
+  ['p', 'Der Beitrag beträgt **2,6 %** des Bruttoentgelts bis zur Beitragsbemessungsgrenze (2026: 8.450 Euro im Monat), also **je 1,3 %** für Arbeitgeber und Arbeitnehmer. Beispiel: Bei 3.000 Euro Brutto zahlt der Arbeitnehmer **39 Euro** (3.000 mal 1,3 %) und der Arbeitgeber ebenfalls **39 Euro**.'],
+  ['h', 'Aufgaben im Prüfungsstil'],
+  ['qa', 'Unter welchen Voraussetzungen erhält man Arbeitslosengeld I?', ['- Man ist **arbeitslos** (keine oder weniger als 15 Wochenstunden Beschäftigung) und steht der Vermittlung zur Verfügung (Eigenbemühungen).', '- Man hat sich **arbeitslos gemeldet**.', '- Man hat die **Anwartschaftszeit** erfüllt: in den letzten 30 Monaten mindestens **12 Monate** versicherungspflichtig beschäftigt.'], 5],
+  ['qa', 'Wann droht eine Sperrzeit beim Arbeitslosengeld? Nennen Sie zwei Beispiele und die Folge.', ['Beispiele: Der Arbeitnehmer **kündigt selbst** ohne wichtigen Grund oder schließt einen **Aufhebungsvertrag**; er lehnt eine **zumutbare Arbeit** ab; er meldet sich nicht rechtzeitig.', 'Folge: **Sperrzeit bis zu 12 Wochen**, in dieser Zeit wird kein ALG gezahlt, die Anspruchsdauer verkürzt sich.'], 5],
+  ['qa', 'Ein Arbeitnehmer erhält am 10. März die Kündigung zum 30. April. Was muss er tun?', 'Er muss sich **innerhalb von 3 Tagen** nach Kenntnis (also bis 13. März) bei der Agentur für Arbeit **arbeitssuchend melden** (die Kündigungsfrist ist kürzer als 3 Monate) und sich spätestens am **ersten Tag der Arbeitslosigkeit (1. Mai)** **arbeitslos melden**. Sonst droht eine Sperrzeit. Außerdem Kündigungsschutzklage innerhalb von 3 Wochen prüfen.', 5],
+  ['qa', 'Worin unterscheiden sich Arbeitslosengeld I und Bürgergeld?', 'ALG I ist eine **Versicherungsleistung** (aus Beiträgen finanziert, abhängig von Beitragszeit, Höhe nach früherem Einkommen, zeitlich begrenzt). Bürgergeld ist eine **steuerfinanzierte Fürsorgeleistung** für Bedürftige, ohne Beitragsvoraussetzung, als **pauschaler Regelbedarf** plus Wohnkosten, geprüft auf Einkommen und Vermögen.', 4],
+  ['quiz', [
+    {q: 'Wie hoch ist das Arbeitslosengeld I für Arbeitslose ohne Kind?', o: ['60 % des pauschalierten Nettoentgelts', '100 % des Gehalts', '40 %', '80 %'], a: 0, e: 'Mit mindestens einem Kind: 67 %.'},
+    {q: 'Wie viele Monate Versicherungszeit sind in den letzten 30 Monaten für ALG I nötig?', o: ['12', '6', '24', '36'], a: 0, e: 'Anwartschaftszeit: 12 Monate.'},
+    {q: 'Wer ist für das Arbeitslosengeld I zuständig?', o: ['Agentur für Arbeit', 'Jobcenter', 'Finanzamt', 'Krankenkasse'], a: 0, e: 'ALG I: Bundesagentur für Arbeit. Bürgergeld: Jobcenter.'},
+    {q: 'Was ist Kurzarbeitergeld?', o: ['Lohnersatz bei vorübergehendem erheblichem Arbeitsausfall', 'Rente für Kurzarbeiter', 'Strafe', 'Urlaubsgeld'], a: 0, e: 'Der Betrieb behält die Beschäftigten, die Agentur zahlt einen Teil des Lohnausfalls.'},
+    {q: 'Wie hoch ist der Beitrag zur Arbeitslosenversicherung insgesamt?', o: ['2,6 %', '18,6 %', '14,6 %', '3,6 %'], a: 0, e: 'Je 1,3 % Arbeitgeber und Arbeitnehmer.'},
+  ]],
+]);

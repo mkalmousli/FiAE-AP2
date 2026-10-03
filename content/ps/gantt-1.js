@@ -1,0 +1,38 @@
+AP2.page('ps-gantt', {
+  b: 'ps', g: 'Projektmanagement', t: 'Gantt-Diagramm und Balkenplan',
+  d: 'Ein **Gantt-Diagramm** (Balkendiagramm) zeigt Vorgänge als waagerechte **Balken auf einer Zeitachse**. Länge und Lage des Balkens zeigen Dauer und Termin. Es ist anschaulich für Termine und Fortschritt, zeigt Abhängigkeiten aber schwächer als ein Netzplan.',
+  m: '**Gantt = Wann?** (Zeitachse und Balken). **Netzplan = Wovon abhängig?** (Pfeile, Puffer, kritischer Pfad). Meilenstein = Raute ohne Dauer.',
+  cheat: [
+    ['Bestandteile', ['Zeitachse (Tage, Wochen, Monate)', 'Zeile je Vorgang oder Arbeitspaket', 'Balken: Beginn bis Ende', 'Meilenstein: Raute (Dauer 0)', 'Pfeile: Abhängigkeiten (optional)', 'Linie "heute" zeigt den Stand']],
+    ['Vorteile', ['Sehr anschaulich, auch für Laien', 'Gut für Kommunikation mit dem Kunden', 'Fortschritt und Auslastung sichtbar', 'Schnell zu erstellen']],
+    ['Nachteile', ['Abhängigkeiten nur eingeschränkt sichtbar', 'Keine Pufferberechnung', 'Kritischer Pfad nicht direkt erkennbar', 'Bei vielen Vorgängen unübersichtlich']],
+    ['Zusammenspiel', ['Erst Netzplan rechnen (Dauer, Puffer)', 'Dann als Gantt darstellen (Termine)', 'Ergebnis: Meilensteinplan für Berichte']],
+  ],
+  blocks: [
+    ['h', 'Was zeigt ein Gantt-Diagramm?'],
+    ['p', 'Henry Gantt entwickelte um 1910 diese Darstellung. Auf der **waagerechten Achse** steht die Zeit, auf der **senkrechten Achse** stehen die Vorgänge. Jeder Vorgang ist ein Balken: Er beginnt beim Starttermin und endet beim Endtermin. So sieht man auf einen Blick, **was wann läuft**, was **gleichzeitig** passiert und wie weit das Projekt ist.'],
+    ['p', 'Wir nehmen das Beispiel aus dem Netzplan (Seite Netzplantechnik) und tragen die frühesten Zeiten ein:'],
+    ['diagram', AP2.dg.gantt([['A Analyse', 0, 3], ['B Entwurf', 3, 4], ['C Datenbank', 7, 5], ['D Oberfläche', 7, 6, 'plain'], ['E Backend', 12, 8], ['F Integration', 20, 3], ['G Test', 23, 4], ['Projektende', 27, 0]],
+      {total: 27, tick: 3, unit: 21, left: 130, keep: 700, deps: [[0, 1], [1, 2], [1, 3], [2, 4], [4, 5], [3, 5], [5, 6]], cap: 'Gantt-Diagramm (Tage). Dunkel hervorgehoben: kritische Vorgänge. D ist hell, weil D Puffer hat. Die Raute ist ein Meilenstein.'})],
+    ['h', 'Gantt oder Netzplan?'],
+    ['table', ['Eigenschaft', 'Gantt-Diagramm', 'Netzplan'], [
+      ['Hauptfrage', 'Wann beginnt und endet was?', 'Was hängt von was ab und was ist kritisch?'],
+      ['Zeitmaßstab', 'Ja, Balkenlänge entspricht Dauer', 'Nein, Knoten sind gleich groß'],
+      ['Abhängigkeiten', 'Nur als Hilfspfeile', 'Ja, Kern der Darstellung'],
+      ['Kritischer Pfad / Puffer', 'Nicht direkt erkennbar', 'Ja, wird berechnet'],
+      ['Eignung', 'Berichte, Kunden, Statusbesprechung', 'Planung, Terminanalyse'],
+    ]],
+    ['h', 'Weitere Elemente'],
+    ['list', ['**Meilenstein:** Raute auf der Zeitachse, zum Beispiel "Abnahme". Dauer 0.', '**Sammelvorgang:** Ein Balken über mehrere Teilvorgänge (zum Beispiel Phase "Entwicklung").', '**Fortschrittsanzeige:** Der Balken wird in Höhe des Fertigstellungsgrades ausgefüllt.', '**Heute-Linie:** Senkrechte Linie, zeigt den aktuellen Stand. Balken links davon müssen fertig sein.', '**Ressourcen:** Rechts am Balken steht, wer die Aufgabe bearbeitet. So erkennt man Überlastung.']],
+    ['h', 'Meilensteine richtig planen'],
+    ['p', 'Meilensteine werden an wichtigen Entscheidungspunkten gesetzt: Pflichtenheft abgenommen, Prototyp fertig, Test bestanden, Go-Live. Der **Meilensteinplan** ist eine stark vereinfachte Sicht, die sich besonders für Berichte an die Geschäftsführung eignet. Die **Meilensteintrendanalyse (MTA)** trägt ein, wann ein Meilenstein erwartet wird, und zeigt, ob sich der Termin nach hinten (schlechter) oder vorn (besser) verschiebt.'],
+    ['h', 'Aufgaben im Prüfungsstil'],
+    ['qa', 'Nennen Sie je zwei Vor- und Nachteile eines Gantt-Diagramms.', ['**Vorteile:** anschauliche Darstellung von Terminen und Dauern, leicht verständlich auch für Nicht-Fachleute, Fortschritt gut sichtbar.', '**Nachteile:** Abhängigkeiten zwischen Vorgängen nur schwer erkennbar, kein kritischer Pfad und keine Pufferzeiten, bei vielen Vorgängen unübersichtlich.'], 4],
+    ['qa', 'Was unterscheidet einen Meilenstein von einem Vorgang?', 'Ein Vorgang hat eine Dauer und verbraucht Zeit und Ressourcen. Ein Meilenstein ist ein Zeitpunkt (Dauer 0) und kennzeichnet ein erreichtes Ergebnis oder einen Kontrollpunkt.', 2],
+    ['quiz', [
+      {q: 'Was zeigt die Länge eines Balkens im Gantt-Diagramm?', o: ['Die Dauer des Vorgangs', 'Die Kosten', 'Die Priorität', 'Die Anzahl der Mitarbeiter'], a: 0, e: 'Der Balken reicht vom Anfangs- bis zum Endtermin, seine Länge entspricht der Dauer.'},
+      {q: 'Wie wird ein Meilenstein im Gantt-Diagramm üblicherweise dargestellt?', o: ['Als Raute ohne Länge', 'Als sehr langer Balken', 'Als Kreis um den Projektleiter', 'Gar nicht'], a: 0, e: 'Meilensteine haben keine Dauer und werden als Raute (Dreieck oder Punkt) gezeichnet.'},
+      {q: 'Was kann ein Gantt-Diagramm im Vergleich zum Netzplan schlechter?', o: ['Abhängigkeiten und kritischen Pfad zeigen', 'Termine darstellen', 'Fortschritt anzeigen', 'Verständlich für Kunden sein'], a: 0, e: 'Der Netzplan ist die Methode für Abhängigkeiten, Puffer und kritischen Pfad.'},
+    ]],
+  ],
+});

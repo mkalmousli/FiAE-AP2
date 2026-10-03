@@ -1,0 +1,26 @@
+AP2.add('ps-vertraege', [
+  ['h', 'Wichtige Vertragsbausteine bei Softwareprojekten'],
+  ['kv', [
+    ['Leistungsbeschreibung', 'Genaue Beschreibung der Leistung, meist durch das Pflichtenheft als Anlage.'],
+    ['Vergütung und Zahlungsplan', 'Festpreis oder Aufwand, Zahlung in Abschnitten (Meilensteine).'],
+    ['Termine', 'Liefertermine und Meilensteine; Verzug und Vertragsstrafen.'],
+    ['Abnahme', 'Wie wird abgenommen? Frist, Kriterien, Verfahren bei Mängeln.'],
+    ['Gewährleistung und Haftung', 'Dauer, Haftungsbegrenzung (Allgemeine Geschäftsbedingungen unterliegen Grenzen).'],
+    ['Nutzungsrechte', 'Welche Rechte erhält der Kunde am Quellcode und an der Software? (einfach oder ausschließlich, zeitlich/räumlich unbegrenzt?)'],
+    ['Geheimhaltung (NDA)', 'Vertrauliche Informationen dürfen nicht weitergegeben werden.'],
+    ['Datenschutz', 'Bei Verarbeitung personenbezogener Daten: Auftragsverarbeitungsvertrag (AVV).'],
+    ['SLA (Service Level Agreement)', 'Vereinbarte Servicequalität: Verfügbarkeit, Reaktions- und Wiederherstellungszeiten, Strafzahlungen.'],
+  ]],
+  ['h', 'Allgemeine Geschäftsbedingungen (AGB)'],
+  ['p', '**AGB** sind vorformulierte Vertragsbedingungen, die ein Unternehmen für viele Verträge verwendet (§§ 305 ff. BGB). Sie werden nur wirksam, wenn der Kunde **bei Vertragsschluss** darauf hingewiesen wird und sie zur Kenntnis nehmen kann. **Überraschende oder benachteiligende Klauseln** sind unwirksam. Im Streitfall gilt: Individuelle Vereinbarungen gehen den AGB vor.'],
+  ['h', 'Aufgaben im Prüfungsstil'],
+  ['qa', 'Eine Firma lässt sich eine individuelle Auftragsverwaltung nach einem Pflichtenheft zum Festpreis entwickeln. Welche Vertragsart liegt vor und welche Rechte hat die Firma bei Mängeln?', ['Es liegt ein **Werkvertrag** (§ 631 BGB) vor, da ein **Erfolg** (die funktionierende Software) geschuldet ist.', 'Bei Mängeln kann die Firma nach Abnahme: **Nacherfüllung** (Nachbesserung) verlangen, bei Fristablauf **selbst beseitigen** lassen, den Preis **mindern**, vom Vertrag **zurücktreten** und unter Umständen **Schadensersatz** verlangen.'], 6],
+  ['qa', 'Ein IT-Berater wird für 20 Tage zu einem Tagessatz gebucht, um bei der Auswahl einer Software zu helfen. Welche Vertragsart und was wird geschuldet?', 'Ein **Dienstvertrag** (§ 611 BGB). Geschuldet ist die sorgfältige **Tätigkeit** (Beratung), kein bestimmtes Ergebnis. Es gibt keine Abnahme und keine Gewährleistung für das Ergebnis; die Vergütung richtet sich nach der aufgewendeten Zeit.', 4],
+  ['qa', 'Nennen Sie je zwei Unterschiede zwischen Werk- und Dienstvertrag.', ['- Werk: Erfolg geschuldet; Dienst: nur Tätigkeit.', '- Werk: Abnahme und Gewährleistung; Dienst: keine Abnahme.', '- Werk: meist Festpreis; Dienst: Vergütung nach Zeit.'], 4],
+  ['quiz', [
+    {q: 'Was schuldet der Unternehmer beim Werkvertrag?', o: ['Einen Erfolg (das fertige Werk)', 'Nur Arbeitszeit', 'Nur Beratung', 'Nichts'], a: 0, e: 'Beim Werkvertrag ist das Ergebnis geschuldet, nicht nur die Tätigkeit.'},
+    {q: 'Welcher Vertrag passt zu Cloud-Software (SaaS) auf Abo-Basis?', o: ['Mietvertrag', 'Kaufvertrag', 'Werkvertrag', 'Schenkung'], a: 0, e: 'Cloud-Dienste werden auf Zeit zur Nutzung überlassen: Mietvertrag (§ 535 BGB).'},
+    {q: 'Wann wird die Vergütung beim Werkvertrag fällig?', o: ['Mit der Abnahme', 'Beim Vertragsabschluss immer', 'Nie', 'Nach einem Jahr'], a: 0, e: 'Die Vergütung wird mit der Abnahme des Werkes fällig (§ 641 BGB).'},
+    {q: 'Was gehört NICHT zu den Mängelrechten beim Werkvertrag?', o: ['Schenkung des Werkes', 'Nacherfüllung', 'Minderung', 'Rücktritt'], a: 0, e: 'Mängelrechte: Nacherfüllung, Selbstvornahme, Minderung, Rücktritt, Schadensersatz.'},
+  ]],
+]);

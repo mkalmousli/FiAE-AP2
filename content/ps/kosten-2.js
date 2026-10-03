@@ -1,0 +1,30 @@
+AP2.add('ps-kosten', [
+  ['h', 'Nutzwertanalyse: Entscheiden mit Gewichtung'],
+  ['p', 'Nicht alles lässt sich in Euro messen (Bedienkomfort, Support, Sicherheit). Dafür gibt es die **Nutzwertanalyse**. Man bewertet jede Alternative anhand von **Kriterien**, die unterschiedlich **gewichtet** werden. Die Alternative mit dem höchsten Gesamtnutzwert gewinnt.'],
+  ['steps', ['**Kriterien** festlegen (zum Beispiel Funktionsumfang, Kosten, Bedienung, Support).', '**Gewichtung** vergeben. Die Summe der Gewichte ist 100 Prozent (oder 1).', 'Jede Alternative je Kriterium mit **Punkten** bewerten (zum Beispiel 1 bis 5).', '**Gewichtete Punkte** = Gewicht mal Punkte. Pro Alternative **summieren**.', 'Alternative mit der **höchsten Summe** wählen. Ergebnis prüfen: Ist es plausibel?']],
+  ['table', ['Kriterium', 'Gewicht', 'Lösung A (Punkte / gewichtet)', 'Lösung B', 'Lösung C'], [
+    ['Funktionsumfang', '40 %', '4 / 1,6', '5 / 2,0', '3 / 1,2'],
+    ['Kosten (je günstiger, desto mehr Punkte)', '30 %', '3 / 0,9', '2 / 0,6', '5 / 1,5'],
+    ['Bedienbarkeit', '20 %', '5 / 1,0', '3 / 0,6', '4 / 0,8'],
+    ['Support', '10 %', '3 / 0,3', '4 / 0,4', '2 / 0,2'],
+    ['**Nutzwert (Summe)**', '100 %', '**3,8**', '3,6', '3,7'],
+  ], {mark: [4]}],
+  ['note', 'Bei Kosten gilt: **niedrige Kosten bekommen hohe Punkte**. Sonst belohnt die Rechnung das teuerste Produkt. Außerdem hängt das Ergebnis stark von den Gewichten ab. Gut ist, die Gewichte vorher mit dem Auftraggeber abzustimmen.'],
+  ['h', 'Weitere Rechnungen, die in der Prüfung vorkommen'],
+  ['kv', [
+    ['Kostenvergleichsrechnung', 'Zwei Lösungen über denselben Zeitraum vergleichen. Beispiel: Lösung A: 10.000 Euro einmalig plus 2.000 Euro/Jahr, Lösung B: 4.000 Euro einmalig plus 4.500 Euro/Jahr. Nach 3 Jahren: A = 16.000 Euro, B = 17.500 Euro. A ist günstiger.'],
+    ['Break-even (Gewinnschwelle)', 'Menge, ab der sich ein Produkt lohnt: Fixkosten geteilt durch (Verkaufspreis minus variable Kosten pro Stück).'],
+    ['Make or Buy', 'Selbst entwickeln (hohe Anfangskosten, volle Kontrolle) oder kaufen (schnell verfügbar, Lizenzkosten, Abhängigkeit vom Hersteller)? Entscheidung per TCO oder Nutzwertanalyse.'],
+    ['Stundensatz-Kalkulation', 'Kosten = Personentage mal 8 Stunden mal Stundensatz. Dazu Gemeinkosten und Gewinnaufschlag beim Angebot an den Kunden.'],
+  ]],
+  ['h', 'Aufgaben im Prüfungsstil'],
+  ['qa', 'Ein neues Ticketsystem kostet 36.000 Euro in der Einführung. Es spart jährlich 15.000 Euro Arbeitskosten, verursacht aber 3.000 Euro Betriebskosten pro Jahr. Berechnen Sie die Amortisationsdauer.', ['Jährlicher Rückfluss = 15.000 - 3.000 = 12.000 Euro.', 'Amortisationsdauer = 36.000 / 12.000 = **3 Jahre**.'], 3],
+  ['qa', 'Berechnen Sie den ROI für ein Projekt mit 50.000 Euro Investition und einem Gesamtnutzen von 80.000 Euro in vier Jahren.', ['Gewinn = 80.000 - 50.000 = 30.000 Euro.', 'ROI = 30.000 / 50.000 mal 100 = **60 Prozent** über vier Jahre.'], 3],
+  ['qa', 'Nennen Sie drei Kosten, die bei der Einführung neuer Software entstehen können, die man leicht vergisst.', ['- Schulung der Mitarbeiter und Produktivitätsverlust während der Einarbeitung', '- Datenmigration aus dem Altsystem', '- Laufende Wartung, Updates und Support', '- Schnittstellenanpassungen zu anderen Systemen'], 3],
+  ['quiz', [
+    {q: 'Investition 90.000 Euro, jährlicher Rückfluss 30.000 Euro. Wie lang ist die Amortisationsdauer?', o: ['3 Jahre', '0,33 Jahre', '30 Jahre', '120.000 Jahre'], a: 0, e: 'Amortisationsdauer = Investition / jährlicher Rückfluss = 90.000 / 30.000 = 3 Jahre.'},
+    {q: 'Ein ROI von 25 Prozent bedeutet:', o: ['Der Gewinn beträgt ein Viertel der Investition.', 'Das Projekt kostet 25 Euro.', 'Das Projekt dauert 25 Tage.', 'Es gibt 25 Mitarbeiter.'], a: 0, e: 'ROI = Gewinn / Investition. 25 Prozent heißt: Gewinn = 0,25 mal Investition.'},
+    {q: 'Wofür nutzt man eine Nutzwertanalyse?', o: ['Um Alternativen mit mehreren gewichteten Kriterien zu vergleichen', 'Um den kritischen Pfad zu finden', 'Um Datenbanken zu normalisieren', 'Um Netzwerke zu planen'], a: 0, e: 'Die Nutzwertanalyse bewertet Alternativen anhand gewichteter Kriterien, auch nicht-monetärer.'},
+    {q: 'Was bedeutet TCO?', o: ['Gesamtkosten über die gesamte Nutzungsdauer', 'Die Kosten der Testphase', 'Kosten pro Test', 'Technische Compliance Organisation'], a: 0, e: 'Total Cost of Ownership: Anschaffung plus Betrieb, Wartung, Schulung usw.'},
+  ]],
+]);

@@ -1,0 +1,35 @@
+AP2.page('ps-wireframe', {
+  b: 'ps', g: 'UI/UX', t: 'Wireframes, Mockups und Prototypen',
+  d: 'Ein **Wireframe** ist ein einfacher Entwurf der **Struktur** einer Benutzeroberfläche (Anordnung von Elementen, ohne Design). Ein **Mockup** zeigt zusätzlich das **visuelle Design** (Farben, Schrift, Bilder). Ein **Prototyp** ist **klickbar** und simuliert die Bedienung.',
+  m: '**Wireframe = Skelett (Struktur), Mockup = Aussehen (Design), Prototyp = Verhalten (klickbar).** Von grob nach fein: Skizze, Wireframe, Mockup, Prototyp, Entwicklung.',
+  cheat: [
+    ['Wireframe', ['Schwarz-weiß, einfache Kästen', 'Zeigt **Aufbau** und Platzierung', 'Schnell und billig änderbar', 'Fokus auf Funktion, nicht Optik']],
+    ['Mockup', ['Realistisches **Aussehen**', 'Farben, Schrift, Bilder', 'Nicht klickbar (statisch)', 'Zur Abstimmung mit dem Kunden']],
+    ['Prototyp', ['**Klickbar**, simuliert Abläufe', 'Low-Fidelity oder High-Fidelity', 'Für Usability-Tests mit Nutzern', 'Tools: Figma, Adobe XD, Balsamiq']],
+    ['Vorgehen', ['Nutzer und Aufgaben verstehen', 'Skizzen und Wireframes', 'Feedback und Test', 'Verbessern (iterativ)']],
+  ],
+  blocks: [
+    ['h', 'Warum zeichnet man die Oberfläche vorher?'],
+    ['p', 'Änderungen an einer Zeichnung kosten Minuten, Änderungen an fertigem Code kosten Tage. Mit Wireframes und Prototypen klärt man früh mit dem Kunden und mit Testnutzern, ob die Oberfläche **verständlich** ist. So entdeckt man Missverständnisse, **bevor** programmiert wird. Das spart Geld und Zeit. Man nennt das auch **User-Centered Design**: Der Benutzer steht im Mittelpunkt, der Entwurf wird **iterativ** (in Schleifen) verbessert (ISO 9241-210).'],
+    ['h', 'Die Stufen im Vergleich'],
+    ['table', ['Merkmal', 'Skizze', 'Wireframe', 'Mockup', 'Prototyp'], [
+      ['Detailgrad', 'sehr grob, von Hand', 'grob, Kästen und Text', 'fein, wie das Endprodukt', 'beliebig, aber bedienbar'],
+      ['Aussehen', 'Bleistift', 'Graustufen', 'Farben, Schriften, Bilder', 'je nach Stufe'],
+      ['Interaktion', 'nein', 'nein', 'nein (statisch)', 'ja (klickbar)'],
+      ['Zweck', 'Ideen sammeln', 'Aufbau und Navigation klären', 'Design abstimmen', 'Bedienung testen'],
+      ['Aufwand', 'minimal', 'gering', 'mittel', 'mittel bis hoch'],
+    ]],
+    ['h', 'Beispiel-Wireframe: Anmeldeseite'],
+    ['diagram', {w: 640, h: 380, keep: 500, cap: 'Wireframe einer Anmeldeseite. Platzhalter ersetzen Bilder und Texte. Nur Struktur, keine Gestaltung.', nodes: [
+      {id: 'win', k: 'box', x: 320, y: 190, w: 600, h: 350, s: 'plain', t: ''}, {id: 'head', k: 'box', x: 320, y: 45, w: 600, h: 50, s: 'soft', t: ''},
+      {id: 'logo', k: 'box', x: 80, y: 45, w: 80, h: 30, s: 'plain', t: 'Logo', fs: 12}, {id: 'n1', k: 'text', x: 400, y: 45, t: 'Start', fs: 12}, {id: 'n2', k: 'text', x: 470, y: 45, t: 'Hilfe', fs: 12}, {id: 'n3', k: 'text', x: 540, y: 45, t: 'Kontakt', fs: 12},
+      {id: 'h1', k: 'text', x: 320, y: 105, t: 'Anmelden', b: true, fs: 18},
+      {id: 'f1', k: 'box', x: 320, y: 160, w: 280, h: 36, s: 'soft', t: 'E-Mail-Adresse', fs: 12, tc: 'text3'}, {id: 'f2', k: 'box', x: 320, y: 212, w: 280, h: 36, s: 'soft', t: 'Passwort', fs: 12, tc: 'text3'},
+      {id: 'cb', k: 'box', x: 232, y: 258, w: 16, h: 16, s: 'plain', t: ''}, {id: 'cbt', k: 'text', x: 330, y: 258, t: 'Angemeldet bleiben', fs: 12},
+      {id: 'btn', k: 'round', x: 320, y: 306, w: 280, h: 40, s: 'solid', t: 'Anmelden', fs: 13}, {id: 'lk', k: 'text', x: 320, y: 350, t: 'Passwort vergessen?   |   Registrieren', fs: 12, tc: 'accent'},
+    ], edges: []}],
+    ['p', 'An diesem Entwurf kann man schon klären: Gibt es "Passwort vergessen"? Gibt es "Angemeldet bleiben"? Wo steht die Navigation? Alles ohne eine Zeile Code.'],
+    ['h', 'Fidelity: Low und High'],
+    ['procon', 'Low-Fidelity (Papier, Wireframe) gegenüber High-Fidelity (detaillierter Prototyp)', ['**Low-Fi:** sehr schnell, billig, Nutzer trauen sich Kritik', '**Low-Fi:** fokussiert auf Struktur statt Optik', '**High-Fi:** wirkt echt, ideal für Usability-Tests', '**High-Fi:** Entwickler können Maße und Abstände übernehmen'], ['**Low-Fi:** weniger realistisch, Interaktion schwer zu testen', '**High-Fi:** zeitaufwendig, Kunden diskutieren eher über Farben als über Funktion', '**High-Fi:** Änderungen sind aufwendiger']],
+  ],
+});

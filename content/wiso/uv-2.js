@@ -1,0 +1,38 @@
+AP2.add('wiso-uv', [
+  ['h', 'Leistungen im Überblick'],
+  ['table', ['Leistung', 'Inhalt', 'Details'], [
+    ['**Heilbehandlung**', 'Ärztliche und zahnärztliche Behandlung, Medikamente, Hilfsmittel, Krankenhaus', 'Komplett, **ohne Zuzahlung**, mit allen geeigneten Mitteln ("mit allen geeigneten Mitteln")'],
+    ['**Berufliche und soziale Rehabilitation**', 'Umschulung, Wiedereingliederung', 'Reha vor Rente'],
+    ['**Verletztengeld**', 'Lohnersatz nach Ende der Entgeltfortzahlung', '**80 %** des Bruttoentgelts, aber nicht mehr als das Nettoentgelt'],
+    ['**Verletztenrente**', 'Bei **dauerhafter Minderung der Erwerbsfähigkeit (MdE) von mindestens 20 %**', 'Höhe nach MdE und Jahresarbeitsverdienst (bis zu 2/3 bei Vollrente)'],
+    ['**Hinterbliebenenrente**', 'Bei Tod durch Arbeitsunfall', 'Witwen-, Waisenrente, Sterbegeld'],
+    ['**Prävention**', 'Unfallverhütung, Beratung, Überwachung durch Aufsichtspersonen der BG', '**Unfallverhütungsvorschriften (UVV)**, Gefährdungsbeurteilung'],
+  ]],
+  ['kv', [
+    ['Wer ist versichert?', '**Alle Beschäftigten** (auch **Azubis, Minijobber, Praktikanten**), Schüler und Studierende (Unfallkassen), Kindergartenkinder, ehrenamtlich Tätige, Pflegepersonen. **Selbstständige** nur freiwillig oder als Pflichtmitglied je Branche.'],
+    ['Homeoffice', 'Auch im **Homeoffice** besteht Versicherungsschutz (seit 2021), aber nur bei **betrieblich veranlassten** Tätigkeiten und Wegen im Haus (zum Beispiel Gang zum Drucker, nicht zur Toilette/Küche für private Zwecke).'],
+    ['Nicht versichert', 'Rein **private** Tätigkeiten (Freizeit, Einkauf), **Umwege** aus privaten Gründen, Mittagspause (private Essensaufnahme).'],
+    ['Unfallanzeige', 'Der Arbeitgeber muss einen Arbeitsunfall, der **mehr als 3 Tage Arbeitsunfähigkeit** (gerechnet ab dem Unfalltag) oder den **Tod** zur Folge hat, **innerhalb von drei Tagen** der BG anzeigen. Betriebsrat und Sicherheitsbeauftragter unterschreiben mit.'],
+    ['Durchgangsarzt (D-Arzt)', 'Spezialist, den man bei Arbeitsunfällen mit **Arbeitsunfähigkeit über 3 Tagen** aufsucht. Er entscheidet über das weitere **Heilverfahren**.'],
+    ['Verbandbuch / Ersthelfer', 'Jede Verletzung wird im **Verbandbuch** dokumentiert (auch Bagatellfälle). Je nach Betriebsgröße muss es **Ersthelfer**, **Sicherheitsbeauftragte** (ab 20 Beschäftigten) und eine **Fachkraft für Arbeitssicherheit** geben.'],
+  ]],
+  ['table', ['Fall', 'Versichert?'], [
+    ['Ein Azubi rutscht auf dem direkten Weg zur Berufsschule auf Glatteis aus.', '**Ja**: Wegeunfall (auch Weg zur Berufsschule)'],
+    ['Ein Mitarbeiter fährt nach der Arbeit auf direktem Weg nach Hause, holt aber vorher privat Pizza.', '**Nein** beim privaten Umweg; der Unfall auf dem Weg zum Imbiss ist privat'],
+    ['Eine Mitarbeiterin stolpert im Büro beim Gang zum Drucker.', '**Ja**: Arbeitsunfall'],
+    ['Ein Mitarbeiter verletzt sich beim Mittagessen in der Kantine beim Essen.', '**Nein**: Essen ist eine private Tätigkeit (Weg zur Kantine ist versichert)'],
+    ['Ein Entwickler im Homeoffice stolpert auf dem Weg vom Arbeitszimmer zum Drucker im Nachbarraum.', '**Ja** (Arbeitsunfall im Homeoffice, betrieblich veranlasster Weg)'],
+  ]],
+  ['h', 'Aufgaben im Prüfungsstil'],
+  ['qa', 'Nennen Sie die drei Versicherungsfälle der gesetzlichen Unfallversicherung.', ['- Arbeitsunfall', '- Wegeunfall (Weg von und zur Arbeitsstelle, auch zur Berufsschule)', '- Berufskrankheit'], 3],
+  ['qa', 'Wer trägt die Beiträge zur gesetzlichen Unfallversicherung und wovon hängt die Höhe ab?', 'Die Beiträge trägt **allein der Arbeitgeber**. Sie richten sich nach der **Entgeltsumme** der Beschäftigten und der **Gefahrklasse** des Unternehmens (Unfallrisiko der Branche). Betriebe mit weniger Unfällen zahlen durch **Beitragsnachlässe/-zuschläge** weniger.', 4],
+  ['qa', 'Ein Auszubildender erleidet bei der Arbeit einen Unfall mit 6 Wochen Arbeitsunfähigkeit. Was muss geschehen und welche Leistungen sind möglich?', ['**Schritte:** Unfall dem Vorgesetzten melden, **Durchgangsarzt** aufsuchen, **Eintrag im Verbandbuch**, der Arbeitgeber erstattet die **Unfallanzeige** an die BG (Arbeitsunfähigkeit über 3 Tage).', '**Leistungen:** Heilbehandlung ohne Zuzahlung, Reha; nach **6 Wochen Entgeltfortzahlung** zahlt die BG **Verletztengeld** (80 % des Bruttos, max. Netto); bei bleibender Minderung der Erwerbsfähigkeit ab 20 % **Verletztenrente**.'], 6],
+  ['qa', 'Was bedeutet das Haftungsprivileg des Arbeitgebers in der Unfallversicherung?', 'Weil der Arbeitgeber die Beiträge zahlt, ist er bei **Arbeitsunfällen** seiner Beschäftigten **von der persönlichen Haftung** (Schadensersatz, Schmerzensgeld) **befreit**, es sei denn, er hat den Unfall **vorsätzlich** verursacht. Die BG ersetzt den Schaden.', 3],
+  ['quiz', [
+    {q: 'Wer zahlt die Beiträge zur gesetzlichen Unfallversicherung?', o: ['Allein der Arbeitgeber', 'Arbeitgeber und Arbeitnehmer je zur Hälfte', 'Der Arbeitnehmer allein', 'Der Staat'], a: 0, e: 'Die Unfallversicherung wird nur vom Arbeitgeber finanziert.'},
+    {q: 'Wer ist Träger der gesetzlichen Unfallversicherung im gewerblichen Bereich?', o: ['Berufsgenossenschaft', 'Krankenkasse', 'Rentenversicherung', 'Agentur für Arbeit'], a: 0, e: 'Im öffentlichen Dienst: Unfallkassen.'},
+    {q: 'Welcher Fall ist ein Wegeunfall?', o: ['Unfall auf dem direkten Weg von der Arbeit nach Hause', 'Unfall beim Privateinkauf', 'Unfall im Urlaub', 'Unfall beim Sport am Wochenende'], a: 0, e: 'Versichert ist der direkte Weg zwischen Wohnung und Arbeit (oder Berufsschule).'},
+    {q: 'Ab welcher Dauer der Arbeitsunfähigkeit muss ein Arbeitsunfall angezeigt werden?', o: ['Mehr als 3 Tage', 'Ab 1 Tag', 'Ab 2 Wochen', 'Nie'], a: 0, e: 'Unfälle mit mehr als 3 Tagen Arbeitsunfähigkeit sind meldepflichtig.'},
+    {q: 'Welche Reihenfolge gilt in der Unfallversicherung?', o: ['Prävention vor Rehabilitation vor Rente', 'Rente vor Reha', 'Reha vor Prävention', 'Keine'], a: 0, e: 'Zuerst Unfälle verhüten, dann Gesundheit wiederherstellen, zuletzt entschädigen.'},
+  ]],
+]);

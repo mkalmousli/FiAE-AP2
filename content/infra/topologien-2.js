@@ -1,0 +1,27 @@
+AP2.add('infra-topologien', [
+  ['table', ['Topologie', 'Aufbau', 'Vorteile', 'Nachteile', 'Beispiel'], [
+    ['**Stern**', 'Alle Geräte einzeln an einen zentralen Switch', 'Einfach erweiterbar und verwaltbar; Ausfall eines Kabels betrifft nur ein Gerät; schnell', 'Zentrale ist **Single Point of Failure**; viel Kabel', 'Heutiges Ethernet-LAN'],
+    ['**Bus**', 'Alle Geräte an einem gemeinsamen Kabel', 'Wenig Kabel, günstig', 'Kabelbruch legt das Netz lahm; Kollisionen; schwierige Fehlersuche; geringe Skalierbarkeit', '10BASE2 (Koax), veraltet'],
+    ['**Ring**', 'Geräte im Kreis, Daten wandern in eine Richtung', 'Geregelter Zugriff (Token), kaum Kollisionen', 'Ausfall unterbricht den Ring (außer Doppelring); Erweiterung stört den Betrieb', 'Token Ring (veraltet), FDDI, SDH'],
+    ['**Baum**', 'Hierarchie aus mehreren Sternen', 'Gut strukturierbar, erweiterbar', 'Ausfall eines höheren Knotens betrifft ganze Zweige', 'Gebäudeverkabelung (Etagen-Switch an Backbone)'],
+    ['**Mesh (vermascht)**', 'Viele oder alle Geräte untereinander verbunden', 'Hohe **Redundanz** und Ausfallsicherheit, mehrere Wege', 'Hoher Verkabelungs- und Konfigurationsaufwand', 'Internet-Backbone, WLAN-Mesh'],
+  ]],
+  ['h', 'Wie viele Kabel braucht ein vollvermaschtes Netz?'],
+  ['p', 'Bei **n** Geräten, die alle miteinander verbunden sind, gilt: **Anzahl Verbindungen = n mal (n - 1) geteilt durch 2.** Jedes Gerät hat n - 1 Nachbarn, jede Verbindung gehört zu zwei Geräten, deshalb geteilt durch 2.'],
+  ['table', ['Anzahl Geräte n', 'Verbindungen n(n-1)/2'], [['3', '3'], ['4', '6'], ['5', '10'], ['10', '45'], ['20', '190']]],
+  ['ex', 'Beispiel: 8 Server sollen vollvermascht werden. Verbindungen = 8 mal 7 geteilt durch 2 = **28**. Im Stern wären es nur **8** Kabel zum Switch.'],
+  ['h', 'Physische und logische Topologie'],
+  ['p', 'Die **physische** Topologie zeigt, wie die Kabel verlegt sind. Die **logische** zeigt, wie die Daten fließen. Beispiel: Ein **Hub** verbindet Geräte physisch als **Stern**, aber alle Geräte hören alles mit, logisch ist es ein **Bus**. Ein moderner **Switch** ist physisch und logisch ein Stern.'],
+  ['h', 'Redundanz und Ausfallsicherheit'],
+  ['list', ['**Single Point of Failure (SPOF):** Eine einzelne Komponente, deren Ausfall alles lahmlegt (zum Beispiel ein einziger zentraler Switch). Vermeiden durch Redundanz.', '**Redundante Anbindung:** Switches mit zwei Uplinks, zwei Routern (HSRP/VRRP) und zwei Providern.', '**Spanning Tree (STP):** Verhindert **Schleifen** (Loops) in redundanten Ethernet-Strukturen, indem überzählige Verbindungen logisch deaktiviert werden.', '**Link Aggregation (LACP):** Mehrere Kabel zu einer logischen Verbindung bündeln: mehr Bandbreite und Ausfallsicherheit.']],
+  ['h', 'Aufgaben im Prüfungsstil'],
+  ['qa', 'Nennen Sie je zwei Vor- und Nachteile der Sterntopologie.', ['**Vorteile:** Ausfall eines Endgeräts oder Kabels betrifft nur dieses Gerät; einfache Erweiterung und Fehlersuche; hohe Geschwindigkeit durch dedizierte Leitungen.', '**Nachteile:** Der zentrale Switch ist ein Single Point of Failure; höherer Kabelaufwand als beim Bus.'], 4],
+  ['qa', 'Ein Unternehmen verbindet 6 Standorte vollvermascht. Wie viele Verbindungen sind nötig?', 'n(n-1)/2 = 6 mal 5 / 2 = **15 Verbindungen**.', 3],
+  ['qa', 'Warum wird das Bus-Netz heute kaum noch eingesetzt?', 'Alle Geräte teilen ein Medium (Kollisionen, geringe Bandbreite), ein Kabelbruch oder fehlender Abschlusswiderstand legt das gesamte Netz lahm, die Fehlersuche ist schwierig und die Erweiterung aufwendig. Switches mit Sterntopologie sind schneller, robuster und einfacher zu verwalten.', 4],
+  ['quiz', [
+    {q: 'Welche Topologie hat einen Single Point of Failure im Zentrum?', o: ['Stern', 'Vollvermascht', 'Doppelring', 'Mesh'], a: 0, e: 'Fällt der zentrale Switch aus, ist das ganze Sternnetz betroffen.'},
+    {q: 'Wie viele Verbindungen hat ein vollvermaschtes Netz mit 5 Knoten?', o: ['10', '5', '20', '25'], a: 0, e: '5 mal 4 geteilt durch 2 = 10.'},
+    {q: 'Bei welcher Topologie teilen sich alle Geräte ein einziges Kabel?', o: ['Bus', 'Stern', 'Mesh', 'Baum'], a: 0, e: 'Beim Bus hängen alle am gleichen Übertragungsmedium.'},
+    {q: 'Was verhindert Spanning Tree (STP)?', o: ['Schleifen in redundanten Ethernet-Netzen', 'Viren', 'IP-Konflikte', 'Stromausfall'], a: 0, e: 'STP schaltet redundante Wege logisch ab, damit keine Schleifen (Broadcast-Stürme) entstehen.'},
+  ]],
+]);

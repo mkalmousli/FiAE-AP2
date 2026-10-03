@@ -1,0 +1,31 @@
+AP2.add('infra-komponenten', [
+  ['h', 'Router und Routing'],
+  ['p', 'Ein **Router** verbindet Netze. Er verwaltet eine **Routingtabelle**: Zu welchem Zielnetz gehört welcher **nächste Router (Next Hop)** oder welche **Schnittstelle**? Für ein eingehendes Paket sucht er den **am genauesten passenden** Eintrag (längster Präfix). Ist keiner passend, nutzt er die **Standardroute** `0.0.0.0/0` (Default Route) Richtung Internet.'],
+  ['table', ['Zielnetz', 'Next Hop', 'Schnittstelle', 'Bemerkung'], [['192.168.1.0/24', '-', 'eth0', 'direkt angeschlossen'], ['192.168.2.0/24', '-', 'eth1', 'direkt angeschlossen'], ['10.0.0.0/8', '192.168.2.254', 'eth1', 'statische Route zu Standort B'], ['0.0.0.0/0', '203.0.113.1', 'eth2', 'Standardroute zum Provider']]],
+  ['kv', [
+    ['Statisches Routing', 'Einträge werden **von Hand** festgelegt. Einfach und sicher, aber aufwendig bei vielen Netzen und ohne automatische Anpassung bei Ausfällen.'],
+    ['Dynamisches Routing', 'Router tauschen mit **Routing-Protokollen** (RIP, OSPF, BGP) Informationen aus und passen die Tabellen automatisch an.'],
+    ['NAT', 'Der Router übersetzt private in öffentliche Adressen (siehe IPv4).'],
+  ]],
+  ['h', 'VLAN: Virtuelle Netze auf einem Switch'],
+  ['p', 'Ein **VLAN** (Virtual LAN) teilt einen physischen Switch in **mehrere logische Netze**. Jedes VLAN ist eine eigene **Broadcastdomäne** und bekommt ein eigenes Subnetz. Geräte in verschiedenen VLANs können nur über einen **Router** (oder Layer-3-Switch) kommunizieren. So trennt man zum Beispiel **Verwaltung, Entwicklung, Gäste und Telefone** auf derselben Hardware. Über einen **Trunk-Port** laufen mehrere VLANs mit **Tags (IEEE 802.1Q)** über ein Kabel.'],
+  ['diagram', {w: 720, h: 240, keep: 560, cap: 'Ein Switch mit zwei VLANs. Router-on-a-Stick: Der Router verbindet die VLANs über einen Trunk.', nodes: [
+    {id: 'sw', k: 'box', x: 360, y: 110, w: 120, h: 50, t: 'Switch', s: 'solid'}, {id: 'r', k: 'box', x: 360, y: 36, w: 120, h: 40, t: 'Router', s: 'accent'},
+    {id: 'a1', k: 'round', x: 90, y: 90, t: ['PC Verwaltung', 'VLAN 10'], w: 130, h: 48, s: 'accent'}, {id: 'a2', k: 'round', x: 90, y: 160, t: ['PC Verwaltung', 'VLAN 10'], w: 130, h: 48, s: 'accent'},
+    {id: 'b1', k: 'round', x: 630, y: 90, t: ['PC Entwicklung', 'VLAN 20'], w: 130, h: 48, s: 'ok'}, {id: 'b2', k: 'round', x: 630, y: 160, t: ['PC Entwicklung', 'VLAN 20'], w: 130, h: 48, s: 'ok'},
+  ], edges: [{a: 'a1', b: 'sw', ea: 'none', s: 'accent'}, {a: 'a2', b: 'sw', ea: 'none', s: 'accent'}, {a: 'b1', b: 'sw', ea: 'none', s: 'ok'}, {a: 'b2', b: 'sw', ea: 'none', s: 'ok'}, {a: 'sw', b: 'r', ea: 'none', t: 'Trunk', lo: [34, 0]}]}],
+  ['procon', 'VLANs einsetzen', ['Kleinere Broadcastdomänen, weniger Last', 'Trennung von Bereichen (Sicherheit: Gäste, Server, Verwaltung)', 'Flexibel: Zuordnung per Konfiguration, nicht per Kabel'], ['Konfigurationsaufwand, Fehler schwer zu finden', 'Router oder L3-Switch für Verbindungen nötig', 'Trennung ersetzt keine Firewall (VLAN Hopping)']],
+  ['h', 'Firewall im Überblick'],
+  ['p', 'Eine **Firewall** steht zwischen Netzen (zum Beispiel Internet und Firmennetz) und lässt nur erlaubten Verkehr durch. Details zu Regeln, DMZ und Zero Trust findest du auf der Seite "Firewall und Zero Trust".'],
+  ['h', 'Aufgaben im Prüfungsstil'],
+  ['qa', 'Erklären Sie den Unterschied zwischen Hub und Switch.', ['Ein **Hub** (Schicht 1) sendet jedes Signal an **alle** Ports. Alle Geräte teilen die Bandbreite, es gibt Kollisionen und jeder kann mithören.', 'Ein **Switch** (Schicht 2) lernt MAC-Adressen und leitet Frames **gezielt nur an den Zielport**. Jeder Port hat eigene Bandbreite, es gibt keine Kollisionen, mehr Sicherheit und mehr Leistung.'], 4],
+  ['qa', 'Wozu wird ein Router in einem Firmennetz mit zwei Abteilungen (zwei Subnetze) benötigt?', 'Geräte in **verschiedenen Subnetzen** (oder VLANs) können nicht direkt kommunizieren. Der Router leitet Pakete zwischen den Netzen anhand der IP-Adresse weiter, trennt Broadcastdomänen und kann den Verkehr per Firewall-Regeln kontrollieren. Außerdem verbindet er das Netz über die Standardroute mit dem Internet.', 4],
+  ['qa', 'Nennen Sie drei Vorteile von VLANs.', ['- Kleinere Broadcastdomänen: weniger Netzlast.', '- Trennung von Netzbereichen (Gäste, Server, Verwaltung): höhere Sicherheit.', '- Flexible logische Gruppierung unabhängig vom Standort; weniger Hardware.'], 3],
+  ['quiz', [
+    {q: 'Auf welcher Schicht arbeitet ein klassischer Switch?', o: ['Schicht 2', 'Schicht 1', 'Schicht 3', 'Schicht 7'], a: 0, e: 'Switche arbeiten mit MAC-Adressen auf der Sicherungsschicht.'},
+    {q: 'Welches Gerät trennt Broadcastdomänen?', o: ['Router', 'Hub', 'Repeater', 'Kabel'], a: 0, e: 'Router (und VLANs) begrenzen Broadcasts.'},
+    {q: 'Was macht ein Switch mit einem Frame, dessen Ziel-MAC er nicht kennt?', o: ['Sendet ihn an alle Ports außer dem Eingangsport (Flooding)', 'Verwirft ihn immer', 'Sendet ihn an den Router', 'Meldet einen Fehler'], a: 0, e: 'Unbekannte Ziele führen zum Flooding.'},
+    {q: 'Was ist die Standardroute?', o: ['0.0.0.0/0, Weg für alle unbekannten Ziele', '127.0.0.1', '255.255.255.255', 'Die kürzeste Route'], a: 0, e: 'Die Standardroute greift, wenn kein spezifischerer Eintrag passt.'},
+    {q: 'Was ist ein Trunk-Port?', o: ['Ein Port, der mehrere VLANs getaggt überträgt', 'Ein defekter Port', 'Ein Port für Strom', 'Ein WLAN-Port'], a: 0, e: 'Trunks übertragen mehrere VLANs mit 802.1Q-Tags.'},
+  ]],
+]);

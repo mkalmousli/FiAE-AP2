@@ -1,0 +1,32 @@
+AP2.add('wiso-vertrag', [
+  ['h', 'Ende der Ausbildung und Übernahme'],
+  ['kv', [
+    ['Ende mit Prüfung (§ 21)', 'Das Ausbildungsverhältnis **endet mit Ablauf der Ausbildungszeit**, **bei bestandener Abschlussprüfung schon mit dem Bestehen** (Bekanntgabe des Ergebnisses). Wird die Prüfung **nicht bestanden**, verlängert es sich **auf Verlangen des Azubis bis zur nächsten Wiederholungsprüfung**, höchstens um **ein Jahr**.'],
+    ['Weiterbeschäftigung (§ 24)', 'Wird der Azubi nach Ende **ohne ausdrückliche Vereinbarung weiterbeschäftigt**, entsteht ein **unbefristetes Arbeitsverhältnis**.'],
+    ['Übernahme', 'Es gibt **keinen Anspruch** auf Übernahme. Der Betrieb kann übernehmen (befristet oder unbefristet) oder nicht. **Ausnahme:** Mitglieder der Jugend- und Auszubildendenvertretung können unter Bedingungen Übernahme verlangen (§ 78a BetrVG). Tarifverträge sehen oft Übernahmeregelungen vor.'],
+    ['Zeugnis (§ 16)', 'Jeder Azubi hat Anspruch auf ein **schriftliches Zeugnis**: **einfach** (Art, Dauer, Ziel, erworbene Fertigkeiten) oder auf Verlangen **qualifiziert** (zusätzlich Führung, Leistung, besondere fachliche Fähigkeiten).'],
+    ['Verkürzung / Verlängerung', 'Die Ausbildungszeit kann auf **gemeinsamen Antrag** **verkürzt** werden (zum Beispiel wegen Abitur oder guter Leistungen) oder auf Antrag **verlängert**, wenn es für das Ausbildungsziel nötig ist.'],
+    ['Wechsel des Betriebs', 'Mit **Aufhebungsvertrag** (beidseitig) oder durch Kündigung des Azubis (4 Wochen, nur bei Berufsaufgabe/-wechsel) möglich. Für denselben Beruf in einem anderen Betrieb ist die Kündigung durch den Azubi nicht möglich; hier hilft der **Aufhebungsvertrag**.'],
+  ]],
+  ['table', ['Situation', 'Was gilt?'], [
+    ['Azubi kündigt in der Probezeit mündlich', '**Unwirksam**: Schriftform ist nötig'],
+    ['Betrieb kündigt nach 6 Monaten "wegen schlechter Auftragslage"', '**Unwirksam**: Betriebsbedingte Gründe sind **kein** wichtiger Grund bei Azubis; Ausbildung muss zu Ende geführt werden (Ausnahme: Betriebsschließung)'],
+    ['Azubi will nach 8 Monaten in den Beruf Kaufmann/-frau wechseln', '**4 Wochen Frist**, schriftlich, mit Angabe des Grundes'],
+    ['Azubi besteht die Prüfung am 20. Juni, der Vertrag läuft bis 31. August', 'Das Ausbildungsverhältnis **endet mit dem Bestehen** (Bekanntgabe des Ergebnisses), nicht erst am 31. August'],
+    ['Azubi arbeitet nach der Prüfung weiter, nichts vereinbart', '**Unbefristetes Arbeitsverhältnis** (§ 24 BBiG)'],
+  ]],
+  ['h', 'Urlaub und Arbeitszeit des Azubis'],
+  ['list', ['**Arbeitszeit:** Jugendliche: höchstens **8 Stunden täglich, 40 Stunden pro Woche** (JArbSchG). Volljährige Azubis: Arbeitszeitgesetz (8 Stunden, bis 10 Stunden mit Ausgleich) und Tarifvertrag.', '**Berufsschulzeit zählt als Arbeitszeit** (Anrechnung). Am Berufsschultag vor 9 Uhr beginnt für Jugendliche keine Arbeit; nach einem Berufsschultag mit mehr als 5 Unterrichtsstunden (je 45 Minuten) muss der Betrieb **nicht mehr** beschäftigen (bei Jugendlichen).', '**Urlaub:** Mindestens der gesetzliche Urlaub (siehe Seiten Urlaub und Jugendarbeitsschutz). Im Vertrag stehen meist 26 bis 30 Tage. Möglichst in den **Berufsschulferien**.', '**Krank:** Entgeltfortzahlung 6 Wochen (siehe Seite Krankheit).']],
+  ['h', 'Aufgaben im Prüfungsstil'],
+  ['qa', 'Ein Auszubildender möchte nach drei Monaten kündigen, weil er den Beruf nicht mehr erlernen möchte. Welche Rechtslage gilt? Der Ausbildungsvertrag sieht 4 Monate Probezeit vor.', 'Der Azubi befindet sich noch in der **Probezeit**. Er kann **jederzeit ohne Einhaltung einer Frist und ohne Angabe von Gründen** kündigen. Die Kündigung muss **schriftlich** erfolgen.', 4],
+  ['qa', 'Nach 14 Monaten erfährt der Betrieb von Diebstahl durch den Azubi. Darf der Betrieb kündigen?', 'Ja, **außerordentlich (fristlos)** aus **wichtigem Grund** (§ 22 Abs. 2 BBiG). Die Kündigung muss **schriftlich** erfolgen, die **Gründe** nennen und **innerhalb von zwei Wochen** nach Kenntnis ausgesprochen werden. Eine ordentliche Kündigung mit Frist ist nach der Probezeit ausgeschlossen.', 5],
+  ['qa', 'Nennen Sie fünf Inhalte, die ein Ausbildungsvertrag enthalten muss.', ['- Art, sachliche und zeitliche Gliederung der Ausbildung (Ausbildungsplan)', '- Beginn und Dauer der Ausbildung, Dauer der Probezeit', '- Ausbildungsstätte, tägliche Arbeitszeit', '- Höhe und Fälligkeit der Vergütung, Dauer des Urlaubs', '- Voraussetzungen, unter denen der Vertrag gekündigt werden kann; Hinweis auf Tarifverträge'], 5],
+  ['qa', 'Hat ein Auszubildender nach bestandener Prüfung Anspruch auf Übernahme?', '**Nein.** Das BBiG gibt keinen Übernahmeanspruch. Der Betrieb entscheidet frei, ob er den Azubi als Arbeitnehmer weiterbeschäftigt. Ausnahmen gibt es für Mitglieder der Jugend- und Auszubildendenvertretung (§ 78a BetrVG) und wenn ein **Tarifvertrag** eine Übernahme vorsieht.', 3],
+  ['quiz', [
+    {q: 'Wie lange darf die Probezeit bei einer Berufsausbildung höchstens dauern?', o: ['4 Monate', '6 Monate', '1 Monat', '1 Jahr'], a: 0, e: 'Probezeit: mindestens 1, höchstens 4 Monate.'},
+    {q: 'Welche Form muss die Kündigung des Ausbildungsverhältnisses haben?', o: ['Schriftlich', 'Mündlich', 'Per Telefon', 'Formfrei'], a: 0, e: 'Schriftform ist vorgeschrieben (nach der Probezeit zusätzlich mit Angabe der Gründe).'},
+    {q: 'Mit welcher Frist kann ein Azubi nach der Probezeit kündigen, wenn er den Beruf wechseln möchte?', o: ['4 Wochen', '3 Monate', 'Gar nicht', '1 Woche'], a: 0, e: '4 Wochen, schriftlich und mit Angabe des Grundes.'},
+    {q: 'Was entsteht, wenn der Azubi nach der Prüfung ohne Vereinbarung weiterarbeitet?', o: ['Ein unbefristetes Arbeitsverhältnis', 'Ein Praktikum', 'Ein befristetes Arbeitsverhältnis für 1 Jahr', 'Nichts'], a: 0, e: '§ 24 BBiG: unbefristetes Arbeitsverhältnis.'},
+    {q: 'Bei welcher Stelle wird der Ausbildungsvertrag eingetragen?', o: ['Bei der IHK (zuständigen Stelle)', 'Beim Finanzamt', 'Bei der Krankenkasse', 'Beim Gericht'], a: 0, e: 'Die IHK führt das Verzeichnis der Berufsausbildungsverhältnisse.'},
+  ]],
+]);

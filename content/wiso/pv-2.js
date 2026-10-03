@@ -1,0 +1,26 @@
+AP2.add('wiso-pv', [
+  ['h', 'Beitragssätze (Stand 2026, jährlich prüfen)'],
+  ['table', ['', 'Satz', 'Aufteilung'], [
+    ['Allgemeiner Beitragssatz', '**3,6 %**', 'je **1,8 %** Arbeitgeber und Arbeitnehmer'],
+    ['**Kinderlose** (ab 23 Jahren)', '+ **0,6 %** Zuschlag', 'zahlt der **Arbeitnehmer allein**: AN **2,4 %**, AG 1,8 %'],
+    ['Eltern mit **2 bis 5 Kindern** unter 25', 'Abschlag **0,25 %-Punkte je Kind** ab dem 2. Kind', 'wirkt auf den AN-Anteil (bis zu 1,0 %-Punkte Entlastung)'],
+    ['Beitragsbemessungsgrenze', '5.812,50 Euro/Monat (2026)', 'wie in der Krankenversicherung'],
+  ]],
+  ['ex', ['**Beispiel:** Eine kinderlose Arbeitnehmerin (30 Jahre) verdient **3.000 Euro** brutto. **AN-Anteil PV:** 3.000 mal 2,4 % = **72 Euro**. Der Arbeitgeber zahlt 3.000 mal 1,8 % = **54 Euro**. Ein Arbeitnehmer **mit einem Kind**: AN 1,8 % = **54 Euro**.']],
+  ['h', 'Pflegende Angehörige: Absicherung und Auszeiten'],
+  ['list', ['**Rentenversicherung:** Pflegepersonen (mindestens 10 Stunden Pflege an 2 Tagen, mindestens Pflegegrad 2) erhalten **Rentenbeiträge** von der Pflegeversicherung.', '**Unfallversicherung:** Pflegepersonen sind **beitragsfrei gesetzlich unfallversichert**.', '**Pflegezeit:** Anspruch auf **Freistellung bis zu 6 Monate** (unbezahlt) bei Betrieben mit **mehr als 15 Beschäftigten**.', '**Kurzzeitige Arbeitsverhinderung:** bis zu **10 Arbeitstage** Auszeit in akuter Pflegesituation, **Pflegeunterstützungsgeld**.', '**Familienpflegezeit:** Teilzeit bis **24 Monate** (mindestens 15 Wochenstunden), Betriebe mit mehr als 25 Beschäftigten.']],
+  ['h', 'Pflegerisiko und Ausblick'],
+  ['p', 'Durch den **demografischen Wandel** steigt die Zahl der **Pflegebedürftigen** (heute über 5 Millionen), die Zahl der Beitragszahler sinkt relativ. Zugleich steigen die **Eigenanteile im Heim** stark (oft 2.500 bis 3.500 Euro pro Monat). Deshalb wird über **Reformen** (Beitragserhöhungen, Pflegevollversicherung, Bürgerversicherung) diskutiert. Private **Pflegezusatzversicherungen** (Pflege-Bahr, Tagegeld) ergänzen die gesetzliche Absicherung.'],
+  ['h', 'Aufgaben im Prüfungsstil'],
+  ['qa', 'Nennen Sie die Leistungsarten der Pflegeversicherung bei häuslicher Pflege und erklären Sie den Unterschied zwischen Pflegegeld und Pflegesachleistung.', ['**Pflegegeld:** Die Kasse zahlt einen Geldbetrag an den Pflegebedürftigen, der damit **Angehörige oder Bekannte** unterstützt, die ihn **zu Hause pflegen**.', '**Pflegesachleistung:** Die Kasse bezahlt direkt einen **professionellen ambulanten Pflegedienst**. Der Betrag ist höher als das Pflegegeld. Beides kann als **Kombinationsleistung** gemischt werden.'], 5],
+  ['qa', 'Berechnen Sie den Arbeitnehmeranteil zur Pflegeversicherung bei 2.800 Euro brutto für einen Kinderlosen (Sätze: allgemein 1,8 % je Seite, Zuschlag 0,6 %).', ['AN-Satz = 1,8 % + 0,6 % = **2,4 %**.', '2.800 mal 0,024 = **67,20 Euro** (Arbeitgeber: 2.800 mal 0,018 = 50,40 Euro).'], 4],
+  ['qa', 'Wer stellt fest, ob und wie stark jemand pflegebedürftig ist?', 'Auf Antrag bei der Pflegekasse begutachtet der **Medizinische Dienst (MD)** (bei Privatversicherten **MEDICPROOF**) die **Selbstständigkeit** in sechs Lebensbereichen und stuft den Antragsteller in einen der **Pflegegrade 1 bis 5** ein.', 3],
+  ['qa', 'Warum nennt man die Pflegeversicherung eine "Teilkaskoversicherung"?', 'Sie übernimmt nur **einen festen Teil** der Pflegekosten (Pauschalen je Pflegegrad). Den **Rest** (zum Beispiel Unterkunft, Verpflegung, Investitionen und gestiegene Pflegekosten im Heim) trägt der Pflegebedürftige selbst oder, wenn das Einkommen nicht reicht, die Sozialhilfe ("Hilfe zur Pflege").', 4],
+  ['quiz', [
+    {q: 'Wie viele Pflegegrade gibt es?', o: ['5', '3', '4', '6'], a: 0, e: 'Pflegegrad 1 bis 5 seit 2017.'},
+    {q: 'Wer begutachtet die Pflegebedürftigkeit bei gesetzlich Versicherten?', o: ['Medizinischer Dienst (MD)', 'Hausarzt', 'Finanzamt', 'Arbeitgeber'], a: 0, e: 'Der MD erstellt das Gutachten für die Pflegekasse.'},
+    {q: 'Was bedeutet Pflegegeld?', o: ['Geld für die Pflege zu Hause durch Angehörige', 'Zahlung für das Pflegeheim', 'Eine Steuerrückerstattung', 'Gehalt für Pflegekräfte'], a: 0, e: 'Pflegegeld wird an den Pflegebedürftigen gezahlt.'},
+    {q: 'Wie hoch ist der allgemeine Beitragssatz der Pflegeversicherung?', o: ['3,6 %', '14,6 %', '18,6 %', '2,6 %'], a: 0, e: 'Je 1,8 % Arbeitgeber und Arbeitnehmer; Kinderlose AN zahlen 0,6 % mehr.'},
+    {q: 'Warum ist die Pflegeversicherung eine Teilkaskoversicherung?', o: ['Sie deckt nur einen Teil der Kosten', 'Sie zahlt alles', 'Sie ist freiwillig', 'Sie gilt nur für Autos'], a: 0, e: 'Es bleibt immer ein Eigenanteil.'},
+  ]],
+]);

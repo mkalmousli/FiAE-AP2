@@ -1,0 +1,15 @@
+AP2.add('ps-phasen', [
+  ['h', 'Aufgaben im Prüfungsstil'],
+  ['qa', 'Nennen Sie vier Merkmale eines Projekts und grenzen Sie es vom Tagesgeschäft ab.', ['- Einmaligkeit: Das Vorhaben ist neu und läuft nur einmal, das Tagesgeschäft wiederholt sich.', '- Zeitliche Begrenzung: Ein Projekt hat Start und Ende, das Tagesgeschäft ist dauerhaft.', '- Klare Zielvorgabe: Es gibt ein definiertes Ergebnis.', '- Begrenzte Ressourcen und eigene Projektorganisation (Team, Budget).'], 4],
+  ['qa', 'Das Magische Dreieck besteht aus drei Größen. Nennen Sie diese und erklären Sie an einem Beispiel, wie sie sich beeinflussen.', ['Zeit, Kosten und Qualität (Umfang).', 'Beispiel: Der Kunde möchte den Fertigstellungstermin um zwei Wochen vorziehen. Dann sind mehr Entwickler nötig (**Kosten steigen**) oder es werden weniger Funktionen geliefert (**Umfang/Qualität sinkt**). Beides gleichzeitig zu vermeiden ist nicht möglich.'], 4],
+  ['qa', 'Ordnen Sie die folgenden Tätigkeiten den Projektphasen zu: a) Abnahmeprotokoll unterschreiben, b) Netzplan erstellen, c) Projektauftrag formulieren, d) Soll-Ist-Vergleich der Kosten.', ['- a) Abschluss', '- b) Planung', '- c) Initiierung', '- d) Durchführung (Projektcontrolling)'], 4],
+  ['qa', 'Was ist ein Meilenstein und wozu dient er?', 'Ein Meilenstein ist ein wichtiger Zeitpunkt ohne Dauer, an dem ein bestimmtes Zwischenergebnis fertig sein muss. Er dient als Kontrollpunkt, an dem der Projektfortschritt geprüft und über das Weitermachen entschieden wird.', 2],
+  ['h', 'Selbsttest'],
+  ['quiz', [
+    {q: 'Welche Phase steht am Anfang eines Projekts und endet mit dem Projektauftrag?', o: ['Initiierung', 'Planung', 'Durchführung', 'Abschluss'], a: 0, e: 'Die Initiierung klärt Idee und Ziel und endet mit dem Projektauftrag. Danach folgt die Planung.'},
+    {q: 'Was gehört NICHT zum Magischen Dreieck?', o: ['Zeit', 'Kosten', 'Qualität', 'Mitarbeiterzufriedenheit'], a: 3, e: 'Das Dreieck besteht aus Zeit, Kosten und Qualität. Mitarbeiterzufriedenheit ist wichtig, aber nicht Teil des Modells.'},
+    {q: 'Welche Aussage über Meilensteine stimmt?', o: ['Sie haben keine Dauer und markieren ein Zwischenergebnis.', 'Sie dauern immer genau eine Woche.', 'Sie beschreiben das Gehalt des Projektleiters.', 'Sie werden erst nach dem Abschluss festgelegt.'], a: 0, e: 'Ein Meilenstein ist ein Zeitpunkt (Dauer 0), kein Vorgang. Er wird schon in der Planung festgelegt.'},
+    {q: 'In welcher Phase findet der Soll-Ist-Vergleich statt?', o: ['Durchführung', 'Initiierung', 'Nur beim Abschluss', 'Vor der Projektidee'], a: 0, e: 'Während der Durchführung wird laufend kontrolliert, ob Plan (Soll) und Realität (Ist) übereinstimmen.'},
+    {q: 'Warum ist die Wartung einer bestehenden Datenbank (jede Woche gleich) meist KEIN Projekt?', o: ['Sie ist wiederkehrend und dauerhaft, also Tagesgeschäft.', 'Weil sie zu teuer ist.', 'Weil sie keinen Auftraggeber hat.', 'Weil Datenbanken nie Projekte sind.'], a: 0, e: 'Projekte sind einmalig und befristet. Wiederkehrende Aufgaben sind Routine.'},
+  ]],
+]);

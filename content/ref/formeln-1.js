@@ -1,0 +1,36 @@
+AP2.page('ref-formeln', {
+  b: 'ref', g: 'Referenz', t: 'Formelsammlung',
+  d: 'Die wichtigsten **Formeln** für die AP2 auf einen Blick: Netzplan, Wirtschaftlichkeit, Netzwerk, Speicher, Verfügbarkeit, Statistik, Steuern und Entgelt.',
+  m: '**Formel merken, Einheit mitschreiben, Rechenweg zeigen.**',
+  cheat: [
+    ['Projekt', ['**GP = FEZ - FAZ** (ohne Vorgänger-Pause)', '**FEZ = FAZ + Dauer**', '**SAZ = SEZ - Dauer**', '**GP = SAZ - FAZ**, **FP = FAZ(Nachfolger) - FEZ**', '**ROI = Gewinn / Investition mal 100**', '**Amortisation = Investition / Rückfluss pro Jahr**']],
+    ['Netzwerk', ['**Hosts = 2^h - 2**', '**Subnetze = 2^n**', '**Datenmenge / Datenrate = Zeit**', '**Bit / Byte: 1 Byte = 8 Bit**']],
+    ['Speicher', ['RAID 0: n mal C; RAID 1: C; **RAID 5: (n-1) mal C**; **RAID 6: (n-2) mal C**; RAID 10: n/2 mal C', '**Verfügbarkeit = MTBF / (MTBF + MTTR)**']],
+    ['Wirtschaft', ['**Brutto = Netto mal 1,19**', '**Zahllast = USt - Vorsteuer**', '**BIP = C + I + G + Ex - Im**', '**Inflation = (neu - alt) / alt mal 100**']],
+  ],
+  blocks: [
+    ['table', ['Bereich', 'Formel', 'Beispiel'], [
+      ['Netzplan', 'FEZ = FAZ + Dauer', 'FAZ 5, Dauer 4: FEZ 9'],
+      ['Netzplan', 'GP = SAZ - FAZ', 'SAZ 8, FAZ 5: GP 3'],
+      ['ROI', '(Gewinn / Investition) mal 100', '20.000 / 100.000 = 20 %'],
+      ['Amortisation', 'Investition / Rückfluss', '60.000 / 20.000 = 3 Jahre'],
+      ['Hosts', '2^h - 2', '/26: 2^6 - 2 = 62'],
+      ['Subnetze', '2^n', '2 geliehene Bits: 4'],
+      ['Übertragung', 'Daten / Rate', '1 GB (8.000 Mbit) bei 100 Mbit/s = 80 s'],
+      ['RAID 5', '(n-1) mal C', '4 mal 2 TB: 6 TB'],
+      ['Verfügbarkeit', 'MTBF / (MTBF + MTTR)', '999 / 1000 = 99,9 %'],
+      ['Ausfallzeit', '(1 - V) mal 8.760 h', '99,9 %: 8,76 h/Jahr'],
+      ['Umsatzsteuer', 'Netto mal 1,19', '200 mal 1,19 = 238'],
+      ['Nettopreis', 'Brutto / 1,19', '119 / 1,19 = 100'],
+      ['Inflation', '(neu - alt) / alt', '(108 - 105) / 105 = 2,9 %'],
+      ['SV-Beitrag', 'Brutto mal Satz', '3.000 mal 9,3 % = 279'],
+      ['Urlaub', 'Tage mal 24 / 6', '5 Tage: 20 Tage (24 Werktage)'],
+      ['BIP', 'C + I + G + (Ex - Im)', '2.000 + 600 + 700 + 200 = 3.500'],
+    ]],
+    ['table', ['Einheit', 'Wert'], [['1 Byte', '8 Bit'], ['1 KiB', '1.024 Byte'], ['1 KB (SI)', '1.000 Byte'], ['1 Gbit/s', '125 MB/s'], ['1 Jahr', '8.760 Stunden']]],
+    ['quiz', [
+      {q: 'Wie viele Hosts hat ein /24-Netz?', o: ['254', '256', '255', '252'], a: 0, e: '2^8 - 2.'},
+      {q: 'Wie berechnet man den Nettopreis aus Brutto (19 %)?', o: ['Brutto / 1,19', 'Brutto mal 0,81', 'Brutto - 19', 'Brutto mal 1,19'], a: 0, e: 'Brutto enthält 119 % des Nettos.'},
+    ]],
+  ],
+});

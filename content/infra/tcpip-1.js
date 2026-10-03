@@ -1,0 +1,46 @@
+AP2.page('infra-tcpip', {
+  b: 'infra', g: 'Netzwerke', t: 'TCP/IP-Modell',
+  d: 'Das **TCP/IP-Modell** (Internet-Modell) ist die praktische Grundlage des Internets und hat **4 Schichten**: **Netzzugang**, **Internet**, **Transport** und **Anwendung**. Es fasst die OSI-Schichten 1 und 2 sowie 5 bis 7 zusammen.',
+  m: '**4 Schichten von unten:** **N**etzzugang, **I**nternet, **T**ransport, **A**nwendung = "**N**ur **I**mmer **T**ippen **A**ll-day". OSI hat 7, TCP/IP hat 4: Schicht 1+2 werden eins, Schicht 5+6+7 werden eins.',
+  cheat: [
+    ['4 Schichten', ['**Anwendung:** HTTP, FTP, SMTP, DNS, DHCP', '**Transport:** TCP, UDP', '**Internet:** IP, ICMP, ARP*', '**Netzzugang:** Ethernet, WLAN']],
+    ['Zuordnung zu OSI', ['Anwendung = OSI **5, 6, 7**', 'Transport = OSI **4**', 'Internet = OSI **3**', 'Netzzugang = OSI **1, 2**']],
+    ['Wichtige Protokolle', ['**IP:** Adressierung und Routing', '**TCP:** zuverlässig, verbindungsorientiert', '**UDP:** schnell, verbindungslos', '**ICMP:** Fehler/Diagnose (ping)']],
+    ['Unterschied zu OSI', ['4 statt 7 Schichten', 'Entstand aus der Praxis (ARPANET)', 'OSI ist Referenz, TCP/IP wird eingesetzt']],
+  ],
+  blocks: [
+    ['h', 'Vom OSI-Modell zum TCP/IP-Modell'],
+    ['p', 'Das OSI-Modell ist ein theoretisches Referenzmodell. Das **Internet funktioniert** aber nach dem **TCP/IP-Modell**, das aus der Praxis entstand (Vorläufer: ARPANET). Es ist einfacher, weil es weniger Schichten hat. Die Namen "TCP" und "IP" stehen für die beiden wichtigsten Protokolle.'],
+    ['diagram', {w: 760, h: 380, keep: 620, cap: 'Vergleich: Links OSI mit 7 Schichten, rechts TCP/IP mit 4 Schichten', nodes: [
+      {id: 'o7', k: 'box', x: 130, y: 40, w: 220, h: 40, t: '7 Anwendung', s: 'soft'}, {id: 'o6', k: 'box', x: 130, y: 82, w: 220, h: 40, t: '6 Darstellung', s: 'soft'}, {id: 'o5', k: 'box', x: 130, y: 124, w: 220, h: 40, t: '5 Sitzung', s: 'soft'},
+      {id: 'o4', k: 'box', x: 130, y: 190, w: 220, h: 56, t: '4 Transport', s: 'soft'}, {id: 'o3', k: 'box', x: 130, y: 250, w: 220, h: 56, t: '3 Vermittlung', s: 'soft'}, {id: 'o2', k: 'box', x: 130, y: 312, w: 220, h: 40, t: '2 Sicherung', s: 'soft'}, {id: 'o1', k: 'box', x: 130, y: 354, w: 220, h: 40, t: '1 Bitübertragung', s: 'soft'},
+      {id: 't4', k: 'box', x: 480, y: 82, w: 250, h: 124, t: ['Anwendung', 'HTTP, FTP, SMTP, DNS, DHCP'], s: 'accent', b: true}, {id: 't3', k: 'box', x: 480, y: 190, w: 250, h: 56, t: ['Transport', 'TCP, UDP'], s: 'accent', b: true},
+      {id: 't2', k: 'box', x: 480, y: 250, w: 250, h: 56, t: ['Internet', 'IP, ICMP'], s: 'accent', b: true}, {id: 't1', k: 'box', x: 480, y: 333, w: 250, h: 82, t: ['Netzzugang', 'Ethernet, WLAN'], s: 'accent', b: true},
+    ], edges: []}],
+    ['table', ['TCP/IP-Schicht', 'Entspricht OSI', 'Aufgabe', 'Protokolle'], [
+      ['**Anwendung**', '5, 6, 7', 'Dienste für Programme, Datenformate', 'HTTP, HTTPS, FTP, SMTP, IMAP, DNS, DHCP, SSH'],
+      ['**Transport**', '4', 'Datentransport zwischen Anwendungen, Ports', 'TCP, UDP'],
+      ['**Internet**', '3', 'Adressierung und Weiterleitung (Routing) über Netze', 'IPv4, IPv6, ICMP, IPsec'],
+      ['**Netzzugang** (Netzwerkzugriff)', '1, 2', 'Übertragung im lokalen Netz, MAC-Adressen', 'Ethernet, WLAN, PPP, ARP*'],
+    ]],
+    ['note', '*ARP (Address Resolution Protocol) übersetzt IP-Adressen in MAC-Adressen und liegt zwischen den Schichten 2 und 3. Je nach Lehrbuch wird es zum Netzzugang oder zur Internet-Schicht gezählt.'],
+    ['h', 'Die wichtigsten Protokolle'],
+    ['kv', [
+      ['IP (Internet Protocol)', 'Adressiert Pakete und leitet sie durch Netze. **Verbindungslos** und **unzuverlässig** (keine Garantie, dass Pakete ankommen). Das ist Aufgabe von TCP.'],
+      ['TCP (Transmission Control Protocol)', '**Verbindungsorientiert** und **zuverlässig**: Verbindungsaufbau (Handshake), Quittungen, Wiederholung bei Verlust, richtige Reihenfolge, Flusskontrolle.'],
+      ['UDP (User Datagram Protocol)', '**Verbindungslos**, **ohne Garantie**, aber **schnell** und mit wenig Aufwand. Für Sprache, Video, DNS, Spiele.'],
+      ['ICMP', 'Fehler- und Diagnosemeldungen (zum Beispiel `ping`, `traceroute`, "Ziel nicht erreichbar").'],
+    ]],
+    ['h', 'OSI oder TCP/IP: wann welches Modell?'],
+    ['procon', 'OSI-Modell und TCP/IP-Modell', ['**OSI:** feine Gliederung, gut zum Lernen und zur Fehlersuche', '**OSI:** herstellerunabhängiges Referenzmodell', '**TCP/IP:** einfach, praxisnah, **tatsächlicher Standard im Internet**'], ['**OSI:** in der Praxis nie vollständig umgesetzt', '**OSI:** Schicht 5 und 6 sind in der Praxis kaum getrennt', '**TCP/IP:** gröbere Aufteilung, Darstellung/Sitzung nicht eigenständig']],
+    ['h', 'Aufgaben im Prüfungsstil'],
+    ['qa', 'Nennen Sie die vier Schichten des TCP/IP-Modells und ordnen Sie je zwei Protokolle zu.', ['- **Anwendung:** HTTP, DNS', '- **Transport:** TCP, UDP', '- **Internet:** IP, ICMP', '- **Netzzugang:** Ethernet, WLAN'], 4],
+    ['qa', 'Worin unterscheiden sich TCP und UDP? Nennen Sie je ein Anwendungsbeispiel.', ['**TCP:** verbindungsorientiert, zuverlässig (Quittung, Wiederholung, Reihenfolge), langsamer. Beispiel: Webseiten (HTTP), E-Mail, Dateitransfer.', '**UDP:** verbindungslos, ohne Zustellgarantie, schnell, wenig Overhead. Beispiel: Sprachtelefonie (VoIP), Videostreaming, DNS-Abfragen.'], 4],
+    ['quiz', [
+      {q: 'Wie viele Schichten hat das TCP/IP-Modell?', o: ['4', '7', '5', '3'], a: 0, e: 'Netzzugang, Internet, Transport, Anwendung (in manchen Büchern 5 mit getrennter Bitübertragung).'},
+      {q: 'Welches Protokoll arbeitet verbindungslos und ohne Garantie?', o: ['UDP', 'TCP', 'HTTP', 'SMTP'], a: 0, e: 'UDP ist verbindungslos und hat keine Zustellgarantie.'},
+      {q: 'Welchen OSI-Schichten entspricht die TCP/IP-Anwendungsschicht?', o: ['5, 6 und 7', 'Nur 7', '3 und 4', '1 und 2'], a: 0, e: 'Sitzung, Darstellung und Anwendung werden zur Anwendungsschicht zusammengefasst.'},
+      {q: 'Wofür wird ICMP genutzt?', o: ['Fehlermeldungen und Diagnose (ping)', 'Webseiten laden', 'E-Mails senden', 'Dateien verschlüsseln'], a: 0, e: 'ICMP meldet Fehler und wird von ping und traceroute genutzt.'},
+    ]],
+  ],
+});
