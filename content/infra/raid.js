@@ -15,6 +15,8 @@
       ]},
       {typ: 'text', inhalt: 'Nutzkapazitaet = (Anzahl Platten - redundante) * Platten-Groesse'},
       {typ: 'text', inhalt: 'RAID ersetzt kein Backup! Ausfallschutz ja, Datenverlust/Verschluesselung nein.'},
+      {typ: 'heading', text: 'Interaktiver Rechner'},
+      {typ: 'tool', toolId: 'raid-calc'},
     ]
   };
   AP2.store.register('infra-raid', page);

@@ -12,9 +12,12 @@
       });
       return ul;
     } else if (ab.typ === 'tool') {
-      if (ab.toolId === 'subnet-calc' && AP2.mkSubnetCalc) {
-        return AP2.mkCard({kids: [AP2.mkSubnetCalc()]});
-      }
+      const toolMap = {
+        'subnet-calc': AP2.mkSubnetCalc,
+        'raid-calc': AP2.mkRaidCalc,
+      };
+      const toolFn = toolMap[ab.toolId];
+      if (toolFn) return AP2.mkCard({kids: [toolFn()]});
       return AP2.h('div');
     }
     return AP2.h('div');
