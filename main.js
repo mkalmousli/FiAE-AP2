@@ -10,10 +10,17 @@ const scripts = [
   'viz/svgKit.js', 'viz/graph.js', 'viz/uml.js', 'viz/er.js', 'viz/chart.js',
   'viz/layers.js', 'tools/manifest-tools.js',
   'tools/subnet-calc.js', 'tools/subnet-ui.js',
+  // Content
   'content/pages/home.js', 
   'content/infra/osi-modell.js', 'content/infra/tcp-ip.js',
   'content/infra/subnetting-grundlagen.js', 'content/infra/raid.js',
   'content/infra/security-basics.js',
+  'content/eua/grundlagen.js', 'content/eua/sortieralgorithmen.js',
+  'content/eua/oop.js', 'content/eua/sql-basics.js',
+  'content/ps/projektmanagement.js', 'content/ps/uml-klassen.js',
+  'content/ps/er-modell.js', 'content/ps/normalisierung.js',
+  'content/wiso/arbeitsrecht-basics.js', 'content/wiso/wirtschaft-grundlagen.js',
+  'content/deutsch/kommunikation.js',
   'content/manifest.js', 'app.js'
 ];
 let loaded = 0;
