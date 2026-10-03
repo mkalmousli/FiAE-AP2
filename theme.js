@@ -1,17 +1,35 @@
-// Theme: colors and dark/light mode
+// Enhanced theme: sophisticated color system
 (function() {
   const colors = {
     light: {
-      bg: '#fff', text: '#000', border: '#ddd',
-      bg2: '#f5f5f5', text2: '#555', accent: '#1e88e5',
-      accentLight: '#e3f2fd', success: '#2e7d32', error: '#c62828',
-      warnBg: '#fff3e0', warnText: '#e65100',
+      // Base
+      bg: '#ffffff', text: '#1a1a1a', border: '#e5e7eb',
+      bg2: '#f9fafb', text2: '#6b7280', text3: '#9ca3af',
+      // Accent - deep blue
+      accent: '#0066cc', accentLight: '#e0f0ff', accentDark: '#0052a3',
+      // Status
+      success: '#10b981', successLight: '#ecfdf5',
+      warning: '#f59e0b', warningLight: '#fffbeb',
+      error: '#ef4444', errorLight: '#fef2f2',
+      info: '#3b82f6', infoLight: '#eff6ff',
+      // Semantic
+      codeOverlay: '#f3f4f6', codeBorder: '#d1d5db',
+      link: '#0066cc', linkVisited: '#7c3aed',
     },
     dark: {
-      bg: '#1a1a1a', text: '#e0e0e0', border: '#444',
-      bg2: '#2a2a2a', text2: '#aaa', accent: '#64b5f6',
-      accentLight: '#1a237e', success: '#66bb6a', error: '#ef5350',
-      warnBg: '#3e2723', warnText: '#ffb74d',
+      // Base
+      bg: '#0f172a', text: '#f1f5f9', border: '#334155',
+      bg2: '#1e293b', text2: '#cbd5e1', text3: '#94a3b8',
+      // Accent
+      accent: '#60a5fa', accentLight: '#1e3a8a', accentDark: '#3b82f6',
+      // Status
+      success: '#10b981', successLight: '#064e3b',
+      warning: '#fbbf24', warningLight: '#78350f',
+      error: '#f87171', errorLight: '#7f1d1d',
+      info: '#60a5fa', infoLight: '#0c2d48',
+      // Semantic
+      codeOverlay: '#1e293b', codeBorder: '#475569',
+      link: '#60a5fa', linkVisited: '#c084fc',
     }
   };
   const themed = [];

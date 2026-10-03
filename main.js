@@ -3,10 +3,13 @@ window.AP2 = {};
 const scripts = [
   'state.js', 'theme.js', 'styles.js', 'dom.js', 'layout.js',
   'router.js', 'store.js', 'search.js',
+  // Enhanced components
   'components/button.js', 'components/card.js', 'components/defbox.js',
-  'components/table.js', 'components/tabs.js', 'components/pagerenderer.js',
-  'components/quiz.js', 'components/flashcard.js', 
-  'components/sidebar.js', 'components/topbar.js',
+  'components/table.js', 'components/tabs.js', 'components/code-block.js',
+  'components/figure.js', 'components/enhanced-card.js',
+  'components/quiz-interactive.js', 'components/pro-con-table.js',
+  'components/pagerenderer.js',
+  'components/flashcard.js', 'components/sidebar.js', 'components/topbar.js',
   'viz/svgKit.js', 'viz/graph.js', 'viz/uml.js', 'viz/er.js', 'viz/chart.js',
   'viz/layers.js', 'tools/manifest-tools.js',
   'tools/subnet-calc.js', 'tools/subnet-ui.js',
@@ -22,6 +25,14 @@ const scripts = [
   'content/ps/er-modell.js', 'content/ps/normalisierung.js', 'content/ps/testing-qa.js',
   'content/wiso/arbeitsrecht-basics.js', 'content/wiso/wirtschaft-grundlagen.js',
   'content/deutsch/kommunikation.js',
+  // Crash courses
+  'content/crashcourses/sql.js',
+  'content/crashcourses/python.js',
+  'content/crashcourses/html-css.js',
+  'content/crashcourses/csharp.js',
+  'content/crashcourses/java.js',
+  // Quiz data
+  'content/quizzes.js',
   'content/manifest.js', 'app.js'
 ];
 let loaded = 0;
