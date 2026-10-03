@@ -14,7 +14,7 @@ const scripts = [
   'viz/layers.js', 'tools/manifest-tools.js',
   'tools/subnet-calc.js', 'tools/subnet-ui.js',
   'tools/raid-calc.js', 'tools/raid-ui.js',
-  // Content
+  // Content - Exam topics
   'content/pages/home.js', 'content/pages/glossar.js',
   'content/infra/osi-modell.js', 'content/infra/tcp-ip.js',
   'content/infra/subnetting-grundlagen.js', 'content/infra/raid.js',
@@ -31,8 +31,11 @@ const scripts = [
   'content/crashcourses/html-css.js',
   'content/crashcourses/csharp.js',
   'content/crashcourses/java.js',
-  // Quiz data
+  // Quiz registry and data
   'content/quizzes.js',
+  'content/quizzes-infra.js',
+  'content/quizzes-lang.js',
+  'content/quizzes-exam.js',
   'content/manifest.js', 'app.js'
 ];
 let loaded = 0;
