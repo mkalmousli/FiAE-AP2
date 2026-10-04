@@ -1,1 +1,1 @@
-AP2.files.push('viz/paint.js', 'viz/geom.js', 'viz/marks.js', 'viz/shapes.js', 'viz/cls.js', 'viz/path.js', 'viz/diagram.js', 'viz/lib.js', 'viz/gantt.js', 'viz/venn.js', 'viz/nsd.js', 'viz/seq.js', 'viz/chart.js');
+AP2.files.push('viz/paint.js', 'viz/geom.js', 'viz/marks.js', 'viz/shapes.js', 'viz/cls.js', 'viz/path.js', 'viz/diagram.js', 'viz/lib.js', 'viz/gantt.js', 'viz/venn.js', 'viz/nsd.js', 'viz/seq.js', 'viz/chart.js', 'viz/gear.js');

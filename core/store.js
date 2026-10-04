@@ -16,6 +16,10 @@
     const target = pages.get(id);
     if (target) target.blocks.push(...blocks); else console.error('Seite fehlt: ' + id);
   };
+  const addTop = (id, blocks) => {
+    const target = pages.get(id);
+    if (target) target.blocks.unshift(...blocks); else console.error('Seite fehlt: ' + id);
+  };
   const get = (id) => pages.get(id);
   const byBlock = (blockId) => [...pages.values()].filter((p) => p.b === blockId);
   const all = () => [].concat(...BLOCKS.map((blk) => byBlock(blk.id)));
@@ -48,4 +52,5 @@
   AP2.store = {BLOCKS, page, add, get, byBlock, all, neighbors, search};
   AP2.page = page;
   AP2.add = add;
+  AP2.addTop = addTop;
 })();

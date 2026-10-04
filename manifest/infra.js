@@ -3,3 +3,4 @@ AP2.pages('infra', {
   storage: 2, raid: 2, verfuegbarkeit: 2, backup: 2,
   cia: 2, firewall: 2, krypto: 2, pki: 2, tls: 2, isms: 2, angriffe: 2,
 });
+AP2.files.push('content/infra/bilder.js');
