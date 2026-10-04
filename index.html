@@ -1,8 +1,35 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="main.js"></script>
+    <title>AP2 FiAE Lernportal</title>
+    <style>
+        #ap2-loader{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px;
+            background:radial-gradient(circle at 50% 35%,#1e2a4a,#0b1020 70%);color:#e8ecf8;font:15px/1.4 system-ui,sans-serif;transition:opacity .45s,transform .45s}
+        #ap2-loader.done{opacity:0;transform:scale(1.04);pointer-events:none}
+        #ap2-loader .logo{width:72px;height:72px;border-radius:20px;display:grid;place-items:center;font-weight:800;font-size:26px;letter-spacing:-1px;
+            background:linear-gradient(135deg,#4f8cff,#9b6bff);box-shadow:0 0 40px #4f8cff66;animation:ap2pulse 1.8s ease-in-out infinite}
+        #ap2-loader h1{margin:0;font-size:20px;font-weight:600}
+        #ap2-loader .bar{width:min(340px,80vw);height:8px;border-radius:99px;background:#ffffff1c;overflow:hidden}
+        #ap2-loader .fill{height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#4f8cff,#9b6bff,#4f8cff);background-size:200% 100%;
+            animation:ap2slide 1.2s linear infinite;transition:width .25s ease-out;box-shadow:0 0 12px #6f8cff}
+        #ap2-loader .row{width:min(340px,80vw);display:flex;justify-content:space-between;font-variant-numeric:tabular-nums;font-size:13px;color:#aab4d4}
+        #ap2-loader .pct{font-size:28px;font-weight:700;color:#fff}
+        #ap2-loader .file{max-width:80vw;font:12px ui-monospace,monospace;color:#6f7aa0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:16px}
+        @keyframes ap2slide{to{background-position:-200% 0}}
+        @keyframes ap2pulse{50%{transform:scale(1.07);box-shadow:0 0 60px #9b6bffaa}}
+    </style>
 </head>
+<body>
+    <div id="ap2-loader">
+        <div class="logo">AP2</div>
+        <h1>AP2 FiAE Lernportal</h1>
+        <div class="pct" id="ap2-pct">0%</div>
+        <div class="bar"><div class="fill" id="ap2-fill"></div></div>
+        <div class="row"><span id="ap2-count">Starte…</span><span id="ap2-eta">Restzeit: berechne…</span></div>
+        <div class="file" id="ap2-file"></div>
+    </div>
+    <script src="main.js"></script>
+</body>
 </html>
