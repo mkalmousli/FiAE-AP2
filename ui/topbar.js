@@ -28,11 +28,24 @@
     sync();
     return el;
   };
+  // Externe Links (Quellcode, Portfolio): echte <a>-Elemente; Text nur auf breiten Bildschirmen.
+  const linkButton = (icon, label, text, href) => {
+    const txt = h('span', {text, style: {fontSize: S.f.sm, fontWeight: S.fw.med, whiteSpace: 'nowrap'}});
+    const el = h('a', {attrs: {href, target: '_blank', rel: 'noopener noreferrer', title: label}, style: {height: '40px', minWidth: '40px',
+      borderRadius: S.r.md, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: S.sp[2], flexShrink: 0,
+      textDecoration: 'none', boxSizing: 'border-box'}}, [icon, txt]);
+    AP2.layout.bind((L) => { txt.style.display = L.mobile ? 'none' : 'inline'; el.style.padding = L.mobile ? '0' : '0 12px'; });
+    AP2.press(el, {fn: (ev) => { if (ev.type === 'keydown') window.open(href, '_blank', 'noopener'); }, label, role: 'link',
+      hover: (c) => ({backgroundColor: c.hover}), base: (c) => ({color: c.text2, backgroundColor: 'transparent'})});
+    return el;
+  };
   AP2.mkTopbar = () => {
     const menu = iconButton(AP2.icon('menu', 22), 'Menü öffnen', () => AP2.state.set('drawer', !AP2.state.get('drawer')));
     const search = AP2.mkSearch();
     const bar = h('div', {style: {position: 'fixed', top: 0, left: 0, right: 0, display: 'flex', alignItems: 'center', gap: S.sp[3],
-      borderBottom: '1px solid', zIndex: S.z.topbar, boxSizing: 'border-box'}}, [menu, brand(), h('div', {style: {flex: '1 1 0'}}), search.el, themeButton()]);
+      borderBottom: '1px solid', zIndex: S.z.topbar, boxSizing: 'border-box'}}, [menu, brand(), h('div', {style: {flex: '1 1 0'}}), search.el,
+      linkButton(AP2.icon('code', 20), 'Quellcode auf GitHub', 'Quellcode', 'https://github.com/mkalmousli/FiAE-AP2'),
+      linkButton(AP2.icon('user', 20), 'Portfolio: al-mo.de', 'Mohamad Almousli', 'https://al-mo.de'), themeButton()]);
     AP2.theme.bind(bar, (n, c) => { n.style.backgroundColor = c.surface; n.style.borderBottomColor = c.border; });
     return {el: bar, menu, search: search.el};
   };
