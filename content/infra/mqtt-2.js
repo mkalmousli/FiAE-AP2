@@ -1,0 +1,47 @@
+AP2.add('infra-mqtt', [
+  ['h', 'Quality of Service (QoS)'],
+  ['p', 'MQTT bietet drei **Zustellgarantien**, die pro Nachricht gewählt werden. Je höher die Stufe, desto zuverlässiger, aber auch aufwendiger (mehr Nachrichten, mehr Latenz).'],
+  ['table', ['QoS', 'Garantie', 'Ablauf', 'Typischer Einsatz'], [
+    ['**0**', 'Höchstens einmal (kann verloren gehen)', 'Nur PUBLISH, keine Bestätigung', 'Messwerte, die sich oft wiederholen (Temperatur alle Sekunde)'],
+    ['**1**', 'Mindestens einmal (Duplikate möglich)', 'PUBLISH, PUBACK', 'Meldungen, die ankommen müssen und doppelt unkritisch sind'],
+    ['**2**', 'Genau einmal', 'PUBLISH, PUBREC, PUBREL, PUBCOMP', 'Abrechnung, Steuerbefehle, bei denen Duplikate schaden'],
+  ]],
+  ['seq', {w: 760, actors: ['Publisher (Sensor)', 'Broker', 'Subscriber (App)'], cap: 'Ablauf mit QoS 1: Jede Teilstrecke wird einzeln bestätigt.', steps: [
+    [0, 1, 'CONNECT', 's'], [1, 0, 'CONNACK', 'r'], [2, 1, 'SUBSCRIBE haus/temp', 's'], [1, 2, 'SUBACK', 'r'], ['sep', 'Messwert wird gesendet'], [0, 1, 'PUBLISH haus/temp = 21,5', 's'], [1, 0, 'PUBACK', 'r'], [1, 2, 'PUBLISH haus/temp = 21,5', 's'], [2, 1, 'PUBACK', 'r'],
+  ]}],
+  ['h', 'Weitere Funktionen'],
+  ['kv', [
+    ['Retained Message', 'Der Broker **speichert die letzte Nachricht** eines Topics. Neue Abonnenten erhalten sofort den aktuellen Wert, ohne auf die nächste Meldung zu warten.'],
+    ['Last Will (LWT)', 'Testament: Beim Verbinden hinterlegt ein Client eine Nachricht, die der Broker **automatisch veröffentlicht**, wenn die Verbindung unerwartet abbricht (z. B. `sensor1/status = offline`).'],
+    ['Keep Alive', 'Der Client sendet regelmäßig **PINGREQ**, damit der Broker erkennt, ob er noch erreichbar ist.'],
+    ['Clean Session / Persistent Session', 'Bei einer persistenten Sitzung speichert der Broker Abos und verpasste QoS-1/2-Nachrichten, bis der Client wieder online ist.'],
+  ]],
+  ['h', 'Sicherheit'],
+  ['p', 'MQTT ist ohne Zusatzmaßnahmen **nicht sicher**: Port 1883 überträgt Klartext, und offene Broker ohne Anmeldung sind im Internet leicht zu finden. Üblich sind:'],
+  ['kv', [
+    ['Transportverschlüsselung', '**TLS** auf Port **8883**, damit Nachrichten nicht mitgelesen oder verändert werden (siehe TLS-Handshake).'],
+    ['Authentifizierung', 'Benutzername und Passwort oder **Client-Zertifikate** (mTLS) pro Gerät.'],
+    ['Autorisierung', '**ACLs** (Access Control Lists) legen fest, wer welche Topics lesen (subscribe) oder schreiben (publish) darf.'],
+    ['Netzwerk', 'Broker nicht ungeschützt ins Internet stellen, Firewall und Segmentierung (DMZ, eigenes IoT-VLAN) nutzen.'],
+  ]],
+  ['h', 'Vergleich'],
+  ['table', ['Merkmal', 'MQTT', 'HTTP (REST)'], [
+    ['Modell', 'Publish/Subscribe über Broker', 'Anfrage-Antwort (Client-Server)'],
+    ['Verbindung', 'Dauerhaft, Server kann jederzeit senden', 'Pro Anfrage, Server antwortet nur auf Anfrage'],
+    ['Overhead', 'Sehr klein (ab 2 Byte Header)', 'Größere Header'],
+    ['Zustellgarantie', 'QoS 0, 1, 2', 'Keine, Wiederholung liegt beim Client'],
+    ['Typischer Einsatz', 'IoT, Sensorik, Telemetrie, Smart Home', 'Webanwendungen, APIs'],
+    ['Ports', '1883, 8883 (TLS)', '80, 443 (TLS)'],
+  ]],
+  ['h', 'Aufgaben im Prüfungsstil'],
+  ['qa', 'Ein Temperatursensor soll seine Messwerte an mehrere Auswertungssysteme senden. Warum bietet sich MQTT an und welche Rolle hat der Broker?', ['- Der Sensor sendet **eine** Nachricht an den **Broker** (Publish), unabhängig davon, wie viele Empfänger es gibt (Entkopplung).', '- Auswertungssysteme **abonnieren** das Topic und erhalten die Werte vom Broker.', '- MQTT ist **ressourcenschonend** (kleiner Header, dauerhafte TCP-Verbindung) und damit für Sensoren geeignet.', '- Der Broker **verwaltet Abonnements** und **verteilt** die Nachrichten.'], 4],
+  ['qa', 'Erklären Sie die Unterschiede zwischen QoS 0, 1 und 2.', ['- **QoS 0:** höchstens einmal, keine Bestätigung, schnell, Verlust möglich.', '- **QoS 1:** mindestens einmal, mit Bestätigung (PUBACK), Duplikate möglich.', '- **QoS 2:** genau einmal, vierstufiger Handshake, höchster Aufwand.'], 3],
+  ['qa', 'Ein MQTT-Broker soll im Unternehmensnetz betrieben werden. Nennen Sie drei Maßnahmen zur Absicherung.', ['- **TLS** (Port 8883) zur Verschlüsselung der Übertragung.', '- **Authentifizierung** der Clients (Benutzer/Passwort oder Zertifikate).', '- **ACLs**, die Publish/Subscribe pro Topic einschränken.', '- Optional: Firewall-Regeln, eigenes IoT-VLAN, Broker nicht direkt aus dem Internet erreichbar.'], 4],
+  ['quiz', [
+    {q: 'Welchen Standardport nutzt MQTT ohne Verschlüsselung?', o: ['1883', '8883', '443', '5672'], a: 0, e: 'MQTT: 1883 (Klartext), 8883 (TLS). 5672 ist AMQP.'},
+    {q: 'Welche Komponente verteilt bei MQTT die Nachrichten an die Abonnenten?', o: ['Broker', 'Router', 'Proxy', 'DNS-Server'], a: 0, e: 'Der Broker nimmt Nachrichten von Publishern an und leitet sie anhand des Topics an Subscriber weiter.'},
+    {q: 'Was bedeutet das Topic-Abo `haus/+/temperatur`?', o: ['Alle Temperatur-Topics genau eine Ebene unter haus', 'Alle Topics unterhalb von haus', 'Nur das Topic haus', 'Alle Topics mit dem Wort plus'], a: 0, e: '+ ersetzt genau eine Ebene, # ersetzt beliebig viele weitere Ebenen.'},
+    {q: 'Welches QoS-Level garantiert die Zustellung genau einmal?', o: ['QoS 2', 'QoS 0', 'QoS 1', 'QoS 3'], a: 0, e: 'QoS 0: höchstens einmal, QoS 1: mindestens einmal, QoS 2: genau einmal.'},
+    {q: 'Wofür dient die Funktion Last Will?', o: ['Broker meldet automatisch, wenn ein Client unerwartet die Verbindung verliert', 'Löscht alle Topics', 'Verschlüsselt Nachrichten', 'Speichert die letzte Nachricht für neue Abonnenten'], a: 0, e: 'Der Last Will wird bei unerwartetem Verbindungsabbruch veröffentlicht. Das Speichern des letzten Werts ist die Retained Message.'},
+  ]],
+]);

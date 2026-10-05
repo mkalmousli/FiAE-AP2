@@ -63,6 +63,7 @@ Fokus: Systemnahe Themen, seit Prüfungskatalog 2025 stärker gewichtet (Softwar
   - [ ] Netzwerkkomponenten (Switch, Router, Hub, Firewall)
   - [ ] Übertragungsmedien (Kupfer, Glasfaser, WLAN)
   - [ ] Zugriffskontrolle im Netzwerk (RADIUS, Kerberos)
+  - [ ] MQTT (Publish/Subscribe, Broker, Topics, QoS)
 - [ ] **Storage & Verfügbarkeit**
   - [ ] NAS, SAN
   - [ ] RAID-Level (0–6, Kapazitätsberechnung)
