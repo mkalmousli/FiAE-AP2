@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://al-mo.de/apps/fiae-ap2/sitemap.xml
