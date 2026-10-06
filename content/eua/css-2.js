@@ -129,5 +129,5 @@ header { display: flex; justify-content: flex-end; padding-right: 30px; }`],
     {q: 'Warum stehen Media Queries meist am Ende der CSS-Datei?', o: ['Sonst überschreiben spätere normale Regeln sie', 'Weil der Browser sie sonst ignoriert', 'Aus Performancegründen', 'Weil es die Syntax verlangt'], a: 0, e: 'Bei gleicher Spezifität gewinnt die spätere Regel.'},
     {q: 'Wofür dient das integrity-Attribut beim Einbinden von CDN-Dateien?', o: ['Prüft per Hash, dass die Datei nicht manipuliert wurde', 'Beschleunigt den Download', 'Komprimiert die Datei', 'Legt die Version fest'], a: 0, e: 'Subresource Integrity.'},
   ]],
-  ['see', ['eua-html', 'eua-js', 'course-css']],
+  ['see', ['eua-html', 'eua-js', 'course-css-01']],
 ]);

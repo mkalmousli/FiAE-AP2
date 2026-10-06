@@ -195,6 +195,49 @@ Fokus: Multiple-Choice, 20–30 Fragen. Quellen: [top-pruefung.de Übungsfragen]
 
 ---
 
+## 6. Zusätzliche Themen aus den alten BW-Prüfungen (2022 bis 2026)
+
+Herausgearbeitet aus allen vorliegenden Prüfungen (PS, EuA, Gemeinschaftskunde, Deutsch, AP1). Übersicht je Prüfung: Seite `ref/altpruefungen`.
+
+- [ ] **Webentwicklung (EuA, fast jede Prüfung)**
+  - [ ] HTML-Formulare nach Abbildung (input-Typen, radio/checkbox, select, textarea, label, GET/POST, mailto)
+  - [ ] CSS: Einbindung (inline/intern/extern), Kaskade/Spezifität, Box-Modell, Grid, Flexbox, Media Queries (Breite, Ausrichtung)
+  - [ ] JavaScript: DOM, Events (Button aktivieren), Werte nachladen (fetch, setInterval, meta refresh)
+  - [ ] Barrierefreiheit (WCAG, Labels, alt-Texte), Block- vs. Inline-Elemente, Bootstrap/CDN-Probleme
+  - [ ] JSON, XML (wohlgeformt), CSV; XML -> JSON umwandeln; JSON-Strukturen entwerfen
+  - [ ] REST (HTTP-Methoden, Statuscodes), SOAP, GraphQL, WebSockets; HTTP vs. HTTPS
+- [ ] **IoT und Hardware**
+  - [ ] Sensoren/Aktoren, lokale Steuerung vs. Cloud, MQTT (Publisher, Subscriber, Broker, Topics, QoS, Absicherung)
+  - [ ] Zahlensysteme, Bitoperationen (Flags im Rückgabewert), I²C-Adressen, Auflösung A/D-Wandler
+  - [ ] Serielle Schnittstelle (Baudrate), USB/Bluetooth/WLAN/Ethernet, Ohmsches Gesetz, Leistung
+- [ ] **Prüfungspraxis Programmierung**
+  - [ ] Klassen aus UML implementieren (abstrakt, Vererbung, Listen-Assoziationen, Getter/Setter)
+  - [ ] CSV/JSON einlesen und in Objekte umwandeln, Gruppenwechsel
+  - [ ] Menüsteuerung, Schreibtischtest/Whitebox-Test, Pseudocode-Fehler finden, Prüfziffer, Sexagesimal-Umrechnung
+  - [ ] Entwurfsmuster: Observer (Push/Push-Update/Pull), Singleton (Vor-/Nachteile), Factory
+  - [ ] SQL-Aufgaben der Prüfungen (AUTO_INCREMENT, ALTER ADD/MODIFY, Transaktionen, Anomalien)
+- [ ] **Prozesse, Betrieb, Kaufmännisches**
+  - [ ] EPK/eEPK, Predictive Maintenance
+  - [ ] ITIL (Event, Incident, Service Request), SLA-Inhalte, Syslog-Stufen, Make or Buy, Cloud (IaaS/PaaS/SaaS)
+  - [ ] Angebotsvergleich (Bezugskalkulation, Nutzwertanalyse), Kaufvertrag und Mängelrechte, BAB/Zuschlagskalkulation
+  - [ ] Fixe/variable Kosten, Deckungsbeitrag, Break-even (Tabelle und Diagramm), TCO, Franchise, CMS, Marketing-Mix
+  - [ ] Aufbauorganisation (Organigramm, Einlinien-/Stabliniensystem)
+- [ ] **Netzwerk und Sicherheit (zusätzlich)**
+  - [ ] IP-Konfiguration, DHCP-Vergabearten, NAT, Fehlersuche (Drucker im falschen Subnetz)
+  - [ ] VLAN/802.1Q, Inter-VLAN-Routing, VLSM-Planung, DMZ (ein-/zweistufig), Netzskizze
+  - [ ] WLAN: Frequenzen, Wi-Fi 6, WPA2/WPA3 Personal vs. Enterprise, Gäste-WLAN
+  - [ ] VPN (Site-to-Site, End-to-Site, IPsec)
+  - [ ] USV (Klassen, Dimensionierung, Scheinleistung), Serverausstattung für Hochverfügbarkeit
+  - [ ] BSI-Schutzbedarfsfeststellung, personenbezogene Daten, Ransomware
+- [ ] **Gemeinschaftskunde**
+  - [ ] Wahlrechtsgrundsätze, politische Beteiligung, Wahlalter 16, Wahlpflicht
+  - [ ] Demografischer Wandel, Fachkräftemangel, Gleichberechtigung
+  - [ ] EU-Organe und Gesetzgebung, KI-Verordnung, KI und Mitbestimmung
+  - [ ] Methoden: Schaubild, Karikatur, Stellungnahme (ganze Sätze!)
+- [ ] **Deutsch**: Prüfungstyp I/II, Textverständnis, Redewendungen, das/dass, Schreibaufgaben
+
+---
+
 ## Übungsressourcen
 - [ ] Alte Prüfungen üben (AkA-Prüfungskatalog über IHK-Bildungshaus/Berufsschule anfordern)
 - [ ] [u-form Prüfungskatalog FIAE](https://www.u-form-shop.de/ihk-pruefungen/pruefungskataloge-abschlusspruefung/fachinformatiker-fachinformatikerin-systemintegration-pruefungskatalog-fuer-die-ihk-abschlusspruefung-1)

@@ -107,6 +107,6 @@ Console.Write(sb.ToString());`],
       {q: 'Wie gibt man den Inhalt eines Arrays als Text aus?', o: ['string.Join(", ", arr)', 'arr.ToString()', 'Console.WriteLine(arr)', 'arr.Print()'], a: 0, e: 'ToString liefert den Typnamen.'},
       {q: 'Was macht das @ vor einem String-Literal?', o: ['Backslashes werden nicht als Escape interpretiert', 'Interpolation aktivieren', 'String wird unveränderlich', 'Verschlüsselung'], a: 0, e: 'Verbatim-String.'},
     ]],
-    ['see', ['course-csharp-04', 'course-csharp', 'eua-dateien']],
+    ['see', ['course-csharp-04', 'course-csharp-06', 'eua-dateien']],
   ],
 });

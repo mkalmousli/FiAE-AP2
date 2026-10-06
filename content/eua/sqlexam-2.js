@@ -136,5 +136,5 @@ ORDER BY Monat;`]], 5],
     {q: 'Was bedeutet das A in ACID?', o: ['Atomarität: alles oder nichts', 'Authentizität', 'Aggregation', 'Anomalie'], a: 0, e: 'Atomicity.'},
     {q: 'Welches Muster findet "Skifahren für Anfänger"?', o: ["LIKE '%Skifahren%'", "LIKE 'Skifahren'", "= '%Skifahren%'", "LIKE '_Skifahren'"], a: 0, e: '% = beliebig viele Zeichen.'},
   ]],
-  ['see', ['eua-sqlselect', 'eua-sqljoin', 'eua-sqlgroup', 'eua-sqldml', 'ps-normalisierung', 'course-sql']],
+  ['see', ['eua-sqlselect', 'eua-sqljoin', 'eua-sqlgroup', 'eua-sqldml', 'ps-normalisierung', 'course-sql-01']],
 ]);

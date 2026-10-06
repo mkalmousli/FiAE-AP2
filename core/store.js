@@ -7,7 +7,7 @@
     {id: 'wiso', t: 'Wirtschafts- und Sozialkunde', s: 'Ausbildung, Arbeitsrecht, Mitbestimmung, Sozialversicherung, Wirtschaft'},
     {id: 'de', t: 'Deutsch', s: 'Textformen, Kommunikation, Präsentation, Sprachrichtigkeit'},
     {id: 'exam', t: 'Probeprüfungen', s: 'Realistische Prüfungen mit Zeitlimit, Selbstbewertung und Note'},
-    {id: 'course', t: 'Crashkurse', s: 'SQL, Python, HTML, CSS, C# und Java im Schnelldurchlauf'},
+    {id: 'course', t: 'Programmierkurse', s: 'Python, Java, C#, SQL, HTML und CSS in 56 ausführlichen Kapiteln'},
     {id: 'ref', t: 'Nachschlagen', s: 'Glossar, Formeln, Prüfungsstrategie'},
   ];
   const pages = new Map();

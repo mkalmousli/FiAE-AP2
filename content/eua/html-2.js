@@ -110,5 +110,5 @@ AP2.add('eua-html', [
     {q: 'Was ist ein Inline-Element?', o: ['span', 'div', 'p', 'h2'], a: 0, e: 'span steht in der Zeile, die anderen sind Blockelemente.'},
     {q: 'Wofür steht das Attribut alt bei img?', o: ['Alternativtext, zum Beispiel für Screenreader', 'Höhe des Bildes', 'Bildquelle', 'Ausrichtung'], a: 0, e: 'Wird auch angezeigt, wenn das Bild nicht lädt.'},
   ]],
-  ['see', ['eua-css', 'eua-js', 'eua-webapi', 'course-html']],
+  ['see', ['eua-css', 'eua-js', 'eua-webapi', 'course-html-04']],
 ]);
