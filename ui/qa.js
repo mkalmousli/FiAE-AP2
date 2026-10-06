@@ -9,7 +9,8 @@
     let bullets = [];
     const flush = () => { if (bullets.length) out.push(B.list(bullets)); bullets = []; };
     lines.forEach((txt) => {
-      if (txt.startsWith('- ')) bullets.push(txt.slice(2));
+      // Ein Array ist ein vollständiger Block, zum Beispiel ['code', 'python', '...'].
+      if (Array.isArray(txt)) { flush(); out.push(AP2.renderBlocks([txt])); } else if (txt.startsWith('- ')) bullets.push(txt.slice(2));
       else { flush(); out.push(B.p(txt)); }
     });
     flush();

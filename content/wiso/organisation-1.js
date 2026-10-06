@@ -1,0 +1,42 @@
+AP2.page('wiso-organisation', {
+  b: 'wiso', g: 'Unternehmen und Steuern', t: 'Aufbauorganisation: Organigramm und Leitungssysteme',
+  d: 'Die **Aufbauorganisation** legt fest, wie ein Unternehmen gegliedert ist: welche **Stellen** und **Abteilungen** es gibt, wer **Weisungen** erteilt und wer wem unterstellt ist. Dargestellt wird sie im **Organigramm**. Die wichtigsten **Leitungssysteme** sind das **Einliniensystem** (jeder hat genau einen Vorgesetzten), das **Mehrliniensystem** (mehrere Fachvorgesetzte), das **Stabliniensystem** (Linie plus beratende Stabsstellen ohne Weisungsbefugnis), die **Spartenorganisation** (nach Produkten oder Regionen) und die **Matrixorganisation** (zwei Dimensionen, zum Beispiel Funktion und Produkt). Die **Ablauforganisation** regelt dagegen die zeitliche und räumliche Abfolge der Arbeit (Prozesse).',
+  m: '**Einlinien: ein Chef, klare Wege, aber lange Dienstwege. Mehrlinien: Spezialisten führen, aber Kompetenzkonflikte. Stablinien: Einlinien + Berater (Stab berät, entscheidet nicht). Matrix: zwei Chefs (Funktion und Produkt/Projekt).** **Stelle = kleinste organisatorische Einheit; Instanz = Stelle mit Leitungsbefugnis.**',
+  cheat: [
+    ['Begriffe', ['**Stelle**: Aufgabenbereich einer Person', '**Instanz**: Stelle mit Weisungsbefugnis', '**Abteilung**: mehrere Stellen unter einer Instanz', '**Stabsstelle**: berät ohne Weisungsrecht']],
+    ['Leitungssysteme', ['Einliniensystem', 'Mehrliniensystem', 'Stabliniensystem', 'Sparten-, Matrixorganisation']],
+    ['Organigramm', ['Rechtecke = Stellen/Abteilungen', 'Linien = Weisungswege', 'Stab seitlich an der Linie', 'oben: Geschäftsführung']],
+    ['Abgrenzung', ['Aufbauorganisation: Struktur (wer?)', 'Ablauforganisation: Prozesse (wie, wann?)', 'Projektorganisation: auf Zeit', 'siehe Projektorganisationsformen']],
+  ],
+  blocks: [
+    ['h', 'Organigramm eines kleinen IT-Unternehmens (Stabliniensystem)'],
+    ['diagram', {w: 760, h: 250, keep: 560, cap: 'Stabliniensystem: Die Stabsstellen (Datenschutz, Assistenz) beraten die Geschäftsführung, haben aber keine Weisungsbefugnis gegenüber den Abteilungen.', nodes: [
+      {id: 'gf', k: 'box', x: 380, y: 40, w: 180, h: 44, t: 'Geschäftsführung', s: 'accent'},
+      {id: 'st1', k: 'box', x: 620, y: 40, w: 190, h: 40, t: 'Stab: Datenschutzbeauftragter', s: 'soft'},
+      {id: 'st2', k: 'box', x: 140, y: 40, w: 160, h: 40, t: 'Stab: Assistenz', s: 'soft'},
+      {id: 'v', k: 'box', x: 110, y: 160, w: 150, h: 44, t: 'Vertrieb', s: 'plain'},
+      {id: 'e', k: 'box', x: 290, y: 160, w: 150, h: 44, t: 'Entwicklung', s: 'plain'},
+      {id: 's', k: 'box', x: 470, y: 160, w: 150, h: 44, t: 'IT-Support', s: 'plain'},
+      {id: 'k', k: 'box', x: 650, y: 160, w: 150, h: 44, t: 'Verwaltung', s: 'plain'},
+      {id: 'e1', k: 'box', x: 290, y: 225, w: 150, h: 30, t: 'Azubis FIAE', s: 'plain'},
+    ], edges: [{a: 'gf', b: 'st1', ea: 'none', k: 'dash'}, {a: 'gf', b: 'st2', ea: 'none', k: 'dash'}, {a: 'gf', b: 'v', ea: 'none'}, {a: 'gf', b: 'e', ea: 'none'}, {a: 'gf', b: 's', ea: 'none'}, {a: 'gf', b: 'k', ea: 'none'}, {a: 'e', b: 'e1', ea: 'none'}]}],
+    ['h', 'Die Leitungssysteme im Vergleich'],
+    ['table', ['System', 'Merkmale', 'Vorteile', 'Nachteile'], [
+      ['**Einliniensystem**', 'Jeder Mitarbeiter hat **genau einen** Vorgesetzten; Weisungen laufen nur über den Dienstweg', 'Klare Zuständigkeiten und Verantwortung, einfache Kontrolle', 'Lange Dienstwege, Überlastung der Leitung, wenig Flexibilität'],
+      ['**Mehrliniensystem**', 'Ein Mitarbeiter hat **mehrere Fachvorgesetzte** (Prinzip des kürzesten Weges)', 'Spezialisierung, kurze Wege, Fachwissen wird genutzt', 'Kompetenzkonflikte, widersprüchliche Anweisungen, unklare Verantwortung'],
+      ['**Stabliniensystem**', 'Einliniensystem plus **Stabsstellen**, die Instanzen **beraten**, aber **nicht anweisen** dürfen (Recht, Datenschutz, Controlling)', 'Entlastung der Leitung, Expertenwissen, klare Linie bleibt', 'Konflikte zwischen Stab und Linie, Stab hat Wissen, aber keine Verantwortung'],
+      ['**Spartenorganisation** (divisional)', 'Gliederung nach **Produkten, Kunden oder Regionen**; jede Sparte wie ein eigenes Unternehmen', 'Marktnähe, klare Ergebnisverantwortung', 'Doppelarbeit (jede Sparte hat eigene Verwaltung), höhere Kosten'],
+      ['**Matrixorganisation**', 'Zwei Dimensionen gleichzeitig, zum Beispiel **Funktion** (Entwicklung, Vertrieb) und **Produkt/Projekt**; Mitarbeiter haben zwei Vorgesetzte', 'Flexibel, Fachwissen und Produktfokus kombiniert', 'Konflikte zwischen den Leitungen, hoher Abstimmungsaufwand'],
+    ]],
+    ['h', 'Welche Form passt? (AP1 Sommer 2023, Winter 2023/24)'],
+    ['p', 'Für ein **kleines IT-Systemhaus** oder Start-up mit wenigen Mitarbeitern passt meist ein **Einlinien- oder Stabliniensystem**: übersichtlich, klare Verantwortung, geringe Kosten. Eine Matrix oder Sparten lohnen sich erst bei vielen Produkten, Projekten oder Standorten. Wichtig für die Antwort: Größe, Anzahl der Produkte/Projekte und benötigte Flexibilität als Kriterien nennen.'],
+    ['h', 'Aufgaben im Prüfungsstil'],
+    ['qa', 'Stellen Sie den Aufbau eines Unternehmens als Organigramm dar: Geschäftsführer, darunter Einkauf, Technik (mit zwei Technikern) und Verwaltung, dazu ein externer Steuerberater als beratende Stelle. Nennen Sie zwei Merkmale der Organisationsform.', ['Organigramm: oben Geschäftsführung, seitlich gestrichelt die Stabsstelle Steuerberatung, darunter die drei Abteilungen, unter Technik zwei Stellen.', 'Es handelt sich um ein **Stabliniensystem**: (1) Jeder Mitarbeiter hat genau einen Vorgesetzten (Einlinienprinzip). (2) Die Stabsstelle berät die Geschäftsführung, hat aber keine Weisungsbefugnis gegenüber den Abteilungen.'], 8],
+    ['quiz', [
+      {q: 'Was kennzeichnet eine Stabsstelle?', o: ['Sie berät, hat aber keine Weisungsbefugnis', 'Sie hat mehrere Vorgesetzte', 'Sie leitet eine Sparte', 'Sie ist nur für Projekte da'], a: 0, e: 'Beispiel: Datenschutzbeauftragter, Controlling.'},
+      {q: 'Welches System führt am ehesten zu widersprüchlichen Anweisungen?', o: ['Mehrliniensystem', 'Einliniensystem', 'Stabliniensystem', 'Keines'], a: 0, e: 'Mehrere Fachvorgesetzte.'},
+      {q: 'Was ist eine Instanz?', o: ['Eine Stelle mit Leitungs- und Weisungsbefugnis', 'Ein Objekt einer Klasse', 'Eine Abteilung ohne Leitung', 'Ein Projekt'], a: 0, e: 'Im BWL-Sinn.'},
+    ]],
+    ['see', ['ps-orga', 'wiso-unternehmen', 'ps-epk']],
+  ],
+});

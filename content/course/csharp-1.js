@@ -1,5 +1,5 @@
 AP2.page('course-csharp', {
-  b: 'course', g: 'Programmiersprachen', t: 'C#: vollständiger Kurs von Grundlagen bis Fortgeschritten (.NET)',
+  b: 'course', g: 'C#', t: 'C# (Gesamtüberblick, Kapitel 6 bis 11 folgen): vollständiger Kurs von Grundlagen bis Fortgeschritten (.NET)',
   d: '**C#** ist eine **statisch typisierte, objektorientierte, kompilierte** Sprache von Microsoft für die Plattform **.NET** (plattformübergreifend). Der Quelltext wird zu **IL (Intermediate Language)** kompiliert, die **CLR (Common Language Runtime)** führt sie per **JIT** aus und übernimmt **Speicherverwaltung (Garbage Collector)**. C# wird für Desktop (WPF, WinForms, MAUI), Web (**ASP.NET Core**), Dienste, Spiele (Unity) und Cloud genutzt.',
   m: '**Werttypen (int, double, bool, struct, enum) liegen im Stack/inline, Referenztypen (class, string, Arrays) im Heap.** **Properties statt öffentlicher Felder.** **`using` räumt `IDisposable` auf.** **LINQ: Where, Select, OrderBy, GroupBy.** **`async`/`await` für nicht blockierende Aufrufe.** **`null`-Sicherheit mit `?`.**',
   cheat: [

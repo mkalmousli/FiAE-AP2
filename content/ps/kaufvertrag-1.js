@@ -1,0 +1,68 @@
+AP2.page('ps-kaufvertrag', {
+  b: 'ps', g: 'Recht und Datenschutz', t: 'Kaufvertrag, Angebot, AGB und Rechte bei Mängeln',
+  d: 'Ein **Kaufvertrag** entsteht durch **zwei übereinstimmende Willenserklärungen**: **Antrag** und **Annahme** (§§ 145 ff., 433 BGB). Der **Verkäufer** muss die Sache **übergeben**, das **Eigentum verschaffen** und sie **frei von Sach- und Rechtsmängeln** liefern. Der **Käufer** muss die Sache **abnehmen** und den **Kaufpreis bezahlen**. Weicht die Bestellung vom Angebot ab, ist sie ein **neuer Antrag**, den der Verkäufer erst annehmen muss.',
+  m: '**Antrag + Annahme = Vertrag.** **Abänderung = Ablehnung + neuer Antrag.** **Bei Mängeln zuerst Nacherfüllung** (Reparatur oder Ersatz, ohne Frist), **erst nach erfolgloser Nachfrist**: Rücktritt, Minderung, Schadensersatz statt der Leistung. **AGB gelten nur mit Hinweis + zumutbarer Kenntnisnahme + Einverständnis** (§ 305 BGB).',
+  cheat: [
+    ['Vertragsschluss', ['Willenserklärung 1 = **Antrag**', 'Willenserklärung 2 = **Annahme**', 'Werbung/Katalog/Webshop = **Aufforderung** zum Antrag', 'Angebot mit "freibleibend" = unverbindlich']],
+    ['Pflichten (§ 433)', ['**Verkäufer:** Übergabe, Eigentum verschaffen, mangelfrei liefern, rechtzeitig', '**Käufer:** Kaufpreis zahlen, Ware abnehmen']],
+    ['Mängelrechte', ['**Vorrangig (ohne Frist):** Nacherfüllung (Nachbesserung oder Ersatzlieferung)', '**Nach Frist:** Rücktritt, Minderung, Schadensersatz statt der Leistung', 'Gewährleistung: 2 Jahre (gesetzlich)', 'Garantie: freiwillig vom Hersteller']],
+    ['AGB (§ 305 BGB)', ['Ausdrücklicher Hinweis (oder Aushang)', 'Zumutbare Möglichkeit der Kenntnisnahme (Link)', 'Einverständnis des Kunden (Checkbox)']],
+  ],
+  blocks: [
+    ['h', 'Wie kommt ein Kaufvertrag zustande?'],
+    ['p', 'Ein Vertrag braucht keine Unterschrift. Er entsteht durch zwei **Willenserklärungen** (Äußerungen, mit denen jemand eine rechtliche Wirkung herbeiführen will), die **inhaltlich übereinstimmen**. Die erste heißt **Antrag**, die zweite **Annahme**. Die Erklärungen können mündlich, schriftlich, per E-Mail oder durch Klick erfolgen.'],
+    ['diagram', AP2.dg.flow(['Anfrage (unverbindlich)', 'Angebot = Antrag (Verkäufer)', 'Bestellung = Annahme (Käufer)', 'Kaufvertrag', 'Erfüllung: Lieferung und Zahlung'], {w: 760, h: 110, keep: 640, styles: ['plain', 'soft', 'soft', 'accent', 'plain'], cap: 'Fall 1: Der Verkäufer macht ein verbindliches Angebot. Bestellt der Käufer genau so, ist der Vertrag geschlossen.'})],
+    ['table', ['Situation', 'Antrag', 'Annahme'], [
+      ['Verbindliches Angebot, Käufer bestellt unverändert', 'Angebot des Verkäufers', 'Bestellung des Käufers'],
+      ['Käufer bestellt ohne vorheriges Angebot (oder freibleibendes Angebot)', 'Bestellung des Käufers', 'Auftragsbestätigung oder Lieferung des Verkäufers'],
+      ['Onlineshop', '"Kaufen"-Klick des Kunden (Warenkorb im Shop ist nur Aufforderung zum Antrag)', 'Bestellbestätigung / Versand (meist laut AGB)'],
+      ['Bestellung weicht vom Angebot ab', 'Abweichende Bestellung = **neuer Antrag**', 'Erst wenn der Verkäufer diesen annimmt'],
+    ]],
+    ['ex', ['**Prüfung Winter 2025/26:** Angeboten waren Notebooks mit Core i5 und 16 GB RAM. Bestellt werden Notebooks mit **Core i7 und 32 GB**.', 'Die Bestellung **weicht vom Angebot ab**. Damit gilt sie als **Ablehnung verbunden mit einem neuen Antrag** (§ 150 Abs. 2 BGB). Ein Kaufvertrag kommt erst zustande, wenn der Lieferant diesen neuen Antrag **annimmt**.']],
+    ['h', 'Angebot: verbindlich oder nicht?'],
+    ['list', ['Ein Angebot an eine **bestimmte Person** ist grundsätzlich **verbindlich** (bindend).', '**Freizeichnungsklauseln** machen es unverbindlich: "freibleibend", "ohne Gewähr", "solange Vorrat reicht" (nur für die Menge).', 'Bindungsfrist: unter Anwesenden (auch Telefon) **sofort**; unter Abwesenden (Brief, E-Mail) so lange, wie man **unter normalen Umständen** eine Antwort erwarten kann; oder bis zur genannten Frist.', '**Anpreisungen** an die Allgemeinheit (Werbung, Schaufenster, Katalog, Webshop) sind **keine Angebote**, sondern Aufforderungen, selbst einen Antrag zu machen.']],
+    ['table', ['Bestandteile eines vollständigen Angebots', 'Beispiel'], [['Art, Beschaffenheit, Qualität der Ware', 'Notebook Core i7, 16 GB, 1 TB SSD'], ['Menge', '10 Stück'], ['Preis und Preisnachlässe', '1.149 € netto, 5 % Rabatt ab 5 Stück'], ['Lieferbedingungen (Kosten und Zeit)', 'frei Haus, Lieferung in 7 Tagen'], ['Zahlungsbedingungen', '2 % Skonto in 8 Tagen, 30 Tage netto'], ['Erfüllungsort und Gerichtsstand', 'Sitz des Verkäufers'], ['Eigentumsvorbehalt', 'Ware bleibt bis zur Zahlung Eigentum des Verkäufers']]],
+    ['h', 'Allgemeine Geschäftsbedingungen (AGB)'],
+    ['p', '**AGB** sind vorformulierte Vertragsbedingungen für viele Verträge ("Kleingedrucktes"). Sie werden nach **§ 305 Abs. 2 BGB** nur Vertragsbestandteil, wenn der Verwender (1) **ausdrücklich** auf sie hinweist, (2) dem Kunden eine **zumutbare Möglichkeit der Kenntnisnahme** verschafft und (3) der Kunde **einverstanden** ist. **Individuelle Absprachen gehen AGB vor.** Überraschende oder unangemessen benachteiligende Klauseln sind unwirksam.'],
+    ['code', 'html', `<!-- Rechtssicher im Onlineshop: Hinweis + Link + aktives Einverständnis -->
+<input type="checkbox" id="agb" name="agb" required>
+<label for="agb">Ich habe die <a href="agb.html" target="_blank">AGB</a> gelesen und bin einverstanden.</label>
+<button type="submit">Zahlungspflichtig bestellen</button>`],
+    ['h', 'Mangelhafte Lieferung (Schlechtleistung)'],
+    ['table', ['Mangelart', 'Beispiel'], [
+      ['Sachmangel: Ware ist **beschädigt / funktioniert nicht**', 'Notebook lässt sich nicht einschalten, Kratzer am Gehäuse'],
+      ['Falsche Art (**Falschlieferung**)', 'Core i5 statt Core i7'],
+      ['Zu wenig (**Zuweniglieferung**)', '8 statt 10 Notebooks'],
+      ['Falsche Werbeaussage / Montagefehler', 'Akkulaufzeit laut Werbung 10 h, tatsächlich 3 h'],
+      ['Rechtsmangel', 'Ware gehört einem Dritten (gestohlen), Lizenz fehlt'],
+      ['Offener / versteckter / arglistig verschwiegener Mangel', 'sofort sichtbar / erst später erkennbar / bewusst verheimlicht'],
+    ]],
+    ['table', ['Recht des Käufers', 'Frist nötig?', 'Bedeutung'], [
+      ['**Nacherfüllung** (vorrangig)', 'Nein', 'Wahl des Käufers: **Nachbesserung** (Reparatur) oder **Ersatzlieferung** (neue Ware)'],
+      ['**Rücktritt** vom Vertrag', 'Ja, nach erfolgloser Nachfrist', 'Ware zurück, Geld zurück (nicht bei unerheblichen Mängeln)'],
+      ['**Minderung** des Kaufpreises', 'Ja, nach erfolgloser Nachfrist', 'Preisnachlass, z. B. bei Kratzern'],
+      ['**Schadensersatz statt der Leistung**', 'Ja, und Verschulden des Verkäufers', 'z. B. Mehrkosten für Ersatzkauf bei anderem Händler'],
+      ['Ersatz vergeblicher Aufwendungen', 'Ja', 'statt Schadensersatz'],
+    ]],
+    ['warn', 'Unter **Kaufleuten** (zweiseitiger Handelskauf) muss die Ware **unverzüglich** geprüft und ein Mangel **unverzüglich gerügt** werden (§ 377 HGB). Wer zu spät rügt, verliert seine Rechte. Versteckte Mängel sind unverzüglich nach Entdeckung zu rügen. Die gesetzliche **Gewährleistung** beträgt **2 Jahre**; eine **Garantie** ist ein **freiwilliges** Zusatzversprechen (meist des Herstellers).'],
+    ['h', 'Weitere Leistungsstörungen in Kürze'],
+    ['table', ['Störung', 'Wann?', 'Rechte des Geschädigten'], [
+      ['**Lieferungsverzug**', 'Fällige Lieferung bleibt aus (Mahnung nötig, außer bei kalendermäßig bestimmtem Termin)', 'Lieferung + Verzugsschaden; nach Nachfrist Rücktritt, Schadensersatz statt der Leistung'],
+      ['**Zahlungsverzug**', 'Käufer zahlt nicht; spätestens **30 Tage** nach Rechnung (Verbraucher: wenn darauf hingewiesen)', 'Zahlung + Verzugszinsen, Mahnverfahren'],
+      ['**Annahmeverzug**', 'Käufer nimmt ordnungsgemäß gelieferte Ware nicht an', 'Ware einlagern, Selbsthilfeverkauf, auf Abnahme klagen'],
+    ]],
+    ['h', 'Übungen'],
+    ['qa', 'Erklären Sie am Beispiel eines Online-Ticketkaufs, wie der Vertrag zustande kommt. Verwenden Sie die Fachbegriffe Willenserklärung, Antrag und Annahme. (Sommer 2022)', 'Ein Vertrag entsteht durch zwei übereinstimmende **Willenserklärungen**. Die Darstellung der Tickets auf der Homepage ist nur eine Aufforderung zum Antrag. Mit dem Klick auf "Kaufen" gibt der Kunde den **Antrag** ab. Die **Bestellbestätigung** per E-Mail ist die **Annahme**. Damit ist der Kaufvertrag geschlossen, eine Unterschrift ist nicht nötig.', 3],
+    ['qa', 'Bei der Wareneingangskontrolle lässt sich ein Notebook nicht einschalten, ein anderes hat Kratzer. Welche Rechte hat der Käufer zunächst ohne Fristsetzung? Welche nach erfolgloser Nachfrist von 2 Wochen?', ['**Zunächst (ohne Frist):** **Nacherfüllung** verlangen, also Reparatur (Nachbesserung) oder Lieferung eines neuen, mangelfreien Geräts (Ersatzlieferung); ggf. Schadensersatz neben der Leistung, wenn ein Schaden entstanden ist.', '**Nach erfolgloser Nachfrist:** **Rücktritt** vom Vertrag (defektes Gerät), **Minderung** des Kaufpreises (bei den Kratzern) oder **Schadensersatz statt der Leistung**.'], 6],
+    ['qa', 'Wie muss ein Onlineshop seine AGB einbinden, damit sie wirksam werden?', ['- Vor dem Bestellabschluss **ausdrücklich** auf die AGB hinweisen (Text am Bestellbutton)', '- **Kenntnisnahme ermöglichen**: Link auf die vollständigen AGB, lesbar, speicherbar', '- **Einverständnis** einholen, z. B. durch eine Pflicht-Checkbox "Ich bin mit den AGB einverstanden"'], 5],
+    ['quiz', [
+      {q: 'Ist eine Produktseite in einem Webshop ein Angebot im rechtlichen Sinn?', o: ['Nein, nur eine Aufforderung zum Antrag', 'Ja, immer verbindlich', 'Nur mit Preis', 'Nur am Wochenende'], a: 0, e: 'Der Kunde macht mit der Bestellung den Antrag.'},
+      {q: 'Der Kunde bestellt mehr RAM als angeboten. Was gilt?', o: ['Neuer Antrag, Vertrag erst nach Annahme', 'Vertrag kommt zustande', 'Vertrag nichtig für immer', 'Angebot gilt automatisch angepasst'], a: 0, e: '§ 150 Abs. 2 BGB.'},
+      {q: 'Welches Recht hat der Käufer bei einem Mangel vorrangig?', o: ['Nacherfüllung', 'Rücktritt', 'Minderung', 'Schadensersatz'], a: 0, e: 'Der Verkäufer bekommt eine zweite Chance.'},
+      {q: 'Was macht ein Angebot unverbindlich?', o: ['"freibleibend"', '"Lieferung frei Haus"', '"2 % Skonto"', '"30 Tage Ziel"'], a: 0, e: 'Freizeichnungsklausel.'},
+      {q: 'Wie lange beträgt die gesetzliche Gewährleistung beim Kauf neuer Ware?', o: ['2 Jahre', '6 Monate', '1 Jahr', '5 Jahre'], a: 0, e: 'Garantie ist dagegen freiwillig.'},
+      {q: 'Was ist KEINE Pflicht des Verkäufers?', o: ['Ware abnehmen', 'Eigentum verschaffen', 'Mangelfrei liefern', 'Ware übergeben'], a: 0, e: 'Abnehmen ist Pflicht des Käufers.'},
+    ]],
+    ['see', ['ps-vertraege', 'ps-angebot', 'ps-beschaffung', 'ps-dsgvo']],
+  ],
+});
