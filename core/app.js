@@ -39,6 +39,7 @@
         const page = AP2.store.get(id);
         document.title = (page ? page.t + ' | ' : '') + 'AP2 FiAE Lernportal';
         window.scrollTo(0, 0);
+        AP2.find.apply(content);
         AP2.state.set('drawer', false);
       });
       AP2.state.set('route', AP2.router.current());

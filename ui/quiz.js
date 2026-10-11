@@ -61,6 +61,19 @@
       area.appendChild(fb);
     }
     show();
+    // Die Suche springt zu der Frage, in der die Fundstelle steht: der Test beginnt dann mit dieser Frage neu.
+    card.setAttribute('data-seek', '');
+    card.ap2Seek = (needle) => {
+      const has = (q) => [q.q, q.e || ''].concat(q.o).some((txt) => AP2.index.sk(String(txt)) === needle);
+      if (!run.some(has)) return false;
+      if (idx < run.length && has(run[idx]) && run[idx].picked == null) return true;
+      run = prepare(questions);
+      run.unshift(run.splice(run.findIndex(has), 1)[0]);
+      idx = 0;
+      correct = 0;
+      show();
+      return true;
+    };
     return card;
   };
 })();

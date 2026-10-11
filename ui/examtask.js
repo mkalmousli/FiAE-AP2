@@ -34,6 +34,7 @@
       sol.style.display = open ? 'block' : 'none';
       toggle.firstChild.textContent = open ? 'Musterlösung ausblenden' : 'Musterlösung anzeigen';
     }});
+    sol.ap2Reveal = () => { if (sol.style.display === 'none') toggle.click(); };
     const card = h('div', {style: {padding: '18px 20px', borderRadius: S.r.md, border: '1px solid', margin: '0 0 ' + S.sp[4]}}, [head, ctx, q, area, h('div', {style: {marginTop: S.sp[3]}}, [toggle]), sol]);
     return AP2.theme.bind(card, (n, c) => { n.style.backgroundColor = c.surface; n.style.borderColor = c.border; });
   };

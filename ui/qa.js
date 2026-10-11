@@ -33,6 +33,8 @@
       solution.style.display = open ? 'block' : 'none';
       toggle.firstChild.textContent = open ? 'Musterlösung ausblenden' : 'Musterlösung anzeigen';
     }});
+    // Die Suche klappt die Lösung auf, wenn die Fundstelle darin liegt.
+    solution.ap2Reveal = () => { if (!open) toggle.click(); };
     const card = h('div', {style: {padding: '18px 20px', borderRadius: S.r.md, border: '1px solid', margin: '0 0 ' + S.sp[4]}}, [top, q, toggle, solution]);
     return AP2.theme.bind(card, (n, c) => { n.style.backgroundColor = c.surface; n.style.borderColor = c.border; });
   };

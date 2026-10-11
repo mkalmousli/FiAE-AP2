@@ -19,6 +19,15 @@
       tabs.forEach((tab) => tab.repaint());
     }
     show();
-    return h('div', {}, [bar, holder]);
+    const root = h('div', {attrs: {'data-seek': ''}}, [bar, holder]);
+    // Die Suche wechselt auf den Reiter, dessen Code die Fundstelle enthält.
+    root.ap2Seek = (needle) => {
+      const idx = list.findIndex((item) => AP2.index.sk(item[1]).includes(needle));
+      if (idx < 0) return false;
+      cur = idx;
+      show();
+      return true;
+    };
+    return root;
   };
 })();
