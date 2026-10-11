@@ -1,10 +1,11 @@
 AP2.page('ps-phasen', {
   b: 'ps', g: 'Projektmanagement', t: 'Projektphasen',
   d: 'Ein **Projekt** ist ein einmaliges Vorhaben mit klarem Ziel, festem Zeitrahmen, begrenzten Mitteln (Geld, Personal) und einer eigenen Organisation. Ein Projekt läuft in **Phasen**: Initiierung, Planung, Durchführung und Abschluss.',
-  m: '**I-P-D-A**: Initiierung, Planung, Durchführung, Abschluss. Das Magische Dreieck: **Z-K-Q** = Zeit, Kosten, Qualität. Wenn man an einer Ecke zieht, verändern sich die anderen.',
+  m: '**I-P-D-A**: Initiierung, Planung, Durchführung, Abschluss. Das Magische Dreieck: **Z-K-Q** = Zeit, Kosten, Qualität. Wenn man an einer Ecke zieht, verändern sich die anderen. Projektziele sind **SMART**: **S**pezifisch, **M**essbar, **A**ttraktiv (akzeptiert), **R**ealistisch, **T**erminiert.',
   cheat: [
     ['Merkmale eines Projekts', ['Einmalig (kein Tagesgeschäft)', 'Zeitlich begrenzt (Start und Ende)', 'Klares Ziel und Ergebnis', 'Begrenzte Ressourcen', 'Projektorganisation, oft neuartig und riskant']],
-    ['Die vier Phasen', ['**Initiierung**: Idee, Ziel, Projektauftrag', '**Planung**: Struktur, Zeit, Kosten, Risiken', '**Durchführung**: Umsetzen, steuern, kontrollieren', '**Abschluss**: Abnahme, Übergabe, Lessons Learned']],
+    ['Die vier Phasen', ['**Initiierung**: Idee, **SMART-Ziel**, Projektauftrag', '**Planung**: Struktur, Zeit, Kosten, Risiken', '**Durchführung**: Umsetzen, steuern, kontrollieren', '**Abschluss**: Abnahme, Übergabe, Lessons Learned']],
+    ['SMART-Ziele', ['**S**pezifisch: eindeutig und konkret', '**M**essbar: mit Zahl oder Prüfkriterium', '**A**ttraktiv / akzeptiert: von den Beteiligten gewollt', '**R**ealistisch: mit den Mitteln erreichbar', '**T**erminiert: mit festem Datum']],
     ['Magisches Dreieck', ['Zeit, Kosten, Qualität (plus Umfang/Scope)', 'Alle drei hängen zusammen', 'Mehr Qualität kostet Zeit oder Geld', 'Termin kürzen: Kosten steigen oder Umfang sinkt']],
     ['Rollen', ['**Auftraggeber** (bestellt und bezahlt)', '**Projektleiter** (plant und steuert)', '**Projektteam** (arbeitet)', '**Stakeholder** (alle Betroffenen und Interessierten)']],
   ],
