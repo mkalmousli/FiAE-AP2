@@ -21,18 +21,18 @@
     const groupW = plot.w / cfg.labels.length;
     const barW = (groupW * 0.62) / cfg.series.length;
     cfg.labels.forEach((label, i) => {
-      AP2.shapes.text(g, paint, M.l + groupW * (i + 0.5), M.t + plot.h + 18, String(label), {size: 12, color: 'text2'});
+      AP2.shapes.text(g, paint, M.l + groupW * (i + 0.5), M.t + plot.h + 18, String(label), {size: 12, color: 'text2', max: groupW - 6});
       cfg.series.forEach((s, j) => {
         const bh = (Math.min(s.d[i], ymax) / ymax) * plot.h;
         const x = M.l + groupW * i + groupW * 0.19 + barW * j;
         g.appendChild(paint(svg('rect', {x, y: M.t + plot.h - bh, width: barW - 3, height: bh, rx: 3}), {f: s.k || COLORS[j]}));
-        if (cfg.vals) AP2.shapes.text(g, paint, x + (barW - 3) / 2, M.t + plot.h - bh - 9, String(s.d[i]), {size: 11, color: 'text2'});
+        if (cfg.vals) AP2.shapes.text(g, paint, x + (barW - 3) / 2, M.t + plot.h - bh - 9, String(s.d[i]), {size: 11, color: 'text2', max: barW + 2});
       });
     });
   };
   const lines = (g, paint, cfg, plot, ymax) => {
     const xs = cfg.labels.map((l, i) => M.l + (plot.w * i) / (cfg.labels.length - 1));
-    cfg.labels.forEach((label, i) => AP2.shapes.text(g, paint, xs[i], M.t + plot.h + 18, String(label), {size: 12, color: 'text2'}));
+    cfg.labels.forEach((label, i) => AP2.shapes.text(g, paint, xs[i], M.t + plot.h + 18, String(label), {size: 12, color: 'text2', max: plot.w / (cfg.labels.length - 1) - 6}));
     cfg.series.forEach((s, j) => {
       const pts = s.d.map((v, i) => xs[i].toFixed(1) + ',' + (M.t + plot.h - (Math.min(v, ymax) / ymax) * plot.h).toFixed(1));
       g.appendChild(paint(svg('polyline', {points: pts.join(' ')}), {s: s.k || COLORS[j], sw: 2.5, dash: s.dash}));
@@ -43,7 +43,7 @@
     cfg.series.slice().reverse().forEach((s, ri) => {
       const j = cfg.series.length - 1 - ri;
       const txt = AP2.shapes.text(g, paint, x, 16, s.n, {anchor: 'end', size: 12, color: 'text2'});
-      x -= s.n.length * 6.6 + 24;
+      x -= AP2.shapes.width(s.n, 12) + 14;
       g.appendChild(paint(svg('rect', {x: x + 8, y: 11, width: 11, height: 11, rx: 2}), {f: s.k || COLORS[j]}));
       x -= 12;
       return txt;

@@ -7,7 +7,8 @@
       justifyContent: 'center', fontSize: S.f.sm, fontWeight: S.fw.bold}});
     AP2.theme.bind(mark, (n, c) => { n.style.backgroundColor = c.accent; n.style.color = c.onAccent; });
     const name = AP2.tint(h('div', {text: 'AP2 FiAE', style: {fontWeight: S.fw.bold, fontSize: S.f.lg, letterSpacing: '-0.01em'}}), 'text');
-    const el = h('div', {style: {display: 'flex', alignItems: 'center', gap: S.sp[2]}}, [mark, name]);
+    const el = h('div', {style: {display: 'flex', alignItems: 'center', gap: S.sp[2], flexShrink: 0, whiteSpace: 'nowrap'}}, [mark, name]);
+    AP2.layout.bind((L) => { name.style.display = L.w < 560 ? 'none' : 'block'; });
     return AP2.press(el, {fn: () => AP2.router.go('home'), label: 'Startseite', role: 'link', base: () => ({})});
   };
   const iconButton = (icon, label, fn) => {
@@ -34,16 +35,19 @@
     const el = h('a', {attrs: {href, target: '_blank', rel: 'noopener noreferrer', title: label}, style: {height: '40px', minWidth: '40px',
       borderRadius: S.r.md, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: S.sp[2], flexShrink: 0,
       textDecoration: 'none', boxSizing: 'border-box'}}, [icon, txt]);
-    AP2.layout.bind((L) => { txt.style.display = L.mobile ? 'none' : 'inline'; el.style.padding = L.mobile ? '0' : '0 12px'; });
+    // Text nur, wenn daneben noch Platz für das Suchfeld bleibt; auf schmalen Handys entfallen die Links ganz.
+    AP2.layout.bind((L) => { const wide = L.w >= 1180; txt.style.display = wide ? 'inline' : 'none'; el.style.padding = wide ? '0 12px' : '0'; el.style.display = L.w < 480 ? 'none' : 'flex'; });
     AP2.press(el, {fn: (ev) => { if (ev.type === 'keydown') window.open(href, '_blank', 'noopener'); }, label, role: 'link',
       hover: (c) => ({backgroundColor: c.hover}), base: (c) => ({color: c.text2, backgroundColor: 'transparent'})});
     return el;
   };
   AP2.mkTopbar = () => {
+    const gap = h('div', {style: {flex: '1 1 0'}});
     const menu = iconButton(AP2.icon('menu', 22), 'Menü öffnen', () => AP2.state.set('drawer', !AP2.state.get('drawer')));
     const search = AP2.mkSearch();
+    AP2.st(search.el, {flex: '0 1 440px', minWidth: '0'});
     const bar = h('div', {style: {position: 'fixed', top: 0, left: 0, right: 0, display: 'flex', alignItems: 'center', gap: S.sp[3],
-      borderBottom: '1px solid', zIndex: S.z.topbar, boxSizing: 'border-box'}}, [menu, brand(), h('div', {style: {flex: '1 1 0'}}), search.el,
+      borderBottom: '1px solid', zIndex: S.z.topbar, boxSizing: 'border-box'}}, [menu, brand(), gap, search.el,
       linkButton(AP2.icon('code', 20), 'Quellcode auf GitHub', 'Quellcode', 'https://github.com/mkalmousli/FiAE-AP2'),
       linkButton(AP2.icon('user', 20), 'Portfolio: al-mo.de', 'Mohamad Almousli', 'https://al-mo.de'), themeButton()]);
     AP2.theme.bind(bar, (n, c) => { n.style.backgroundColor = c.surface; n.style.borderBottomColor = c.border; });

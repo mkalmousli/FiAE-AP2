@@ -27,15 +27,38 @@
       return [{tag: 'circle', a: {cx, cy: top + 8, r: 8}}, path('M' + cx + ' ' + (top + 16) + 'V' + (top + 36) + 'M' + (cx - 14) + ' ' + (top + 24) + 'H' + (cx + 14) + 'M' + cx + ' ' + (top + 36) + 'L' + (cx - 11) + ' ' + (top + 52) + 'M' + cx + ' ' + (top + 36) + 'L' + (cx + 11) + ' ' + (top + 52), {s: 'line', f: null, sw: 1.5})]; },
     text: () => [],
   };
-  // Text mit optionalem Halo (liest sich auch über Linien).
+  // Geschätzte Textbreite in Pixeln (SVG-Text lässt sich vor dem Einhängen nicht messen).
+  const width = (str, size, bold) => {
+    let units = 0;
+    for (const ch of String(str)) units += /[iljtfrI1.,:;|!'()[\] ]/.test(ch) ? 0.34 : /[mwMW@%]/.test(ch) ? 0.9 : /[A-ZÄÖÜ]/.test(ch) ? 0.7 : 0.57;
+    return units * size * (bold ? 1.07 : 1);
+  };
+  // Bricht Zeilen an Leerzeichen um, bis jede Zeile in max Pixel passt.
+  const wrap = (lines, max, size, bold) => {
+    const out = [];
+    lines.forEach((line) => {
+      let cur = '';
+      String(line).split(' ').forEach((word) => {
+        const trial = cur ? cur + ' ' + word : word;
+        if (cur && width(trial, size, bold) > max) { out.push(cur); cur = word; } else cur = trial;
+      });
+      out.push(cur);
+    });
+    return out;
+  };
+  // Text mit optionalem Halo (liest sich auch über Linien). opt.max: Text wird verkleinert und notfalls gestaucht, statt überzulaufen.
   const text = (g, paint, x, y, str, o) => {
     const opt = o || {};
-    const el = svg('text', {x, y, 'text-anchor': opt.anchor || 'middle', 'dominant-baseline': 'central', 'font-size': opt.size || 13});
+    let size = opt.size || 13;
+    const need = opt.max > 0 ? width(str, size, opt.bold) : 0;
+    if (need > opt.max) size = Math.max(8, size * opt.max / need);
+    const el = svg('text', {x, y, 'text-anchor': opt.anchor || 'middle', 'dominant-baseline': 'central', 'font-size': size.toFixed(1)});
+    if (need > opt.max && width(str, size, opt.bold) > opt.max) { el.setAttribute('textLength', opt.max.toFixed(0)); el.setAttribute('lengthAdjust', 'spacingAndGlyphs'); }
     el.textContent = str;
     el.style.fontWeight = opt.bold ? '600' : '400';
     if (opt.halo) el.style.paintOrder = 'stroke';
     g.appendChild(paint(el, {f: opt.color || 'text', s: opt.halo ? 'surface' : null, sw: opt.halo ? 4 : 0}));
     return el;
   };
-  AP2.shapes = {make: (n) => (SHAPES[n.k || 'box'] || SHAPES.box)(n), text};
+  AP2.shapes = {make: (n) => (SHAPES[n.k || 'box'] || SHAPES.box)(n), text, width, wrap};
 })();

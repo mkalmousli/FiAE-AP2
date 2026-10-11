@@ -19,15 +19,30 @@
     n.h = n.h || size[1];
     if (n.k === 'cls') n.h = AP2.clsHeight(n);
   };
+  // Nutzbare Textbreite je Form; Formen ohne Rahmen (Text, Akteur, Punkt) begrenzen ihren Text nur über n.mw.
+  const FREE = ['text', 'actor', 'dot', 'ring', 'bar'];
+  const INNER = {diamond: (w) => w * 0.62, oval: (w) => w * 0.82, circle: (w) => w * 0.82, para: (w) => w - 34, proc2: (w) => w - 28, cyl: (w) => w - 12};
+  const room = (n) => (FREE.includes(n.k) ? n.mw || 0 : (INNER[n.k] || ((w) => w - 12))(n.w));
+  // Zu lange Beschriftungen werden umbrochen und verkleinert, damit sie in ihrer Form bleiben.
+  const fit = (n, lines) => {
+    const size = n.fs || 13;
+    const max = room(n);
+    if (!max || FREE.includes(n.k)) return {lines, lh: 17, size, max};
+    const wrapped = AP2.shapes.wrap(lines, max, size, n.b);
+    const use = (n.h - 6) / wrapped.length >= 11 ? wrapped : lines;
+    const lh = Math.min(17, Math.max(9, (n.h - 6) / use.length));
+    return {lines: use, lh, size: Math.min(size, lh * 0.78), max};
+  };
   const drawNode = (n, g, paint) => {
     if (n.k === 'cls') return AP2.drawClass(n, g, paint);
     const style = STYLE[n.s || 'plain'];
     AP2.shapes.make(n).forEach((d) => g.appendChild(paint(svg(d.tag, d.a), Object.assign({sw: 1.5}, style.p, d.o))));
-    const lines = [].concat(n.t || []);
-    if (n.k === 'group') return AP2.shapes.text(g, paint, n.x - n.w / 2 + 12, n.y - n.h / 2 + 15, lines[0] || '', {anchor: 'start', size: 12, bold: true, color: 'text2'});
-    const textY = n.k === 'actor' ? n.y + n.h / 2 + 12 : n.y - ((lines.length - 1) * 17) / 2;
-    return lines.forEach((txt, idx) => AP2.shapes.text(g, paint, n.x, textY + idx * 17, String(txt),
-      {size: n.fs || 13, bold: n.b && idx === 0, color: n.tc || style.t, anchor: n.anchorEnd ? 'end' : null}));
+    const raw = [].concat(n.t || []);
+    if (n.k === 'group') return AP2.shapes.text(g, paint, n.x - n.w / 2 + 12, n.y - n.h / 2 + 15, raw[0] || '', {anchor: 'start', size: 12, bold: true, color: 'text2', max: n.w - 24});
+    const f = fit(n, raw);
+    const textY = n.k === 'actor' ? n.y + n.h / 2 + 12 : n.y - ((f.lines.length - 1) * f.lh) / 2;
+    return f.lines.forEach((txt, idx) => AP2.shapes.text(g, paint, n.x, textY + idx * f.lh, String(txt),
+      {size: f.size, bold: n.b && idx === 0, color: n.tc || style.t, anchor: n.anchorEnd ? 'end' : null, max: f.max}));
   };
   const route = (e, nodes) => {
     const a = typeof e.a === 'string' ? nodes[e.a] : e.a;
@@ -53,7 +68,7 @@
     const lo = e.lo || [0, -11];
     const mx = (pts[mid][0] + pts[mid + 1][0]) / 2 + lo[0];
     const my = (pts[mid][1] + pts[mid + 1][1]) / 2 + lo[1];
-    if (e.t) AP2.shapes.text(g, paint, mx, my, e.t, {size: 12, halo: true, color: 'text2'});
+    if (e.t) AP2.shapes.text(g, paint, mx, my, e.t, {size: 12, halo: true, color: 'text2', max: e.mw});
     const near = (p, q, txt, off) => {
       const len = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1;
       const ux = (q[0] - p[0]) / len;

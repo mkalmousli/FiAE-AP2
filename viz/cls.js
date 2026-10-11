@@ -13,15 +13,15 @@
     g.appendChild(paint(svg('rect', {x: left, y: top, width: n.w, height: n.h, rx: 3}), style));
     const heads = headLines(n);
     const headH = 12 + heads.length * LH;
-    heads.forEach((txt, idx) => AP2.shapes.text(g, paint, n.x, top + 6 + LH / 2 + idx * LH + 2, txt, {bold: idx === heads.length - 1, size: 13, color: 'text'}));
+    heads.forEach((txt, idx) => AP2.shapes.text(g, paint, n.x, top + 6 + LH / 2 + idx * LH + 2, txt, {bold: idx === heads.length - 1, size: 13, color: 'text', max: n.w - 12}));
     const attrs = n.t.attrs || [];
     const attrH = 10 + rows(n) * LH;
     const cut = (y) => g.appendChild(paint(svg('line', {x1: left, x2: left + n.w, y1: y, y2: y}), {s: 'line', sw: 1.2}));
     cut(top + headH);
-    attrs.forEach((txt, idx) => AP2.shapes.text(g, paint, left + 8, top + headH + 5 + LH / 2 + idx * LH, txt, {anchor: 'start', size: 12}));
+    attrs.forEach((txt, idx) => AP2.shapes.text(g, paint, left + 8, top + headH + 5 + LH / 2 + idx * LH, txt, {anchor: 'start', size: 12, max: n.w - 16}));
     if (n.t.ops) {
       cut(top + headH + attrH);
-      n.t.ops.forEach((txt, idx) => AP2.shapes.text(g, paint, left + 8, top + headH + attrH + 5 + LH / 2 + idx * LH, txt, {anchor: 'start', size: 12}));
+      n.t.ops.forEach((txt, idx) => AP2.shapes.text(g, paint, left + 8, top + headH + attrH + 5 + LH / 2 + idx * LH, txt, {anchor: 'start', size: 12, max: n.w - 16}));
     }
   };
 })();

@@ -24,7 +24,6 @@
       const place = (L) => {
         st(top.el, {height: S.w.topbar + 'px', padding: '0 ' + L.pad + 'px'});
         top.menu.style.display = L.mobile ? 'flex' : 'none';
-        top.search.style.width = Math.min(440, L.w - (L.mobile ? 150 : 320)) + 'px';
         const shown = !L.mobile || AP2.state.get('drawer');
         st(side, {top: S.w.topbar + 'px', height: (L.h - S.w.topbar) + 'px', width: L.sidebarW + 'px', transform: shown ? 'none' : 'translateX(-100%)'});
         veil.style.display = L.mobile && AP2.state.get('drawer') ? 'block' : 'none';

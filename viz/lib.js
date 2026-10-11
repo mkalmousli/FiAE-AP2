@@ -11,7 +11,9 @@
     const stepX = (w - 40 - nw) / Math.max(1, count - 1);
     const nodes = labels.map((t, i) => ({id: 'n' + i, t, w: nw, h: nh, k: opt.k || 'round', s: (opt.styles || [])[i] || 'plain',
       x: vertical ? w / 2 : 20 + nw / 2 + i * stepX, y: vertical ? 12 + nh / 2 + i * (nh + gap) : h / 2}));
-    const edges = nodes.slice(1).map((n, i) => ({a: 'n' + i, b: 'n' + (i + 1), t: (opt.edgeText || [])[i]}));
+    // Kantentexte stehen bei waagerechten Ketten über den Kästen: im schmalen Zwischenraum würden sie die Kästen überdecken.
+    const edges = nodes.slice(1).map((n, i) => ({a: 'n' + i, b: 'n' + (i + 1), t: (opt.edgeText || [])[i],
+      lo: vertical ? null : [0, -(nh / 2 + 11)], mw: vertical ? w - 20 : stepX - 10}));
     return {w, h, nodes, edges, cap: opt.cap};
   };
   const cycle = (labels, o) => {

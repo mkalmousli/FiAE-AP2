@@ -18,7 +18,7 @@
     const pos = tasks.map((task, i) => ({x0: left + task[1] * unit, x1: left + (task[1] + task[2]) * unit, y: 40 + i * row + row / 2}));
     tasks.forEach((task, i) => {
       const p = pos[i];
-      nodes.push({id: 'nm' + i, k: 'text', x: left - 10, y: p.y, t: task[0], fs: 12, tc: 'text', w: 10, h: 10, anchorEnd: true});
+      nodes.push({id: 'nm' + i, k: 'text', x: left - 10, y: p.y, t: task[0], fs: 12, tc: 'text', w: 10, h: 10, anchorEnd: true, mw: left - 18});
       if (task[2] === 0) nodes.push({id: 'b' + i, k: 'diamond', x: p.x0, y: p.y, w: 18, h: 18, s: 'solid', t: ''});
       else nodes.push({id: 'b' + i, k: 'round', x: (p.x0 + p.x1) / 2, y: p.y, w: p.x1 - p.x0, h: 22, s: task[3] || 'accent', t: opt.labels ? String(task[2]) : '', fs: 11});
     });

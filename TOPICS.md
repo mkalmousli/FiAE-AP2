@@ -31,6 +31,7 @@ Fokus: Konzeption/Planung, nicht Coden. Quellen: [Fachinformatiker.de Forum: MEP
   - [ ] ER-Modell (Entitäten, Beziehungen, Kardinalitäten)
   - [ ] Normalisierung (1NF–3NF)
   - [ ] Relationales Modell / Tabellenableitung aus ER
+  - [ ] ERM und RM: Unterschied und Umwandlung (ERM in Relationenmodell, RM zurück ins ERM)
 - [ ] **UI/UX**
   - [ ] Ergonomie-Grundsätze (EN ISO 9241)
   - [ ] Dialoggestaltung, Barrierefreiheit

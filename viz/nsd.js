@@ -14,7 +14,7 @@
   };
   const make = (out) => ({
     rect: (x, y, w, h, t, s) => out.nodes.push({id: 'q' + out.nodes.length, k: 'box', x: x + w / 2, y: y + h / 2, w, h, t: t || '', s: s || 'clear', fs: 12}),
-    text: (x, y, t, bold) => out.nodes.push({id: 'q' + out.nodes.length, k: 'text', x, y, t, w: 10, h: 10, fs: 12, b: bold}),
+    text: (x, y, t, bold, mw) => out.nodes.push({id: 'q' + out.nodes.length, k: 'text', x, y, t, w: 10, h: 10, fs: 12, b: bold, mw}),
     line: (a, b) => out.edges.push({a, b, ea: 'none', w: 1.2}),
   });
   const layout = (list, x, y, w, g, fill) => {
@@ -30,12 +30,12 @@
     else if (kind === 'if') {
       g.rect(x, y, w, IH, '');
       g.line([x, y], [x + w / 2, y + IH]); g.line([x + w, y], [x + w / 2, y + IH]);
-      g.text(x + w / 2, y + 13, it[1], true); g.text(x + 24, y + IH - 12, 'Ja'); g.text(x + w - 28, y + IH - 12, 'Nein');
+      g.text(x + w / 2, y + 13, it[1], true, w * 0.64); g.text(x + 24, y + IH - 12, 'Ja'); g.text(x + w - 28, y + IH - 12, 'Nein');
       layout(it[2], x, y + IH, w / 2, g, total - IH);
       layout(it[3] || [], x + w / 2, y + IH, w / 2, g, total - IH);
     } else if (kind === 'case') {
       const cw = w / it[2].length;
-      g.rect(x, y, w, IH, ''); g.text(x + w / 2, y + 13, it[1], true);
+      g.rect(x, y, w, IH, ''); g.text(x + w / 2, y + 13, it[1], true, w - 16);
       it[2].forEach((c, i) => {
         g.line([x + i * cw, y + IH], [x + i * cw, y + total]);
         g.rect(x + i * cw, y + IH, cw, 24, c[0], 'soft');
