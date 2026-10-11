@@ -3,7 +3,7 @@ AP2.page('wiso-arbeitsvertrag', {
   d: 'Der **Arbeitsvertrag** begründet das **Arbeitsverhältnis**: Der **Arbeitnehmer** schuldet **Arbeitsleistung** (weisungsgebunden, persönlich), der **Arbeitgeber** die **Vergütung**. Er ist grundsätzlich **formfrei**, doch die **wesentlichen Bedingungen** muss der Arbeitgeber **schriftlich nachweisen** (**Nachweisgesetz**). Das **Arbeitszeitgesetz (ArbZG)** begrenzt die Arbeitszeit: **8 Stunden täglich** (bis **10 Stunden** mit Ausgleich), **Ruhepausen** und **11 Stunden Ruhezeit**.',
   m: '**ArbZG: 8 Stunden (max. 10 mit Ausgleich in 6 Monaten), Pause 30 Min ab mehr als 6 Std, 45 Min ab mehr als 9 Std, Ruhezeit 11 Std.** Arbeitsvertrag = **Arbeit gegen Geld**, Arbeitnehmer ist **weisungsgebunden** (Direktionsrecht des Arbeitgebers).',
   cheat: [
-    ['Arbeitsvertrag', ['**Formfrei**, Nachweis schriftlich (NachwG)', '**AN-Pflichten:** Arbeit leisten, Treue, Verschwiegenheit', '**AG-Pflichten:** Vergütung, Beschäftigung, Fürsorge, Urlaub', '**Direktionsrecht** (§ 106 GewO): Arbeitgeber bestimmt Ort, Zeit, Art der Arbeit im Rahmen']],
+    ['Arbeitsvertrag', ['**Formfrei**, Nachweis schriftlich (NachwG)', '**AN, Hauptpflicht:** **Arbeitspflicht**', '**AN, Nebenpflichten:** Gehorsamspflicht, Treuepflicht, Verschwiegenheitspflicht, Wettbewerbsverbot', '**AG, Hauptpflicht:** **Vergütungspflicht**', '**AG, Nebenpflichten:** Beschäftigungspflicht, Fürsorgepflicht, Gleichbehandlungspflicht, Zeugnispflicht', '**Direktionsrecht** (§ 106 GewO): Arbeitgeber bestimmt Ort, Zeit, Art der Arbeit im Rahmen']],
     ['Befristung (TzBfG)', ['**Mit Sachgrund** (zum Beispiel Vertretung) beliebig lang', '**Ohne Sachgrund** bis **2 Jahre**, höchstens **3 Verlängerungen**', 'Befristung **schriftlich**', 'Probezeit höchstens **6 Monate**, Frist dann **2 Wochen**']],
     ['ArbZG: Arbeitszeit', ['**8 Stunden/Werktag**', 'Bis **10 Stunden**, wenn im Schnitt **8 Stunden** in **6 Monaten / 24 Wochen**', 'Höchstens **48 Stunden/Woche** im Schnitt', '**Sonn- und Feiertage** grundsätzlich frei']],
     ['ArbZG: Pausen und Ruhe', ['**30 Min** bei mehr als **6 bis 9 Std**', '**45 Min** bei mehr als **9 Std**', 'Pausen in Blöcken **mind. 15 Min**', '**11 Stunden Ruhezeit** nach Arbeitsende']],
@@ -11,11 +11,28 @@ AP2.page('wiso-arbeitsvertrag', {
   blocks: [
     ['h', 'Der Arbeitsvertrag'],
     ['p', 'Ein **Arbeitsvertrag** ist ein **Dienstvertrag** besonderer Art (§ 611a BGB). Er kommt durch **Angebot und Annahme** zustande. Merkmale, die ihn vom freien Dienstvertrag unterscheiden: Der Arbeitnehmer ist **weisungsgebunden**, **in die Organisation** des Arbeitgebers **eingegliedert** und arbeitet **persönlich** (nicht durch Vertreter). Er ist **formfrei** (auch mündlich möglich), aber die **wesentlichen Vertragsbedingungen** müssen nach dem **Nachweisgesetz** schriftlich festgehalten werden: Namen und Anschrift, Beginn, Dauer (bei Befristung), Arbeitsort, Tätigkeit, Vergütung (Zusammensetzung, Fälligkeit), Arbeitszeit, Urlaub, Kündigungsfristen, Hinweis auf Tarifverträge.'],
-    ['table', ['', 'Pflichten des Arbeitnehmers', 'Pflichten des Arbeitgebers'], [
-      ['Hauptpflicht', '**Arbeitsleistung** persönlich erbringen', '**Vergütung** zahlen (Lohn, Gehalt)'],
-      ['Nebenpflichten', '**Treuepflicht**, **Verschwiegenheit** über Betriebsgeheimnisse, **Wettbewerbsverbot** während des Arbeitsverhältnisses, Anzeige von Fehlzeiten', '**Fürsorgepflicht** (Gesundheitsschutz, Gleichbehandlung), **Beschäftigungspflicht**, Urlaub gewähren, **Zeugnis** ausstellen, Datenschutz beachten'],
-      ['Weisungen', 'Weisungen im Rahmen des Direktionsrechts befolgen', 'Weisungen nach **billigem Ermessen** (Inhalt, Ort, Zeit der Arbeit)'],
+    ['h3', 'Pflichten aus dem Arbeitsvertrag: die Fachbegriffe'],
+    ['p', 'Jede Seite hat **eine Hauptpflicht** (Arbeit gegen Geld) und mehrere **Nebenpflichten**. In der Prüfung bringt der **Fachbegriff mit einer kurzen Erklärung** die Punkte, zum Beispiel "Treuepflicht: Der Arbeitnehmer wahrt die Interessen des Betriebs". Die Kurznamen stehen so nicht im Gesetz, sie sind die üblichen Begriffe aus Lehrbüchern und Lösungshinweisen.'],
+    ['table', ['Pflicht des Arbeitnehmers', 'Auch genannt', 'Inhalt', 'Fundstelle'], [
+      ['**Arbeitspflicht** (Hauptpflicht)', 'Dienstleistungspflicht', 'Die vereinbarte Arbeit **persönlich** leisten', '§ 611a, § 613 BGB'],
+      ['**Gehorsamspflicht**', 'Weisungsgebundenheit', 'Berechtigte Weisungen des Arbeitgebers zu Inhalt, Ort und Zeit der Arbeit befolgen', '§ 106 GewO'],
+      ['**Treuepflicht**', 'Rücksichtnahmepflicht, Loyalitätspflicht', 'Die Interessen des Betriebs wahren, Schaden abwenden, drohende Schäden melden, keine Schmiergelder annehmen', '§ 241 Abs. 2, § 242 BGB'],
+      ['**Verschwiegenheitspflicht**', 'Schweigepflicht', 'Betriebs- und Geschäftsgeheimnisse nicht weitergeben', 'Nebenpflicht, GeschGehG'],
+      ['**Wettbewerbsverbot**', 'Konkurrenzverbot', 'Während des Arbeitsverhältnisses dem Arbeitgeber keine Konkurrenz machen', '§ 60 HGB'],
+      ['**Sorgfaltspflicht**', 'Pflegepflicht (für Arbeitsmittel)', 'Sorgfältig arbeiten, Geräte und Material pfleglich behandeln', '§ 241 Abs. 2 BGB'],
+      ['**Anzeige- und Nachweispflicht**', 'Meldepflicht', 'Arbeitsunfähigkeit unverzüglich melden und ärztlich bescheinigen lassen', '§ 5 EntgFG'],
     ]],
+    ['table', ['Pflicht des Arbeitgebers', 'Auch genannt', 'Inhalt', 'Fundstelle'], [
+      ['**Vergütungspflicht** (Hauptpflicht)', 'Lohnzahlungspflicht, Entgeltzahlungspflicht', 'Das vereinbarte Entgelt pünktlich zahlen, auch bei Krankheit, Urlaub und an Feiertagen', '§ 611a Abs. 2 BGB, EntgFG'],
+      ['**Beschäftigungspflicht**', '', 'Den Arbeitnehmer tatsächlich und vertragsgemäß beschäftigen', 'Rechtsprechung (Art. 1, 2 GG)'],
+      ['**Fürsorgepflicht**', 'Schutzpflicht', 'Leben, Gesundheit, Persönlichkeit und Eigentum des Arbeitnehmers schützen (Arbeitsschutz, Schutz vor Mobbing, Datenschutz)', '§ 618, § 241 Abs. 2 BGB, ArbSchG'],
+      ['**Gleichbehandlungspflicht**', 'Gleichbehandlungsgrundsatz', 'Niemanden ohne sachlichen Grund benachteiligen', 'AGG'],
+      ['**Urlaubsgewährung**', 'Pflicht zur Urlaubsgewährung', 'Bezahlten Erholungsurlaub gewähren', 'BUrlG'],
+      ['**Zeugnispflicht**', 'Zeugniserteilungspflicht', 'Bei Ende des Arbeitsverhältnisses ein schriftliches Zeugnis ausstellen', '§ 109 GewO'],
+      ['**Nachweispflicht**', '', 'Die wesentlichen Vertragsbedingungen schriftlich aushändigen', 'NachwG'],
+      ['**Abführungspflicht**', '', 'Lohnsteuer und Sozialversicherungsbeiträge einbehalten und abführen', 'EStG, SGB IV'],
+    ]],
+    ['note', 'Dem **Direktionsrecht** (Weisungsrecht) des Arbeitgebers steht die **Gehorsamspflicht** des Arbeitnehmers gegenüber. Weisungen müssen **billigem Ermessen** entsprechen. Nicht verwechseln: Die **Treuepflicht** hat der **Arbeitnehmer**, die **Fürsorgepflicht** der **Arbeitgeber**.'],
     ['h', 'Befristung und Probezeit'],
     ['kv', [
       ['Unbefristeter Vertrag', 'Der **Regelfall**. Endet erst durch **Kündigung**, Aufhebungsvertrag oder Rente.'],

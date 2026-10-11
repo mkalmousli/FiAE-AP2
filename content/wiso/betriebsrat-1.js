@@ -5,7 +5,7 @@ AP2.page('wiso-betriebsrat', {
   cheat: [
     ['Wahl', ['Betrieb mit **mindestens 5 ständig wahlberechtigten AN**, davon **3 wählbar**', '**Wahlberechtigt:** ab **18 Jahre**', '**Wählbar:** 6 Monate im Betrieb', '**Amtszeit 4 Jahre**', '**Größe:** 5 bis 20 AN = 1 Mitglied, 21-50 = 3, 51-100 = 5, 101-200 = 7']],
     ['Mitbestimmung § 87 (soziale Angelegenheiten)', ['Beginn/Ende der **täglichen Arbeitszeit**, **Pausen**', '**Urlaubsgrundsätze**, Urlaubsplan', '**Technische Überwachung** (Zeiterfassung, Software zur Leistungskontrolle)', 'Ordnung im Betrieb, **Lohngestaltung**, Sozialeinrichtungen', '**Gesundheitsschutz**, Unfallverhütung']],
-    ['Personelle Angelegenheiten', ['**§ 99:** Einstellung, Versetzung, Eingruppierung: **Zustimmung** nötig', '**§ 102:** **Anhörung vor jeder Kündigung** (sonst unwirksam)', '**§ 98:** Berufsbildung', 'Stellenausschreibung']],
+    ['Personelle Angelegenheiten', ['**§ 99:** Einstellung, Versetzung, Eingruppierung: **Zustimmungsverweigerungsrecht**', '**§ 102:** **Anhörungsrecht** vor jeder Kündigung (sonst unwirksam)', '**§ 98:** Berufsbildung', 'Stellenausschreibung']],
     ['Wirtschaftliche Angelegenheiten', ['**§ 106:** Wirtschaftsausschuss (ab 100 AN)', '**§ 111:** **Betriebsänderungen** (Schließung, Verlegung, Zusammenlegung): **Interessenausgleich** und **Sozialplan**', 'Betrieb mit **mehr als 20** wahlberechtigten AN']],
   ],
   blocks: [
