@@ -1,5 +1,5 @@
 AP2.page('infra-ipv6', {
-  b: 'infra', g: 'Netzwerke', t: 'IPv6-Grundlagen',
+  b: 'infra', g: 'IP-Adressierung', t: 'IPv6-Grundlagen',
   d: '**IPv6** ist der Nachfolger von IPv4. Eine IPv6-Adresse hat **128 Bit** und wird als **8 Gruppen aus je 4 Hexadezimalziffern** geschrieben (zum Beispiel `2001:0db8:0000:0000:0000:ff00:0042:8329`). Es gibt **kein Broadcast** mehr, der Adressraum ist so groß, dass **NAT nicht nötig** ist. Das Standard-Subnetz ist ein **/64**.',
   m: '**128 Bit = 8 mal 16 Bit = 8 Gruppen.** Kürzen: **führende Nullen weglassen** und **eine** Folge aus Null-Gruppen durch `::` ersetzen (nur **einmal** pro Adresse!). Kein Broadcast: stattdessen **Multicast**. Link-Local beginnt mit **fe80**.',
   cheat: [

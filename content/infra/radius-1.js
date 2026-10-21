@@ -1,5 +1,5 @@
 AP2.page('infra-radius', {
-  b: 'infra', g: 'Netzwerke', t: 'Zugriffskontrolle im Netzwerk: RADIUS und Kerberos',
+  b: 'infra', g: 'Netzwerkbetrieb', t: 'Zugriffskontrolle im Netzwerk: RADIUS und Kerberos',
   d: '**Authentifizierung** prüft, **wer** jemand ist, **Autorisierung** legt fest, **was** er darf, **Accounting** protokolliert, **was** er getan hat (zusammen: **AAA**). **RADIUS** ist ein zentraler Authentifizierungsserver für Netzwerkzugänge (WLAN, VPN, Switch-Ports, **IEEE 802.1X**). **Kerberos** ist ein Ticketsystem für **Single Sign-On** in Windows-Domänen.',
   m: '**AAA: Authentication (Wer?), Authorization (Was darf er?), Accounting (Was hat er getan?).** **RADIUS = Türsteher für den Netzzugang** (Gerät fragt Server). **Kerberos = Eintrittskarten (Tickets)**: einmal anmelden, dann mit Tickets Dienste nutzen. Kerberos: **Port 88**, RADIUS: **UDP 1812/1813**.',
   cheat: [

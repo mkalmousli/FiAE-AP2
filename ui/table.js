@@ -12,7 +12,7 @@
     const table = h('table', {style: {width: '100%', borderCollapse: 'collapse', fontSize: S.f.sm, lineHeight: '1.55'}});
     const headRow = h('tr');
     head.forEach((txt) => headRow.appendChild(cell('th', txt, {fontWeight: S.fw.semi, whiteSpace: 'nowrap'}, (n, c) => {
-      n.style.backgroundColor = c.surface2; n.style.color = c.text2; n.style.borderBottom = '1px solid ' + c.border;
+      n.style.backgroundColor = c.accentSoft; n.style.color = c.accent; n.style.borderBottom = '2px solid ' + c.accent;
     })));
     table.appendChild(h('thead', {}, [headRow]));
     const body = h('tbody');

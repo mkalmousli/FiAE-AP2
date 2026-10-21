@@ -1,4 +1,6 @@
-// Einstieg: lädt alle Manifeste, danach alle darin gelisteten Dateien in fester Reihenfolge.
+// Einstieg: im Betrieb eine gebündelte Datei (bundle.js, erzeugt von build.mjs), lokal alle Einzeldateien laut Manifest.
+// Lokal (localhost) oder mit ?dev lädt immer die Einzeldateien, damit Änderungen ohne Build sichtbar sind; ?bundle erzwingt das Bündel.
+const VERSION = '495a719424';
 window.AP2 = {files: [], blocks: {}, tools: {}};
 // Seitenteile: pages('ps', {phasen: 3}) lädt content/ps/phasen-1.js bis phasen-3.js.
 AP2.pages = (dir, spec) => Object.keys(spec).forEach((name) => {
@@ -75,5 +77,20 @@ AP2.pages = (dir, spec) => Object.keys(spec).forEach((name) => {
   const boot = () => { AP2.app.start(); finish(); };
   const ready = () => (document.readyState === 'loading'
     ? document.addEventListener('DOMContentLoaded', boot) : boot());
-  loadList(names.map((name) => 'manifest/' + name + '.js'), 0, 0.1, () => loadList(AP2.files, 0.1, 0.9, ready));
+  const single = () => loadList(names.map((name) => 'manifest/' + name + '.js'), 0, 0.1, () => loadList(AP2.files, 0.1, 0.9, ready));
+  const q = location.search;
+  const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+  const dev = VERSION === 'dev' || /[?&]dev\b/.test(q) || (local && !/[?&]bundle\b/.test(q));
+  if (dev) { single(); return; }
+  // Bündel: ein Request; schlägt er fehl, Einzeldateien als Rückfall.
+  const el = document.createElement('script');
+  el.src = 'bundle.js?v=' + VERSION;
+  el.onload = () => { progress(1, 1, 1, ''); ready(); };
+  el.onerror = () => { window.AP2 = {files: [], blocks: {}, tools: {}}; AP2.pages = (dir, spec) => Object.keys(spec).forEach((name) => {
+    for (let i = 1; i <= spec[name]; i++) AP2.files.push('content/' + dir + '/' + name + '-' + i + '.js');
+  }); single(); };
+  progress(0.3, 0, 1, 'bundle.js');
+  document.head.appendChild(el);
+  // Offline-Nutzung und schneller Neustart; neue Versionen werden beim nächsten Laden aktiv.
+  if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 })();

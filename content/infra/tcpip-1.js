@@ -1,5 +1,5 @@
 AP2.page('infra-tcpip', {
-  b: 'infra', g: 'Netzwerke', t: 'TCP/IP-Modell',
+  b: 'infra', g: 'Netzwerk-Grundlagen', t: 'TCP/IP-Modell',
   d: 'Das **TCP/IP-Modell** (Internet-Modell) ist die praktische Grundlage des Internets und hat **4 Schichten**: **Netzzugang**, **Internet**, **Transport** und **Anwendung**. Es fasst die OSI-Schichten 1 und 2 sowie 5 bis 7 zusammen.',
   m: '**4 Schichten von unten:** **N**etzzugang, **I**nternet, **T**ransport, **A**nwendung = "**N**ur **I**mmer **T**ippen **A**ll-day". OSI hat 7, TCP/IP hat 4: Schicht 1+2 werden eins, Schicht 5+6+7 werden eins.',
   cheat: [

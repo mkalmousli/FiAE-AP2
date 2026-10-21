@@ -1,5 +1,5 @@
 AP2.page('infra-subnetting', {
-  b: 'infra', g: 'Netzwerke', t: 'Subnetting: Berechnen und Teilen von Netzen',
+  b: 'infra', g: 'IP-Adressierung', t: 'Subnetting: Berechnen und Teilen von Netzen',
   d: '**Subnetting** teilt ein IP-Netz in mehrere kleinere **Subnetze**, indem Bits vom Hostanteil dem Netzanteil zugeschlagen werden ("Bits borgen"). Mit der **Blockgröße** (256 minus Maskenwert) findet man schnell Netzadresse, Broadcast und Hostbereich. **VLSM** (Variable Length Subnet Masking) erlaubt Subnetze unterschiedlicher Größe.',
   m: '**Blockgröße = 256 - Maskenwert.** Netzadresse = größtes Vielfaches der Blockgröße **kleiner oder gleich** dem IP-Wert. Broadcast = nächste Netzadresse **minus 1**. Hosts = **2^h - 2**. Subnetze = **2^geborgte Bits**.',
   cheat: [

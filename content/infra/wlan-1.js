@@ -1,5 +1,5 @@
 AP2.page('infra-wlan', {
-  b: 'infra', g: 'Netzwerke', t: 'WLAN: Standards, Frequenzen, WPA2/WPA3 und Gäste-WLAN',
+  b: 'infra', g: 'Netzwerk-Grundlagen', t: 'WLAN: Standards, Frequenzen, WPA2/WPA3 und Gäste-WLAN',
   d: '**WLAN** nach **IEEE 802.11** überträgt Daten per Funk im **2,4-GHz**-, **5-GHz**- und (ab Wi-Fi 6E) **6-GHz**-Band. Weil jeder in Reichweite mithören kann, ist **Verschlüsselung** Pflicht: heute **WPA2** oder besser **WPA3**. Beide gibt es als **Personal** (ein gemeinsamer **Pre-Shared Key**, PSK/SAE) und **Enterprise** (jeder Benutzer meldet sich einzeln über **802.1X/EAP** an einem **RADIUS-Server** an). Ein **Gäste-WLAN** wird über eine eigene **SSID** in einem eigenen **VLAN** vom internen Netz getrennt.',
   m: '**2,4 GHz: weiter, durch Wände, aber langsamer und überfüllt. 5 GHz: schneller, mehr Kanäle, kürzere Reichweite.** **Personal = ein Passwort für alle, Enterprise = jeder Benutzer eigene Anmeldung (RADIUS).** **WEP und WPA (TKIP) sind gebrochen.** **Gäste: eigene SSID + VLAN + Client-Isolation + nur Internet.**',
   cheat: [

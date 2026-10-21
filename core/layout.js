@@ -19,6 +19,8 @@
     return () => { L.subs = L.subs.filter((item) => item !== fn); };
   };
   window.addEventListener('resize', run);
+  // Erscheint oder verschwindet die senkrechte Bildlaufleiste, ändert sich die nutzbare Breite ohne resize-Ereignis.
+  if (window.ResizeObserver) new ResizeObserver(() => { if ((document.documentElement.clientWidth || window.innerWidth) !== L.w) run(); }).observe(document.documentElement);
   AP2.state.sub('sideW', run);
   compute();
   AP2.layout = Object.assign(L, {bind, run});

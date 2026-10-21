@@ -1,5 +1,5 @@
 AP2.page('infra-tcpudp', {
-  b: 'infra', g: 'Netzwerke', t: 'TCP und UDP, Ports',
+  b: 'infra', g: 'Transport und Dienste', t: 'TCP und UDP, Ports',
   d: '**TCP** ist ein **verbindungsorientiertes, zuverlässiges** Transportprotokoll (Handshake, Quittungen, Wiederholung, richtige Reihenfolge). **UDP** ist **verbindungslos und ohne Garantie**, aber schnell. **Ports** (0 bis 65535) bestimmen auf einem Rechner, **welcher Dienst** die Daten bekommt. IP-Adresse plus Port ergibt einen **Socket**.',
   m: '**IP-Adresse = Hausadresse, Port = Wohnungsnummer.** TCP = **Einschreiben mit Rückschein** (sicher, langsamer). UDP = **Postkarte** (schnell, vielleicht verloren). TCP-Verbindungsaufbau: **SYN, SYN-ACK, ACK** (Drei-Wege-Handshake).',
   cheat: [

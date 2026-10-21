@@ -1,5 +1,5 @@
 AP2.page('infra-komponenten', {
-  b: 'infra', g: 'Netzwerke', t: 'Netzwerkkomponenten (Switch, Router, Hub, Firewall)',
+  b: 'infra', g: 'Netzwerk-Grundlagen', t: 'Netzwerkkomponenten (Switch, Router, Hub, Firewall)',
   d: 'Netzwerkkomponenten verbinden Geräte und Netze. Ein **Hub** (Schicht 1) sendet alles an alle. Ein **Switch** (Schicht 2) leitet Frames gezielt anhand der **MAC-Adresse**. Ein **Router** (Schicht 3) verbindet **verschiedene Netze** anhand der **IP-Adresse**. Eine **Firewall** filtert den Datenverkehr nach Regeln.',
   m: '**Hub = dumm (Schicht 1, "Verteiler"), Switch = klug (Schicht 2, MAC), Router = Wegweiser zwischen Netzen (Schicht 3, IP), Firewall = Türsteher (Regeln).** Switch trennt **Kollisionsdomänen**, Router trennt **Broadcastdomänen**.',
   cheat: [

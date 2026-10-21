@@ -182,6 +182,19 @@ Fokus: Multiple-Choice, 20–30 Fragen. Quellen: [top-pruefung.de Übungsfragen]
   - [ ] Geschäftsbrief nach DIN 5008
   - [ ] E-Mail-Kommunikation, Stil/Register
 - [ ] **Kommunikationsmodelle**
+- [ ] **Kommunikationsmodelle**
+- [ ] **Kommunikationsmodelle**
+- [ ] **Kommunikationsmodelle**
+- [ ] **Kommunikationsmodelle**
+- [ ] **Kommunikationsmodelle**
+- [ ] **Kommunikationsmodelle**
+- [ ] **Kommunikationsmodelle**
+- [ ] **Kommunikationsmodelle**
+- [ ] **Kommunikationsmodelle**
+- [ ] **Kommunikationsmodelle**
+- [ ] **Kommunikationsmodelle**
+- [ ] **Kommunikationsmodelle**
+- [ ] **Kommunikationsmodelle**
   - [ ] Sender-Empfänger-Modell (Shannon-Weaver)
   - [ ] 4-Ohren-Modell (Schulz von Thun)
   - [ ] Eisbergmodell
@@ -236,6 +249,53 @@ Herausgearbeitet aus allen vorliegenden Prüfungen (PS, EuA, Gemeinschaftskunde,
   - [ ] EU-Organe und Gesetzgebung, KI-Verordnung, KI und Mitbestimmung
   - [ ] Methoden: Schaubild, Karikatur, Stellungnahme (ganze Sätze!)
 - [ ] **Deutsch**: Prüfungstyp I/II, Textverständnis, Redewendungen, das/dass, Schreibaufgaben
+
+---
+
+## 7. Ergänzt aus dem aktualisierten Prüfungskatalog (Stand 12/2024)
+
+Abgleich mit "Prüfungsvorbereitung aktuell, Fachinformatiker Anwendungsentwicklung" (Europa-Lehrmittel, 3. Auflage 2026). Alle Punkte haben eine eigene Seite mit Quiz, Aufgaben und teils Rechner. Probeprüfung 2 (Seiten `exam2-ps`, `exam2-eua`, `exam2-wiso`) prüft genau diese Schwerpunkte.
+
+- [ ] **Planen**
+  - [ ] Stakeholder- und Risikoanalyse, magisches Dreieck (`ps-stakeholder`)
+  - [ ] UML-Überblick, Objekt-, Paket- und Zeitverlaufsdiagramm (`ps-umlueberblick`)
+  - [ ] Software-Architektur: Schichten, Client-Server, MVC, Microservices (`ps-architektur`)
+  - [ ] GUI-Design, UX, nutzerzentriertes Design, ISO 9241-110:2020 (`ps-ux`)
+  - [ ] Qualitätsmanagement: ISO 9000, PDCA, Kaizen, TQM, Six Sigma/DPMO (`ps-qm`)
+  - [ ] Softwarequalität ISO/IEC 25010, funktionale und nicht-funktionale Anforderungen (`ps-softwarequalitaet`)
+  - [ ] White-Box: Kontrollflussgraph, C0/C1/C2, zyklomatische Komplexität, TDD (`ps-ueberdeckung`)
+  - [ ] DSGVO-Begriffe, Rechtsgrundlagen, Auftragsverarbeitung, TOM (`ps-tom`)
+  - [ ] AGB, UWG, Compliance, Governance, CRM (`ps-wettbewerb`)
+- [ ] **Infrastruktur und Sicherheit**
+  - [ ] Ethernet-Frame, MAC-Adressen, Switching, ARP (`infra-ethernet`)
+  - [ ] VLSM (`infra-vlsm`), IPv6-Subnetting (`infra-ipv6sub`), Routing mit RIP/OSPF (`infra-routing`)
+  - [ ] Voice over IP (`infra-voip`)
+  - [ ] Server: Rack, Blade, Cluster, Energiekosten (`infra-server`); Virtualisierung, Container, VDI, Cloud (`infra-virtualisierung`)
+  - [ ] Schutzbedarf, Bedrohungen, Pentest, OpenVAS (`infra-schwachstellen`)
+  - [ ] Webanwendungen absichern: TLS, Reverse Proxy, OWASP (`infra-websec`)
+  - [ ] Authentifizierung, 2FA, Passwortrichtlinien, SSO, SAML, OAuth 2.0 (`infra-webauth`)
+  - [ ] Hashfunktionen und Blockchain (`infra-blockchain`)
+  - [ ] Rechnen: Leistung, Energie, Übertragungszeit, VDE-Schutzmaßnahmen (`infra-elektro`)
+  - [ ] Industrie 4.0, IoT, Smart Grid, cyber-physische Systeme (`infra-industrie40`)
+- [ ] **Algorithmen und Daten**
+  - [ ] Programmierparadigmen, Compiler, Interpreter, Linker (`eua-paradigmen`)
+  - [ ] Views, GRANT/REVOKE, CASE, Datumsrechnung (`eua-sqlviews`)
+  - [ ] Transaktionen, ACID, SAVEPOINT, referentielle Integrität (`eua-transaktionen`)
+  - [ ] Relational vs. NoSQL (`eua-nosql`)
+  - [ ] Künstliche neuronale Netze (`eua-knn`)
+  - [ ] Prüfziffern: ISBN, EAN, Luhn, IBAN (`eua-pruefziffer`)
+- [ ] **WiSo**
+  - [ ] Prüfungszulassung, Ende der Ausbildung, AGG, Fort- und Weiterbildung (`wiso-weiterbildung`)
+  - [ ] Arbeitsschutz, Sicherheitszeichen, Brandschutz, Bildschirmarbeit (`wiso-arbeitsschutz`)
+  - [ ] Kaufmann, Handelsregister, Prokura, Handlungsvollmacht (`wiso-vollmacht`)
+  - [ ] Arbeitsteilung, Wirtschaftssektoren, Kartell, Konzern, Fusion (`wiso-kooperation`)
+  - [ ] Führungsstile, Management by, Unternehmensziele (`wiso-fuehrung`)
+  - [ ] Ökonomisches Prinzip, Produktionsfaktoren, Kennzahlen (`wiso-kennzahlen`)
+  - [ ] Wirtschaftsordnungen, Prinzipien der sozialen Sicherung (`wiso-wirtschaftsordnung`)
+  - [ ] Nachhaltigkeit, SDGs, SWOT, Umweltgesetze (`wiso-nachhaltigkeit`)
+- [ ] **Prüfung**
+  - [ ] Ablauf, Gewichtung, Bestehensregeln, Ergänzungsprüfung, Notenrechner (`ref-ablauf`)
+  - [ ] Projektarbeit: Antrag, Dokumentation, Präsentation, Fachgespräch (`ref-projekt`)
 
 ---
 

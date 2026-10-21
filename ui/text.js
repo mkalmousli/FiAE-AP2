@@ -33,12 +33,14 @@
     });
     return wrap;
   };
+  // Schritte als farbige Zeitleiste: jede Nummer in eigener Farbe, die Linie verläuft zur nächsten Farbe.
   const stepRow = (item, idx, last) => {
     const badge = h('div', {text: String(idx + 1), style: {position: 'absolute', left: 0, top: 0, width: '30px', height: '30px',
       borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: S.f.sm,
-      fontWeight: S.fw.bold}});
-    AP2.theme.bind(badge, (n, c) => { n.style.backgroundColor = c.accentSoft; n.style.color = c.accent; });
-    const rail = last ? null : fill(h('div', {style: {position: 'absolute', left: '14px', top: '36px', bottom: '2px', width: '2px'}}), 'border');
+      fontWeight: S.fw.bold, boxShadow: '0 2px 6px rgba(0,0,0,0.12)'}});
+    AP2.theme.bind(badge, (n, c) => { const k = idx % c.cat.length; n.style.backgroundColor = c.cat[k]; n.style.color = c.surface; });
+    const rail = last ? null : AP2.theme.bind(h('div', {style: {position: 'absolute', left: '14px', top: '34px', bottom: '0', width: '3px', borderRadius: '2px'}}),
+      (n, c) => { const k = idx % c.cat.length; n.style.background = 'linear-gradient(' + c.cat[k] + ', ' + c.cat[(k + 1) % c.cat.length] + ')'; n.style.opacity = '0.45'; });
     const body = tint(h('div', {style: {fontSize: S.f.md, lineHeight: S.lh.body, paddingTop: '2px'}}, rich(item)), 'text');
     return h('div', {style: {position: 'relative', paddingLeft: '48px', paddingBottom: last ? '0' : S.sp[4]}}, [badge, rail, body]);
   };
@@ -47,7 +49,10 @@
     const box = h('div', {style: {border: '1px solid', borderRadius: S.r.md, overflow: 'hidden', margin: '0 0 ' + S.sp[5]}});
     AP2.theme.bind(box, (n, c) => { n.style.borderColor = c.border; n.style.backgroundColor = c.surface; });
     pairs.forEach((pair, idx) => {
-      const term = tint(h('div', {style: {flex: '0 0 190px', fontWeight: S.fw.semi, fontSize: S.f.sm}}, rich(pair[0])), 'accent');
+      // Begriff als farbiges Etikett, jede Zeile eine andere Farbe.
+      const chip = h('span', {style: {display: 'inline-block', padding: '3px 10px', borderRadius: S.r.sm, fontWeight: S.fw.semi, lineHeight: '1.4'}}, rich(String(pair[0]).replace(/\*\*/g, '')));
+      AP2.theme.bind(chip, (n, c) => { const k = idx % c.cat.length; n.style.backgroundColor = c.catSoft[k]; n.style.color = c.cat[k]; });
+      const term = h('div', {style: {flex: '0 0 200px', fontSize: S.f.sm}}, [chip]);
       const desc = tint(h('div', {style: {flex: '1 1 260px', fontSize: S.f.sm, lineHeight: S.lh.body}}, rich(pair[1])), 'text');
       const row = h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[2] + ' ' + S.sp[4], padding: '12px 16px', borderTop: idx ? '1px solid' : 'none'}}, [term, desc]);
       AP2.theme.bind(row, (n, c) => { n.style.borderColor = c.border; });

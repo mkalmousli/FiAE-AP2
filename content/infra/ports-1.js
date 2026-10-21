@@ -1,5 +1,5 @@
 AP2.page('infra-ports', {
-  b: 'infra', g: 'Netzwerke', t: 'Protokolle und Ports: HTTP, FTP, DNS, DHCP, ODBC',
+  b: 'infra', g: 'Transport und Dienste', t: 'Protokolle und Ports: HTTP, FTP, DNS, DHCP, ODBC',
   d: 'Anwendungsprotokolle regeln die Kommunikation zwischen Programmen. Jedes hat einen **Standardport**: **HTTP 80, HTTPS 443, FTP 21 (Daten 20), SSH 22, SMTP 25, DNS 53, DHCP 67/68, POP3 110, IMAP 143**. **DNS** übersetzt Namen in IP-Adressen, **DHCP** vergibt automatisch IP-Konfigurationen, **ODBC** ist eine einheitliche Schnittstelle zu Datenbanken.',
   m: 'Webmerker: **80 unsicher, 443 sicher** (das S in HTTPS). E-Mail: **SMTP sendet (25), POP3 holt ab (110), IMAP verwaltet auf dem Server (143)**. **DHCP = DORA**: Discover, Offer, Request, Acknowledge.',
   cheat: [

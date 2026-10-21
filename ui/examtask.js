@@ -11,7 +11,7 @@
     const opts = Array.from({length: task.pts + 1}, (_, n) => h('option', {text: String(n), attrs: {value: String(n)}}));
     const select = AP2.field(h('select', {attrs: {'aria-label': 'Erreichte Punkte'}}, opts));
     select.value = String(store.pts(key) || 0);
-    on(select, 'change', () => { store.setPts(key, Number(select.value)); onPts(); });
+    on(select, 'change', () => { store.setPts(key, Number(select.value)); AP2.game.examPoints(store.id, key, Number(select.value)); onPts(); });
     const text = AP2.tint(h('span', {text: 'Eigene Bewertung: erreichte Punkte von ' + task.pts, style: {fontSize: S.f.sm, fontWeight: S.fw.med}}), 'text');
     return h('div', {style: {display: 'flex', alignItems: 'center', gap: S.sp[3], flexWrap: 'wrap', margin: '0 0 ' + S.sp[4]}}, [text, select]);
   };

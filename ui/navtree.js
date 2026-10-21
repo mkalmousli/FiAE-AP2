@@ -1,4 +1,4 @@
-// Navigationsbaum: Blöcke und Gruppen einklappbar, Filter, Fortschritt. Zeilen bleiben bestehen und werden nur umgefärbt.
+// Navigationsbaum: Blöcke und Gruppen einklappbar, Filter, Fortschritt und Beherrschung. Zeilen bleiben bestehen und werden nur umgefärbt.
 (function () {
   const {h} = AP2;
   const S = AP2.S;
@@ -24,12 +24,18 @@
   };
   const pageItem = (p) => {
     const mark = AP2.tint(h('span', {style: {marginLeft: 'auto', display: 'flex'}}), 'accent');
-    const row = AP2.navRow({level: 'page', inner: [h('span', {text: p.t, style: {flex: '1 1 0'}}), mark], label: p.t,
+    // Punkt in der Farbe der Beherrschung (Sterne der Lernkartei); leer, solange keine Frage geübt wurde.
+    const dot = h('span', {style: {width: '7px', height: '7px', borderRadius: '50%', flexShrink: 0, boxSizing: 'border-box', border: '1.5px solid'}});
+    const row = AP2.navRow({level: 'page', inner: [dot, h('span', {text: p.t, style: {flex: '1 1 0'}}), mark], label: p.t,
       fn: () => AP2.router.go(p.id), active: () => AP2.state.get('route') === p.id});
     const sync = () => {
       AP2.dispose(mark);
       while (mark.firstChild) mark.removeChild(mark.firstChild);
       if (AP2.state.get('done')[p.id]) mark.appendChild(AP2.icon('check', 14));
+      const m = AP2.game.mastery(p.id);
+      dot.style.visibility = m.total ? 'visible' : 'hidden';
+      dot.title = m.total ? m.stars + ' von 5 Sternen' : '';
+      AP2.theme.bind(dot, (n, c) => { const col = m.seen ? AP2.gk.starColor(m.stars, c) : c.border; n.style.borderColor = col; n.style.backgroundColor = m.seen ? col : 'transparent'; });
       row.repaint();
     };
     sync();

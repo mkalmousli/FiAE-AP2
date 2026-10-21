@@ -1,5 +1,5 @@
 AP2.page('infra-vlan', {
-  b: 'infra', g: 'Netzwerke', t: 'VLAN, Inter-VLAN-Routing, DMZ und Netzplanung mit VLSM',
+  b: 'infra', g: 'Netzwerkbetrieb', t: 'VLAN, Inter-VLAN-Routing, DMZ und Netzplanung mit VLSM',
   d: 'Ein **VLAN** (Virtual LAN) teilt ein physisches Switch-Netz in mehrere **logisch getrennte** Netze (eigene **Broadcastdomäne**, eigenes IP-Subnetz). Geräte in verschiedenen VLANs können nur über einen **Router** oder **Layer-3-Switch** miteinander sprechen (**Inter-VLAN-Routing**), wo Firewall-Regeln greifen. Über eine Leitung zwischen Switches laufen mehrere VLANs als **Trunk**; die Frames tragen dabei ein **Tag nach IEEE 802.1Q** mit der VLAN-ID. Eine **DMZ** ist ein eigenes Netzsegment für Server, die aus dem Internet erreichbar sein müssen, abgeschottet vom internen LAN. Die passenden Subnetze plant man mit **VLSM** (Subnetze unterschiedlicher Größe).',
   m: '**VLAN = eigenes Subnetz + eigene Broadcastdomäne.** **Access-Port: ein VLAN, untagged (Endgerät). Trunk-Port: mehrere VLANs, getaggt (802.1Q).** **VLAN-ID 12 Bit -> 1 bis 4094.** **Zwischen VLANs nur über Router/L3-Switch.** **VLSM: größtes Netz zuerst, Größe = nächste Zweierpotenz ≥ Hosts + 2.** **DMZ: Server, die von außen erreichbar sein müssen, zwischen zwei Firewalls (oder an eigener Firewall-Schnittstelle).**',
   cheat: [

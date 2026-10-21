@@ -1,0 +1,42 @@
+AP2.page('ref-projekt', {
+  b: 'ref', g: 'Prüfung', t: 'Betriebliche Projektarbeit: Antrag, Dokumentation, Präsentation und Fachgespräch',
+  d: 'Die **betriebliche Projektarbeit** zählt **50 Prozent** der Gesamtnote. Sie umfasst die vollständige **Planung, Durchführung und Reflexion** eines realen Projekts (höchstens **80 Stunden** inklusive Dokumentation), beginnend mit dem **Projektantrag**. Bewertet werden die **Dokumentation** (etwa 15 Seiten) sowie **Präsentation (15 Minuten) und Fachgespräch (15 Minuten)** vor dem Prüfungsausschuss.',
+  m: 'Gliederung immer: **Planung, Durchführung, Reflexion.** Zeit: **8 bis 10 Stunden** für die Dokumentation einplanen. Fachgespräch: **nie schweigen**, Fachbegriffe sicher erklären (OSI, Normalformen, OOP), bei Unklarheit **nachfragen**.',
+  cheat: [
+    ['Projektantrag', ['Ausgangssituation und Geschäftsprozess präzise beschreiben', 'Projektziel, Kundennutzen', 'Technische und personelle Schnittstellen', 'Projektphasen mit Zeitplanung (Summe 80 h)', 'Geplante Dokumentation (Projektbericht, Pflichtenheft, Testprotokoll ...)', 'Vorher gegenlesen lassen']],
+    ['Dokumentation (ca. 15 Seiten)', ['**Planung:** Umfeld, Ist-Analyse, Soll-Konzept, Vorgehensmodell, Kosten, Zeitplan, Alternativen mit Begründung, QS-Maßnahmen', '**Durchführung:** Umsetzung prozessorientiert, Meilensteine, Probleme und Lösungen, Codeauszüge, Diagramme (ER, UML), Tests', '**Reflexion:** Soll-Ist-Vergleich der Zeit, Wirtschaftlichkeit (Amortisation), Fazit, Ausblick', 'Anhang: Lasten-/Pflichtenheft, Testprotokoll, Kundendoku']],
+    ['Präsentation (15 min)', ['Struktur wie die Dokumentation', 'Wenige, gut lesbare Folien, Diagramme statt Textwüsten', 'Frei sprechen, nicht ablesen', 'Zeit vorher üben', 'Kleidung angemessen']],
+    ['Fachgespräch (15 min)', ['Beginnt meist beim eigenen Projekt, dann Vertiefung', 'Definitionen sicher beherrschen', 'Nicht verstanden: um Umformulierung bitten', 'Keine Ahnung: ehrlich sagen, um andere Frage bitten', 'Ausführlich antworten, wenn Raum dafür ist']],
+  ],
+  blocks: [
+    ['h', 'Zeitbudget von 80 Stunden'],
+    ['chart', {kind: 'bar', w: 720, h: 300, labels: ['Analyse und Planung', 'Entwurf', 'Implementierung', 'Test und Abnahme', 'Dokumentation'], series: [{n: 'Stunden (Beispiel)', d: [12, 12, 34, 12, 10], k: 'accent'}], vals: true, yl: 'Stunden', cap: 'Beispielhafte Verteilung. Die Dokumentation ist Teil der 80 Stunden; die Durchführung macht den größten Teil aus.'}],
+    ['h', 'Bewertungskriterien'],
+    ['table', ['Teil', 'Darauf achtet der Prüfungsausschuss'], [
+      ['Dokumentation', 'Vollständigkeit und Nachvollziehbarkeit, prozessorientierte Darstellung, begründete Entscheidungen (Alternativen!), Wirtschaftlichkeitsbetrachtung, Qualitätssicherung, sprachliche Richtigkeit, ansprechendes Layout'],
+      ['Präsentation', 'Aufbau und Struktur, Zeitmanagement, Medieneinsatz und Visualisierung, Sprache und Körpersprache, Fachbegriffe, Überzeugungskraft'],
+      ['Fachgespräch', 'Fachliches Hintergrundwissen, Einordnung in den betrieblichen Zusammenhang, Reflexionsfähigkeit, klare Antworten, Umgang mit den Prüfenden'],
+    ]],
+    ['h', 'Typische Fragen im Fachgespräch'],
+    ['table', ['Frage', 'Was dahintersteckt'], [
+      ['Warum haben Sie sich für diese Programmiersprache / dieses Framework entschieden?', 'Alternativen kennen, Kriterien nennen (Nutzwertanalyse, Know-how, Lizenz, Betrieb)'],
+      ['Charakterisieren Sie Java. Was bedeutet Polymorphie?', 'OOP-Grundbegriffe sicher erklären'],
+      ['Wie haben Sie getestet? Was ist ein Black-Box-Test?', 'Testarten, Testfälle, Äquivalenzklassen'],
+      ['Wie ist Ihre Datenbank aufgebaut? In welcher Normalform?', 'ER-Modell, Normalformen definieren können'],
+      ['Wie haben Sie Datenschutz und Sicherheit berücksichtigt?', 'DSGVO, TOM, Passwort-Hashing, Rollen'],
+      ['Was würden Sie heute anders machen?', 'Ehrliche Reflexion statt Schönfärberei'],
+      ['Wann amortisiert sich Ihr Projekt?', 'Kosten-Nutzen-Rechnung erklären'],
+    ]],
+    ['tip', 'Bereite für jedes Fachgebiet in deinem Projekt eine **auswendig gelernte Kerndefinition** vor (zum Beispiel erste Normalform, die 7 OSI-Schichten, die vier OOP-Prinzipien). Das gibt Sicherheit: Du kannst sofort antworten und dann in die Tiefe gehen.'],
+    ['h', 'Checkliste vor der Abgabe'],
+    ['list', ['Antrag und Dokumentation passen inhaltlich zusammen; Abweichungen werden erklärt.', 'Zeitplan Soll gegen Ist mit Begründung der Abweichungen.', 'Mindestens eine Alternative pro wichtiger Entscheidung mit Bewertung.', 'Wirtschaftlichkeit: Kosten, Nutzen, Amortisationszeit.', 'Diagramme beschriftet, Quellcode nur als aussagekräftige Auszüge.', 'Von einer fachkundigen, aber unbeteiligten Person gegenlesen lassen.', 'Eigenständigkeitserklärung unterschrieben, Formvorgaben der IHK eingehalten.']],
+    ['see', ['ref-ablauf', 'ps-phasen', 'ps-kosten', 'de-praesentation']],
+    ['quiz', [
+      {q: 'Wie viele Stunden darf die betriebliche Projektarbeit höchstens umfassen?', o: ['80', '40', '120', '35'], a: 0, e: 'Inklusive Dokumentation.'},
+      {q: 'Wie lange soll die Präsentation dauern?', o: ['etwa 15 Minuten', '5 Minuten', '45 Minuten', '30 Minuten ohne Fachgespräch'], a: 0, e: 'Danach folgen etwa 15 Minuten Fachgespräch, zusammen höchstens 30.'},
+      {q: 'In welche drei Teile gliedert man Dokumentation und Präsentation?', o: ['Planung, Durchführung, Reflexion', 'Einleitung, Code, Anhang', 'Kosten, Nutzen, Risiko', 'Lastenheft, Pflichtenheft, Rechnung'], a: 0, e: 'So spiegelt die Struktur den Projektverlauf.'},
+      {q: 'Was tun, wenn man eine Frage im Fachgespräch nicht verstanden hat?', o: ['Um eine Umformulierung bitten', 'Schweigen', 'Raten ohne nachzufragen', 'Das Gespräch abbrechen'], a: 0, e: 'Nachfragen ist ausdrücklich erlaubt und besser als Schweigen.'},
+      {q: 'Was gehört in die Reflexion?', o: ['Soll-Ist-Vergleich und Fazit', 'Der komplette Quellcode', 'Das Firmenlogo', 'Nur das Inhaltsverzeichnis'], a: 0, e: 'Dazu Wirtschaftlichkeit und Ausblick.'},
+    ]],
+  ],
+});

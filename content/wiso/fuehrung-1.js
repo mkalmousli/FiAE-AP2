@@ -1,0 +1,57 @@
+AP2.page('wiso-fuehrung', {
+  b: 'wiso', g: 'Unternehmen und Steuern', t: 'Führungsstile, Management-by-Techniken und Unternehmensziele',
+  d: 'Der **Führungsstil** beschreibt, wie Vorgesetzte Entscheidungen treffen und Mitarbeitende beteiligen: von **autoritär** (Vorgesetzte entscheiden allein) über **kooperativ** (gemeinsam) bis **Laissez-faire** (Mitarbeitende entscheiden weitgehend selbst). **Management-by-Techniken** sind konkrete Führungsmethoden, etwa **Management by Objectives** (Führen durch Zielvereinbarung), **by Exception** (eingreifen nur im Ausnahmefall) und **by Delegation** (Aufgaben samt Verantwortung übertragen). Unternehmen verfolgen **ökonomische, ökologische und soziale Ziele**, die in einem **Leitbild** zusammengefasst werden.',
+  m: '**Autoritär = ich entscheide, kooperativ = wir entscheiden, Laissez-faire = ihr macht.** **MbO = Ziele vereinbaren, MbE = nur bei Abweichung eingreifen, MbD = Verantwortung abgeben.** Zielbeziehungen: **komplementär** (fördern sich), **konkurrierend** (behindern sich), **indifferent** (neutral).',
+  cheat: [
+    ['Führungsstile', ['**Autoritär:** schnelle Entscheidungen, aber wenig Motivation und Kreativität', '**Kooperativ:** Beteiligung, Motivation, bessere Akzeptanz; dauert länger', '**Laissez-faire:** viel Freiheit, Gefahr von Orientierungslosigkeit', '**Patriarchalisch:** autoritär, aber fürsorglich']],
+    ['Management by ...', ['**Objectives (MbO):** gemeinsam Ziele vereinbaren, Weg frei, oft mit Prämie', '**Exception (MbE):** Mitarbeitende handeln selbst, Führung greift nur bei Ausnahmen ein', '**Delegation (MbD):** Aufgaben, Kompetenz und Verantwortung übertragen', '**Results:** Steuerung über Ergebnisse und Kennzahlen']],
+    ['Unternehmensziele', ['**Ökonomisch:** Gewinn, Umsatz, Marktanteil, Liquidität', '**Ökologisch:** Ressourcen schonen, Emissionen senken, papierlos', '**Sozial:** Arbeitsplätze sichern, Zufriedenheit, Weiterbildung', '**Leitbild/Vision:** übergeordnete Selbstbeschreibung']],
+    ['SMART', ['**S**pezifisch', '**M**essbar', '**A**kzeptiert / attraktiv', '**R**ealistisch', '**T**erminiert', 'Gilt für Projekt- und Mitarbeiterziele']],
+  ],
+  blocks: [
+    ['h', 'Führungsstile im Vergleich'],
+    ['diagram', {w: 780, h: 160, cap: 'Kontinuum der Führungsstile: Je weiter rechts, desto mehr Entscheidungsspielraum haben die Mitarbeitenden.', nodes: [
+      {id: 'a', x: 110, y: 60, k: 'round', s: 'bad', t: ['autoritär', 'Vorgesetzte entscheiden'], w: 180, h: 60},
+      {id: 'b', x: 300, y: 60, k: 'round', s: 'gold', t: ['patriarchalisch', 'entscheidet, sorgt'], w: 170, h: 60},
+      {id: 'c', x: 490, y: 60, k: 'round', s: 'ok', t: ['kooperativ', 'gemeinsam'], w: 170, h: 60},
+      {id: 'd', x: 680, y: 60, k: 'round', s: 'soft', t: ['Laissez-faire', 'Team entscheidet'], w: 170, h: 60},
+      {id: 't', x: 390, y: 135, k: 'text', t: 'Entscheidungsspielraum der Mitarbeitenden wächst', fs: 12},
+    ], edges: [{a: [90, 115], b: [700, 115], s: 'line', w: 1.5}]}],
+    ['table', ['Stil', 'Vorteile', 'Nachteile', 'Passend für'], [
+      ['Autoritär', 'Schnell, klar, eindeutige Verantwortung', 'Wenig Motivation, Wissen der Mitarbeitenden ungenutzt, Abhängigkeit von der Führung', 'Notfälle, sehr unerfahrene Teams'],
+      ['Kooperativ', 'Motivation, Kreativität, hohe Akzeptanz, Entlastung der Führung', 'Langsamere Entscheidungen, Abstimmungsaufwand', 'Wissensarbeit, Softwareentwicklung'],
+      ['Laissez-faire', 'Selbstständigkeit, Freiraum', 'Orientierungslosigkeit, Konflikte, unklare Verantwortung', 'Sehr erfahrene, selbstorganisierte Experten'],
+    ], {first: true}],
+    ['h', 'Management-by-Techniken'],
+    ['table', ['Technik', 'Idee', 'Beispiel'], [
+      ['Management by Objectives', 'Führung und Mitarbeitende **vereinbaren Ziele**; wie sie erreicht werden, entscheiden die Mitarbeitenden selbst. Oft mit Prämie bei Zielerreichung.', 'Vertrieb vereinbart 15 % mehr Neukunden pro Jahr'],
+      ['Management by Exception', 'Mitarbeitende entscheiden im Normalfall selbst innerhalb von Grenzen; die Führung greift **nur bei Abweichungen** ein.', 'Rabatte bis 10 % gibt der Vertrieb selbst, darüber entscheidet die Leitung'],
+      ['Management by Delegation', '**Aufgaben, Kompetenzen und Verantwortung** werden dauerhaft übertragen.', 'Teamleitung verantwortet das Budget ihres Teams'],
+    ]],
+    ['tip', 'Schlüsselwörter in der Aufgabe: "**Ziele** abstimmen, selbstständig umsetzen, Prämie" ergibt **MbO**; "**nur im Ausnahmefall** eingreifen" ergibt **MbE**; "Verantwortung **übertragen**" ergibt **MbD**.'],
+    ['h', 'Unternehmensziele und Zielbeziehungen'],
+    ['table', ['Formulierung', 'Zielart'], [
+      ['Das Unternehmen strebt als erwerbswirtschaftlicher Betrieb nach Gewinnmaximierung.', '**ökonomisch**'],
+      ['Wir wollen das nachhaltigste und innovativste IT-Haus der Region sein.', '**Leitbild / Vision**'],
+      ['Hohe Mitarbeiterzufriedenheit, flexible Arbeitszeiten auch im Homeoffice.', '**sozial**'],
+      ['In drei Jahren papierlos arbeiten, Pool mit E-Bikes für Mitarbeitende.', '**ökologisch**'],
+    ]],
+    ['kv', [
+      ['Komplementär (Zielharmonie)', 'Ein Ziel fördert das andere: weniger Stromverbrauch senkt Kosten und schont die Umwelt.'],
+      ['Konkurrierend (Zielkonflikt)', 'Ein Ziel behindert das andere: höhere Löhne (sozial) gegen höheren Gewinn (ökonomisch).'],
+      ['Indifferent (Zielneutralität)', 'Die Ziele beeinflussen sich nicht.'],
+    ]],
+    ['h', 'Aufgaben im Prüfungsstil'],
+    ['qa', 'Die Vertriebsmitarbeitenden sind sehr selbstständig. Die Geschäftsführung will Ziele mit ihnen abstimmen, die sie dann eigenständig umsetzen; bei Zielerreichung gibt es Prämien. Welche Führungstechnik ist gemeint?', '**Management by Objectives** (Führen durch Zielvereinbarung): Ziele werden gemeinsam vereinbart, der Weg zur Zielerreichung bleibt den Mitarbeitenden überlassen, und die Belohnung knüpft an die Zielerreichung an.', 2],
+    ['qa', 'Nennen Sie je zwei Vor- und Nachteile des kooperativen Führungsstils.', ['- **Vorteile:** höhere Motivation und Zufriedenheit; Wissen und Ideen der Mitarbeitenden fließen ein; bessere Akzeptanz von Entscheidungen.', '- **Nachteile:** Entscheidungen dauern länger; Abstimmungsaufwand; Verantwortung kann verwischen.'], 4],
+    ['see', ['wiso-organisation', 'wiso-unternehmen', 'ps-orga', 'wiso-nachhaltigkeit']],
+    ['quiz', [
+      {q: 'Ziele werden vereinbart, der Weg ist frei, bei Erfolg gibt es eine Prämie. Welche Technik?', o: ['Management by Objectives', 'Management by Exception', 'Management by Delegation', 'Laissez-faire'], a: 0, e: 'Führen durch Zielvereinbarung.'},
+      {q: 'Die Leitung greift nur ein, wenn etwas außerhalb des Normalen liegt. Welche Technik?', o: ['Management by Exception', 'Management by Objectives', 'Autoritärer Stil', 'Management by Results'], a: 0, e: 'Ausnahmefälle werden nach oben gegeben.'},
+      {q: 'Welcher Führungsstil führt zu schnellen Entscheidungen, aber geringer Motivation?', o: ['Autoritär', 'Kooperativ', 'Laissez-faire', 'Demokratisch'], a: 0, e: 'Die Führungskraft entscheidet allein.'},
+      {q: '"In drei Jahren papierlos arbeiten" ist ein ...', o: ['ökologisches Ziel', 'ökonomisches Ziel', 'soziales Ziel', 'Leitbild'], a: 0, e: 'Es geht um Ressourcenschonung.'},
+      {q: 'Höhere Löhne und höherer Gewinn stehen in welcher Beziehung?', o: ['Konkurrierend (Zielkonflikt)', 'Komplementär', 'Indifferent', 'Identisch'], a: 0, e: 'Mehr Lohn erhöht die Kosten und senkt den Gewinn.'},
+      {q: 'Wofür steht das M in SMART?', o: ['Messbar', 'Modern', 'Motivierend', 'Maximal'], a: 0, e: 'Spezifisch, Messbar, Akzeptiert, Realistisch, Terminiert.'},
+    ]],
+  ],
+});

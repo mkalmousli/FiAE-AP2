@@ -6,6 +6,11 @@
     plain: {p: {s: 'line', f: 'surface'}, t: 'text'}, soft: {p: {s: 'line', f: 'surface2'}, t: 'text'},
     accent: {p: {s: 'accent', f: 'accentSoft'}, t: 'text'}, solid: {p: {s: 'accent', f: 'accent'}, t: 'onAccent'},
     ok: {p: {s: 'ok', f: 'okSoft'}, t: 'text'}, bad: {p: {s: 'bad', f: 'badSoft'}, t: 'text'},
+    gold: {p: {s: 'gold', f: 'goldSoft'}, t: 'text'}, fire: {p: {s: 'fire', f: 'fireSoft'}, t: 'text'},
+    cat0: {p: {s: 'cat0', f: 'catSoft0'}, t: 'text'}, cat1: {p: {s: 'cat1', f: 'catSoft1'}, t: 'text'}, cat2: {p: {s: 'cat2', f: 'catSoft2'}, t: 'text'}, cat3: {p: {s: 'cat3', f: 'catSoft3'}, t: 'text'},
+    cat4: {p: {s: 'cat4', f: 'catSoft4'}, t: 'text'}, cat5: {p: {s: 'cat5', f: 'catSoft5'}, t: 'text'}, cat6: {p: {s: 'cat6', f: 'catSoft6'}, t: 'text'},
+    catSolid0: {p: {s: 'cat0', f: 'cat0'}, t: 'surface'}, catSolid1: {p: {s: 'cat1', f: 'cat1'}, t: 'surface'}, catSolid2: {p: {s: 'cat2', f: 'cat2'}, t: 'surface'}, catSolid3: {p: {s: 'cat3', f: 'cat3'}, t: 'surface'},
+    catSolid4: {p: {s: 'cat4', f: 'cat4'}, t: 'surface'}, catSolid5: {p: {s: 'cat5', f: 'cat5'}, t: 'surface'}, catSolid6: {p: {s: 'cat6', f: 'cat6'}, t: 'surface'},
     ghost: {p: {s: 'line', f: null, dash: '5 4'}, t: 'text2'}, clear: {p: {s: 'line', f: null}, t: 'text'}, none: {p: {s: null, f: null}, t: 'text'},
   };
   const SIZE = {dot: [14, 14], ring: [20, 20], bar: [70, 7], actor: [40, 56]};

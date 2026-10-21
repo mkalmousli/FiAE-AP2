@@ -4,9 +4,30 @@
   const S = AP2.S;
   const notFound = (id) => h('p', {text: 'Seite nicht gefunden: ' + id});
   const viewFor = (id) => {
-    if (id === 'home') return AP2.homeView();
+    const cut = id.indexOf('/');
+    const view = AP2.views[cut < 0 ? id : id.slice(0, cut)];
+    if (view) return view(cut < 0 ? '' : id.slice(cut + 1));
     const page = AP2.store.get(id);
     return page ? AP2.pageView(page) : notFound(id);
+  };
+  // Fachfarbe einer Route: Themenseite nach Block, Trainer/Pfad/Boss nach Argument.
+  const toneFor = (id) => {
+    const page = AP2.store.get(id);
+    if (page) return page.b;
+    const parts = id.split('/');
+    const sub = AP2.store.get(parts[parts.length - 1]);
+    if (sub) return sub.b;
+    return AP2.theme.BLOCK[parts[parts.length - 1]] ? parts[parts.length - 1] : 'ps';
+  };
+  const remember = (id) => {
+    if (!AP2.store.get(id)) return;
+    const list = [id].concat((AP2.state.get('recent') || []).filter((x) => x !== id)).slice(0, 8);
+    AP2.state.set('recent', list);
+  };
+  const titleFor = (id) => {
+    const page = AP2.store.get(id);
+    const view = AP2.viewTitles[id.split('/')[0]];
+    return page ? page.t + ' | ' : view ? view + ' | ' : '';
   };
   AP2.app = {
     start() {
@@ -34,9 +55,10 @@
       AP2.state.sub('drawer', () => place(AP2.layout));
       AP2.state.sub('route', (id) => {
         AP2.dispose(content);
+        AP2.theme.setTone(toneFor(id));
+        remember(id);
         content.appendChild(viewFor(id));
-        const page = AP2.store.get(id);
-        document.title = (page ? page.t + ' | ' : '') + 'AP2 FiAE Lernportal';
+        document.title = titleFor(id) + 'AP2 FiAE Lernportal';
         window.scrollTo(0, 0);
         AP2.find.apply(content);
         AP2.state.set('drawer', false);

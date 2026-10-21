@@ -1,5 +1,5 @@
 AP2.page('infra-ipconfig', {
-  b: 'infra', g: 'Netzwerke', t: 'IP-Konfiguration, DHCP-Vergabearten, NAT und Fehlersuche',
+  b: 'infra', g: 'IP-Adressierung', t: 'IP-Konfiguration, DHCP-Vergabearten, NAT und Fehlersuche',
   d: 'Damit ein Gerät im Netz und im Internet arbeiten kann, braucht es vier Angaben: **IP-Adresse**, **Subnetzmaske** (bzw. Präfix), **Standardgateway** (Router ins andere Netz) und **DNS-Server**. Diese vergibt meist ein **DHCP-Server** im vierstufigen Ablauf **DORA** (Discover, Offer, Request, Acknowledge), entweder **manuell** (fest per MAC-Adresse), **automatisch** (dauerhaft dieselbe Adresse) oder **dynamisch** (für eine Lease-Zeit). Private Adressen (10/8, 172.16/12, 192.168/16) werden am Router per **NAT** in eine öffentliche Adresse übersetzt. Viele Prüfungsaufgaben drehen sich um **Fehlersuche**: falsches Subnetz, fehlendes Gateway, doppelte Adressen.',
   m: '**IP + Maske + Gateway + DNS.** **DORA: Discover (Broadcast) - Offer - Request (Broadcast) - Acknowledge.** **Gleiche Netz-ID = direkt erreichbar, sonst über das Gateway.** **Gateway muss im eigenen Subnetz liegen.** **Private IPs sind im Internet nicht routbar -> NAT/Portweiterleitung/VPN.** **169.254.x.x = kein DHCP-Server gefunden (APIPA).**',
   cheat: [

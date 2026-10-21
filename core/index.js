@@ -57,6 +57,7 @@
         });
       },
       see: () => {},
+      signs: (items, cap) => { items.forEach((it) => { emit('fig', it[2]); emit('fig', it[3]); }); emit('fig', cap); },
       tool: () => {},
     };
     CALLOUTS.forEach((kind) => { T[kind] = (body) => each(kind, body); });

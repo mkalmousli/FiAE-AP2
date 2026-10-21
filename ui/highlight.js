@@ -6,10 +6,15 @@
     java: 'public private protected class interface extends implements static final void int double float long boolean char byte short String new return if else for while do switch case break continue try catch finally throw throws this super null true false abstract import package instanceof enum var List ArrayList Map HashMap Override System',
     csharp: 'using namespace public private protected internal class interface struct static readonly void int double float long bool char string var new return if else for foreach in while do switch case break continue try catch finally throw this base null true false abstract virtual override get set async await List Console enum record is as',
     js: 'function const let var return if else for while do switch case break continue try catch finally throw new this null true false class extends async await import export typeof of in',
-    pseudo: 'wenn sonst dann ende solange für bis wiederhole funktion prozedur gib zurück ausgabe eingabe if else while for do then end return function',
+    pseudo: 'wenn sonst dann ende solange für bis wiederhole funktion prozedur gib zurück ausgabe eingabe if else while for do then end return function falls rückgabe mod und oder nicht start wahr falsch mit schrittweite',
+    c: 'int long float double char void unsigned const static struct return if else for while do switch case break continue sizeof include define NULL',
+    cpp: 'int long float double char void bool unsigned const static struct class public private protected return if else for while do switch case break continue new delete this true false include define nullptr auto std',
+    php: 'function return if else elseif foreach for while echo new class public private protected static null true false array isset as',
+    json: 'true false null',
   };
   const COMMENT = {
     sql: /--[^\n]*/, python: /#[^\n]*/, pseudo: /\/\/[^\n]*|#[^\n]*/, java: /\/\/[^\n]*|\/\*[\s\S]*?\*\//,
+    c: /\/\/[^\n]*|\/\*[\s\S]*?\*\//, cpp: /\/\/[^\n]*|\/\*[\s\S]*?\*\//, php: /\/\/[^\n]*|#[^\n]*|\/\*[\s\S]*?\*\//,
     csharp: /\/\/[^\n]*|\/\*[\s\S]*?\*\//, js: /\/\/[^\n]*|\/\*[\s\S]*?\*\//, html: /<!--[\s\S]*?-->/, css: /\/\*[\s\S]*?\*\//,
   };
   const SPECIAL = {html: /<\/?[A-Za-z][\w-]*|\/?>/, css: /[\w-]+(?=\s*:)/};

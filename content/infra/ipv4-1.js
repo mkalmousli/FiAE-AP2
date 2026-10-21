@@ -1,5 +1,5 @@
 AP2.page('infra-ipv4', {
-  b: 'infra', g: 'Netzwerke', t: 'IPv4-Adressierung, Netzklassen und CIDR',
+  b: 'infra', g: 'IP-Adressierung', t: 'IPv4-Adressierung, Netzklassen und CIDR',
   d: 'Eine **IPv4-Adresse** ist eine **32 Bit** lange Zahl, geschrieben als vier **Oktette** (0 bis 255) mit Punkten, zum Beispiel `192.168.10.77`. Sie besteht aus einem **Netzanteil** und einem **Hostanteil**. Die **Subnetzmaske** (zum Beispiel `255.255.255.0` oder `/24`) legt fest, wo die Grenze liegt.',
   m: '**Netzadresse = IP AND Maske** (alle Hostbits 0). **Broadcast = alle Hostbits 1.** Hosts = **2^h - 2** (h = Anzahl Hostbits; minus Netz- und Broadcastadresse). Private Bereiche: **10/8, 172.16/12, 192.168/16**.',
   cheat: [

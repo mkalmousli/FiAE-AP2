@@ -1,4 +1,4 @@
-// Selbsttest: eine Frage nach der anderen, Antworten gemischt, sofortiges farbiges Feedback.
+// Selbsttest: eine Frage nach der anderen, Antworten gemischt, sofortiges farbiges Feedback; jede Antwort zählt für XP und Lernkartei.
 (function () {
   const {h, rich} = AP2;
   const S = AP2.S;
@@ -27,13 +27,15 @@
     let run = prepare(questions);
     let idx = 0;
     let correct = 0;
+    let combo = 0;
     const progress = (done) => { fill.style.width = Math.round((done / run.length) * 100) + '%'; };
-    const restart = () => { run = prepare(questions); idx = 0; correct = 0; show(); };
+    const restart = () => { run = prepare(questions); idx = 0; correct = 0; combo = 0; show(); };
     const finish = () => {
       AP2.dispose(area);
       count.textContent = 'Ergebnis';
       progress(run.length);
       AP2.state.saveScore(pageId, Math.round((correct / run.length) * 100));
+      if (correct === run.length && run.length >= 3) AP2.game.perfect('quiz:' + pageId);
       area.appendChild(AP2.quizResult(run, correct, restart));
     };
     const feedback = (q, box, next) => {
@@ -53,7 +55,10 @@
       const fb = h('div');
       const onPick = (pick) => {
         q.picked = pick;
-        if (pick === q.a) correct++;
+        const ok = pick === q.a;
+        if (ok) { correct++; combo++; } else combo = 0;
+        AP2.game.answer(AP2.bank.qid(pageId, q.q), ok, {combo});
+        AP2.fx.sound(ok ? 'right' : 'wrong');
         rows.forEach((row) => row.repaint());
         feedback(q, fb, () => { idx++; if (idx >= run.length) finish(); else show(); });
       };

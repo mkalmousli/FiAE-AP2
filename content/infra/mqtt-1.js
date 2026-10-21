@@ -1,5 +1,5 @@
 AP2.page('infra-mqtt', {
-  b: 'infra', g: 'Netzwerke', t: 'MQTT: Publish/Subscribe für IoT',
+  b: 'infra', g: 'Transport und Dienste', t: 'MQTT: Publish/Subscribe für IoT',
   d: '**MQTT** (Message Queuing Telemetry Transport) ist ein schlankes **Nachrichtenprotokoll für das Internet der Dinge (IoT)**. Geräte **veröffentlichen (publish)** Nachrichten zu einem **Topic** an einen zentralen **Broker**, andere Geräte **abonnieren (subscribe)** dieses Topic. Sender und Empfänger kennen sich nicht. MQTT läuft über **TCP** auf Port **1883** (unverschlüsselt) bzw. **8883** (mit TLS).',
   m: '**MQTT = schwarzes Brett mit Abo.** Der **Broker** ist die Poststelle: Sensoren **publizieren** auf ein **Topic** (Adresse), Interessenten **abonnieren** das Topic. **Ports: 1883 (Klartext), 8883 (TLS).** **QoS 0 / 1 / 2** = höchstens einmal / mindestens einmal / genau einmal.',
   cheat: [

@@ -1,5 +1,5 @@
 AP2.page('infra-medien', {
-  b: 'infra', g: 'Netzwerke', t: 'Übertragungsmedien (Kupfer, Glasfaser, WLAN)',
+  b: 'infra', g: 'Netzwerk-Grundlagen', t: 'Übertragungsmedien (Kupfer, Glasfaser, WLAN)',
   d: 'Übertragungsmedien transportieren die Signale: **Kupferkabel** (Twisted Pair, elektrische Signale, bis 100 m), **Lichtwellenleiter** (Glasfaser, Lichtsignale, große Reichweite und Bandbreite, unempfindlich gegen Störungen) und **Funk** (WLAN, Mobilfunk, geteiltes Medium). Die Wahl hängt von **Reichweite, Bandbreite, Kosten, Störanfälligkeit und Sicherheit** ab.',
   m: '**Kupfer: billig, bis 100 m, störanfällig. Glasfaser: teuer, weit, schnell, störsicher. Funk: flexibel, geteilt, abhörbar.** Twisted Pair: **Cat6a = 10 Gbit/s bis 100 m**. Single-Mode = **Single, ein Lichtweg, weit**, Multi-Mode = mehrere Wege, kurz.',
   cheat: [

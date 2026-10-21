@@ -3,7 +3,7 @@
   const {h} = AP2;
   const S = AP2.S;
   const COLORS = {kw: 'accent', str: 'ok', num: 'text', com: 'text3', plain: 'text'};
-  const LABEL = {sql: 'SQL', python: 'Python', java: 'Java', csharp: 'C#', js: 'JavaScript', html: 'HTML', css: 'CSS', pseudo: 'Pseudocode', text: 'Text'};
+  const LABEL = {sql: 'SQL', python: 'Python', java: 'Java', csharp: 'C#', js: 'JavaScript', html: 'HTML', css: 'CSS', pseudo: 'Pseudocode', text: 'Text', c: 'C', cpp: 'C++', php: 'PHP', json: 'JSON'};
   const copyBtn = (src) => {
     const btn = AP2.btn({text: 'Kopieren', kind: 'ghost', small: true, fn: () => {
       try { navigator.clipboard.writeText(src); btn.firstChild.textContent = 'Kopiert'; } catch (err) { btn.firstChild.textContent = 'Nicht möglich'; }

@@ -1,5 +1,5 @@
 AP2.page('infra-osi', {
-  b: 'infra', g: 'Netzwerke', t: 'OSI-Referenzmodell',
+  b: 'infra', g: 'Netzwerk-Grundlagen', t: 'OSI-Referenzmodell',
   d: 'Das **OSI-Referenzmodell** (Open Systems Interconnection) teilt die Netzwerkkommunikation in **7 Schichten**. Jede Schicht hat eine **eigene Aufgabe** und nutzt nur die Dienste der Schicht darunter. Die Schichten sind: 7 Anwendung, 6 Darstellung, 5 Sitzung, 4 Transport, 3 Vermittlung, 2 Sicherung, 1 Bitübertragung.',
   m: 'Von oben nach unten: **"All People Seem To Need Data Processing"** = Application, Presentation, Session, Transport, Network, Data Link, Physical. Auf Deutsch: **A**nwendung, **D**arstellung, **S**itzung, **T**ransport, **V**ermittlung, **S**icherung, **B**itübertragung.',
   cheat: [

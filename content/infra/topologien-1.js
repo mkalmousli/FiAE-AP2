@@ -22,7 +22,7 @@
   });
   const bus = {w: 300, h: 240, cap: 'Bus (Abschlusswiderstände rot)', nodes: busNodes, edges: busEdges};
   AP2.page('infra-topologien', {
-    b: 'infra', g: 'Netzwerke', t: 'Netzwerktopologien (Stern, Bus, Ring, Mesh)',
+    b: 'infra', g: 'Netzwerk-Grundlagen', t: 'Netzwerktopologien (Stern, Bus, Ring, Mesh)',
     d: 'Die **Topologie** beschreibt die **Anordnung** der Geräte und Verbindungen in einem Netzwerk. Man unterscheidet die **physische** (Verkabelung) und die **logische** Topologie (Datenfluss). Die Grundformen sind **Stern**, **Bus**, **Ring**, **Mesh (Vermaschung)** und **Baum**. Heute dominiert in LANs der **Stern**, im Backbone und WLAN die **Vermaschung**.',
     m: '**Stern:** ein Zentrum, ein Ausfall des Zentrums legt alles lahm. **Bus:** ein Kabel für alle, ein Kabelbruch legt alles lahm. **Ring:** Weitergabe im Kreis. **Mesh:** jeder mit jedem (Kabelzahl n(n-1)/2).',
     cheat: [

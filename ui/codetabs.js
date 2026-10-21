@@ -2,7 +2,7 @@
 (function () {
   const {h} = AP2;
   const S = AP2.S;
-  const NAMES = {sql: 'SQL', python: 'Python', java: 'Java', csharp: 'C#', js: 'JavaScript', html: 'HTML', css: 'CSS', pseudo: 'Pseudocode', text: 'Text'};
+  const NAMES = {sql: 'SQL', python: 'Python', java: 'Java', csharp: 'C#', js: 'JavaScript', html: 'HTML', css: 'CSS', pseudo: 'Pseudocode', text: 'Text', c: 'C', cpp: 'C++', php: 'PHP', json: 'JSON'};
   AP2.blocks.codes = (list) => {
     let cur = 0;
     const holder = h('div');

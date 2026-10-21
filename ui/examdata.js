@@ -12,6 +12,7 @@
       setAns: (key, val) => patch('a', key, val),
       setPts: (key, val) => patch('p', key, val),
       reset: () => write({a: {}, p: {}}),
+      id,
     };
   };
   // Aufbau einer Probeprüfung über mehrere Dateien: start, Teile anhängen, ende (fügt den Block ein).

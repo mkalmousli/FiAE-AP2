@@ -8,7 +8,7 @@
     AP2.theme.bind(mark, (n, c) => { n.style.backgroundColor = c.accent; n.style.color = c.onAccent; });
     const name = AP2.tint(h('div', {text: 'AP2 FiAE', style: {fontWeight: S.fw.bold, fontSize: S.f.lg, letterSpacing: '-0.01em'}}), 'text');
     const el = h('div', {style: {display: 'flex', alignItems: 'center', gap: S.sp[2], flexShrink: 0, whiteSpace: 'nowrap'}}, [mark, name]);
-    AP2.layout.bind((L) => { name.style.display = L.w < 560 ? 'none' : 'block'; });
+    AP2.layout.bind((L) => { name.style.display = L.w < 560 ? 'none' : 'block'; el.style.display = L.w < 400 ? 'none' : 'flex'; });
     return AP2.press(el, {fn: () => AP2.router.go('home'), label: 'Startseite', role: 'link', base: () => ({})});
   };
   const iconButton = (icon, label, fn) => {
@@ -47,7 +47,7 @@
     const search = AP2.mkSearch();
     AP2.st(search.el, {flex: '0 1 440px', minWidth: '0'});
     const bar = h('div', {style: {position: 'fixed', top: 0, left: 0, right: 0, display: 'flex', alignItems: 'center', gap: S.sp[3],
-      borderBottom: '1px solid', zIndex: S.z.topbar, boxSizing: 'border-box'}}, [menu, brand(), gap, search.el,
+      borderBottom: '1px solid', zIndex: S.z.topbar, boxSizing: 'border-box'}}, [menu, brand(), gap, search.el, AP2.mkHud(),
       linkButton(AP2.icon('code', 20), 'Quellcode auf GitHub', 'Quellcode', 'https://github.com/mkalmousli/FiAE-AP2'),
       linkButton(AP2.icon('user', 20), 'Portfolio: al-mo.de', 'Mohamad Almousli', 'https://al-mo.de'), themeButton()]);
     AP2.theme.bind(bar, (n, c) => { n.style.backgroundColor = c.surface; n.style.borderBottomColor = c.border; });

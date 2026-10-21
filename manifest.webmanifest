@@ -1,0 +1,16 @@
+{
+  "name": "AP2 FiAE Lernportal",
+  "short_name": "AP2 FiAE",
+  "description": "Lernportal mit Trainer, Lernkartei und Probeprüfungen für die IHK-Abschlussprüfung Teil 2, Fachinformatiker Anwendungsentwicklung.",
+  "lang": "de",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0c0c10",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {"src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"},
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png"}
+  ]
+}

@@ -1,9 +1,9 @@
 // Einzige Quelle der Wahrheit für Theme, Fortschritt und Navigation.
 (function () {
   const PREFIX = 'ap2.';
-  const saved = ['theme', 'done', 'scores', 'sideW', 'navOpen', 'exams'];
+  const saved = ['theme', 'done', 'scores', 'sideW', 'navOpen', 'exams', 'game', 'srs', 'badges', 'recent', 'sideBlock'];
   const dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const data = {theme: dark ? 'dark' : 'light', done: {}, scores: {}, drawer: false, route: '', sideW: 0, navOpen: {}, exams: {}};
+  const data = {theme: dark ? 'dark' : 'light', done: {}, scores: {}, drawer: false, route: '', sideW: 0, navOpen: {}, exams: {}, game: {}, srs: {}, badges: {}, recent: [], sideBlock: ''};
   const subs = {};
   const read = (key) => {
     try { const raw = localStorage.getItem(PREFIX + key); return raw == null ? undefined : JSON.parse(raw); } catch (err) { return undefined; }

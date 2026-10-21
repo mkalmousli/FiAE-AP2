@@ -3,6 +3,9 @@
   const {h} = AP2;
   const S = AP2.S;
   AP2.ctx = {id: ''};
+  // Sonderansichten ohne Themenseite (Startseite, Trainer, Themenkarte, Erfolge): Route "name/argument".
+  AP2.views = {};
+  AP2.viewTitles = {};
   AP2.renderBlocks = (blocks) => {
     const frag = document.createDocumentFragment();
     blocks.forEach((block) => {

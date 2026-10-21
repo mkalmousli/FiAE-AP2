@@ -1,5 +1,5 @@
 AP2.page('infra-vpn', {
-  b: 'infra', g: 'Netzwerke', t: 'VPN: Site-to-Site, End-to-Site und sicherer Fernzugriff',
+  b: 'infra', g: 'Netzwerkbetrieb', t: 'VPN: Site-to-Site, End-to-Site und sicherer Fernzugriff',
   d: 'Ein **VPN** (Virtual Private Network) baut über ein unsicheres Netz (Internet) einen **verschlüsselten Tunnel** auf, sodass entfernte Geräte oder Standorte so arbeiten können, als wären sie im internen Netz. **Site-to-Site** verbindet **zwei Netze** (Standorte) dauerhaft über zwei VPN-Gateways. **End-to-Site** (Client-to-Site, Remote Access) verbindet **ein einzelnes Gerät** (Notebook im Homeoffice, Arzt beim Hausbesuch) mit einem Netz über eine **VPN-Client-Software**. **End-to-End** verbindet zwei einzelne Geräte. Gängige Protokolle: **IPsec**, **SSL/TLS-VPN** (OpenVPN), **WireGuard**.',
   m: '**Site-to-Site = Netz mit Netz (zwei Gateways, Nutzer merken nichts). End-to-Site = Gerät mit Netz (Client-Software). End-to-End = Gerät mit Gerät.** **Tunnel = Pakete werden verschlüsselt in andere Pakete verpackt (Kapselung).** **VPN sichert Vertraulichkeit, Integrität, Authentizität auf dem Transportweg.**',
   cheat: [

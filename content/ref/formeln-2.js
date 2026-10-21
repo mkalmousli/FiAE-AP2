@@ -1,0 +1,21 @@
+AP2.add('ref-formeln', [
+  ['h', 'Ergänzungen: Qualität, Energie, Kryptografie, Kennzahlen, Prüfung'],
+  ['table', ['Bereich', 'Formel', 'Beispiel'], [
+    ['Six Sigma', 'DPMO = Fehler / (Einheiten mal Möglichkeiten) mal 1.000.000', '3,4 DPMO = 99,99966 % fehlerfrei'],
+    ['Zyklomatische Komplexität', 'M = Kanten - Knoten + 2 = Entscheidungen + 1', '2 ifs: M = 3'],
+    ['Leistung', 'P = U mal I', '12 V mal 25 A = 300 W'],
+    ['Energie und Kosten', 'W = P mal t; Kosten = kWh mal Preis', '3,84 kW mal 8.760 h = 33.638,4 kWh; mal 0,30 = 10.091,52 Euro'],
+    ['Übertragungszeit', 't = Datenmenge / Datenrate (Einheiten angleichen)', '6.000 MB / 420 MB/s = 14,3 s'],
+    ['RSA (Spielzeug)', 'N = p mal q; phi = (p-1)(q-1); e mal d mod phi = 1; V = X^e mod N; X = V^d mod N', 'p 11, q 17: N 187, e 7, d 23'],
+    ['VLSM', 'Präfix = 32 - aufgerundet log2(Bedarf + 2)', '54 Adressen: /26 (62 Hosts)'],
+    ['IPv6-Subnetze', 'neues Präfix = altes Präfix + n bei 2^n Subnetzen', '/56 in 4 Netze: /58'],
+    ['Prüfziffer ISBN-13', '(10 - Summe(Ziffer mal 1 bzw. 3) mod 10) mod 10', 'Summe 134: Prüfziffer 6'],
+    ['Wirtschaftlichkeit', 'Ertrag / Aufwand', '480.000 / 400.000 = 1,2'],
+    ['Produktivität', 'Ausbringungsmenge / Einsatzmenge', '340 Tickets / 200 h = 1,7'],
+    ['Eigenkapitalrentabilität', 'Gewinn mal 100 / Eigenkapital', '660.000 mal 100 / 4,4 Mio. = 15 %'],
+    ['Umsatzrentabilität', 'Gewinn mal 100 / Umsatz', '660.000 mal 100 / 8,25 Mio. = 8 %'],
+    ['Abschlussnote', 'Gesamt = 0,2 T1 + 0,5 Projekt + 0,1 PS + 0,1 EUA + 0,1 WiSo', 'Teil 2 bestanden ab 40 von 80'],
+    ['Ergänzungsprüfung', 'neu = 2/3 schriftlich + 1/3 mündlich', '32 schriftlich, 80 mündlich: 48'],
+  ]],
+  ['see', ['ref-ablauf', 'ps-qm', 'infra-elektro', 'infra-vlsm', 'wiso-kennzahlen', 'eua-pruefziffer']],
+]);

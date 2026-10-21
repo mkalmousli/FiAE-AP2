@@ -1,4 +1,4 @@
-// Themenseite: Kopf, Prüfungsdefinition, Spickzettel, Inhalt, Navigation zu Nachbarseiten.
+// Themenseite: Kopf mit Beherrschung und Trainingsknopf, Prüfungsdefinition, Spickzettel, Inhalt, Navigation zu Nachbarseiten.
 (function () {
   const {h} = AP2;
   const S = AP2.S;
@@ -6,7 +6,7 @@
     const label = h('span');
     const el = h('div', {style: {display: 'inline-flex', alignItems: 'center', gap: S.sp[2], padding: '8px 14px',
       borderRadius: S.r.md, border: '1px solid', fontSize: S.f.sm, fontWeight: S.fw.med}}, [AP2.icon('check', 16), label]);
-    AP2.press(el, {role: 'switch', fn: () => AP2.state.toggleDone(id), hover: (c) => ({borderColor: c.accent}),
+    AP2.press(el, {role: 'switch', fn: () => { AP2.state.toggleDone(id); if (AP2.state.get('done')[id]) AP2.game.pageDone(id); }, hover: (c) => ({borderColor: c.accent}),
       base: (c) => {
         const done = !!AP2.state.get('done')[id];
         label.textContent = done ? 'Erledigt' : 'Als erledigt markieren';
@@ -42,11 +42,19 @@
     root.appendChild(crumbs(p));
     root.appendChild(AP2.tint(h('h1', {text: p.t, style: {margin: '0 0 ' + S.sp[4], fontSize: S.f.h1, fontWeight: S.fw.bold,
       lineHeight: S.lh.tight, letterSpacing: '-0.02em'}}), 'text'));
-    root.appendChild(h('div', {style: {margin: '0 0 ' + S.sp[5]}}, [doneButton(p.id)]));
+    const m = AP2.game.mastery(p.id);
+    const train = m.total ? AP2.btn({text: 'Thema trainieren (' + m.total + (m.total === 1 ? ' Frage)' : ' Fragen)'), icon: AP2.icon('play', 16), small: true, kind: 'soft',
+      fn: () => AP2.router.go('trainer/seite/' + p.id)}) : null;
+    const stars = m.total ? h('span', {attrs: {title: 'Beherrschung: ' + m.stars + ' von 5 Sternen, ' + m.seen + ' von ' + m.total + ' Fragen geübt'}, style: {display: 'inline-flex', alignItems: 'center', gap: S.sp[2]}},
+      [AP2.gk.stars(m.stars, 16), AP2.tint(h('span', {text: m.seen + '/' + m.total + ' geübt', style: {fontSize: S.f.xs}}), 'text3')]) : null;
+    root.appendChild(h('div', {style: {margin: '0 0 ' + S.sp[5], display: 'flex', flexWrap: 'wrap', gap: S.sp[3], alignItems: 'center'}}, [doneButton(p.id), train, stars]));
     if (p.d) root.appendChild(AP2.blocks.def(p.d));
     if (p.m) root.appendChild(AP2.blocks.merk(p.m));
     if (p.cheat) root.appendChild(AP2.blocks.cheat(p.cheat));
     root.appendChild(AP2.renderBlocks(p.blocks));
+    root.appendChild(AP2.gk.panel([h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[3], alignItems: 'center', justifyContent: 'space-between'}}, [
+      h('div', {}, [AP2.gk.kicker('Seite geschafft?', 'accent'), AP2.tint(h('div', {text: 'Markiere sie als erledigt (+' + AP2.game.XP.page + ' XP) und festige sie im Trainer.', style: {fontSize: S.f.sm, marginTop: '2px'}}), 'text2')]),
+      h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[2]}}, [doneButton(p.id), m.total ? AP2.btn({text: 'Trainieren', icon: AP2.icon('play', 16), kind: 'primary', small: true, fn: () => AP2.router.go('trainer/seite/' + p.id)}) : null])])], {marginTop: S.sp[7]}));
     root.appendChild(nav(p.id));
     return root;
   };
