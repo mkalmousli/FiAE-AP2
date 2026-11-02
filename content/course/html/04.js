@@ -79,13 +79,6 @@ AP2.page('course-html-04', {
       ['`<input list="orte">` + `<datalist id="orte">`', 'Vorschlagsliste beim Tippen'],
     ]],
     ['warn', 'Browser-Prüfung ist **nur Komfort**: Sie lässt sich mit den Entwicklertools oder direkten HTTP-Anfragen umgehen. Der **Server** muss alle Daten erneut prüfen und Datenbankzugriffe mit Prepared Statements ausführen.'],
-    ['try', {t: 'Formular testen', task: `Sende leer, mit falscher E-Mail, mit Zahl außerhalb 1 bis 5: der Browser prüft selbst. (Absenden wird in der Vorschau nicht ausgeführt.)`, html: `<form onsubmit="event.preventDefault(); console.log('gültig, würde gesendet')">
-  <p><label>Name <input name="n" required minlength="2"></label></p>
-  <p><label>E-Mail <input type="email" name="m" required></label></p>
-  <p><label>Anzahl <input type="number" name="a" min="1" max="5" value="1"></label></p>
-  <p><label>Datum <input type="date"></label> <input type="color" value="#2c3e50"></p>
-  <button>Senden</button>
-</form>`, h: 260, checks: [['E-Mail-Feld hat type email', 'input[name=m]', 'attr:type', 'email'], ['Name ist Pflichtfeld', 'input[name=n]', 'attr:required', '']]}],
     ['h', 'Formulare und Barrierefreiheit'],
     ['list', [
       'Jedes Feld hat ein sichtbares `<label for="id">` (placeholder ersetzt kein Label!).',

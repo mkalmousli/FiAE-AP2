@@ -23,11 +23,6 @@ img { max-width: 100%; height: auto; }
 @media (min-width: 1100px) {
   .menu-selection { grid-template-columns: 120px repeat(3, 1fr); }
 }`],
-    ['try', {t: 'Media Query', task: `Ziehe die Vorschau breiter als 600px: Zwei Spalten statt einer.`, html: `<div class="container"><div>Karte 1</div><div>Karte 2</div><div>Karte 3</div><div>Karte 4</div></div>`, css: `.container { display: grid; grid-template-columns: 1fr; gap: 10px; }
-.container > div { background: #ffe0b2; padding: 18px; border-radius: 6px; }
-@media (min-width: 600px) {
-  .container { grid-template-columns: 1fr 1fr; }
-}`, h: 240}],
     ['h', 'Media-Query-Bedingungen'],
     ['table', ['Bedingung', 'trifft zu bei'], [
       ['`(max-width: 499px)`', 'Fensterbreite bis 499px'],
@@ -58,10 +53,6 @@ h1 { font-size: clamp(1.5rem, 4vw, 2.5rem); }`],
 }
 body { color: var(--text); background: var(--hintergrund); }
 button { background: var(--akzent); padding: calc(var(--abstand) / 2) var(--abstand); }`],
-    ['try', {t: 'Custom Properties', task: `Ändere nur **--akzent**: alles passt sich an.`, html: `<button class="b">Speichern</button> <a class="l" href="#">Link</a> <span class="t">Badge</span>`, css: `:root { --akzent: #e91e63; --abstand: 10px; }
-.b { background: var(--akzent); color: #fff; border: 0; padding: var(--abstand) 18px; border-radius: 4px; }
-.l { color: var(--akzent); }
-.t { border: 2px solid var(--akzent); padding: 2px var(--abstand); border-radius: 99px; }`, h: 150}],
     ['h', 'Übergänge und Animationen'],
     ['code', 'css', `.menu-item { transition: transform 0.2s ease, box-shadow 0.2s ease; }
 .menu-item:hover { transform: translateY(-3px); box-shadow: 0 4px 12px rgba(0,0,0,.2); }
@@ -75,10 +66,6 @@ button { background: var(--akzent); padding: calc(var(--abstand) / 2) var(--abst
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }`],
-    ['try', {t: 'Hover und Animation', task: `Fahre mit der Maus über die Karte.`, html: `<div class="menu-item">Hover mich</div> <div class="puls">pulsiert</div>`, css: `.menu-item { display: inline-block; padding: 24px; background: #e8f5e9; border-radius: 8px; transition: transform .2s ease, box-shadow .2s ease; }
-.menu-item:hover { transform: translateY(-6px) scale(1.05); box-shadow: 0 10px 20px rgba(0,0,0,.25); }
-.puls { display: inline-block; padding: 24px; background: #ffcdd2; border-radius: 8px; animation: puls 1.2s ease-in-out infinite; }
-@keyframes puls { 50% { transform: scale(1.15); background: #ef9a9a; } }`, h: 200}],
     ['h', 'Druck-CSS'],
     ['code', 'css', `@media print {
   nav, footer, .button { display: none; }     /* Unnötiges ausblenden */

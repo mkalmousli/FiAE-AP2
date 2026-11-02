@@ -16,9 +16,6 @@ AP2.page('course-css-04', {
   gap: 16px;
 }`],
     ['p', 'Die Kinder füllen das Raster automatisch zeilenweise: Kind 1 in Spalte 1, Kind 2 in Spalte 2 usw., Kind 5 beginnt die zweite Zeile.'],
-    ['try', {t: 'Grid-Raster', task: `Ändere **grid-template-columns** (zum Beispiel repeat(3, 1fr)) und **gap**.`, html: `<div class="menu-selection"><div class="d">Mo</div><div>Schnitzel</div><div>Pasta</div><div>Salat</div><div class="d">Di</div><div>Pizza</div><div>Suppe</div><div>Curry</div></div>`, css: `.menu-selection { display: grid; grid-template-columns: 120px 1fr 1fr 1fr; gap: 16px; }
-.menu-selection div { background: #e3f2fd; border: 1px solid #64b5f6; padding: 12px; border-radius: 6px; }
-.d { background: #ffe082 !important; font-weight: bold; }`, h: 200, checks: [['Grid-Container', '.menu-selection', 'display', 'grid']]}],
     ['h', 'Linien und Spannen'],
     ['code', 'css', `.grid-container {
   display: grid;
@@ -35,13 +32,6 @@ AP2.page('course-css-04', {
       {id: 'm', k: 'box', x: 232, y: 120, w: 400, h: 130, t: '#map (1 / 4, Zeilen 2 / 5)', s: 'soft'},
       {id: 'u', k: 'box', x: 503, y: 75, w: 130, h: 40, t: '#auftrag'}, {id: 'g', k: 'box', x: 503, y: 120, w: 130, h: 40, t: '#angebot'}, {id: 'b', k: 'box', x: 503, y: 165, w: 130, h: 40, t: '#buchung'},
     ], edges: []}],
-    ['try', {t: 'Spannen über Linien', task: `Sommer 2022: #ablauf über alle 4 Spalten, #map über 3 Spalten und 3 Zeilen.`, html: `<div class="grid-container"><div id="ablauf">#ablauf</div><div id="map">#map</div><div id="auftrag">#auftrag</div><div id="angebot">#angebot</div><div id="buchung">#buchung</div></div>`, css: `.grid-container { display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: auto repeat(3, 60px); gap: 6px; }
-.grid-container > div { background: #c5cae9; padding: 6px; border-radius: 4px; }
-#ablauf  { grid-column: 1 / 5; background: #ffcc80; }
-#map     { grid-column: 1 / 4; grid-row: 2 / 5; background: #a5d6a7; }
-#auftrag { grid-column: 4; grid-row: 2; }
-#angebot { grid-column: 4; grid-row: 3; }
-#buchung { grid-column: 4; grid-row: 4; }`, h: 260, checks: [['#ablauf spannt Linie 1 bis 5', '#ablauf', 'grid-column-start', '1'], ['#map beginnt in Zeile 2', '#map', 'grid-row-start', '2']]}],
     ['h', 'Benannte Bereiche'],
     ['code', 'css', `.seite {
   display: grid;
@@ -64,16 +54,6 @@ footer { grid-area: fuss; }
     grid-template-areas: "kopf" "nav" "inhalt" "fuss";
   }
 }`],
-    ['try', {t: 'grid-template-areas', task: `Verschiebe die Bereiche in der Zeichnung, zum Beispiel nav nach rechts.`, html: `<div class="seite"><header>Kopf</header><nav>Navigation</nav><main>Inhalt</main><footer>Fuß</footer></div>`, css: `.seite { display: grid; grid-template-columns: 120px 1fr; grid-template-rows: auto 1fr auto; grid-template-areas:
-  "kopf kopf"
-  "nav inhalt"
-  "fuss fuss";
-  gap: 6px; height: 220px; }
-header { grid-area: kopf; background: #ffcc80; }
-nav { grid-area: nav; background: #b3e5fc; }
-main { grid-area: inhalt; background: #c8e6c9; }
-footer { grid-area: fuss; background: #d1c4e9; }
-.seite > * { padding: 8px; border-radius: 4px; }`, h: 260}],
     ['h', 'Prüfungsaufgabe Winter 2025/26: Hoch- und Querformat'],
     ['code', 'css', `#row  { display: grid; grid-template-columns: 1fr 1fr; align-content: center; }
 #text { grid-column: 1 / 3; }               /* Hochformat: Text über beide Spalten */
@@ -87,8 +67,6 @@ footer { grid-area: fuss; background: #d1c4e9; }
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));   /* so viele Spalten wie passen */
   gap: 16px;
 }`],
-    ['try', {t: 'auto-fit und minmax', task: `Ziehe die Vorschau schmaler: Spaltenzahl passt sich an.`, html: `<div class="kacheln"><div>1</div><div>2</div><div>3</div><div>4</div><div>5</div><div>6</div><div>7</div><div>8</div></div>`, css: `.kacheln { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; }
-.kacheln div { background: #2c3e50; color: #fff; padding: 20px; text-align: center; border-radius: 6px; }`, h: 240}],
     ['h', 'Ausrichten im Grid'],
     ['table', ['Eigenschaft', 'Wirkt auf', 'Beispiel'], [
       ['`justify-items`', 'alle Items waagerecht in ihrer Zelle', '`center`'],
