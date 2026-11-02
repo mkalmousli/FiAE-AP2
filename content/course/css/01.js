@@ -16,6 +16,13 @@ h1 {
   color: #2c3e50;
 }
 .price, .rating { font-weight: bold; }   /* Gruppe: beide Klassen */`],
+    ['try', {t: 'Regel ändern', task: `Ändere **color** und **font** und sieh die Wirkung sofort.`, html: `<h1>Mensa BSZ Neckaralb</h1>
+<p class="price">Schnitzel 5,50 €</p>
+<p class="rating">★★★★☆</p>`, css: `h1 {
+  font: 24pt Arial, sans-serif;
+  color: #2c3e50;
+}
+.price, .rating { font-weight: bold; }`, h: 120, checks: [['h1 ist 24pt groß', 'h1', 'font-size', '32px'], ['Preis ist fett', '.price', 'font-weight', '700']]}],
     ['h', 'Drei Wege, CSS einzubinden'],
     ['codes', [
       ['html', `<!-- inline: nur dieses Element -->
@@ -51,6 +58,16 @@ input:focus { outline: 2px solid blue; }      /* Tastaturfokus */
 tr:nth-child(even) { background: #eee; }      /* jede zweite Zeile */
 li:first-child { font-weight: bold; }
 .rating::before { content: "★ "; color: gold; }   /* erzeugter Inhalt */`],
+    ['try', {t: 'Selektoren treffen', task: `Welche Elemente färbt jede Regel? Ändere die Selektoren.`, html: `<nav><a href="#">Start</a> <a href="#" class="aktiv">Menü</a></nav>
+<ul><li>Eins</li><li>Zwei</li><li>Drei</li><li>Vier</li></ul>
+<p id="hinweis">Hinweis</p>
+<input type="email" placeholder="E-Mail">`, css: `li:nth-child(2n) { background: #ffe9a8; }
+nav > a { color: teal; }
+.aktiv { font-weight: bold; text-decoration: none; }
+#hinweis { color: crimson; }
+input[type="email"] { border: 2px solid green; }
+input:focus { outline: 3px solid orange; }
+li:first-child::before { content: "★ "; }`, h: 200, checks: [['Jedes 2. li ist gelb', 'li:nth-child(2)', 'background-color', 'rgb(255, 233, 168)'], ['#hinweis ist crimson', '#hinweis', 'color', 'rgb(220, 20, 60)']]}],
     ['h', 'Die Kaskade: Wer gewinnt?'],
     ['steps', [
       '**Herkunft und Wichtigkeit:** Browser-Standard < Autoren-CSS; `!important` überstimmt normale Regeln.',
@@ -65,11 +82,17 @@ li:first-child { font-weight: bold; }
       ['`style="..."`', '1,0,0,0', 'alle Selektoren (außer !important)'],
     ]],
     ['ex', ['Sommer 2025: Externe Datei: `.rating { color: gold; }`, im HTML: `<p class="rating" style="color: red">`. Angezeigt wird **Rot**, weil der Inline-Style die höhere Spezifität hat.']],
+    ['try', {t: 'Spezifität', task: `Welche Farbe hat der Text? Ändere die Regeln: Id schlägt Klasse schlägt Element, bei Gleichstand gewinnt die spätere.`, html: `<p id="x" class="k">Welche Farbe habe ich?</p>`, css: `p     { color: blue; }
+.k    { color: green; }
+#x    { color: red; }
+/* p { color: purple !important; } */`, h: 110, checks: [['Text ist rot (id gewinnt)', '#x', 'color', 'rgb(255, 0, 0)']]}],
     ['h', 'Vererbung'],
     ['code', 'css', `body { font-family: Verdana, Arial, sans-serif; color: #333; }   /* erben alle Texte */
 .box { border: 1px solid; }                                       /* erben Kinder NICHT */
 .kind { border: inherit; }                                        /* Vererbung erzwingen */
 a { color: inherit; }                                             /* Linkfarbe vom Elternelement */`],
+    ['try', {t: 'Vererbung', html: `<div class="box">Text im div <p>Absatz erbt Farbe und Schrift, aber nicht den Rahmen.</p></div>`, css: `body { font-family: Verdana, Arial, sans-serif; color: #333; }
+.box { color: darkblue; font-style: italic; border: 2px dashed tomato; padding: 10px; }`, h: 150}],
     ['h', 'Farben angeben'],
     ['table', ['Schreibweise', 'Beispiel', 'Bedeutung'], [
       ['Name', '`gold`, `green`, `red`', '148 benannte Farben'],

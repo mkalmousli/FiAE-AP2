@@ -1257,6 +1257,267 @@ AP2.pages = function () {};
   };
 })();
 ;
+// ui/playground.js
+// Spielwiese: Code bearbeiten, live ausführen und Vorschau sehen.
+// HTML/CSS/JS laufen in einem Sandbox-iframe, Python (Pyodide) und SQL (sql.js) werden erst bei Bedarf nachgeladen.
+// Block "try": ['try', {t, html, css, js, h, checks: [[Beschreibung, Selektor, Eigenschaft, Sollwert]]}]
+(function () {
+  const {h} = AP2;
+  const S = AP2.S;
+  const CDN = {
+    pyodide: 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/',
+    sql: 'https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/',
+  };
+  const SEED = `CREATE TABLE kunde (kunde_id INTEGER PRIMARY KEY, nachname TEXT, vorname TEXT, plz TEXT, ort TEXT);
+INSERT INTO kunde VALUES (1,'Muster','Max','12345','Musterhausen'),(2,'Könner','Tom','72764','Reutlingen'),(3,'Weiß','Anna','88000','München'),(4,'Yilmaz','Cem','72764','Reutlingen');
+CREATE TABLE artikel (artikel_id INTEGER PRIMARY KEY, bezeichnung TEXT, preis REAL, kategorie TEXT);
+INSERT INTO artikel VALUES (10,'Feuerdorn',5.00,'Strauch'),(11,'rote Rosen',2.30,'Blume'),(12,'Linde',42.50,'Baum'),(13,'Flieder',19.50,'Strauch'),(14,'Glockenblume',1.80,'Blume');
+CREATE TABLE bestellung (bestell_id INTEGER PRIMARY KEY, kunde_id INTEGER REFERENCES kunde(kunde_id), datum TEXT);
+INSERT INTO bestellung VALUES (100,1,'2024-05-02'),(101,2,'2024-05-03'),(102,1,'2024-06-11'),(103,3,'2024-06-15');
+CREATE TABLE position (bestell_id INTEGER REFERENCES bestellung(bestell_id), artikel_id INTEGER REFERENCES artikel(artikel_id), menge INTEGER, PRIMARY KEY (bestell_id, artikel_id));
+INSERT INTO position VALUES (100,10,3),(100,11,10),(101,12,1),(102,13,2),(102,14,12),(103,11,5);`;
+
+  const loaded = {};
+  const loadScript = (src) => loaded[src] || (loaded[src] = new Promise((ok, fail) => {
+    const el = document.createElement('script');
+    el.src = src;
+    el.onload = ok;
+    el.onerror = () => { delete loaded[src]; fail(new Error('Nachladen fehlgeschlagen (offline?): ' + src)); };
+    document.head.appendChild(el);
+  }));
+  let pyPromise = null;
+  const getPython = () => pyPromise || (pyPromise = loadScript(CDN.pyodide + 'pyodide.js').then(() => window.loadPyodide({indexURL: CDN.pyodide})).catch((err) => { pyPromise = null; throw err; }));
+  let sqlPromise = null;
+  const getSql = () => sqlPromise || (sqlPromise = loadScript(CDN.sql + 'sql-wasm.js').then(() => window.initSqlJs({locateFile: (f) => CDN.sql + f})).catch((err) => { sqlPromise = null; throw err; }));
+
+  // Dokument für den iframe; meldet Konsole, Fehler und Prüfergebnisse per postMessage zurück.
+  const buildDoc = (id, parts, checks) => {
+    const html = parts.html || '';
+    const full = /<html[\s>]/i.test(html);
+    const bridge = `<script>(function(){var id=${JSON.stringify(id)};function send(t,v){parent.postMessage({ap2:id,type:t,v:v},'*');}
+['log','info','warn','error'].forEach(function(k){var o=console[k];console[k]=function(){send(k,[].map.call(arguments,function(a){try{return typeof a==='object'?JSON.stringify(a):String(a);}catch(e){return String(a);}}).join(' '));o.apply(console,arguments);};});
+window.addEventListener('error',function(e){send('error',e.message);});
+window.addEventListener('load',function(){var checks=${JSON.stringify(checks || [])};var res=checks.map(function(c){var el=document.querySelector(c[1]);if(!el)return [false,'Element '+c[1]+' fehlt'];if(!c[2])return [true,''];var v=c[2].indexOf('attr:')===0?el.getAttribute(c[2].slice(5)):getComputedStyle(el).getPropertyValue(c[2]);var ok=String(v).replace(/\\s+/g,' ').trim()===String(c[3]);return [ok,'ist: '+v];});send('checks',res);});})();<\/script>`;
+    const style = parts.css ? '<style>' + parts.css + '</style>' : '';
+    const script = parts.js ? '<script>' + parts.js + '<\/script>' : '';
+    const base = '<base target="_blank"><style>body{font-family:system-ui,sans-serif;margin:12px}</style>';
+    if (full) return html.replace(/<\/head>/i, base + style + '</head>').replace(/<\/body>/i, bridge + script + '</body>');
+    return '<!DOCTYPE html><html><head><meta charset="utf-8">' + base + style + '</head><body>' + html + bridge + script + '</body></html>';
+  };
+
+  const taStyle = (c) => ({width: '100%', boxSizing: 'border-box', minHeight: '120px', padding: '10px 12px', border: '1px solid ' + c.border, borderRadius: S.r.md,
+    backgroundColor: c.surface2, color: c.text, fontFamily: S.font.mono, fontSize: S.f.sm, lineHeight: S.lh.code, resize: 'vertical', tabSize: 4});
+  const paint = (node, fn) => AP2.theme.bind(node, (n, c) => Object.assign(n.style, fn(c)));
+  const lines = (src) => Math.min(18, Math.max(5, src.split('\n').length + 1));
+
+  const editor = (value, rows, onInput) => {
+    const ta = h('textarea', {attrs: {spellcheck: 'false', rows: String(rows)}});
+    ta.value = value;
+    ta.addEventListener('input', () => onInput(ta.value));
+    ta.addEventListener('keydown', (ev) => {
+      if (ev.key !== 'Tab') return;
+      ev.preventDefault();
+      const a = ta.selectionStart;
+      ta.value = ta.value.slice(0, a) + '  ' + ta.value.slice(ta.selectionEnd);
+      ta.selectionStart = ta.selectionEnd = a + 2;
+      onInput(ta.value);
+    });
+    return paint(ta, taStyle);
+  };
+
+  const outBox = () => paint(h('pre', {style: {margin: '8px 0 0', padding: '10px 12px', borderRadius: S.r.md, whiteSpace: 'pre-wrap', overflowX: 'auto',
+    fontFamily: S.font.mono, fontSize: S.f.sm, minHeight: '24px'}}), (c) => ({backgroundColor: c.surface, border: '1px solid ' + c.border, color: c.text}));
+
+  const label = (text) => AP2.tint(h('div', {text, style: {fontSize: S.f.xs, fontWeight: S.fw.bold, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '10px 0 4px'}}), 'text3');
+
+  const table = (res) => {
+    const t = h('table', {style: {borderCollapse: 'collapse', fontSize: S.f.sm, margin: '6px 0'}});
+    const row = (cells, head) => {
+      const tr = h('tr');
+      cells.forEach((v) => tr.appendChild(paint(h(head ? 'th' : 'td', {text: v === null ? 'NULL' : String(v), style: {padding: '4px 10px', textAlign: 'left', border: '1px solid'}}),
+        (c) => ({borderColor: c.border, backgroundColor: head ? c.surface2 : c.surface, color: v === null ? c.text3 : c.text}))));
+      t.appendChild(tr);
+    };
+    row(res.columns, true);
+    res.values.forEach((r) => row(r, false));
+    return h('div', {style: {overflowX: 'auto'}}, [t]);
+  };
+
+  // Gemeinsamer Aufbau: Bearbeitungsfelder, Ausführen-Knopf, Ausgabe.
+  // spec = {lang, parts: {html, css, js} oder {src}, checks, height}
+  let uid = 0;
+  const playground = (spec) => {
+    const id = 'pg' + (++uid);
+    const lang = spec.lang;
+    const src = Object.assign({}, spec.parts);
+    const orig = Object.assign({}, src);
+    const web = lang === 'web';
+    const out = h('div');
+    const checkBox = h('div');
+    const fields = web ? ['html', 'css', 'js'].filter((k) => src[k] !== undefined) : ['src'];
+    const tabs = h('div', {style: {display: 'flex', gap: S.sp[2], marginBottom: S.sp[2]}});
+    const editors = {};
+    let cur = fields[0];
+    const holder = h('div');
+    const showTab = () => {
+      holder.textContent = '';
+      holder.appendChild(editors[cur]);
+      tabBtns.forEach((b) => b.repaint && b.repaint());
+    };
+    const tabBtns = fields.map((k) => {
+      const el = h('div', {text: k === 'src' ? ({python: 'Python', sql: 'SQL', js: 'JavaScript', html: 'HTML'}[lang] || lang) : k.toUpperCase(),
+        style: {padding: '4px 12px', borderRadius: S.r.pill, border: '1px solid', fontSize: S.f.sm, fontWeight: S.fw.med}});
+      return AP2.press(el, {role: 'tab', fn: () => { cur = k; showTab(); }, hover: (c) => ({borderColor: c.accent}),
+        base: (c) => (cur === k ? {backgroundColor: c.accent, color: c.onAccent, borderColor: c.accent} : {backgroundColor: c.surface, color: c.text2, borderColor: c.border})});
+    });
+    if (fields.length > 1) tabBtns.forEach((b) => tabs.appendChild(b));
+    let timer = 0;
+    fields.forEach((k) => { editors[k] = editor(src[k] || '', lines(src[k] || ''), (v) => { src[k] = v; if (web) { clearTimeout(timer); timer = setTimeout(run, 350); } }); });
+
+    // Web-Vorschau
+    let frame = null;
+    const listener = (ev) => {
+      const d = ev.data;
+      if (!d || d.ap2 !== id) return;
+      if (d.type === 'checks') showChecks(d.v);
+      else if (d.type === 'error' || d.type === 'warn') logLine(d.type === 'error' ? 'Fehler: ' + d.v : d.v, d.type === 'error');
+      else logLine(d.v, false);
+    };
+    window.addEventListener('message', listener);
+    const logBox = outBox();
+    const logLine = (txt, bad) => {
+      logBox.style.display = '';
+      logBox.appendChild(paint(h('div', {text: (bad ? '' : '> ') + txt}), (c) => ({color: bad ? c.bad : c.text})));
+    };
+    const showChecks = (res) => {
+      checkBox.textContent = '';
+      if (!res.length) return;
+      const done = res.filter((r) => r[0]).length;
+      const head = h('div', {text: done === res.length ? 'Alle Prüfungen bestanden (' + done + '/' + res.length + ')' : 'Prüfungen: ' + done + '/' + res.length, style: {fontWeight: S.fw.bold, margin: '8px 0 4px'}});
+      paint(head, (c) => ({color: done === res.length ? c.ok : c.text}));
+      checkBox.appendChild(head);
+      res.forEach((r, i) => {
+        const line = h('div', {text: (r[0] ? '✓ ' : '✗ ') + spec.checks[i][0] + (r[0] ? '' : ' (' + r[1] + ')'), style: {fontSize: S.f.sm}});
+        paint(line, (c) => ({color: r[0] ? c.ok : c.text2}));
+        checkBox.appendChild(line);
+      });
+      if (done === res.length && AP2.game && AP2.game.award && !spec.rewarded) { spec.rewarded = true; try { AP2.game.award(5); } catch (e) { /* optional */ } }
+    };
+    const runWeb = () => {
+      logBox.textContent = '';
+      logBox.style.display = 'none';
+      checkBox.textContent = '';
+      if (!frame) {
+        frame = h('iframe', {attrs: {sandbox: 'allow-scripts allow-popups', title: 'Vorschau'}, style: {width: '100%', height: (spec.height || 220) + 'px', border: '1px solid', borderRadius: S.r.md, background: '#fff', display: 'block', resize: 'both', overflow: 'auto', maxWidth: '100%'}});
+        paint(frame, (c) => ({borderColor: c.border}));
+        out.textContent = '';
+        out.appendChild(label('Vorschau'));
+        out.appendChild(frame);
+        out.appendChild(checkBox);
+        out.appendChild(logBox);
+      }
+      frame.srcdoc = buildDoc(id, src, spec.checks);
+    };
+    // Python
+    const stdin = h('input', {attrs: {placeholder: 'Eingaben für input(), durch ; getrennt', type: 'text'}});
+    paint(stdin, (c) => Object.assign(taStyle(c), {minHeight: '0', resize: 'none', marginTop: '6px'}));
+    const status = (txt) => { out.textContent = ''; out.appendChild(paint(h('div', {text: txt, style: {fontSize: S.f.sm, marginTop: '8px'}}), (c) => ({color: c.text2}))); };
+    const runPy = async () => {
+      status('Python wird geladen (einmalig, ca. 10 MB) ...');
+      try {
+        const py = await getPython();
+        const box = outBox();
+        let buf = '';
+        const inputs = stdin.value ? stdin.value.split(';').map((s) => s.trim()) : [];
+        py.setStdout({batched: (s) => { buf += s + '\n'; }});
+        py.setStderr({batched: (s) => { buf += s + '\n'; }});
+        py.setStdin({stdin: () => (inputs.length ? inputs.shift() : '')});
+        try { await py.runPythonAsync(src.src); } catch (err) { buf += String(err.message || err).split('\n').slice(-4).join('\n'); }
+        box.textContent = buf || '(keine Ausgabe)';
+        out.textContent = '';
+        out.appendChild(label('Ausgabe'));
+        out.appendChild(box);
+      } catch (err) { status(err.message); }
+    };
+    const runSql = async () => {
+      status('SQL wird geladen ...');
+      try {
+        const SQL = await getSql();
+        const db = new SQL.Database();
+        db.run(SEED);
+        out.textContent = '';
+        out.appendChild(label('Ergebnis (Beispieldatenbank Gartencenter)'));
+        try {
+          const res = db.exec(src.src);
+          if (!res.length) out.appendChild(paint(h('div', {text: 'OK, keine Ergebniszeilen. Geändert: ' + db.getRowsModified() + ' Zeile(n).', style: {fontSize: S.f.sm}}), (c) => ({color: c.text2})));
+          res.forEach((r) => out.appendChild(table(r)));
+        } catch (err) { out.appendChild(paint(h('div', {text: 'Fehler: ' + err.message}), (c) => ({color: c.bad}))); }
+        db.close();
+      } catch (err) { status(err.message); }
+    };
+    const runJs = () => {
+      out.textContent = '';
+      out.appendChild(label('Ausgabe'));
+      const box = outBox();
+      const lines2 = [];
+      const fake = {};
+      ['log', 'info', 'warn', 'error'].forEach((k) => { fake[k] = (...a) => lines2.push(a.map((x) => (typeof x === 'object' ? JSON.stringify(x) : String(x))).join(' ')); });
+      try { new Function('console', src.src)(fake); } catch (err) { lines2.push('Fehler: ' + err.message); }
+      box.textContent = lines2.join('\n') || '(keine Ausgabe)';
+      out.appendChild(box);
+    };
+    function run() { ({web: runWeb, python: runPy, sql: runSql, js: runJs})[lang](); }
+
+    const reset = AP2.btn({text: 'Zurücksetzen', kind: 'ghost', small: true, fn: () => {
+      Object.assign(src, orig);
+      fields.forEach((k) => { editors[k].value = orig[k] || ''; });
+      run();
+    }});
+    const go = AP2.btn({text: web ? 'Aktualisieren' : 'Ausführen', kind: 'primary', small: true, fn: run});
+    const bar = h('div', {style: {display: 'flex', gap: S.sp[2], marginTop: S.sp[2], alignItems: 'center'}}, [go, reset]);
+    showTab();
+    const root = h('div', {style: {padding: '12px 14px'}}, [tabs, holder, lang === 'python' ? stdin : h('span'), bar, out]);
+    if (web) run();
+    return root;
+  };
+  AP2.playground = playground;
+
+  // Block "try": Beispiel mit Live-Vorschau, bearbeitbar, optional mit Prüfungen.
+  AP2.blocks.try = (spec) => {
+    const parts = {html: spec.html || '', css: spec.css, js: spec.js};
+    if (spec.css === undefined) delete parts.css;
+    if (spec.js === undefined) delete parts.js;
+    const head = AP2.tint(h('div', {text: 'Ausprobieren' + (spec.t ? ': ' + spec.t : ''), style: {fontSize: S.f.xs, fontWeight: S.fw.bold, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '10px 14px 0'}}), 'accent');
+    const task = spec.task ? paint(h('div', {style: {padding: '4px 14px 0', fontSize: S.f.sm}}, [AP2.blocks.p ? AP2.blocks.p(spec.task) : spec.task]), (c) => ({color: c.text2})) : h('span');
+    const box = h('div', {style: {border: '1px solid', borderRadius: S.r.md, margin: '0 0 ' + S.sp[5], overflow: 'hidden'}},
+      [head, task, playground({lang: 'web', parts, checks: spec.checks, height: spec.h})]);
+    return paint(box, (c) => ({backgroundColor: c.surface2, borderColor: c.border}));
+  };
+
+  // Vorhandene Code-Blöcke bekommen einen "Ausprobieren"-Knopf (html, js, python, sql).
+  const baseCode = AP2.blocks.code;
+  const RUNNABLE = {html: 'web', js: 'js', python: 'python', sql: 'sql'};
+  AP2.blocks.code = (lang, source) => {
+    const node = baseCode(lang, source);
+    const kind = RUNNABLE[lang];
+    if (!kind) return node;
+    const src = source.replace(/^\n+|\s+$/g, '');
+    if (kind === 'web' && !/<[a-z][\s\S]*>/i.test(src.replace(/<!--[\s\S]*?-->/g, ''))) return node;
+    let open = null;
+    const btn = AP2.btn({text: 'Ausprobieren', kind: 'ghost', small: true, fn: () => {
+      if (open) { open.remove(); open = null; btn.firstChild.textContent = 'Ausprobieren'; return; }
+      const parts = kind === 'web' ? {html: src} : {src};
+      open = h('div', {style: {borderTop: '1px solid'}}, [playground({lang: kind, parts, height: 240})]);
+      paint(open, (c) => ({borderColor: c.border}));
+      node.appendChild(open);
+      btn.firstChild.textContent = 'Schließen';
+    }});
+    const head = node.firstChild;
+    head.insertBefore(h('div', {style: {display: 'flex', gap: S.sp[2]}}, [btn, head.lastChild]), null);
+    return node;
+  };
+})();
+;
 // ui/cheat.js
 // Spickzettel: kompakte Merkkarten zum schnellen Wiederholen.
 (function () {
@@ -27059,6 +27320,17 @@ AP2.page('course-html-03', {
 th, td { border: 1px solid #999; padding: 6px 10px; }
 td { text-align: right; }                            /* Zahlen rechtsbündig */
 tbody tr:nth-child(even) { background: #f3f3f3; }    /* Zebrastreifen */`],
+    ['try', {t: 'Tabelle gestalten', html: `<table>
+  <thead><tr><th>Tag</th><th>Gericht</th><th>Preis</th></tr></thead>
+  <tbody>
+    <tr><td>Mo</td><td>Schnitzel</td><td>5,50 €</td></tr>
+    <tr><td>Di</td><td>Pasta</td><td>4,20 €</td></tr>
+    <tr><td colspan="2">Summe</td><td>9,70 €</td></tr>
+  </tbody>
+</table>`, css: `table { border-collapse: collapse; }
+th, td { border: 1px solid #999; padding: 6px 12px; }
+th { background: #2c3e50; color: #fff; }
+tbody tr:nth-child(even) { background: #f1f1f1; }`, h: 200}],
     ['h', 'Zellen verbinden'],
     ['code', 'html', `<table>
   <tr><th rowspan="2">Tag</th><th colspan="2">Gerichte</th></tr>
@@ -27191,6 +27463,13 @@ AP2.page('course-html-04', {
       ['`<input list="orte">` + `<datalist id="orte">`', 'Vorschlagsliste beim Tippen'],
     ]],
     ['warn', 'Browser-Prüfung ist **nur Komfort**: Sie lässt sich mit den Entwicklertools oder direkten HTTP-Anfragen umgehen. Der **Server** muss alle Daten erneut prüfen und Datenbankzugriffe mit Prepared Statements ausführen.'],
+    ['try', {t: 'Formular testen', task: `Sende leer, mit falscher E-Mail, mit Zahl außerhalb 1 bis 5: der Browser prüft selbst. (Absenden wird in der Vorschau nicht ausgeführt.)`, html: `<form onsubmit="event.preventDefault(); console.log('gültig, würde gesendet')">
+  <p><label>Name <input name="n" required minlength="2"></label></p>
+  <p><label>E-Mail <input type="email" name="m" required></label></p>
+  <p><label>Anzahl <input type="number" name="a" min="1" max="5" value="1"></label></p>
+  <p><label>Datum <input type="date"></label> <input type="color" value="#2c3e50"></p>
+  <button>Senden</button>
+</form>`, h: 260, checks: [['E-Mail-Feld hat type email', 'input[name=m]', 'attr:type', 'email'], ['Name ist Pflichtfeld', 'input[name=n]', 'attr:required', '']]}],
     ['h', 'Formulare und Barrierefreiheit'],
     ['list', [
       'Jedes Feld hat ein sichtbares `<label for="id">` (placeholder ersetzt kein Label!).',
@@ -27336,6 +27615,13 @@ h1 {
   color: #2c3e50;
 }
 .price, .rating { font-weight: bold; }   /* Gruppe: beide Klassen */`],
+    ['try', {t: 'Regel ändern', task: `Ändere **color** und **font** und sieh die Wirkung sofort.`, html: `<h1>Mensa BSZ Neckaralb</h1>
+<p class="price">Schnitzel 5,50 €</p>
+<p class="rating">★★★★☆</p>`, css: `h1 {
+  font: 24pt Arial, sans-serif;
+  color: #2c3e50;
+}
+.price, .rating { font-weight: bold; }`, h: 120, checks: [['h1 ist 24pt groß', 'h1', 'font-size', '32px'], ['Preis ist fett', '.price', 'font-weight', '700']]}],
     ['h', 'Drei Wege, CSS einzubinden'],
     ['codes', [
       ['html', `<!-- inline: nur dieses Element -->
@@ -27371,6 +27657,16 @@ input:focus { outline: 2px solid blue; }      /* Tastaturfokus */
 tr:nth-child(even) { background: #eee; }      /* jede zweite Zeile */
 li:first-child { font-weight: bold; }
 .rating::before { content: "★ "; color: gold; }   /* erzeugter Inhalt */`],
+    ['try', {t: 'Selektoren treffen', task: `Welche Elemente färbt jede Regel? Ändere die Selektoren.`, html: `<nav><a href="#">Start</a> <a href="#" class="aktiv">Menü</a></nav>
+<ul><li>Eins</li><li>Zwei</li><li>Drei</li><li>Vier</li></ul>
+<p id="hinweis">Hinweis</p>
+<input type="email" placeholder="E-Mail">`, css: `li:nth-child(2n) { background: #ffe9a8; }
+nav > a { color: teal; }
+.aktiv { font-weight: bold; text-decoration: none; }
+#hinweis { color: crimson; }
+input[type="email"] { border: 2px solid green; }
+input:focus { outline: 3px solid orange; }
+li:first-child::before { content: "★ "; }`, h: 200, checks: [['Jedes 2. li ist gelb', 'li:nth-child(2)', 'background-color', 'rgb(255, 233, 168)'], ['#hinweis ist crimson', '#hinweis', 'color', 'rgb(220, 20, 60)']]}],
     ['h', 'Die Kaskade: Wer gewinnt?'],
     ['steps', [
       '**Herkunft und Wichtigkeit:** Browser-Standard < Autoren-CSS; `!important` überstimmt normale Regeln.',
@@ -27385,11 +27681,17 @@ li:first-child { font-weight: bold; }
       ['`style="..."`', '1,0,0,0', 'alle Selektoren (außer !important)'],
     ]],
     ['ex', ['Sommer 2025: Externe Datei: `.rating { color: gold; }`, im HTML: `<p class="rating" style="color: red">`. Angezeigt wird **Rot**, weil der Inline-Style die höhere Spezifität hat.']],
+    ['try', {t: 'Spezifität', task: `Welche Farbe hat der Text? Ändere die Regeln: Id schlägt Klasse schlägt Element, bei Gleichstand gewinnt die spätere.`, html: `<p id="x" class="k">Welche Farbe habe ich?</p>`, css: `p     { color: blue; }
+.k    { color: green; }
+#x    { color: red; }
+/* p { color: purple !important; } */`, h: 110, checks: [['Text ist rot (id gewinnt)', '#x', 'color', 'rgb(255, 0, 0)']]}],
     ['h', 'Vererbung'],
     ['code', 'css', `body { font-family: Verdana, Arial, sans-serif; color: #333; }   /* erben alle Texte */
 .box { border: 1px solid; }                                       /* erben Kinder NICHT */
 .kind { border: inherit; }                                        /* Vererbung erzwingen */
 a { color: inherit; }                                             /* Linkfarbe vom Elternelement */`],
+    ['try', {t: 'Vererbung', html: `<div class="box">Text im div <p>Absatz erbt Farbe und Schrift, aber nicht den Rahmen.</p></div>`, css: `body { font-family: Verdana, Arial, sans-serif; color: #333; }
+.box { color: darkblue; font-style: italic; border: 2px dashed tomato; padding: 10px; }`, h: 150}],
     ['h', 'Farben angeben'],
     ['table', ['Schreibweise', 'Beispiel', 'Bedeutung'], [
       ['Name', '`gold`, `green`, `red`', '148 benannte Farben'],
@@ -27440,6 +27742,15 @@ AP2.page('course-css-02', {
 *, *::before, *::after { box-sizing: border-box; }   /* jetzt sind es genau 200px */
 .zentriert { width: 600px; margin: 0 auto; }          /* Block horizontal zentrieren */`],
     ['note', '**Margin Collapsing:** Treffen die vertikalen Außenabstände zweier Blockelemente aufeinander, wird nicht addiert, sondern der größere genommen (20px und 30px ergeben 30px Abstand).'],
+    ['try', {t: 'Box-Modell', task: `Schalte **box-sizing** um: Wie breit wird die Box wirklich?`, html: `<div class="menu-item">200px breit?</div>
+<div class="menu-item" id="ref">Vergleich</div>`, css: `.menu-item {
+  width: 200px;
+  padding: 10px;
+  border: 5px solid #2c3e50;
+  margin: 0 0 20px;
+  background: #dff3ff;
+  /* box-sizing: border-box; */
+}`, h: 200, checks: [['Box ist inklusive Rahmen genau 200px breit (border-box)', '.menu-item', 'box-sizing', 'border-box']]}],
     ['h', 'display'],
     ['table', ['Wert', 'Verhalten'], [
       ['`block`', 'neue Zeile, volle Breite, width/height wirken'],
@@ -27448,6 +27759,13 @@ AP2.page('course-css-02', {
       ['`none`', 'Element wird nicht dargestellt und nimmt keinen Platz ein'],
       ['`flex` / `grid`', 'Element wird Layout-Container (Kapitel 3 und 4)'],
     ]],
+    ['try', {t: 'display', html: `<p>Text <span class="s">span (inline)</span> und <span class="s">noch einer</span>.</p>
+<div class="d">div (block)</div>
+<a class="knopf" href="#">inline-block</a> <a class="knopf" href="#">Knopf</a>
+<p class="weg">Ich bin display:none und unsichtbar.</p>`, css: `.s { background: gold; width: 300px; height: 50px; }
+.d { background: lightgreen; }
+.knopf { display: inline-block; width: 110px; padding: 8px; background: #2c3e50; color: #fff; text-align: center; text-decoration: none; }
+.weg { display: none; }`, h: 220}],
     ['h', 'Text und Schrift'],
     ['code', 'css', `body {
   font-family: "Segoe UI", Verdana, Arial, sans-serif;   /* Liste mit Ausweichschriften */
@@ -27459,6 +27777,9 @@ AP2.page('course-css-02', {
 .price { font-weight: bold; text-align: right; }
 h1 { font-size: 2rem; text-transform: uppercase; letter-spacing: 0.05em; }
 a { text-decoration: none; } a:hover { text-decoration: underline; }`],
+    ['try', {t: 'Text und Schrift', html: `<h2>Tagesgericht</h2>
+<p class="t">Das Schnitzel wird mit Pommes und frischem Salat serviert. Guten Appetit!</p>`, css: `h2 { font-family: Georgia, serif; text-transform: uppercase; letter-spacing: 2px; color: #c0392b; }
+.t { font-size: 1.2rem; line-height: 1.8; text-align: justify; width: 280px; text-indent: 1.5em; }`, h: 200}],
     ['h', 'Einheiten'],
     ['table', ['Einheit', 'Bezug', 'Empfehlung'], [
       ['`px`', 'absolut', 'Rahmen, feine Abstände'],
@@ -27476,6 +27797,10 @@ a { text-decoration: none; } a:hover { text-decoration: underline; }`],
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }`],
+    ['try', {t: 'Hintergrund und Rahmen', html: `<div class="karte">Karte mit Verlauf</div>`, css: `body { background-color: orange; }
+.karte { padding: 24px; color: #fff; border: 4px double #fff; border-radius: 16px;
+  background: linear-gradient(135deg, #6a11cb, #2575fc);
+  box-shadow: 0 6px 16px rgba(0,0,0,.35); }`, h: 170}],
     ['h', 'Positionierung'],
     ['code', 'css', `header { position: relative; }               /* Bezugspunkt für das Logo */
 #logo  { position: absolute; top: 10px; right: 30px; }   /* Logo oben rechts, 30px Abstand */
@@ -27490,6 +27815,9 @@ thead th { position: sticky; top: 0; background: white; }            /* Tabellen
       ['`fixed`', 'Browserfenster', 'nein'],
       ['`sticky`', 'normal, ab Schwelle wie fixed im Container', 'ja'],
     ]],
+    ['try', {t: 'Positionierung', task: `Das Logo ist **absolute** in einem **relative** Elternelement. Verschiebe es mit top/right.`, html: `<header><span class="logo">LOGO</span>Kopfbereich</header>
+<p>Folgender Inhalt wird vom absoluten Logo nicht verschoben.</p>`, css: `header { position: relative; height: 80px; background: #2c3e50; color: #fff; padding: 10px; }
+.logo { position: absolute; top: 10px; right: 10px; background: gold; color: #000; padding: 6px 10px; }`, h: 200}],
     ['h', 'Übungen'],
     ['qa', 'Gestalten Sie Karten für Tagesgerichte: zentrierter Text, 10px Innenabstand, grauer 1px-Rahmen, abgerundete Ecken, vegetarische Gerichte grün umrandet, Beschreibung in #666, Preis fett.', [['code', 'css', `.menu-item {
   text-align: center;
@@ -27542,6 +27870,12 @@ AP2.page('course-css-03', {
 }
 .menue { display: flex; gap: 20px; list-style: none; margin: 0; padding: 0; }
 .leiste a { color: white; text-decoration: none; }`],
+    ['try', {t: 'Flex-Navigation', task: `Teste **justify-content** (flex-start, center, space-between, space-around) und **align-items**.`, html: `<nav class="leiste">
+  <a href="#">MeBS</a>
+  <ul class="menue"><li><a href="#">Start</a></li><li><a href="#">Menü</a></li><li><a href="#">Konto</a></li></ul>
+</nav>`, css: `.leiste { display: flex; justify-content: space-between; align-items: center; padding: 0 20px; background: #2c3e50; height: 64px; }
+.leiste a { color: #fff; text-decoration: none; }
+.menue { display: flex; gap: 20px; list-style: none; margin: 0; padding: 0; }`, h: 170, checks: [['Leiste ist ein Flex-Container', '.leiste', 'display', 'flex'], ['Logo links, Menü rechts', '.leiste', 'justify-content', 'space-between']]}],
     ['h', 'justify-content im Überblick'],
     ['table', ['Wert', 'Wirkung (bei row)'], [
       ['`flex-start`', 'alle links'], ['`flex-end`', 'alle rechts'], ['`center`', 'alle in der Mitte'],
@@ -27549,6 +27883,10 @@ AP2.page('course-css-03', {
       ['`space-around`', 'gleicher Abstand um jedes Item (am Rand halb so groß)'],
       ['`space-evenly`', 'alle Abstände gleich, auch am Rand'],
     ]],
+    ['try', {t: 'Hauptachse und Querachse', task: `Wechsle **flex-direction** auf column, ändere **justify-content** und **align-items**.`, html: `<div class="a">A</div><div class="b">B</div><div class="c">C</div>`, css: `.a,.b,.c{background:#2c3e50;color:#fff;padding:12px;border-radius:6px;text-align:center}
+body{margin:0}
+.container-ersatz{}
+body { display: flex; flex-direction: row; justify-content: flex-start; align-items: stretch; gap: 8px; height: 200px; }`, h: 230}],
     ['h', 'Platz verteilen mit flex'],
     ['code', 'css', `.layout { display: flex; gap: 20px; }
 .sidebar { flex: 0 0 250px; }        /* wächst nicht, schrumpft nicht, 250px breit */
@@ -27557,6 +27895,10 @@ AP2.page('course-css-03', {
 .spalten > div { flex: 1; }          /* drei gleich breite Spalten */
 .spalten > .breit { flex: 2; }       /* doppelt so breit wie die anderen */`],
     ['p', '`flex: grow shrink basis`. `flex: 1` entspricht `1 1 0%`: Alle Items starten bei 0 und teilen den Platz im Verhältnis ihrer grow-Werte.'],
+    ['try', {t: 'flex-grow', task: `Verteile den Platz: Seitenleiste fest, Inhalt nimmt den Rest (flex: 1).`, html: `<div class="layout"><aside>Seitenleiste</aside><main>Inhalt</main><div class="x">Extra</div></div>`, css: `.layout { display: flex; gap: 20px; }
+aside { width: 120px; background: #cfd8dc; padding: 10px; }
+main  { flex: 1; background: #b2dfdb; padding: 10px; }
+.x { flex: 0 0 60px; background: #ffe082; padding: 10px; }`, h: 150, checks: [['main wächst (flex-grow 1)', 'main', 'flex-grow', '1']]}],
     ['h', 'Umbrechende Kacheln (responsiv ohne Media Query)'],
     ['code', 'css', `.menu-selection {
   display: flex;
@@ -27566,6 +27908,8 @@ AP2.page('course-css-03', {
 .menu-item {
   flex: 1 1 250px;            /* mindestens etwa 250px, sonst umbrechen; Rest gleichmäßig */
 }`],
+    ['try', {t: 'Umbrechende Kacheln', task: `Ziehe die untere rechte Ecke der Vorschau schmaler: Die Kacheln brechen um.`, html: `<div class="menu-selection"><div class="item">Gericht 1</div><div class="item">Gericht 2</div><div class="item">Gericht 3</div><div class="item">Gericht 4</div><div class="item">Gericht 5</div><div class="item">Gericht 6</div></div>`, css: `.menu-selection { display: flex; flex-wrap: wrap; gap: 16px; }
+.item { flex: 1 1 200px; background: #e8f5e9; border: 1px solid #81c784; padding: 20px; border-radius: 8px; }`, h: 260}],
     ['h', 'Aktor und Sensor nebeneinander (Sommer 2023)'],
     ['code', 'css', `.anzeige { display: flex; flex-direction: column; }   /* schmal: untereinander */
 @media (min-width: 601px) {
@@ -27580,6 +27924,8 @@ AP2.page('course-css-03', {
   align-items: center;       /* senkrecht */
   min-height: 100vh;
 }`],
+    ['try', {t: 'Zentrieren', html: `<div class="vollbild"><div class="mitte">Genau in der Mitte</div></div>`, css: `.vollbild { display: flex; justify-content: center; align-items: center; height: 170px; background: #eceff1; }
+.mitte { background: #2c3e50; color: #fff; padding: 14px 20px; border-radius: 6px; }`, h: 200}],
     ['h', 'Übungen'],
     ['qa', 'Ein Footer soll links den Kontakt und rechts das Copyright zeigen, vertikal mittig, auf kleinen Bildschirmen untereinander.', [['code', 'css', `footer { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }`]], 3],
     ['quiz', [
@@ -27611,6 +27957,9 @@ AP2.page('course-css-04', {
   gap: 16px;
 }`],
     ['p', 'Die Kinder füllen das Raster automatisch zeilenweise: Kind 1 in Spalte 1, Kind 2 in Spalte 2 usw., Kind 5 beginnt die zweite Zeile.'],
+    ['try', {t: 'Grid-Raster', task: `Ändere **grid-template-columns** (zum Beispiel repeat(3, 1fr)) und **gap**.`, html: `<div class="menu-selection"><div class="d">Mo</div><div>Schnitzel</div><div>Pasta</div><div>Salat</div><div class="d">Di</div><div>Pizza</div><div>Suppe</div><div>Curry</div></div>`, css: `.menu-selection { display: grid; grid-template-columns: 120px 1fr 1fr 1fr; gap: 16px; }
+.menu-selection div { background: #e3f2fd; border: 1px solid #64b5f6; padding: 12px; border-radius: 6px; }
+.d { background: #ffe082 !important; font-weight: bold; }`, h: 200, checks: [['Grid-Container', '.menu-selection', 'display', 'grid']]}],
     ['h', 'Linien und Spannen'],
     ['code', 'css', `.grid-container {
   display: grid;
@@ -27627,6 +27976,13 @@ AP2.page('course-css-04', {
       {id: 'm', k: 'box', x: 232, y: 120, w: 400, h: 130, t: '#map (1 / 4, Zeilen 2 / 5)', s: 'soft'},
       {id: 'u', k: 'box', x: 503, y: 75, w: 130, h: 40, t: '#auftrag'}, {id: 'g', k: 'box', x: 503, y: 120, w: 130, h: 40, t: '#angebot'}, {id: 'b', k: 'box', x: 503, y: 165, w: 130, h: 40, t: '#buchung'},
     ], edges: []}],
+    ['try', {t: 'Spannen über Linien', task: `Sommer 2022: #ablauf über alle 4 Spalten, #map über 3 Spalten und 3 Zeilen.`, html: `<div class="grid-container"><div id="ablauf">#ablauf</div><div id="map">#map</div><div id="auftrag">#auftrag</div><div id="angebot">#angebot</div><div id="buchung">#buchung</div></div>`, css: `.grid-container { display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: auto repeat(3, 60px); gap: 6px; }
+.grid-container > div { background: #c5cae9; padding: 6px; border-radius: 4px; }
+#ablauf  { grid-column: 1 / 5; background: #ffcc80; }
+#map     { grid-column: 1 / 4; grid-row: 2 / 5; background: #a5d6a7; }
+#auftrag { grid-column: 4; grid-row: 2; }
+#angebot { grid-column: 4; grid-row: 3; }
+#buchung { grid-column: 4; grid-row: 4; }`, h: 260, checks: [['#ablauf spannt Linie 1 bis 5', '#ablauf', 'grid-column-start', '1'], ['#map beginnt in Zeile 2', '#map', 'grid-row-start', '2']]}],
     ['h', 'Benannte Bereiche'],
     ['code', 'css', `.seite {
   display: grid;
@@ -27649,6 +28005,16 @@ footer { grid-area: fuss; }
     grid-template-areas: "kopf" "nav" "inhalt" "fuss";
   }
 }`],
+    ['try', {t: 'grid-template-areas', task: `Verschiebe die Bereiche in der Zeichnung, zum Beispiel nav nach rechts.`, html: `<div class="seite"><header>Kopf</header><nav>Navigation</nav><main>Inhalt</main><footer>Fuß</footer></div>`, css: `.seite { display: grid; grid-template-columns: 120px 1fr; grid-template-rows: auto 1fr auto; grid-template-areas:
+  "kopf kopf"
+  "nav inhalt"
+  "fuss fuss";
+  gap: 6px; height: 220px; }
+header { grid-area: kopf; background: #ffcc80; }
+nav { grid-area: nav; background: #b3e5fc; }
+main { grid-area: inhalt; background: #c8e6c9; }
+footer { grid-area: fuss; background: #d1c4e9; }
+.seite > * { padding: 8px; border-radius: 4px; }`, h: 260}],
     ['h', 'Prüfungsaufgabe Winter 2025/26: Hoch- und Querformat'],
     ['code', 'css', `#row  { display: grid; grid-template-columns: 1fr 1fr; align-content: center; }
 #text { grid-column: 1 / 3; }               /* Hochformat: Text über beide Spalten */
@@ -27662,6 +28028,8 @@ footer { grid-area: fuss; }
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));   /* so viele Spalten wie passen */
   gap: 16px;
 }`],
+    ['try', {t: 'auto-fit und minmax', task: `Ziehe die Vorschau schmaler: Spaltenzahl passt sich an.`, html: `<div class="kacheln"><div>1</div><div>2</div><div>3</div><div>4</div><div>5</div><div>6</div><div>7</div><div>8</div></div>`, css: `.kacheln { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; }
+.kacheln div { background: #2c3e50; color: #fff; padding: 20px; text-align: center; border-radius: 6px; }`, h: 240}],
     ['h', 'Ausrichten im Grid'],
     ['table', ['Eigenschaft', 'Wirkt auf', 'Beispiel'], [
       ['`justify-items`', 'alle Items waagerecht in ihrer Zelle', '`center`'],
@@ -27714,6 +28082,11 @@ img { max-width: 100%; height: auto; }
 @media (min-width: 1100px) {
   .menu-selection { grid-template-columns: 120px repeat(3, 1fr); }
 }`],
+    ['try', {t: 'Media Query', task: `Ziehe die Vorschau breiter als 600px: Zwei Spalten statt einer.`, html: `<div class="container"><div>Karte 1</div><div>Karte 2</div><div>Karte 3</div><div>Karte 4</div></div>`, css: `.container { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.container > div { background: #ffe0b2; padding: 18px; border-radius: 6px; }
+@media (min-width: 600px) {
+  .container { grid-template-columns: 1fr 1fr; }
+}`, h: 240}],
     ['h', 'Media-Query-Bedingungen'],
     ['table', ['Bedingung', 'trifft zu bei'], [
       ['`(max-width: 499px)`', 'Fensterbreite bis 499px'],
@@ -27744,6 +28117,10 @@ h1 { font-size: clamp(1.5rem, 4vw, 2.5rem); }`],
 }
 body { color: var(--text); background: var(--hintergrund); }
 button { background: var(--akzent); padding: calc(var(--abstand) / 2) var(--abstand); }`],
+    ['try', {t: 'Custom Properties', task: `Ändere nur **--akzent**: alles passt sich an.`, html: `<button class="b">Speichern</button> <a class="l" href="#">Link</a> <span class="t">Badge</span>`, css: `:root { --akzent: #e91e63; --abstand: 10px; }
+.b { background: var(--akzent); color: #fff; border: 0; padding: var(--abstand) 18px; border-radius: 4px; }
+.l { color: var(--akzent); }
+.t { border: 2px solid var(--akzent); padding: 2px var(--abstand); border-radius: 99px; }`, h: 150}],
     ['h', 'Übergänge und Animationen'],
     ['code', 'css', `.menu-item { transition: transform 0.2s ease, box-shadow 0.2s ease; }
 .menu-item:hover { transform: translateY(-3px); box-shadow: 0 4px 12px rgba(0,0,0,.2); }
@@ -27757,6 +28134,10 @@ button { background: var(--akzent); padding: calc(var(--abstand) / 2) var(--abst
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }`],
+    ['try', {t: 'Hover und Animation', task: `Fahre mit der Maus über die Karte.`, html: `<div class="menu-item">Hover mich</div> <div class="puls">pulsiert</div>`, css: `.menu-item { display: inline-block; padding: 24px; background: #e8f5e9; border-radius: 8px; transition: transform .2s ease, box-shadow .2s ease; }
+.menu-item:hover { transform: translateY(-6px) scale(1.05); box-shadow: 0 10px 20px rgba(0,0,0,.25); }
+.puls { display: inline-block; padding: 24px; background: #ffcdd2; border-radius: 8px; animation: puls 1.2s ease-in-out infinite; }
+@keyframes puls { 50% { transform: scale(1.15); background: #ef9a9a; } }`, h: 200}],
     ['h', 'Druck-CSS'],
     ['code', 'css', `@media print {
   nav, footer, .button { display: none; }     /* Unnötiges ausblenden */

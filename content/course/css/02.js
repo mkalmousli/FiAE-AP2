@@ -25,6 +25,15 @@ AP2.page('course-css-02', {
 *, *::before, *::after { box-sizing: border-box; }   /* jetzt sind es genau 200px */
 .zentriert { width: 600px; margin: 0 auto; }          /* Block horizontal zentrieren */`],
     ['note', '**Margin Collapsing:** Treffen die vertikalen Außenabstände zweier Blockelemente aufeinander, wird nicht addiert, sondern der größere genommen (20px und 30px ergeben 30px Abstand).'],
+    ['try', {t: 'Box-Modell', task: `Schalte **box-sizing** um: Wie breit wird die Box wirklich?`, html: `<div class="menu-item">200px breit?</div>
+<div class="menu-item" id="ref">Vergleich</div>`, css: `.menu-item {
+  width: 200px;
+  padding: 10px;
+  border: 5px solid #2c3e50;
+  margin: 0 0 20px;
+  background: #dff3ff;
+  /* box-sizing: border-box; */
+}`, h: 200, checks: [['Box ist inklusive Rahmen genau 200px breit (border-box)', '.menu-item', 'box-sizing', 'border-box']]}],
     ['h', 'display'],
     ['table', ['Wert', 'Verhalten'], [
       ['`block`', 'neue Zeile, volle Breite, width/height wirken'],
@@ -33,6 +42,13 @@ AP2.page('course-css-02', {
       ['`none`', 'Element wird nicht dargestellt und nimmt keinen Platz ein'],
       ['`flex` / `grid`', 'Element wird Layout-Container (Kapitel 3 und 4)'],
     ]],
+    ['try', {t: 'display', html: `<p>Text <span class="s">span (inline)</span> und <span class="s">noch einer</span>.</p>
+<div class="d">div (block)</div>
+<a class="knopf" href="#">inline-block</a> <a class="knopf" href="#">Knopf</a>
+<p class="weg">Ich bin display:none und unsichtbar.</p>`, css: `.s { background: gold; width: 300px; height: 50px; }
+.d { background: lightgreen; }
+.knopf { display: inline-block; width: 110px; padding: 8px; background: #2c3e50; color: #fff; text-align: center; text-decoration: none; }
+.weg { display: none; }`, h: 220}],
     ['h', 'Text und Schrift'],
     ['code', 'css', `body {
   font-family: "Segoe UI", Verdana, Arial, sans-serif;   /* Liste mit Ausweichschriften */
@@ -44,6 +60,9 @@ AP2.page('course-css-02', {
 .price { font-weight: bold; text-align: right; }
 h1 { font-size: 2rem; text-transform: uppercase; letter-spacing: 0.05em; }
 a { text-decoration: none; } a:hover { text-decoration: underline; }`],
+    ['try', {t: 'Text und Schrift', html: `<h2>Tagesgericht</h2>
+<p class="t">Das Schnitzel wird mit Pommes und frischem Salat serviert. Guten Appetit!</p>`, css: `h2 { font-family: Georgia, serif; text-transform: uppercase; letter-spacing: 2px; color: #c0392b; }
+.t { font-size: 1.2rem; line-height: 1.8; text-align: justify; width: 280px; text-indent: 1.5em; }`, h: 200}],
     ['h', 'Einheiten'],
     ['table', ['Einheit', 'Bezug', 'Empfehlung'], [
       ['`px`', 'absolut', 'Rahmen, feine Abstände'],
@@ -61,6 +80,10 @@ a { text-decoration: none; } a:hover { text-decoration: underline; }`],
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }`],
+    ['try', {t: 'Hintergrund und Rahmen', html: `<div class="karte">Karte mit Verlauf</div>`, css: `body { background-color: orange; }
+.karte { padding: 24px; color: #fff; border: 4px double #fff; border-radius: 16px;
+  background: linear-gradient(135deg, #6a11cb, #2575fc);
+  box-shadow: 0 6px 16px rgba(0,0,0,.35); }`, h: 170}],
     ['h', 'Positionierung'],
     ['code', 'css', `header { position: relative; }               /* Bezugspunkt für das Logo */
 #logo  { position: absolute; top: 10px; right: 30px; }   /* Logo oben rechts, 30px Abstand */
@@ -75,6 +98,9 @@ thead th { position: sticky; top: 0; background: white; }            /* Tabellen
       ['`fixed`', 'Browserfenster', 'nein'],
       ['`sticky`', 'normal, ab Schwelle wie fixed im Container', 'ja'],
     ]],
+    ['try', {t: 'Positionierung', task: `Das Logo ist **absolute** in einem **relative** Elternelement. Verschiebe es mit top/right.`, html: `<header><span class="logo">LOGO</span>Kopfbereich</header>
+<p>Folgender Inhalt wird vom absoluten Logo nicht verschoben.</p>`, css: `header { position: relative; height: 80px; background: #2c3e50; color: #fff; padding: 10px; }
+.logo { position: absolute; top: 10px; right: 10px; background: gold; color: #000; padding: 6px 10px; }`, h: 200}],
     ['h', 'Übungen'],
     ['qa', 'Gestalten Sie Karten für Tagesgerichte: zentrierter Text, 10px Innenabstand, grauer 1px-Rahmen, abgerundete Ecken, vegetarische Gerichte grün umrandet, Beschreibung in #666, Preis fett.', [['code', 'css', `.menu-item {
   text-align: center;

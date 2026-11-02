@@ -9,6 +9,7 @@ Plain JavaScript, no dependencies. Serve the folder with any static server, e.g.
 ## What's inside
 
 - **~250 topic pages** (`content/`): exam definition, mnemonic, cheat sheet, explanation, diagrams, exam-style tasks with model answers, quiz. Topics follow the updated IHK catalog (12/2024), including stakeholder/risk analysis, ISO 9000/25010, coverage tests, TOM, architecture/MVC, VLSM, IPv6 subnetting, routing, VoIP, web security, OAuth/SSO, blockchain, neural networks, transactions/views/DCL, sustainability, Arbeitsschutz, Prokura and more.
+- **Spielwiese** (`ui/playground.js`): HTML/CSS/JS examples on the course pages have an editable live preview (sandboxed iframe, resizable for media queries) with self-checking tasks (`['try', {...}]`); code blocks in HTML, JS, Python and SQL get an "Ausprobieren" button. Python (Pyodide) and SQL (sql.js, garden-center sample DB) load from a CDN on first use, so they need a connection once.
 - **Trainer** (`#/trainer`): daily mix with Leitner spaced repetition over all ~1,100 quiz questions and open exam tasks (as self-rated flashcards), 60-second Blitz mode, error training, per-topic and per-block drills, keyboard shortcuts.
 - **Gamification** (`core/game.js`): XP with combo bonus, levels with titles, daily goal, learning streak, 40 achievements, mastery stars per topic, activity heatmap, exam countdown. Progress is stored in `localStorage` only.
 - **Themenkarte** (`#/themen`): every topic as a tile with mastery, filterable by block, text, open/weak/due.
