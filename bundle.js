@@ -1257,6 +1257,31 @@ AP2.pages = function () {};
   };
 })();
 ;
+// ui/result.js
+// Statische Ergebnis-Anzeigen (nicht editierbar): "result" zeigt, wie HTML/CSS aussieht; "out" zeigt die Ausgabe eines Programms.
+// ['result', {t: 'Titel', html: '...', css: '...', h: 160}]   ['out', 'Ausgabe-Text']
+(function () {
+  const {h} = AP2;
+  const S = AP2.S;
+  const frame = (txt, extra) => AP2.tint(h('div', {text: txt, style: Object.assign({fontSize: S.f.xs, fontWeight: S.fw.bold, letterSpacing: '0.08em',
+    textTransform: 'uppercase', padding: '8px 14px 6px'}, extra)}), 'text3');
+  const box = (children) => AP2.theme.bind(h('div', {style: {border: '1px solid', borderRadius: S.r.md, margin: '0 0 ' + S.sp[5], overflow: 'hidden'}}, children),
+    (n, c) => { n.style.backgroundColor = c.surface2; n.style.borderColor = c.border; });
+  // Nur Darstellung: ohne Skripte, ohne Eingriff (pointer-events: none), Größe fest.
+  const doc = (html, css) => '<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:system-ui,sans-serif;margin:12px;color:#222}'
+    + (css || '') + '</style></head><body>' + html + '</body></html>';
+  AP2.blocks.result = (spec) => {
+    const page = h('iframe', {attrs: {sandbox: '', title: 'Ergebnis', srcdoc: doc(spec.html, spec.css), tabindex: '-1'},
+      style: {width: '100%', height: (spec.h || 160) + 'px', border: 0, display: 'block', background: '#fff', pointerEvents: 'none'}});
+    return box([frame('So sieht es aus' + (spec.t ? ': ' + spec.t : '')), page]);
+  };
+  AP2.blocks.out = (text) => {
+    const pre = h('pre', {text: text, style: {margin: 0, padding: '0 20px 14px', overflowX: 'auto', fontFamily: S.font.mono, fontSize: S.f.sm, lineHeight: S.lh.code}});
+    AP2.theme.bind(pre, (n, c) => { n.style.color = c.text; });
+    return box([frame('Ausgabe'), pre]);
+  };
+})();
+;
 // ui/cheat.js
 // Spickzettel: kompakte Merkkarten zum schnellen Wiederholen.
 (function () {
@@ -21013,6 +21038,8 @@ print(menge)
 
 a, b = 1, 2            # Mehrfachzuweisung
 a, b = b, a            # Tauschen ohne Hilfsvariable: a=2, b=1`],
+    ['out', `59.97
+5`],
     ['table', ['Regel für Namen', 'Erlaubt', 'Nicht erlaubt'], [
       ['Buchstaben, Ziffern, Unterstrich', '`anzahl_kunden`, `wert2`', '`anzahl-kunden` (Minus), `mein wert` (Leerzeichen)'],
       ['Nicht mit Ziffer beginnen', '`zahl1`', '`1zahl`'],
@@ -21032,6 +21059,10 @@ a, b = b, a            # Tauschen ohne Hilfsvariable: a=2, b=1`],
 print(type(4.2))       # <class 'float'>
 print(type("42"))      # <class 'str'>
 print(isinstance(42, int))   # True: Typ prüfen`],
+    ['out', `<class 'int'>
+<class 'float'>
+<class 'str'>
+True`],
     ['note', 'Zum Vergleich: In **Java und C#** muss man den Typ **vorher angeben** (`int menge = 3;`). Das nennt man **statische Typisierung**: Der Compiler prüft Typen vor dem Start. Python prüft erst **zur Laufzeit**.'],
     ['h', 'Arithmetische Operatoren'],
     ['table', ['Operator', 'Bedeutung', 'Beispiel', 'Ergebnis'], [
@@ -21064,6 +21095,12 @@ print(round(3.5), round(2.5))   # 4 2  (Banker's Rounding: zur geraden Zahl)
 print(float("2.5") * 2)     # 5.0
 print(str(42) + " Stück")   # "42 Stück"
 print(bool(0), bool(""), bool("0"), bool([]))   # False False True False`],
+    ['out', `43
+3
+4 2
+5.0
+42 Stück
+False False True False`],
     ['warn', '**Gleitkomma-Ungenauigkeit:** `0.1 + 0.2` ergibt `0.30000000000000004`, weil 0,1 im Binärsystem nicht exakt darstellbar ist. Für **Geldbeträge** nutzt man `decimal.Decimal` oder rechnet in **Cent als int**. Gleitkommazahlen nie mit `==` vergleichen, sondern `abs(a - b) < 1e-9` oder `math.isclose(a, b)`.'],
     ['h', 'Konstanten und Speicherbedarf'],
     ['p', 'Python kennt keine echten Konstanten. Per Konvention schreibt man sie **GROSS**: `MWST = 0.19`. In Java heißt das `final double MWST = 0.19;`, in C# `const double MWST = 0.19;`.'],
@@ -21124,6 +21161,14 @@ print(s[::2])    # Pto  (jedes zweite Zeichen)
 print(s[::-1])   # nohtyP (rückwärts)
 # s[0] = "J"     # TypeError: Strings sind unveränderlich!
 s = "J" + s[1:]  # stattdessen neuen String bauen: "Jython"`],
+    ['out', `P
+n
+n
+Py
+thon
+Pyt
+Pto
+nohtyP`],
     ['warn', '`s[6]` bei `"Python"` erzeugt einen **IndexError** (es gibt nur die Indizes 0 bis 5). Slicing dagegen ist tolerant: `s[2:100]` liefert einfach `"thon"`.'],
     ['h', 'Wichtige String-Methoden'],
     ['table', ['Methode', 'Bedeutung', 'Beispiel', 'Ergebnis'], [
@@ -21145,6 +21190,7 @@ name = teile[1]
 preis = float(teile[2])
 menge = int(teile[3])
 print(name, "Lagerwert:", preis * menge)  # Schraube M6 Lagerwert: 60.0`],
+    ['out', `Schraube M6 Lagerwert: 60.0`],
     ['h', 'Strings zusammensetzen und formatieren'],
     ['code', 'python', `name, alter, preis = "Anna", 21, 3.5
 print("Name: " + name + ", Alter: " + str(alter))     # Verkettung: Zahlen umwandeln!
@@ -21155,6 +21201,14 @@ print(f"{'Artikel':<10}|{'Preis':>8}")                   # Tabelle: links / rech
 print(f"{'Apfel':<10}|{0.5:>8.2f}")
 print(f"Rechnung: {2 * 3 = }")                           # Rechnung: 2 * 3 = 6  (Debug-Hilfe)
 print("Wert: {:.1f}".format(3.14159))                    # ältere Variante mit format()`],
+    ['out', `Name: Anna, Alter: 21
+Name: Anna Alter: 21
+Name: Anna, Alter: 21
+Preis: 3.50 EUR
+Artikel   |   Preis
+Apfel     |    0.50
+Rechnung: 2 * 3 = 6
+Wert: 3.1`],
     ['table', ['Format', 'Bedeutung', 'Beispiel', 'Ergebnis'], [['`:.2f`', '2 Nachkommastellen', '`f"{3.14159:.2f}"`', '`3.14`'], ['`:8`', 'Mindestbreite 8', '`f"{42:8}"`', '`      42`'], ['`:<8` `:>8` `:^8`', 'links, rechts, zentriert', '`f"{"ab":^6}"`', '`  ab  `'], ['`:05d`', 'mit Nullen auffüllen', '`f"{7:05d}"`', '`00007`'], ['`:,`', 'Tausendertrennzeichen', '`f"{1234567:,}"`', '`1,234,567`'], ['`:.1%`', 'als Prozent', '`f"{0.256:.1%}"`', '`25.6%`']]],
     ['h', 'Zeichen und Zeichencodes'],
     ['p', 'Jedes Zeichen hat einen **Zahlenwert** (Unicode/ASCII). `ord("A")` ergibt `65`, `chr(65)` ergibt `"A"`. Großbuchstaben A-Z liegen bei 65-90, Kleinbuchstaben a-z bei 97-122, Ziffern 0-9 bei 48-57. Das nutzt man zum Beispiel für die **Caesar-Verschlüsselung** oder Prüfziffern.'],
@@ -21167,6 +21221,7 @@ print("Wert: {:.1f}".format(3.14159))                    # ältere Variante mit 
             erg += z                                    # andere Zeichen unverändert
     return erg
 print(caesar("HALLO", 3))   # KDOOR`],
+    ['out', `KDOOR`],
     ['h', 'Übungen'],
     ['qa', 'Gegeben `s = "Fachinformatiker"`. Was liefern `s[0]`, `s[-1]`, `s[4:9]`, `s[::-1][:3]`, `len(s)`?', ['`s[0]` = `"F"`, `s[-1]` = `"r"`, `s[4:9]` = `"infor"` (Index 4 bis 8), `s[::-1][:3]` = `"rek"`, `len(s)` = `16`.'], 5],
     ['qa', 'Schreiben Sie eine Funktion `ist_palindrom(wort)`, die `True` liefert, wenn ein Wort vorwärts und rückwärts gleich ist (Groß-/Kleinschreibung ignorieren, zum Beispiel "Anna").', [['code', 'python', `def ist_palindrom(wort):
@@ -21406,6 +21461,12 @@ while zaehler <= 5:          # 2. Bedingung (vor jedem Durchlauf geprüft)
     print("Durchlauf", zaehler)
     zaehler += 1             # 3. Veränderung, sonst Endlosschleife!
 print("fertig")`],
+    ['out', `Durchlauf 1
+Durchlauf 2
+Durchlauf 3
+Durchlauf 4
+Durchlauf 5
+fertig`],
     ['table', ['Durchlauf', 'zaehler vorher', 'Bedingung zaehler <= 5', 'Ausgabe'], [
       ['1', '1', 'True', 'Durchlauf 1'],
       ['2', '2', 'True', 'Durchlauf 2'],
@@ -21464,6 +21525,12 @@ for i, note in enumerate(noten):        # i = Index, note = Wert
 # Ohne enumerate (wie in Java):
 for i in range(len(noten)):
     print(i, noten[i])`],
+    ['out', `Fach 1: Note 2
+Fach 2: Note 1
+Fach 3: Note 3
+0 2
+1 1
+2 3`],
     ['h', 'break, continue und else'],
     ['code', 'python', `zahlen = [4, 7, -1, 9, 12]
 
@@ -21484,6 +21551,13 @@ for z in zahlen:
         break
 else:                          # läuft nur, wenn KEIN break kam
     print("Kein Wert über 100")`],
+    ['out', `4
+7
+Negative Zahl gefunden, Abbruch
+7
+-1
+9
+Kein Wert über 100`],
     ['h', 'Verschachtelte Schleifen'],
     ['p', 'Bei jedem Durchlauf der äußeren Schleife läuft die innere **komplett** durch. Klassiker: das kleine Einmaleins oder Muster aus Zeichen.'],
     ['code', 'python', `for zeile in range(1, 4):
@@ -21493,6 +21567,9 @@ else:                          # läuft nur, wenn KEIN break kam
 # 1  2  3
 # 2  4  6
 # 3  6  9`],
+    ['out', `1	2	3	
+2	4	6	
+3	6	9	`],
     ['h', 'Die wichtigsten Schleifenmuster'],
     ['code', 'python', `werte = [12, 5, 8, 21, 3]
 
@@ -21511,6 +21588,7 @@ for w in werte:
         anzahl += 1
 
 print(summe, summe / len(werte), maximum, anzahl)   # 49 9.8 21 2`],
+    ['out', `49 9.8 21 2`],
     ['note', 'Python bietet dafür auch eingebaute Funktionen: `sum(werte)`, `max(werte)`, `min(werte)`, `len(werte)`. In der Prüfung soll man den Algorithmus aber oft **selbst** schreiben, also beide Wege kennen.'],
     ['h', 'Übungen'],
     ['qa', 'Schreiben Sie ein Programm, das so lange Zahlen einliest, bis 0 eingegeben wird, und danach Summe und Durchschnitt der eingegebenen Zahlen ausgibt (die 0 zählt nicht mit).', [['code', 'python', `summe = 0
@@ -21567,6 +21645,10 @@ print(temperaturen[0])     # 21.5  (erstes Element, Index 0)
 print(temperaturen[3])     # 25.1  (viertes Element)
 print(temperaturen[-1])    # 25.1  (letztes Element)
 print(len(temperaturen))   # 4`],
+    ['out', `21.5
+25.1
+25.1
+4`],
     ['diagram', {w: 560, h: 120, keep: 440, cap: 'Jedes Element hat einen positiven (oben) und einen negativen Index (unten).', nodes: [
       {id: 'a', k: 'box', x: 100, y: 60, w: 100, h: 40, t: '21.5', s: 'soft'}, {id: 'b', k: 'box', x: 220, y: 60, w: 100, h: 40, t: '23.0', s: 'soft'}, {id: 'c', k: 'box', x: 340, y: 60, w: 100, h: 40, t: '19.8', s: 'soft'}, {id: 'd', k: 'box', x: 460, y: 60, w: 100, h: 40, t: '25.1', s: 'soft'},
       {id: 'i0', k: 'text', x: 100, y: 22, t: '0', w: 10, h: 10}, {id: 'i1', k: 'text', x: 220, y: 22, t: '1', w: 10, h: 10}, {id: 'i2', k: 'text', x: 340, y: 22, t: '2', w: 10, h: 10}, {id: 'i3', k: 'text', x: 460, y: 22, t: '3', w: 10, h: 10},
@@ -21584,6 +21666,7 @@ erstes = einkauf.pop(0)           # Element an INDEX 0 entfernen ("Äpfel")
 print(einkauf)                    # ["Vollkornbrot"]
 einkauf.extend(["Eier", "Mehl"])  # mehrere anhängen
 einkauf.clear()                   # alles löschen`],
+    ['out', `['Vollkornbrot']`],
     ['h', 'Durchlaufen, suchen, zählen'],
     ['code', 'python', `noten = [2, 1, 3, 2, 4, 2]
 
@@ -21595,6 +21678,11 @@ print(noten.index(3))             # 2: Position des ersten Vorkommens
 print(noten.count(2))             # 3: Wie oft kommt 2 vor?
 print(sum(noten) / len(noten))    # 2.33: Durchschnitt
 print(min(noten), max(noten))     # 1 4`],
+    ['out', `2 1 3 2 4 2 True
+2
+3
+2.3333333333333335
+1 4`],
     ['h', 'Slicing: Ausschnitte bilden'],
     ['code', 'python', `z = [10, 20, 30, 40, 50, 60]
 print(z[1:4])     # [20, 30, 40]   (Index 1 bis 3)
@@ -21602,6 +21690,11 @@ print(z[:3])      # [10, 20, 30]   (vom Anfang)
 print(z[3:])      # [40, 50, 60]   (bis zum Ende)
 print(z[::2])     # [10, 30, 50]   (jedes zweite)
 print(z[::-1])    # [60, 50, 40, 30, 20, 10] (umgedreht)`],
+    ['out', `[20, 30, 40]
+[10, 20, 30]
+[40, 50, 60]
+[10, 30, 50]
+[60, 50, 40, 30, 20, 10]`],
     ['h', 'Sortieren'],
     ['code', 'python', `preise = [4.5, 1.2, 9.9, 3.0]
 sortiert = sorted(preise)            # NEUE Liste, preise bleibt unverändert
@@ -21624,6 +21717,9 @@ c = a.copy()       # echte (flache) Kopie, auch: a[:] oder list(a)
 c.append(5)
 print(a)           # [1, 2, 3, 4]  bleibt
 print(c)           # [1, 2, 3, 4, 5]`],
+    ['out', `[1, 2, 3, 4]
+[1, 2, 3, 4]
+[1, 2, 3, 4, 5]`],
     ['h', 'Verschachtelte Listen (Tabellen, Matrizen)'],
     ['code', 'python', `tabelle = [
     [1, 2, 3],      # Zeile 0
@@ -21634,6 +21730,9 @@ for zeile in tabelle:
     for wert in zeile:
         print(wert, end=" ")
     print()`],
+    ['out', `6
+1 2 3 
+4 5 6 `],
     ['h', 'Tupel'],
     ['code', 'python', `punkt = (3, 4)               # Tupel mit runden Klammern
 x, y = punkt                 # Entpacken (unpacking)
@@ -21646,6 +21745,7 @@ klein, gross = min_max([4, 9, 1])
 
 a, b = 1, 2
 a, b = b, a                  # Werte tauschen ohne Hilfsvariable`],
+    ['out', `3 4`],
     ['table', ['', 'Liste', 'Tupel'], [
       ['Schreibweise', '`[1, 2, 3]`', '`(1, 2, 3)`'],
       ['Veränderbar?', 'Ja (append, remove, ...)', 'Nein'],
@@ -21722,6 +21822,11 @@ if "Feuerdorn" in preise:         # prüft die SCHLÜSSEL
     print("Feuerdorn kostet", preise["Feuerdorn"])
 
 del preise["Flieder"]             # Paar löschen`],
+    ['out', `42.5
+4
+None
+0.0
+Feuerdorn kostet 5.0`],
     ['h', 'Dictionaries durchlaufen'],
     ['code', 'python', `for artikel in preise:                  # nur Schlüssel
     print(artikel)
@@ -21745,6 +21850,8 @@ haeufigkeit = {}
 for z in text:
     haeufigkeit[z] = haeufigkeit.get(z, 0) + 1
 print(haeufigkeit)         # {'a': 2, 'n': 2}`],
+    ['out', `{'Strauch GmbH': 15, 'Baumgarten': 30, 'Weißmann': 4}
+{'a': 2, 'n': 2}`],
     ['h', 'Verschachtelte Strukturen (wie JSON)'],
     ['code', 'python', `kunde = {
     "name": "Max Muster",
@@ -21761,6 +21868,9 @@ for b in kunde["bestellungen"]:
 import json
 text = json.dumps(kunde, ensure_ascii=False, indent=2)   # dict -> JSON-Text
 zurueck = json.loads(text)                               # JSON-Text -> dict`],
+    ['out', `Musterhausen
+Feuerdorn 10
+rote Rosen 10`],
     ['h', 'Mengen (set)'],
     ['code', 'python', `besucher = ["Anna", "Ben", "Anna", "Cem", "Ben"]
 eindeutig = set(besucher)
@@ -21774,6 +21884,11 @@ print(python_kurs | java_kurs)    # {'Anna','Ben','Cem','Dora'} mindestens einer
 print(python_kurs - java_kurs)    # {'Anna', 'Cem'}          nur Python
 
 leer = set()                      # {} wäre ein leeres DICT!`],
+    ['out', `{'Ben', 'Cem', 'Anna'}
+3
+{'Ben'}
+{'Dora', 'Ben', 'Cem', 'Anna'}
+{'Cem', 'Anna'}`],
     ['h', 'Welche Datenstruktur wann?'],
     ['table', ['Struktur', 'Reihenfolge', 'Duplikate', 'Zugriff', 'Einsatz'], [
       ['**list**', 'Ja', 'Ja', 'Index (schnell), Suche nach Wert O(n)', 'Folge von Werten, Bestellpositionen'],
@@ -21839,6 +21954,9 @@ AP2.page('course-python-08', {
 print(brutto(100))          # 119.0   (Standardwert 19 wird benutzt)
 print(brutto(100, 7))       # 107.0
 print(brutto(steuersatz=7, netto=50))   # Schlüsselwort-Argumente: Reihenfolge egal`],
+    ['out', `119.0
+107.0
+53.5`],
     ['list', [
       '`def` leitet die Definition ein, danach Name, Klammern mit Parametern, Doppelpunkt, eingerückter Rumpf.',
       'Der **Docstring** (erste Zeile in dreifachen Anführungszeichen) beschreibt, was die Funktion tut. `help(brutto)` zeigt ihn an.',
@@ -21873,6 +21991,7 @@ static void Gruss(string name)
 
 kleinster, groesster, schnitt = statistik([4, 8, 6])
 print(kleinster, groesster, schnitt)    # 4 8 6.0`],
+    ['out', `4 8 6.0`],
     ['h', 'Lokale und globale Variablen'],
     ['code', 'python', `zaehler = 0               # global
 
@@ -21888,6 +22007,9 @@ erhoehen()                # 10
 print(zaehler)            # 0
 erhoehen_global()
 print(zaehler)            # 1`],
+    ['out', `10
+0
+1`],
     ['tip', 'Globale Variablen machen Programme schwer verständlich und testbar. Besser: Werte als **Parameter** hineingeben und mit **return** herausgeben.'],
     ['h', 'Parameterübergabe: Was passiert mit dem Argument?'],
     ['p', 'In Java und C# spricht man von **call by value** (Kopie des Wertes) und **call by reference** (Verweis auf die Variable, in C# mit `ref`). Python übergibt immer eine **Referenz auf das Objekt** ("call by object reference"). Die Wirkung hängt davon ab, ob das Objekt **veränderbar** ist:'],
@@ -21904,6 +22026,8 @@ print(x)                     # 5   (int ist unveränderbar)
 l = [1, 2]
 anhaengen(l)
 print(l)                     # [1, 2, 99]  (Liste wurde verändert!)`],
+    ['out', `5
+[1, 2, 99]`],
     ['warn', '**Veränderbarer Standardwert:** `def neu(x, liste=[])` legt die Standardliste **einmal** an und teilt sie zwischen allen Aufrufen. Richtig: `def neu(x, liste=None):` und im Rumpf `if liste is None: liste = []`.'],
     ['h', 'Beliebig viele Argumente'],
     ['code', 'python', `def summe_alle(*zahlen):          # zahlen ist ein Tupel
@@ -21916,6 +22040,9 @@ def profil(**angaben):            # angaben ist ein dict
         print(k, "=", v)
 
 profil(name="Max", ort="Ulm")`],
+    ['out', `10
+name = Max
+ort = Ulm`],
     ['h', 'Typ-Hinweise (Type Hints)'],
     ['p', 'Python ist **dynamisch typisiert**, man kann aber Typen **annotieren**. Der Interpreter prüft sie nicht, Werkzeuge wie mypy und die IDE aber schon. Das macht Code lesbarer, besonders bei Prüfungsaufgaben, die Typen aus dem UML-Diagramm vorgeben.'],
     ['code', 'python', `def pruefe_wert(wert: float, minimum: float = 0.05, maximum: float = 2.0) -> bool:
@@ -22030,6 +22157,7 @@ def binaer_suche(liste, x, links, rechts):
     return binaer_suche(liste, x, mitte + 1, rechts)
 
 print(binaer_suche([2, 5, 8, 12, 20], 12, 0, 4))   # 3`],
+    ['out', `3`],
     ['table', ['', 'Rekursion', 'Iteration (Schleife)'], [
       ['Vorteil', 'Elegant bei selbstähnlichen Problemen (Bäume, Teile und herrsche, Quicksort)', 'Schneller, kein Stack-Verbrauch'],
       ['Nachteil', 'Speicherbedarf je Aufruf, Gefahr des Stack Overflow, teils Mehrfachberechnungen (fib)', 'Bei Baumstrukturen umständlich'],
@@ -22042,6 +22170,8 @@ artikel = [("Linde", 42.5), ("Feuerdorn", 5.0), ("Flieder", 19.5)]
 nach_preis = sorted(artikel, key=lambda a: a[1])     # nach 2. Element sortieren
 print(nach_preis[0])                                 # ('Feuerdorn', 5.0)
 teuerster = max(artikel, key=lambda a: a[1])`],
+    ['out', `16
+('Feuerdorn', 5.0)`],
     ['h', 'List Comprehensions'],
     ['p', 'Eine Comprehension ist eine **Kurzschreibweise** für das Muster "neue Liste anlegen, in einer Schleife füllen, eventuell mit Bedingung".'],
     ['codes', [
@@ -22077,6 +22207,10 @@ for n, a in zip(namen, alter):                     # paarweise durchlaufen
 
 print(any(p > 15 for p in preise))   # True: mindestens einer
 print(all(p > 1 for p in preise))    # True: alle`],
+    ['out', `Anna 25
+Ben 30
+True
+True`],
     ['h', 'Übungen'],
     ['qa', 'Schreiben Sie eine rekursive Funktion `potenz(basis, exp)` für exp ≥ 0, ohne `**` zu verwenden.', [['code', 'python', `def potenz(basis, exp):
     if exp == 0:
@@ -22169,6 +22303,7 @@ try:
     k.abheben(50)
 except NichtGedecktFehler as e:
     print("Abgelehnt:", e)               # e enthält die Meldung`],
+    ['out', `Abgelehnt: Saldo 0.0 reicht nicht für 50`],
     ['h', 'Die Exception-Hierarchie (Ausschnitt)'],
     ['diagram', AP2.dg.tree({t: 'BaseException', c: [{t: 'Exception', c: [{t: 'ValueError'}, {t: 'ArithmeticError', c: [{t: 'ZeroDivisionError'}]}, {t: 'LookupError', c: [{t: 'IndexError'}, {t: 'KeyError'}]}, {t: 'OSError', c: [{t: 'FileNotFoundError'}]}, {t: 'TypeError'}]}, {t: 'KeyboardInterrupt'}]}, {k: 'round', w: 120, h: 34, gx: 130, gy: 64, cap: 'Ein except fängt die genannte Klasse und alle Unterklassen: except LookupError fängt IndexError und KeyError.'})],
     ['warn', '`except:` ohne Klasse oder `except Exception:` fängt **alles**, auch Programmierfehler wie Tippfehler in Variablennamen (NameError). Fehler werden so versteckt. Fange nur die Exceptions, die du **erwartest** und sinnvoll behandeln kannst.'],
@@ -22450,6 +22585,7 @@ k = Konto("Max")
 k.einzahlen(100)
 print(k.saldo)        # 100.0
 # k.saldo = 5         # AttributeError: kein Setter definiert -> nur lesbar`],
+    ['out', `100.0`],
     ['h', 'Klassenattribute und statische Methoden'],
     ['code', 'python', `class Kunde:
     anzahl = 0                          # Klassenattribut: gemeinsam für alle Objekte (UML: unterstrichen)
@@ -22466,6 +22602,8 @@ print(k.saldo)        # 100.0
 k1 = Kunde("Anna"); k2 = Kunde("Ben")
 print(k2.nummer, Kunde.anzahl)          # 2 2
 print(Kunde.ist_gueltige_plz("72764"))  # True`],
+    ['out', `2 2
+True`],
     ['h', 'Objekte vergleichen und sortieren'],
     ['code', 'python', `class Note:
     def __init__(self, fach, wert):
@@ -22479,6 +22617,7 @@ print(Kunde.ist_gueltige_plz("72764"))  # True`],
 
 noten = [Note("Mathe", 3), Note("Deutsch", 1), Note("IT", 2)]
 print(sorted(noten))                    # nach wert sortiert`],
+    ['out', `[Note(Deutsch, 1), Note(IT, 2), Note(Mathe, 3)]`],
     ['h', 'Objekte in Listen verwalten'],
     ['code', 'python', `class Lager:
     def __init__(self):
@@ -22616,6 +22755,7 @@ class EBike(EFahrzeug):
 
 # f = Fahrzeug("X")   -> TypeError: Can't instantiate abstract class
 print(EScooter("S-1").info())             # S-1: 10.50 € pro Stunde`],
+    ['out', `S-1: 10.50 € pro Stunde`],
     ['h', 'Polymorphie in Aktion'],
     ['code', 'python', `fuhrpark = [EScooter("S-1"), EBike("B-7"), EScooter("S-2")]
 
@@ -22723,6 +22863,7 @@ AP2.page('course-python-14', {
     return -1                 # nicht gefunden
 
 print(linear_suche([7, 3, 9, 4], 9))   # 2`],
+    ['out', `2`],
     ['h', 'Binäre Suche (nur auf sortierten Daten)'],
     ['code', 'python', `def binaer_suche(liste, gesucht):
     links, rechts = 0, len(liste) - 1
@@ -22737,6 +22878,7 @@ print(linear_suche([7, 3, 9, 4], 9))   # 2`],
     return -1
 
 print(binaer_suche([2, 5, 8, 12, 16, 23, 38], 23))   # 5`],
+    ['out', `5`],
     ['table', ['Schritt', 'links', 'rechts', 'mitte', 'liste[mitte]', 'Entscheidung'], [
       ['1', '0', '6', '3', '12', '12 < 23 -> links = 4'],
       ['2', '4', '6', '5', '23', 'gefunden, Index 5'],
@@ -22756,6 +22898,7 @@ print(binaer_suche([2, 5, 8, 12, 16, 23, 38], 23))   # 5`],
     return a
 
 print(bubble_sort([5, 1, 4, 2, 8]))   # [1, 2, 4, 5, 8]`],
+    ['out', `[1, 2, 4, 5, 8]`],
     ['p', 'Nach jedem Durchlauf ist das größte verbleibende Element ganz nach hinten "aufgestiegen" wie eine Blase.'],
     ['h', 'Selection Sort und Insertion Sort'],
     ['codes', [
@@ -22829,6 +22972,9 @@ def klammern_ok(text):   # Klassiker: Klammern prüfen
     return not s
 
 print(klammern_ok("(a[1] + b) * {c}"))   # True`],
+    ['out', `C
+B
+True`],
     ['h', 'Queue (Warteschlange, FIFO)'],
     ['code', 'python', `from collections import deque
 
@@ -22837,6 +22983,8 @@ schlange.append("Kunde 1")      # enqueue (hinten anstellen)
 schlange.append("Kunde 2")
 print(schlange.popleft())       # Kunde 1 (zuerst gekommen, zuerst bedient)
 print(len(schlange))            # 1`],
+    ['out', `Kunde 1
+1`],
     ['note', '`liste.pop(0)` funktioniert auch als Queue, kostet aber O(n), weil alle Elemente nachrücken. `deque.popleft()` ist O(1).'],
     ['h', 'Einfach verkettete Liste'],
     ['code', 'python', `class Knoten:
@@ -22864,6 +23012,7 @@ vl = VerketteteListe()
 for w in [3, 2, 1]:
     vl.vorne_einfuegen(w)
 vl.ausgeben()    # 1 -> 2 -> 3 -> None`],
+    ['out', `1 -> 2 -> 3 -> None`],
     ['h', 'Übungen'],
     ['qa', 'Sortieren Sie [6, 3, 8, 2] mit Bubble Sort und notieren Sie die Liste nach jedem Durchlauf.', ['Durchlauf 1: [3, 6, 2, **8**] (6/3 getauscht, 6/8 nicht, 8/2 getauscht)', 'Durchlauf 2: [3, 2, **6, 8**]', 'Durchlauf 3: [**2, 3, 6, 8**]'], 4],
     ['qa', 'Schreiben Sie eine Funktion, die prüft, ob eine Liste aufsteigend sortiert ist, in O(n).', [['code', 'python', `def ist_sortiert(a):
@@ -22903,6 +23052,7 @@ def brutto(netto):
 
 if __name__ == "__main__":       # läuft nur bei "python rechnung.py", nicht beim Import
     print(brutto(100))`],
+    ['out', `119.0`],
     ['code', 'python', `# datei: main.py
 import rechnung
 from datetime import date, timedelta
@@ -26402,6 +26552,8 @@ SELECT COUNT(DISTINCT kunde_id) FROM Bestellung;              -- 3 verschiedene 
 FROM Artikel
 GROUP BY kategorie
 ORDER BY anzahl DESC;`],
+    ['p', '**Ergebnis** mit den Beispieldaten:'],
+    ['table', ['kategorie', 'anzahl', 'schnitt'], [['Strauch', '2', '12.25'], ['Blume', '2', '2.05'], ['Baum', '1', '42.5']]],
     ['table', ['kategorie', 'anzahl', 'schnitt'], [['Strauch', '2', '12.25'], ['Blume', '2', '2.05'], ['Baum', '1', '42.50']]],
     ['diagram', AP2.dg.flow(['FROM Artikel (5 Zeilen)', 'WHERE (optional)', 'GROUP BY kategorie (3 Gruppen)', 'HAVING (Gruppen filtern)', 'SELECT + ORDER BY'], {w: 760, h: 110, styles: ['plain', 'soft', 'accent', 'soft', 'ok'], cap: 'Logische Abarbeitung einer Gruppierungsabfrage.'})],
     ['warn', '`SELECT kategorie, bezeichnung, COUNT(*) FROM Artikel GROUP BY kategorie` ist **falsch**: Welche der Bezeichnungen einer Gruppe soll angezeigt werden? Standard-SQL, PostgreSQL und SQL Server melden einen Fehler; MySQL liefert ohne `ONLY_FULL_GROUP_BY` einen zufälligen Wert. Regel: Jede Spalte im SELECT steht entweder im **GROUP BY** oder in einer **Aggregatfunktion**.'],
@@ -26477,6 +26629,8 @@ AP2.page('course-sql-05', {
 FROM Bestellung b
 INNER JOIN Kunde k ON b.kunde_id = k.kunde_id
 ORDER BY b.datum;`],
+    ['p', '**Ergebnis** mit den Beispieldaten:'],
+    ['table', ['bestell_id', 'datum', 'nachname', 'vorname'], [['100', '2026-03-02', 'Muster', 'Max'], ['101', '2026-03-05', 'Könner', 'Tom'], ['102', '2026-04-11', 'Muster', 'Max'], ['103', '2026-04-20', 'Weiß', 'Anna']]],
     ['table', ['bestell_id', 'datum', 'nachname', 'vorname'], [
       ['100', '2026-03-02', 'Muster', 'Max'], ['101', '2026-03-05', 'Könner', 'Tom'], ['102', '2026-04-11', 'Muster', 'Max'], ['103', '2026-04-20', 'Weiß', 'Anna'],
     ]],
@@ -26493,12 +26647,16 @@ SELECT k.nachname, COUNT(b.bestell_id) AS bestellungen
 FROM Kunde k
 LEFT JOIN Bestellung b ON b.kunde_id = k.kunde_id
 GROUP BY k.kunde_id, k.nachname;`],
+    ['p', '**Ergebnis** mit den Beispieldaten:'],
+    ['table', ['nachname', 'bestellungen'], [['Muster', '2'], ['Könner', '1'], ['Weiß', '1'], ['Yilmaz', '0']]],
     ['table', ['nachname', 'bestellungen'], [['Muster', '2'], ['Könner', '1'], ['Weiß', '1'], ['Yilmaz', '**0**']]],
     ['code', 'sql', `-- Kunden, die noch NIE bestellt haben
 SELECT k.nachname
 FROM Kunde k
 LEFT JOIN Bestellung b ON b.kunde_id = k.kunde_id
 WHERE b.bestell_id IS NULL;              -- Yilmaz`],
+    ['p', '**Ergebnis** mit den Beispieldaten:'],
+    ['table', ['nachname'], [['Yilmaz']]],
     ['warn', 'Mit `COUNT(*)` statt `COUNT(b.bestell_id)` hätte Yilmaz **1** statt 0, weil der LEFT JOIN für ihn eine Zeile (mit NULL-Werten) erzeugt. Und: Eine Bedingung auf die rechte Tabelle im **WHERE** (zum Beispiel `WHERE b.datum >= \'2026-04-01\'`) macht aus dem LEFT JOIN faktisch einen INNER JOIN; solche Bedingungen gehören in die **ON**-Klausel.'],
     ['h', 'Über mehrere Tabellen (n:m)'],
     ['code', 'sql', `-- Rechnung: welche Artikel hat Max Muster in Bestellung 100 gekauft?
@@ -26508,6 +26666,8 @@ JOIN Bestellung b ON b.kunde_id   = k.kunde_id
 JOIN Position   p ON p.bestell_id = b.bestell_id
 JOIN Artikel    a ON a.artikel_id = p.artikel_id
 WHERE b.bestell_id = 100;`],
+    ['p', '**Ergebnis** mit den Beispieldaten:'],
+    ['table', ['bezeichnung', 'menge', 'preis', 'gesamt'], [['Feuerdorn', '10', '5', '50'], ['rote Rosen', '10', '2.3', '23']]],
     ['table', ['bezeichnung', 'menge', 'preis', 'gesamt'], [['Feuerdorn', '10', '5.00', '50.00'], ['rote Rosen', '10', '2.30', '23.00']]],
     ['code', 'sql', `-- Umsatz je Kunde
 SELECT k.nachname, SUM(p.menge * a.preis) AS umsatz
@@ -26518,6 +26678,8 @@ JOIN Artikel a    ON a.artikel_id = p.artikel_id
 GROUP BY k.kunde_id, k.nachname
 ORDER BY umsatz DESC;
 -- Muster 137.00 (73 + 25 + 39), Könner 42.50, Weiß 36.00`],
+    ['p', '**Ergebnis** mit den Beispieldaten:'],
+    ['table', ['nachname', 'umsatz'], [['Muster', '137'], ['Könner', '42.5'], ['Weiß', '36']]],
     ['h', 'Self Join und Cross Join'],
     ['code', 'sql', `-- Self Join: Mitarbeiter mit ihrem Vorgesetzten (beide in derselben Tabelle)
 SELECT m.name AS mitarbeiter, v.name AS vorgesetzter
@@ -26535,6 +26697,8 @@ SELECT g.groesse, f.farbe FROM Groesse g CROSS JOIN Farbe f;`],
 FROM Kunde k, Bestellung b
 WHERE k.kunde_id = b.kunde_id;     -- gleichwertig zum INNER JOIN, aber unübersichtlicher.
 -- Vergisst man das WHERE, entsteht ein Kreuzprodukt (4 x 4 = 16 Zeilen)!`],
+    ['p', '**Ergebnis** mit den Beispieldaten:'],
+    ['table', ['nachname', 'datum'], [['Muster', '2026-03-02'], ['Könner', '2026-03-05'], ['Muster', '2026-04-11'], ['Weiß', '2026-04-20']]],
     ['h', 'Übungen'],
     ['qa', 'Geben Sie alle Artikel mit der insgesamt verkauften Menge aus, auch Artikel, die nie verkauft wurden (Menge 0).', [['code', 'sql', `SELECT a.bezeichnung, COALESCE(SUM(p.menge), 0) AS verkauft
 FROM Artikel a
@@ -26897,6 +27061,7 @@ AP2.page('course-html-01', {
 <input type="checkbox" checked>                                                 <!-- boolesches Attribut -->
 <p id="hinweis" class="info klein" title="Tooltip">Text</p>`],
     ['warn', 'Falsch verschachtelt: `<p><strong>Text</p></strong>`. Richtig: `<p><strong>Text</strong></p>`. Browser "reparieren" vieles stillschweigend, aber das Ergebnis ist unvorhersehbar. Prüfen kann man mit dem W3C-Validator (validator.w3.org).'],
+    ['result', {t: 'Verschachtelte Elemente', html: `<p>Ein Absatz mit <em>betontem</em> und <strong>wichtigem</strong> Text.</p>`, h: 80}],
     ['h', 'id und class'],
     ['table', ['', '`id`', '`class`'], [
       ['Häufigkeit', 'Genau **einmal** pro Seite', 'Beliebig oft, ein Element kann mehrere Klassen haben'],
@@ -26954,6 +27119,7 @@ AP2.page('course-html-02', {
 <hr>                                    <!-- thematischer Trenner -->
 <p><small>© 2024 MeBS - Mensa-Bestell-System. Alle Rechte vorbehalten.</small></p>`],
     ['note', 'Screenreader-Nutzer springen über die Überschriften durch die Seite. Deshalb: Ebenen logisch verwenden (nach h2 kommt h3, nicht h5) und für Größen CSS benutzen.'],
+    ['result', {t: 'Überschriften', html: `<h1>Mensa BSZ Neckaralb</h1><h2>Tagesgerichte</h2><p>Ein Absatz mit <em>betontem</em> und <strong>wichtigem</strong> Text.</p>`, h: 150}],
     ['h', 'Listen'],
     ['code', 'html', `<ul>                          <!-- ungeordnet: Aufzählungspunkte -->
   <li>Schnitzel Wiener Art</li>
@@ -26972,6 +27138,7 @@ AP2.page('course-html-02', {
   <dt>PZR</dt><dd>Professionelle Zahnreinigung</dd>
   <dt>IGeL</dt><dd>Individuelle Gesundheitsleistung</dd>
 </dl>`],
+    ['result', {t: 'Listen', html: `<ul><li>Schnitzel</li><li>Pasta</li></ul><ol><li>Anmelden</li><li>Wählen</li><li>Bezahlen</li></ol><dl><dt>HTML</dt><dd>Struktur</dd></dl>`, h: 190}],
     ['h', 'Links'],
     ['code', 'html', `<a href="KitaStuttgart.html">Zurück zur Startseite</a>                  <!-- relativ, gleicher Ordner -->
 <a href="../impressum.html">Impressum</a>                                 <!-- eine Ebene höher -->
@@ -26981,6 +27148,7 @@ AP2.page('course-html-02', {
 <a href="tel:+497121123456">0 71 21 / 12 34 56</a>
 <a href="preise.pdf" download>Preisliste herunterladen</a>`],
     ['tip', 'Linktexte sollen **für sich verständlich** sein ("Preisliste herunterladen" statt "hier klicken"), weil Screenreader Links auch als Liste vorlesen.'],
+    ['result', {t: 'Links', html: `<p><a href="#">Zurück zur Startseite</a> · <a href="#">Externer Link</a></p>`, h: 80}],
     ['h', 'Bilder'],
     ['code', 'html', `<img src="bilder/schnitzel.jpg" alt="Schnitzel mit Pommes und Zitrone"
      width="400" height="300" loading="lazy">
@@ -27006,6 +27174,7 @@ AP2.page('course-html-02', {
   Einrückung    bleibt
   erhalten
 </pre>`],
+    ['result', {t: 'Textelemente', html: `<p>Die <abbr title="Industrie- und Handelskammer">IHK</abbr> prüft am <time datetime="2026-11-11">11.11.2026</time>. H<sub>2</sub>O, x<sup>2</sup>, <mark>markiert</mark>, <code>code</code>, <del>alt</del>.</p>`, h: 110}],
     ['h', 'Übungen'],
     ['qa', 'Erstellen Sie eine Navigationsliste mit Links zu "Start" (index.html), "Menü" (menue.html) und einem Mail-Link an mensa@bsz.de.', [['code', 'html', `<nav>
   <ul>
@@ -27059,6 +27228,17 @@ AP2.page('course-html-03', {
 th, td { border: 1px solid #999; padding: 6px 10px; }
 td { text-align: right; }                            /* Zahlen rechtsbündig */
 tbody tr:nth-child(even) { background: #f3f3f3; }    /* Zebrastreifen */`],
+    ['result', {t: 'Tabelle gestalten', html: `<table>
+  <thead><tr><th>Tag</th><th>Gericht</th><th>Preis</th></tr></thead>
+  <tbody>
+    <tr><td>Mo</td><td>Schnitzel</td><td>5,50 €</td></tr>
+    <tr><td>Di</td><td>Pasta</td><td>4,20 €</td></tr>
+    <tr><td colspan="2">Summe</td><td>9,70 €</td></tr>
+  </tbody>
+</table>`, css: `table { border-collapse: collapse; }
+th, td { border: 1px solid #999; padding: 6px 12px; }
+th { background: #2c3e50; color: #fff; }
+tbody tr:nth-child(even) { background: #f1f1f1; }`, h: 200}],
     ['h', 'Zellen verbinden'],
     ['code', 'html', `<table>
   <tr><th rowspan="2">Tag</th><th colspan="2">Gerichte</th></tr>
@@ -27191,6 +27371,13 @@ AP2.page('course-html-04', {
       ['`<input list="orte">` + `<datalist id="orte">`', 'Vorschlagsliste beim Tippen'],
     ]],
     ['warn', 'Browser-Prüfung ist **nur Komfort**: Sie lässt sich mit den Entwicklertools oder direkten HTTP-Anfragen umgehen. Der **Server** muss alle Daten erneut prüfen und Datenbankzugriffe mit Prepared Statements ausführen.'],
+    ['result', {t: 'Formular testen', html: `<form onsubmit="event.preventDefault(); console.log('gültig, würde gesendet')">
+  <p><label>Name <input name="n" required minlength="2"></label></p>
+  <p><label>E-Mail <input type="email" name="m" required></label></p>
+  <p><label>Anzahl <input type="number" name="a" min="1" max="5" value="1"></label></p>
+  <p><label>Datum <input type="date"></label> <input type="color" value="#2c3e50"></p>
+  <button>Senden</button>
+</form>`, h: 260}],
     ['h', 'Formulare und Barrierefreiheit'],
     ['list', [
       'Jedes Feld hat ein sichtbares `<label for="id">` (placeholder ersetzt kein Label!).',
@@ -27261,6 +27448,7 @@ AP2.page('course-html-05', {
   </footer>
 </body>`],
     ['diagram', AP2.dg.layers([['header', 'Logo, Titel, nav (Navigation)', 'accent'], ['main', 'section > article ... (Hauptinhalt, genau einmal)', 'solid'], ['aside', 'Ergänzende Informationen', 'soft'], ['footer', 'Kontakt, Impressum, Copyright', 'accent']], {w: 640, cap: 'Typische semantische Seitenstruktur'})],
+    ['result', {t: 'Semantische Gliederung', html: `<header>&lt;header&gt; Kopf mit Logo</header><nav>&lt;nav&gt; Navigation</nav><main>&lt;main&gt; Hauptinhalt <article>&lt;article&gt; Beitrag</article></main><aside>&lt;aside&gt; Randnotiz</aside><footer>&lt;footer&gt; Fuß, Impressum</footer>`, css: `header,nav,main,aside,footer{border:2px dashed #888;padding:6px;margin:4px;font-size:13px}header{background:#ffe0b2}nav{background:#b3e5fc}main{background:#c8e6c9}aside{background:#f8bbd0}footer{background:#d1c4e9}`, h: 260}],
     ['h', 'Medien einbinden'],
     ['code', 'html', `<video src="rundgang.mp4" controls width="640" poster="vorschau.jpg">
   <track kind="captions" src="untertitel.vtt" srclang="de" label="Deutsch">   <!-- Untertitel -->
@@ -27336,6 +27524,13 @@ h1 {
   color: #2c3e50;
 }
 .price, .rating { font-weight: bold; }   /* Gruppe: beide Klassen */`],
+    ['result', {t: 'Regel ändern', html: `<h1>Mensa BSZ Neckaralb</h1>
+<p class="price">Schnitzel 5,50 €</p>
+<p class="rating">★★★★☆</p>`, css: `h1 {
+  font: 24pt Arial, sans-serif;
+  color: #2c3e50;
+}
+.price, .rating { font-weight: bold; }`, h: 120}],
     ['h', 'Drei Wege, CSS einzubinden'],
     ['codes', [
       ['html', `<!-- inline: nur dieses Element -->
@@ -27371,6 +27566,16 @@ input:focus { outline: 2px solid blue; }      /* Tastaturfokus */
 tr:nth-child(even) { background: #eee; }      /* jede zweite Zeile */
 li:first-child { font-weight: bold; }
 .rating::before { content: "★ "; color: gold; }   /* erzeugter Inhalt */`],
+    ['result', {t: 'Selektoren treffen', html: `<nav><a href="#">Start</a> <a href="#" class="aktiv">Menü</a></nav>
+<ul><li>Eins</li><li>Zwei</li><li>Drei</li><li>Vier</li></ul>
+<p id="hinweis">Hinweis</p>
+<input type="email" placeholder="E-Mail">`, css: `li:nth-child(2n) { background: #ffe9a8; }
+nav > a { color: teal; }
+.aktiv { font-weight: bold; text-decoration: none; }
+#hinweis { color: crimson; }
+input[type="email"] { border: 2px solid green; }
+input:focus { outline: 3px solid orange; }
+li:first-child::before { content: "★ "; }`, h: 200}],
     ['h', 'Die Kaskade: Wer gewinnt?'],
     ['steps', [
       '**Herkunft und Wichtigkeit:** Browser-Standard < Autoren-CSS; `!important` überstimmt normale Regeln.',
@@ -27385,11 +27590,17 @@ li:first-child { font-weight: bold; }
       ['`style="..."`', '1,0,0,0', 'alle Selektoren (außer !important)'],
     ]],
     ['ex', ['Sommer 2025: Externe Datei: `.rating { color: gold; }`, im HTML: `<p class="rating" style="color: red">`. Angezeigt wird **Rot**, weil der Inline-Style die höhere Spezifität hat.']],
+    ['result', {t: 'Spezifität', html: `<p id="x" class="k">Welche Farbe habe ich?</p>`, css: `p     { color: blue; }
+.k    { color: green; }
+#x    { color: red; }
+/* p { color: purple !important; } */`, h: 110}],
     ['h', 'Vererbung'],
     ['code', 'css', `body { font-family: Verdana, Arial, sans-serif; color: #333; }   /* erben alle Texte */
 .box { border: 1px solid; }                                       /* erben Kinder NICHT */
 .kind { border: inherit; }                                        /* Vererbung erzwingen */
 a { color: inherit; }                                             /* Linkfarbe vom Elternelement */`],
+    ['result', {t: 'Vererbung', html: `<div class="box">Text im div <p>Absatz erbt Farbe und Schrift, aber nicht den Rahmen.</p></div>`, css: `body { font-family: Verdana, Arial, sans-serif; color: #333; }
+.box { color: darkblue; font-style: italic; border: 2px dashed tomato; padding: 10px; }`, h: 150}],
     ['h', 'Farben angeben'],
     ['table', ['Schreibweise', 'Beispiel', 'Bedeutung'], [
       ['Name', '`gold`, `green`, `red`', '148 benannte Farben'],
@@ -27440,6 +27651,15 @@ AP2.page('course-css-02', {
 *, *::before, *::after { box-sizing: border-box; }   /* jetzt sind es genau 200px */
 .zentriert { width: 600px; margin: 0 auto; }          /* Block horizontal zentrieren */`],
     ['note', '**Margin Collapsing:** Treffen die vertikalen Außenabstände zweier Blockelemente aufeinander, wird nicht addiert, sondern der größere genommen (20px und 30px ergeben 30px Abstand).'],
+    ['result', {t: 'Box-Modell', html: `<div class="menu-item">200px breit?</div>
+<div class="menu-item" id="ref">Vergleich</div>`, css: `.menu-item {
+  width: 200px;
+  padding: 10px;
+  border: 5px solid #2c3e50;
+  margin: 0 0 20px;
+  background: #dff3ff;
+  /* box-sizing: border-box; */
+}`, h: 200}],
     ['h', 'display'],
     ['table', ['Wert', 'Verhalten'], [
       ['`block`', 'neue Zeile, volle Breite, width/height wirken'],
@@ -27447,6 +27667,21 @@ AP2.page('course-css-02', {
       ['`inline-block`', 'im Textfluss, aber width/height/padding wirken (Buttons, Kacheln)'],
       ['`none`', 'Element wird nicht dargestellt und nimmt keinen Platz ein'],
       ['`flex` / `grid`', 'Element wird Layout-Container (Kapitel 3 und 4)'],
+    ]],
+    ['result', {t: 'display', html: `<p>Text <span class="s">span (inline)</span> und <span class="s">noch einer</span>.</p>
+<div class="d">div (block)</div>
+<a class="knopf" href="#">inline-block</a> <a class="knopf" href="#">Knopf</a>
+<p class="weg">Ich bin display:none und unsichtbar.</p>`, css: `.s { background: gold; width: 300px; height: 50px; }
+.d { background: lightgreen; }
+.knopf { display: inline-block; width: 110px; padding: 8px; background: #2c3e50; color: #fff; text-align: center; text-decoration: none; }
+.weg { display: none; }`, h: 220}],
+    ['h', 'Mögliche Werte von position'],
+    ['table', ['Wert', 'Wirkung'], [
+      ['`static`', 'Standard: normaler Fluss, top/left wirken nicht'],
+      ['`relative`', 'normaler Fluss, aber mit top/left verschiebbar; dient als Bezugspunkt für `absolute`-Kinder'],
+      ['`absolute`', 'aus dem Fluss genommen, relativ zum nächsten positionierten Elternelement'],
+      ['`fixed`', 'relativ zum Browserfenster, bleibt beim Scrollen stehen (Kopfzeile, Cookie-Hinweis)'],
+      ['`sticky`', 'normal, bleibt aber beim Scrollen an der Kante haften'],
     ]],
     ['h', 'Text und Schrift'],
     ['code', 'css', `body {
@@ -27459,6 +27694,20 @@ AP2.page('course-css-02', {
 .price { font-weight: bold; text-align: right; }
 h1 { font-size: 2rem; text-transform: uppercase; letter-spacing: 0.05em; }
 a { text-decoration: none; } a:hover { text-decoration: underline; }`],
+    ['result', {t: 'Text und Schrift', html: `<h2>Tagesgericht</h2>
+<p class="t">Das Schnitzel wird mit Pommes und frischem Salat serviert. Guten Appetit!</p>`, css: `h2 { font-family: Georgia, serif; text-transform: uppercase; letter-spacing: 2px; color: #c0392b; }
+.t { font-size: 1.2rem; line-height: 1.8; text-align: justify; width: 280px; text-indent: 1.5em; }`, h: 200}],
+    ['h', 'Mögliche Werte für Text und Rahmen'],
+    ['table', ['Eigenschaft', 'Mögliche Werte'], [
+      ['`text-align`', '`left`, `right`, `center`, `justify` (Blocksatz)'],
+      ['`text-transform`', '`none`, `uppercase`, `lowercase`, `capitalize`'],
+      ['`text-decoration`', '`none`, `underline`, `line-through`, `overline`'],
+      ['`font-weight`', '`normal` (400), `bold` (700), Zahlen 100 bis 900'],
+      ['`font-style`', '`normal`, `italic`, `oblique`'],
+      ['`border-style`', '`solid`, `dashed`, `dotted`, `double`, `none`'],
+      ['`overflow`', '`visible` (Standard), `hidden` (abschneiden), `scroll`, `auto` (Scrollbalken bei Bedarf)'],
+      ['`cursor`', '`pointer` (Hand), `default`, `text`, `not-allowed`'],
+    ]],
     ['h', 'Einheiten'],
     ['table', ['Einheit', 'Bezug', 'Empfehlung'], [
       ['`px`', 'absolut', 'Rahmen, feine Abstände'],
@@ -27476,6 +27725,10 @@ a { text-decoration: none; } a:hover { text-decoration: underline; }`],
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }`],
+    ['result', {t: 'Hintergrund und Rahmen', html: `<div class="karte">Karte mit Verlauf</div>`, css: `body { background-color: orange; }
+.karte { padding: 24px; color: #fff; border: 4px double #fff; border-radius: 16px;
+  background: linear-gradient(135deg, #6a11cb, #2575fc);
+  box-shadow: 0 6px 16px rgba(0,0,0,.35); }`, h: 170}],
     ['h', 'Positionierung'],
     ['code', 'css', `header { position: relative; }               /* Bezugspunkt für das Logo */
 #logo  { position: absolute; top: 10px; right: 30px; }   /* Logo oben rechts, 30px Abstand */
@@ -27490,6 +27743,9 @@ thead th { position: sticky; top: 0; background: white; }            /* Tabellen
       ['`fixed`', 'Browserfenster', 'nein'],
       ['`sticky`', 'normal, ab Schwelle wie fixed im Container', 'ja'],
     ]],
+    ['result', {t: 'Positionierung', html: `<header><span class="logo">LOGO</span>Kopfbereich</header>
+<p>Folgender Inhalt wird vom absoluten Logo nicht verschoben.</p>`, css: `header { position: relative; height: 80px; background: #2c3e50; color: #fff; padding: 10px; }
+.logo { position: absolute; top: 10px; right: 10px; background: gold; color: #000; padding: 6px 10px; }`, h: 200}],
     ['h', 'Übungen'],
     ['qa', 'Gestalten Sie Karten für Tagesgerichte: zentrierter Text, 10px Innenabstand, grauer 1px-Rahmen, abgerundete Ecken, vegetarische Gerichte grün umrandet, Beschreibung in #666, Preis fett.', [['code', 'css', `.menu-item {
   text-align: center;
@@ -27542,12 +27798,34 @@ AP2.page('course-css-03', {
 }
 .menue { display: flex; gap: 20px; list-style: none; margin: 0; padding: 0; }
 .leiste a { color: white; text-decoration: none; }`],
+    ['result', {t: 'Flex-Navigation', html: `<nav class="leiste">
+  <a href="#">MeBS</a>
+  <ul class="menue"><li><a href="#">Start</a></li><li><a href="#">Menü</a></li><li><a href="#">Konto</a></li></ul>
+</nav>`, css: `.leiste { display: flex; justify-content: space-between; align-items: center; padding: 0 20px; background: #2c3e50; height: 64px; }
+.leiste a { color: #fff; text-decoration: none; }
+.menue { display: flex; gap: 20px; list-style: none; margin: 0; padding: 0; }`, h: 170}],
     ['h', 'justify-content im Überblick'],
     ['table', ['Wert', 'Wirkung (bei row)'], [
       ['`flex-start`', 'alle links'], ['`flex-end`', 'alle rechts'], ['`center`', 'alle in der Mitte'],
       ['`space-between`', 'erstes ganz links, letztes ganz rechts, Rest gleichmäßig'],
       ['`space-around`', 'gleicher Abstand um jedes Item (am Rand halb so groß)'],
       ['`space-evenly`', 'alle Abstände gleich, auch am Rand'],
+    ]],
+    ['result', {t: 'Hauptachse und Querachse', html: `<div class="a">A</div><div class="b">B</div><div class="c">C</div>`, css: `.a,.b,.c{background:#2c3e50;color:#fff;padding:12px;border-radius:6px;text-align:center}
+body{margin:0}
+.container-ersatz{}
+body { display: flex; flex-direction: row; justify-content: flex-start; align-items: stretch; gap: 8px; height: 200px; }`, h: 230}],
+    ['h', 'align-items, flex-direction und flex-wrap'],
+    ['table', ['Eigenschaft', 'Wert', 'Wirkung'], [
+      ['`align-items`', '`stretch` (Standard)', 'Kinder füllen die Querachse'],
+      ['', '`flex-start` / `flex-end`', 'oben bzw. unten (bei row)'],
+      ['', '`center`', 'mittig auf der Querachse'],
+      ['', '`baseline`', 'an der Textgrundlinie ausgerichtet'],
+      ['`flex-direction`', '`row` (Standard)', 'nebeneinander, Hauptachse waagerecht'],
+      ['', '`column`', 'untereinander, Hauptachse senkrecht'],
+      ['', '`row-reverse` / `column-reverse`', 'Reihenfolge umgekehrt'],
+      ['`flex-wrap`', '`nowrap` (Standard)', 'alles in einer Zeile, Kinder werden gestaucht'],
+      ['', '`wrap`', 'bricht bei Platzmangel in neue Zeile um'],
     ]],
     ['h', 'Platz verteilen mit flex'],
     ['code', 'css', `.layout { display: flex; gap: 20px; }
@@ -27557,6 +27835,17 @@ AP2.page('course-css-03', {
 .spalten > div { flex: 1; }          /* drei gleich breite Spalten */
 .spalten > .breit { flex: 2; }       /* doppelt so breit wie die anderen */`],
     ['p', '`flex: grow shrink basis`. `flex: 1` entspricht `1 1 0%`: Alle Items starten bei 0 und teilen den Platz im Verhältnis ihrer grow-Werte.'],
+    ['result', {t: 'flex-grow', html: `<div class="layout"><aside>Seitenleiste</aside><main>Inhalt</main><div class="x">Extra</div></div>`, css: `.layout { display: flex; gap: 20px; }
+aside { width: 120px; background: #cfd8dc; padding: 10px; }
+main  { flex: 1; background: #b2dfdb; padding: 10px; }
+.x { flex: 0 0 60px; background: #ffe082; padding: 10px; }`, h: 150}],
+    ['h', 'Die flex-Kurzschreibweise'],
+    ['table', ['Schreibweise', 'Bedeutung'], [
+      ['`flex: 1`', 'wächst und schrumpft, nimmt gleichmäßig den Restplatz (Basis 0)'],
+      ['`flex: 0 0 200px`', 'feste Breite 200px: wächst nicht, schrumpft nicht'],
+      ['`flex: 1 1 200px`', 'Wunschbreite 200px, wächst und schrumpft (Kacheln mit `flex-wrap`)'],
+      ['`flex: none`', 'nicht flexibel, Größe aus `width`'],
+    ]],
     ['h', 'Umbrechende Kacheln (responsiv ohne Media Query)'],
     ['code', 'css', `.menu-selection {
   display: flex;
@@ -27566,6 +27855,8 @@ AP2.page('course-css-03', {
 .menu-item {
   flex: 1 1 250px;            /* mindestens etwa 250px, sonst umbrechen; Rest gleichmäßig */
 }`],
+    ['result', {t: 'Umbrechende Kacheln', html: `<div class="menu-selection"><div class="item">Gericht 1</div><div class="item">Gericht 2</div><div class="item">Gericht 3</div><div class="item">Gericht 4</div><div class="item">Gericht 5</div><div class="item">Gericht 6</div></div>`, css: `.menu-selection { display: flex; flex-wrap: wrap; gap: 16px; }
+.item { flex: 1 1 200px; background: #e8f5e9; border: 1px solid #81c784; padding: 20px; border-radius: 8px; }`, h: 260}],
     ['h', 'Aktor und Sensor nebeneinander (Sommer 2023)'],
     ['code', 'css', `.anzeige { display: flex; flex-direction: column; }   /* schmal: untereinander */
 @media (min-width: 601px) {
@@ -27580,6 +27871,8 @@ AP2.page('course-css-03', {
   align-items: center;       /* senkrecht */
   min-height: 100vh;
 }`],
+    ['result', {t: 'Zentrieren', html: `<div class="vollbild"><div class="mitte">Genau in der Mitte</div></div>`, css: `.vollbild { display: flex; justify-content: center; align-items: center; height: 170px; background: #eceff1; }
+.mitte { background: #2c3e50; color: #fff; padding: 14px 20px; border-radius: 6px; }`, h: 200}],
     ['h', 'Übungen'],
     ['qa', 'Ein Footer soll links den Kontakt und rechts das Copyright zeigen, vertikal mittig, auf kleinen Bildschirmen untereinander.', [['code', 'css', `footer { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }`]], 3],
     ['quiz', [
@@ -27611,6 +27904,9 @@ AP2.page('course-css-04', {
   gap: 16px;
 }`],
     ['p', 'Die Kinder füllen das Raster automatisch zeilenweise: Kind 1 in Spalte 1, Kind 2 in Spalte 2 usw., Kind 5 beginnt die zweite Zeile.'],
+    ['result', {t: 'Grid-Raster', html: `<div class="menu-selection"><div class="d">Mo</div><div>Schnitzel</div><div>Pasta</div><div>Salat</div><div class="d">Di</div><div>Pizza</div><div>Suppe</div><div>Curry</div></div>`, css: `.menu-selection { display: grid; grid-template-columns: 120px 1fr 1fr 1fr; gap: 16px; }
+.menu-selection div { background: #e3f2fd; border: 1px solid #64b5f6; padding: 12px; border-radius: 6px; }
+.d { background: #ffe082 !important; font-weight: bold; }`, h: 200}],
     ['h', 'Linien und Spannen'],
     ['code', 'css', `.grid-container {
   display: grid;
@@ -27627,6 +27923,23 @@ AP2.page('course-css-04', {
       {id: 'm', k: 'box', x: 232, y: 120, w: 400, h: 130, t: '#map (1 / 4, Zeilen 2 / 5)', s: 'soft'},
       {id: 'u', k: 'box', x: 503, y: 75, w: 130, h: 40, t: '#auftrag'}, {id: 'g', k: 'box', x: 503, y: 120, w: 130, h: 40, t: '#angebot'}, {id: 'b', k: 'box', x: 503, y: 165, w: 130, h: 40, t: '#buchung'},
     ], edges: []}],
+    ['result', {t: 'Spannen über Linien', html: `<div class="grid-container"><div id="ablauf">#ablauf</div><div id="map">#map</div><div id="auftrag">#auftrag</div><div id="angebot">#angebot</div><div id="buchung">#buchung</div></div>`, css: `.grid-container { display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: auto repeat(3, 60px); gap: 6px; }
+.grid-container > div { background: #c5cae9; padding: 6px; border-radius: 4px; }
+#ablauf  { grid-column: 1 / 5; background: #ffcc80; }
+#map     { grid-column: 1 / 4; grid-row: 2 / 5; background: #a5d6a7; }
+#auftrag { grid-column: 4; grid-row: 2; }
+#angebot { grid-column: 4; grid-row: 3; }
+#buchung { grid-column: 4; grid-row: 4; }`, h: 260}],
+    ['h', 'Einheiten und Funktionen im Grid'],
+    ['table', ['Wert', 'Bedeutung'], [
+      ['`1fr`', 'ein Anteil am verfügbaren Platz (`1fr 2fr`: zweite Spalte doppelt so breit)'],
+      ['`auto`', 'so breit/hoch wie der Inhalt'],
+      ['`120px`, `20%`', 'feste bzw. prozentuale Größe'],
+      ['`repeat(3, 1fr)`', 'drei gleich breite Spalten'],
+      ['`minmax(200px, 1fr)`', 'mindestens 200px, höchstens ein Anteil'],
+      ['`repeat(auto-fit, minmax(200px, 1fr))`', 'so viele Spalten, wie passen: responsiv ohne Media Query'],
+      ['`grid-column: 1 / 4`', 'von Linie 1 bis Linie 4 (= 3 Spalten); `span 2` = zwei Spalten breit'],
+    ]],
     ['h', 'Benannte Bereiche'],
     ['code', 'css', `.seite {
   display: grid;
@@ -27649,6 +27962,16 @@ footer { grid-area: fuss; }
     grid-template-areas: "kopf" "nav" "inhalt" "fuss";
   }
 }`],
+    ['result', {t: 'grid-template-areas', html: `<div class="seite"><header>Kopf</header><nav>Navigation</nav><main>Inhalt</main><footer>Fuß</footer></div>`, css: `.seite { display: grid; grid-template-columns: 120px 1fr; grid-template-rows: auto 1fr auto; grid-template-areas:
+  "kopf kopf"
+  "nav inhalt"
+  "fuss fuss";
+  gap: 6px; height: 220px; }
+header { grid-area: kopf; background: #ffcc80; }
+nav { grid-area: nav; background: #b3e5fc; }
+main { grid-area: inhalt; background: #c8e6c9; }
+footer { grid-area: fuss; background: #d1c4e9; }
+.seite > * { padding: 8px; border-radius: 4px; }`, h: 260}],
     ['h', 'Prüfungsaufgabe Winter 2025/26: Hoch- und Querformat'],
     ['code', 'css', `#row  { display: grid; grid-template-columns: 1fr 1fr; align-content: center; }
 #text { grid-column: 1 / 3; }               /* Hochformat: Text über beide Spalten */
@@ -27662,6 +27985,8 @@ footer { grid-area: fuss; }
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));   /* so viele Spalten wie passen */
   gap: 16px;
 }`],
+    ['result', {t: 'auto-fit und minmax', html: `<div class="kacheln"><div>1</div><div>2</div><div>3</div><div>4</div><div>5</div><div>6</div><div>7</div><div>8</div></div>`, css: `.kacheln { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; }
+.kacheln div { background: #2c3e50; color: #fff; padding: 20px; text-align: center; border-radius: 6px; }`, h: 240}],
     ['h', 'Ausrichten im Grid'],
     ['table', ['Eigenschaft', 'Wirkt auf', 'Beispiel'], [
       ['`justify-items`', 'alle Items waagerecht in ihrer Zelle', '`center`'],
@@ -27714,6 +28039,11 @@ img { max-width: 100%; height: auto; }
 @media (min-width: 1100px) {
   .menu-selection { grid-template-columns: 120px repeat(3, 1fr); }
 }`],
+    ['result', {t: 'Media Query', html: `<div class="container"><div>Karte 1</div><div>Karte 2</div><div>Karte 3</div><div>Karte 4</div></div>`, css: `.container { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.container > div { background: #ffe0b2; padding: 18px; border-radius: 6px; }
+@media (min-width: 600px) {
+  .container { grid-template-columns: 1fr 1fr; }
+}`, h: 240}],
     ['h', 'Media-Query-Bedingungen'],
     ['table', ['Bedingung', 'trifft zu bei'], [
       ['`(max-width: 499px)`', 'Fensterbreite bis 499px'],
@@ -27744,6 +28074,10 @@ h1 { font-size: clamp(1.5rem, 4vw, 2.5rem); }`],
 }
 body { color: var(--text); background: var(--hintergrund); }
 button { background: var(--akzent); padding: calc(var(--abstand) / 2) var(--abstand); }`],
+    ['result', {t: 'Custom Properties', html: `<button class="b">Speichern</button> <a class="l" href="#">Link</a> <span class="t">Badge</span>`, css: `:root { --akzent: #e91e63; --abstand: 10px; }
+.b { background: var(--akzent); color: #fff; border: 0; padding: var(--abstand) 18px; border-radius: 4px; }
+.l { color: var(--akzent); }
+.t { border: 2px solid var(--akzent); padding: 2px var(--abstand); border-radius: 99px; }`, h: 150}],
     ['h', 'Übergänge und Animationen'],
     ['code', 'css', `.menu-item { transition: transform 0.2s ease, box-shadow 0.2s ease; }
 .menu-item:hover { transform: translateY(-3px); box-shadow: 0 4px 12px rgba(0,0,0,.2); }
@@ -27757,6 +28091,18 @@ button { background: var(--akzent); padding: calc(var(--abstand) / 2) var(--abst
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }`],
+    ['result', {t: 'Hover und Animation', html: `<div class="menu-item">Hover mich</div> <div class="puls">pulsiert</div>`, css: `.menu-item { display: inline-block; padding: 24px; background: #e8f5e9; border-radius: 8px; transition: transform .2s ease, box-shadow .2s ease; }
+.menu-item:hover { transform: translateY(-6px) scale(1.05); box-shadow: 0 10px 20px rgba(0,0,0,.25); }
+.puls { display: inline-block; padding: 24px; background: #ffcdd2; border-radius: 8px; animation: puls 1.2s ease-in-out infinite; }
+@keyframes puls { 50% { transform: scale(1.15); background: #ef9a9a; } }`, h: 200}],
+    ['h', 'Werte für transition und animation'],
+    ['table', ['Teil', 'Mögliche Werte'], [
+      ['Dauer', '`0.2s`, `300ms`'],
+      ['Zeitfunktion', '`ease` (Standard), `linear`, `ease-in`, `ease-out`, `ease-in-out`'],
+      ['`animation-iteration-count`', 'Zahl oder `infinite`'],
+      ['`animation-direction`', '`normal`, `reverse`, `alternate` (hin und zurück)'],
+      ['`transform`', '`translate(10px, 5px)`, `scale(1.1)`, `rotate(45deg)`'],
+    ]],
     ['h', 'Druck-CSS'],
     ['code', 'css', `@media print {
   nav, footer, .button { display: none; }     /* Unnötiges ausblenden */

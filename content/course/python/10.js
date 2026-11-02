@@ -69,6 +69,7 @@ try:
     k.abheben(50)
 except NichtGedecktFehler as e:
     print("Abgelehnt:", e)               # e enthält die Meldung`],
+    ['out', `Abgelehnt: Saldo 0.0 reicht nicht für 50`],
     ['h', 'Die Exception-Hierarchie (Ausschnitt)'],
     ['diagram', AP2.dg.tree({t: 'BaseException', c: [{t: 'Exception', c: [{t: 'ValueError'}, {t: 'ArithmeticError', c: [{t: 'ZeroDivisionError'}]}, {t: 'LookupError', c: [{t: 'IndexError'}, {t: 'KeyError'}]}, {t: 'OSError', c: [{t: 'FileNotFoundError'}]}, {t: 'TypeError'}]}, {t: 'KeyboardInterrupt'}]}, {k: 'round', w: 120, h: 34, gx: 130, gy: 64, cap: 'Ein except fängt die genannte Klasse und alle Unterklassen: except LookupError fängt IndexError und KeyError.'})],
     ['warn', '`except:` ohne Klasse oder `except Exception:` fängt **alles**, auch Programmierfehler wie Tippfehler in Variablennamen (NameError). Fehler werden so versteckt. Fange nur die Exceptions, die du **erwartest** und sinnvoll behandeln kannst.'],

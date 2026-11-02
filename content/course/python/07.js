@@ -25,6 +25,11 @@ if "Feuerdorn" in preise:         # prüft die SCHLÜSSEL
     print("Feuerdorn kostet", preise["Feuerdorn"])
 
 del preise["Flieder"]             # Paar löschen`],
+    ['out', `42.5
+4
+None
+0.0
+Feuerdorn kostet 5.0`],
     ['h', 'Dictionaries durchlaufen'],
     ['code', 'python', `for artikel in preise:                  # nur Schlüssel
     print(artikel)
@@ -48,6 +53,8 @@ haeufigkeit = {}
 for z in text:
     haeufigkeit[z] = haeufigkeit.get(z, 0) + 1
 print(haeufigkeit)         # {'a': 2, 'n': 2}`],
+    ['out', `{'Strauch GmbH': 15, 'Baumgarten': 30, 'Weißmann': 4}
+{'a': 2, 'n': 2}`],
     ['h', 'Verschachtelte Strukturen (wie JSON)'],
     ['code', 'python', `kunde = {
     "name": "Max Muster",
@@ -64,6 +71,9 @@ for b in kunde["bestellungen"]:
 import json
 text = json.dumps(kunde, ensure_ascii=False, indent=2)   # dict -> JSON-Text
 zurueck = json.loads(text)                               # JSON-Text -> dict`],
+    ['out', `Musterhausen
+Feuerdorn 10
+rote Rosen 10`],
     ['h', 'Mengen (set)'],
     ['code', 'python', `besucher = ["Anna", "Ben", "Anna", "Cem", "Ben"]
 eindeutig = set(besucher)
@@ -77,6 +87,11 @@ print(python_kurs | java_kurs)    # {'Anna','Ben','Cem','Dora'} mindestens einer
 print(python_kurs - java_kurs)    # {'Anna', 'Cem'}          nur Python
 
 leer = set()                      # {} wäre ein leeres DICT!`],
+    ['out', `{'Ben', 'Cem', 'Anna'}
+3
+{'Ben'}
+{'Dora', 'Ben', 'Cem', 'Anna'}
+{'Cem', 'Anna'}`],
     ['h', 'Welche Datenstruktur wann?'],
     ['table', ['Struktur', 'Reihenfolge', 'Duplikate', 'Zugriff', 'Einsatz'], [
       ['**list**', 'Ja', 'Ja', 'Index (schnell), Suche nach Wert O(n)', 'Folge von Werten, Bestellpositionen'],

@@ -17,6 +17,7 @@ AP2.page('course-python-14', {
     return -1                 # nicht gefunden
 
 print(linear_suche([7, 3, 9, 4], 9))   # 2`],
+    ['out', `2`],
     ['h', 'Binäre Suche (nur auf sortierten Daten)'],
     ['code', 'python', `def binaer_suche(liste, gesucht):
     links, rechts = 0, len(liste) - 1
@@ -31,6 +32,7 @@ print(linear_suche([7, 3, 9, 4], 9))   # 2`],
     return -1
 
 print(binaer_suche([2, 5, 8, 12, 16, 23, 38], 23))   # 5`],
+    ['out', `5`],
     ['table', ['Schritt', 'links', 'rechts', 'mitte', 'liste[mitte]', 'Entscheidung'], [
       ['1', '0', '6', '3', '12', '12 < 23 -> links = 4'],
       ['2', '4', '6', '5', '23', 'gefunden, Index 5'],
@@ -50,6 +52,7 @@ print(binaer_suche([2, 5, 8, 12, 16, 23, 38], 23))   # 5`],
     return a
 
 print(bubble_sort([5, 1, 4, 2, 8]))   # [1, 2, 4, 5, 8]`],
+    ['out', `[1, 2, 4, 5, 8]`],
     ['p', 'Nach jedem Durchlauf ist das größte verbleibende Element ganz nach hinten "aufgestiegen" wie eine Blase.'],
     ['h', 'Selection Sort und Insertion Sort'],
     ['codes', [
@@ -123,6 +126,9 @@ def klammern_ok(text):   # Klassiker: Klammern prüfen
     return not s
 
 print(klammern_ok("(a[1] + b) * {c}"))   # True`],
+    ['out', `C
+B
+True`],
     ['h', 'Queue (Warteschlange, FIFO)'],
     ['code', 'python', `from collections import deque
 
@@ -131,6 +137,8 @@ schlange.append("Kunde 1")      # enqueue (hinten anstellen)
 schlange.append("Kunde 2")
 print(schlange.popleft())       # Kunde 1 (zuerst gekommen, zuerst bedient)
 print(len(schlange))            # 1`],
+    ['out', `Kunde 1
+1`],
     ['note', '`liste.pop(0)` funktioniert auch als Queue, kostet aber O(n), weil alle Elemente nachrücken. `deque.popleft()` ist O(1).'],
     ['h', 'Einfach verkettete Liste'],
     ['code', 'python', `class Knoten:
@@ -158,6 +166,7 @@ vl = VerketteteListe()
 for w in [3, 2, 1]:
     vl.vorne_einfuegen(w)
 vl.ausgeben()    # 1 -> 2 -> 3 -> None`],
+    ['out', `1 -> 2 -> 3 -> None`],
     ['h', 'Übungen'],
     ['qa', 'Sortieren Sie [6, 3, 8, 2] mit Bubble Sort und notieren Sie die Liste nach jedem Durchlauf.', ['Durchlauf 1: [3, 6, 2, **8**] (6/3 getauscht, 6/8 nicht, 8/2 getauscht)', 'Durchlauf 2: [3, 2, **6, 8**]', 'Durchlauf 3: [**2, 3, 6, 8**]'], 4],
     ['qa', 'Schreiben Sie eine Funktion, die prüft, ob eine Liste aufsteigend sortiert ist, in O(n).', [['code', 'python', `def ist_sortiert(a):

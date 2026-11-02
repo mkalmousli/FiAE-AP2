@@ -19,6 +19,10 @@ print(temperaturen[0])     # 21.5  (erstes Element, Index 0)
 print(temperaturen[3])     # 25.1  (viertes Element)
 print(temperaturen[-1])    # 25.1  (letztes Element)
 print(len(temperaturen))   # 4`],
+    ['out', `21.5
+25.1
+25.1
+4`],
     ['diagram', {w: 560, h: 120, keep: 440, cap: 'Jedes Element hat einen positiven (oben) und einen negativen Index (unten).', nodes: [
       {id: 'a', k: 'box', x: 100, y: 60, w: 100, h: 40, t: '21.5', s: 'soft'}, {id: 'b', k: 'box', x: 220, y: 60, w: 100, h: 40, t: '23.0', s: 'soft'}, {id: 'c', k: 'box', x: 340, y: 60, w: 100, h: 40, t: '19.8', s: 'soft'}, {id: 'd', k: 'box', x: 460, y: 60, w: 100, h: 40, t: '25.1', s: 'soft'},
       {id: 'i0', k: 'text', x: 100, y: 22, t: '0', w: 10, h: 10}, {id: 'i1', k: 'text', x: 220, y: 22, t: '1', w: 10, h: 10}, {id: 'i2', k: 'text', x: 340, y: 22, t: '2', w: 10, h: 10}, {id: 'i3', k: 'text', x: 460, y: 22, t: '3', w: 10, h: 10},
@@ -36,6 +40,7 @@ erstes = einkauf.pop(0)           # Element an INDEX 0 entfernen ("Äpfel")
 print(einkauf)                    # ["Vollkornbrot"]
 einkauf.extend(["Eier", "Mehl"])  # mehrere anhängen
 einkauf.clear()                   # alles löschen`],
+    ['out', `['Vollkornbrot']`],
     ['h', 'Durchlaufen, suchen, zählen'],
     ['code', 'python', `noten = [2, 1, 3, 2, 4, 2]
 
@@ -47,6 +52,11 @@ print(noten.index(3))             # 2: Position des ersten Vorkommens
 print(noten.count(2))             # 3: Wie oft kommt 2 vor?
 print(sum(noten) / len(noten))    # 2.33: Durchschnitt
 print(min(noten), max(noten))     # 1 4`],
+    ['out', `2 1 3 2 4 2 True
+2
+3
+2.3333333333333335
+1 4`],
     ['h', 'Slicing: Ausschnitte bilden'],
     ['code', 'python', `z = [10, 20, 30, 40, 50, 60]
 print(z[1:4])     # [20, 30, 40]   (Index 1 bis 3)
@@ -54,6 +64,11 @@ print(z[:3])      # [10, 20, 30]   (vom Anfang)
 print(z[3:])      # [40, 50, 60]   (bis zum Ende)
 print(z[::2])     # [10, 30, 50]   (jedes zweite)
 print(z[::-1])    # [60, 50, 40, 30, 20, 10] (umgedreht)`],
+    ['out', `[20, 30, 40]
+[10, 20, 30]
+[40, 50, 60]
+[10, 30, 50]
+[60, 50, 40, 30, 20, 10]`],
     ['h', 'Sortieren'],
     ['code', 'python', `preise = [4.5, 1.2, 9.9, 3.0]
 sortiert = sorted(preise)            # NEUE Liste, preise bleibt unverändert
@@ -76,6 +91,9 @@ c = a.copy()       # echte (flache) Kopie, auch: a[:] oder list(a)
 c.append(5)
 print(a)           # [1, 2, 3, 4]  bleibt
 print(c)           # [1, 2, 3, 4, 5]`],
+    ['out', `[1, 2, 3, 4]
+[1, 2, 3, 4]
+[1, 2, 3, 4, 5]`],
     ['h', 'Verschachtelte Listen (Tabellen, Matrizen)'],
     ['code', 'python', `tabelle = [
     [1, 2, 3],      # Zeile 0
@@ -86,6 +104,9 @@ for zeile in tabelle:
     for wert in zeile:
         print(wert, end=" ")
     print()`],
+    ['out', `6
+1 2 3 
+4 5 6 `],
     ['h', 'Tupel'],
     ['code', 'python', `punkt = (3, 4)               # Tupel mit runden Klammern
 x, y = punkt                 # Entpacken (unpacking)
@@ -98,6 +119,7 @@ klein, gross = min_max([4, 9, 1])
 
 a, b = 1, 2
 a, b = b, a                  # Werte tauschen ohne Hilfsvariable`],
+    ['out', `3 4`],
     ['table', ['', 'Liste', 'Tupel'], [
       ['Schreibweise', '`[1, 2, 3]`', '`(1, 2, 3)`'],
       ['Veränderbar?', 'Ja (append, remove, ...)', 'Nein'],

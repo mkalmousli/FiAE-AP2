@@ -29,12 +29,34 @@ AP2.page('course-css-03', {
 }
 .menue { display: flex; gap: 20px; list-style: none; margin: 0; padding: 0; }
 .leiste a { color: white; text-decoration: none; }`],
+    ['result', {t: 'Flex-Navigation', html: `<nav class="leiste">
+  <a href="#">MeBS</a>
+  <ul class="menue"><li><a href="#">Start</a></li><li><a href="#">Menü</a></li><li><a href="#">Konto</a></li></ul>
+</nav>`, css: `.leiste { display: flex; justify-content: space-between; align-items: center; padding: 0 20px; background: #2c3e50; height: 64px; }
+.leiste a { color: #fff; text-decoration: none; }
+.menue { display: flex; gap: 20px; list-style: none; margin: 0; padding: 0; }`, h: 170}],
     ['h', 'justify-content im Überblick'],
     ['table', ['Wert', 'Wirkung (bei row)'], [
       ['`flex-start`', 'alle links'], ['`flex-end`', 'alle rechts'], ['`center`', 'alle in der Mitte'],
       ['`space-between`', 'erstes ganz links, letztes ganz rechts, Rest gleichmäßig'],
       ['`space-around`', 'gleicher Abstand um jedes Item (am Rand halb so groß)'],
       ['`space-evenly`', 'alle Abstände gleich, auch am Rand'],
+    ]],
+    ['result', {t: 'Hauptachse und Querachse', html: `<div class="a">A</div><div class="b">B</div><div class="c">C</div>`, css: `.a,.b,.c{background:#2c3e50;color:#fff;padding:12px;border-radius:6px;text-align:center}
+body{margin:0}
+.container-ersatz{}
+body { display: flex; flex-direction: row; justify-content: flex-start; align-items: stretch; gap: 8px; height: 200px; }`, h: 230}],
+    ['h', 'align-items, flex-direction und flex-wrap'],
+    ['table', ['Eigenschaft', 'Wert', 'Wirkung'], [
+      ['`align-items`', '`stretch` (Standard)', 'Kinder füllen die Querachse'],
+      ['', '`flex-start` / `flex-end`', 'oben bzw. unten (bei row)'],
+      ['', '`center`', 'mittig auf der Querachse'],
+      ['', '`baseline`', 'an der Textgrundlinie ausgerichtet'],
+      ['`flex-direction`', '`row` (Standard)', 'nebeneinander, Hauptachse waagerecht'],
+      ['', '`column`', 'untereinander, Hauptachse senkrecht'],
+      ['', '`row-reverse` / `column-reverse`', 'Reihenfolge umgekehrt'],
+      ['`flex-wrap`', '`nowrap` (Standard)', 'alles in einer Zeile, Kinder werden gestaucht'],
+      ['', '`wrap`', 'bricht bei Platzmangel in neue Zeile um'],
     ]],
     ['h', 'Platz verteilen mit flex'],
     ['code', 'css', `.layout { display: flex; gap: 20px; }
@@ -44,6 +66,17 @@ AP2.page('course-css-03', {
 .spalten > div { flex: 1; }          /* drei gleich breite Spalten */
 .spalten > .breit { flex: 2; }       /* doppelt so breit wie die anderen */`],
     ['p', '`flex: grow shrink basis`. `flex: 1` entspricht `1 1 0%`: Alle Items starten bei 0 und teilen den Platz im Verhältnis ihrer grow-Werte.'],
+    ['result', {t: 'flex-grow', html: `<div class="layout"><aside>Seitenleiste</aside><main>Inhalt</main><div class="x">Extra</div></div>`, css: `.layout { display: flex; gap: 20px; }
+aside { width: 120px; background: #cfd8dc; padding: 10px; }
+main  { flex: 1; background: #b2dfdb; padding: 10px; }
+.x { flex: 0 0 60px; background: #ffe082; padding: 10px; }`, h: 150}],
+    ['h', 'Die flex-Kurzschreibweise'],
+    ['table', ['Schreibweise', 'Bedeutung'], [
+      ['`flex: 1`', 'wächst und schrumpft, nimmt gleichmäßig den Restplatz (Basis 0)'],
+      ['`flex: 0 0 200px`', 'feste Breite 200px: wächst nicht, schrumpft nicht'],
+      ['`flex: 1 1 200px`', 'Wunschbreite 200px, wächst und schrumpft (Kacheln mit `flex-wrap`)'],
+      ['`flex: none`', 'nicht flexibel, Größe aus `width`'],
+    ]],
     ['h', 'Umbrechende Kacheln (responsiv ohne Media Query)'],
     ['code', 'css', `.menu-selection {
   display: flex;
@@ -53,6 +86,8 @@ AP2.page('course-css-03', {
 .menu-item {
   flex: 1 1 250px;            /* mindestens etwa 250px, sonst umbrechen; Rest gleichmäßig */
 }`],
+    ['result', {t: 'Umbrechende Kacheln', html: `<div class="menu-selection"><div class="item">Gericht 1</div><div class="item">Gericht 2</div><div class="item">Gericht 3</div><div class="item">Gericht 4</div><div class="item">Gericht 5</div><div class="item">Gericht 6</div></div>`, css: `.menu-selection { display: flex; flex-wrap: wrap; gap: 16px; }
+.item { flex: 1 1 200px; background: #e8f5e9; border: 1px solid #81c784; padding: 20px; border-radius: 8px; }`, h: 260}],
     ['h', 'Aktor und Sensor nebeneinander (Sommer 2023)'],
     ['code', 'css', `.anzeige { display: flex; flex-direction: column; }   /* schmal: untereinander */
 @media (min-width: 601px) {
@@ -67,6 +102,8 @@ AP2.page('course-css-03', {
   align-items: center;       /* senkrecht */
   min-height: 100vh;
 }`],
+    ['result', {t: 'Zentrieren', html: `<div class="vollbild"><div class="mitte">Genau in der Mitte</div></div>`, css: `.vollbild { display: flex; justify-content: center; align-items: center; height: 170px; background: #eceff1; }
+.mitte { background: #2c3e50; color: #fff; padding: 14px 20px; border-radius: 6px; }`, h: 200}],
     ['h', 'Übungen'],
     ['qa', 'Ein Footer soll links den Kontakt und rechts das Copyright zeigen, vertikal mittig, auf kleinen Bildschirmen untereinander.', [['code', 'css', `footer { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }`]], 3],
     ['quiz', [

@@ -18,6 +18,7 @@ AP2.page('course-html-02', {
 <hr>                                    <!-- thematischer Trenner -->
 <p><small>© 2024 MeBS - Mensa-Bestell-System. Alle Rechte vorbehalten.</small></p>`],
     ['note', 'Screenreader-Nutzer springen über die Überschriften durch die Seite. Deshalb: Ebenen logisch verwenden (nach h2 kommt h3, nicht h5) und für Größen CSS benutzen.'],
+    ['result', {t: 'Überschriften', html: `<h1>Mensa BSZ Neckaralb</h1><h2>Tagesgerichte</h2><p>Ein Absatz mit <em>betontem</em> und <strong>wichtigem</strong> Text.</p>`, h: 150}],
     ['h', 'Listen'],
     ['code', 'html', `<ul>                          <!-- ungeordnet: Aufzählungspunkte -->
   <li>Schnitzel Wiener Art</li>
@@ -36,6 +37,7 @@ AP2.page('course-html-02', {
   <dt>PZR</dt><dd>Professionelle Zahnreinigung</dd>
   <dt>IGeL</dt><dd>Individuelle Gesundheitsleistung</dd>
 </dl>`],
+    ['result', {t: 'Listen', html: `<ul><li>Schnitzel</li><li>Pasta</li></ul><ol><li>Anmelden</li><li>Wählen</li><li>Bezahlen</li></ol><dl><dt>HTML</dt><dd>Struktur</dd></dl>`, h: 190}],
     ['h', 'Links'],
     ['code', 'html', `<a href="KitaStuttgart.html">Zurück zur Startseite</a>                  <!-- relativ, gleicher Ordner -->
 <a href="../impressum.html">Impressum</a>                                 <!-- eine Ebene höher -->
@@ -45,6 +47,7 @@ AP2.page('course-html-02', {
 <a href="tel:+497121123456">0 71 21 / 12 34 56</a>
 <a href="preise.pdf" download>Preisliste herunterladen</a>`],
     ['tip', 'Linktexte sollen **für sich verständlich** sein ("Preisliste herunterladen" statt "hier klicken"), weil Screenreader Links auch als Liste vorlesen.'],
+    ['result', {t: 'Links', html: `<p><a href="#">Zurück zur Startseite</a> · <a href="#">Externer Link</a></p>`, h: 80}],
     ['h', 'Bilder'],
     ['code', 'html', `<img src="bilder/schnitzel.jpg" alt="Schnitzel mit Pommes und Zitrone"
      width="400" height="300" loading="lazy">
@@ -70,6 +73,7 @@ AP2.page('course-html-02', {
   Einrückung    bleibt
   erhalten
 </pre>`],
+    ['result', {t: 'Textelemente', html: `<p>Die <abbr title="Industrie- und Handelskammer">IHK</abbr> prüft am <time datetime="2026-11-11">11.11.2026</time>. H<sub>2</sub>O, x<sup>2</sup>, <mark>markiert</mark>, <code>code</code>, <del>alt</del>.</p>`, h: 110}],
     ['h', 'Übungen'],
     ['qa', 'Erstellen Sie eine Navigationsliste mit Links zu "Start" (index.html), "Menü" (menue.html) und einem Mail-Link an mensa@bsz.de.', [['code', 'html', `<nav>
   <ul>

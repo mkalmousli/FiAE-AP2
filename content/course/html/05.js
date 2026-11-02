@@ -40,6 +40,7 @@ AP2.page('course-html-05', {
   </footer>
 </body>`],
     ['diagram', AP2.dg.layers([['header', 'Logo, Titel, nav (Navigation)', 'accent'], ['main', 'section > article ... (Hauptinhalt, genau einmal)', 'solid'], ['aside', 'Ergänzende Informationen', 'soft'], ['footer', 'Kontakt, Impressum, Copyright', 'accent']], {w: 640, cap: 'Typische semantische Seitenstruktur'})],
+    ['result', {t: 'Semantische Gliederung', html: `<header>&lt;header&gt; Kopf mit Logo</header><nav>&lt;nav&gt; Navigation</nav><main>&lt;main&gt; Hauptinhalt <article>&lt;article&gt; Beitrag</article></main><aside>&lt;aside&gt; Randnotiz</aside><footer>&lt;footer&gt; Fuß, Impressum</footer>`, css: `header,nav,main,aside,footer{border:2px dashed #888;padding:6px;margin:4px;font-size:13px}header{background:#ffe0b2}nav{background:#b3e5fc}main{background:#c8e6c9}aside{background:#f8bbd0}footer{background:#d1c4e9}`, h: 260}],
     ['h', 'Medien einbinden'],
     ['code', 'html', `<video src="rundgang.mp4" controls width="640" poster="vorschau.jpg">
   <track kind="captions" src="untertitel.vtt" srclang="de" label="Deutsch">   <!-- Untertitel -->

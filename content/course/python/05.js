@@ -17,6 +17,12 @@ while zaehler <= 5:          # 2. Bedingung (vor jedem Durchlauf geprüft)
     print("Durchlauf", zaehler)
     zaehler += 1             # 3. Veränderung, sonst Endlosschleife!
 print("fertig")`],
+    ['out', `Durchlauf 1
+Durchlauf 2
+Durchlauf 3
+Durchlauf 4
+Durchlauf 5
+fertig`],
     ['table', ['Durchlauf', 'zaehler vorher', 'Bedingung zaehler <= 5', 'Ausgabe'], [
       ['1', '1', 'True', 'Durchlauf 1'],
       ['2', '2', 'True', 'Durchlauf 2'],
@@ -75,6 +81,12 @@ for i, note in enumerate(noten):        # i = Index, note = Wert
 # Ohne enumerate (wie in Java):
 for i in range(len(noten)):
     print(i, noten[i])`],
+    ['out', `Fach 1: Note 2
+Fach 2: Note 1
+Fach 3: Note 3
+0 2
+1 1
+2 3`],
     ['h', 'break, continue und else'],
     ['code', 'python', `zahlen = [4, 7, -1, 9, 12]
 
@@ -95,6 +107,13 @@ for z in zahlen:
         break
 else:                          # läuft nur, wenn KEIN break kam
     print("Kein Wert über 100")`],
+    ['out', `4
+7
+Negative Zahl gefunden, Abbruch
+7
+-1
+9
+Kein Wert über 100`],
     ['h', 'Verschachtelte Schleifen'],
     ['p', 'Bei jedem Durchlauf der äußeren Schleife läuft die innere **komplett** durch. Klassiker: das kleine Einmaleins oder Muster aus Zeichen.'],
     ['code', 'python', `for zeile in range(1, 4):
@@ -104,6 +123,9 @@ else:                          # läuft nur, wenn KEIN break kam
 # 1  2  3
 # 2  4  6
 # 3  6  9`],
+    ['out', `1	2	3	
+2	4	6	
+3	6	9	`],
     ['h', 'Die wichtigsten Schleifenmuster'],
     ['code', 'python', `werte = [12, 5, 8, 21, 3]
 
@@ -122,6 +144,7 @@ for w in werte:
         anzahl += 1
 
 print(summe, summe / len(werte), maximum, anzahl)   # 49 9.8 21 2`],
+    ['out', `49 9.8 21 2`],
     ['note', 'Python bietet dafür auch eingebaute Funktionen: `sum(werte)`, `max(werte)`, `min(werte)`, `len(werte)`. In der Prüfung soll man den Algorithmus aber oft **selbst** schreiben, also beide Wege kennen.'],
     ['h', 'Übungen'],
     ['qa', 'Schreiben Sie ein Programm, das so lange Zahlen einliest, bis 0 eingegeben wird, und danach Summe und Durchschnitt der eingegebenen Zahlen ausgibt (die 0 zählt nicht mit).', [['code', 'python', `summe = 0

@@ -83,6 +83,7 @@ class EBike(EFahrzeug):
 
 # f = Fahrzeug("X")   -> TypeError: Can't instantiate abstract class
 print(EScooter("S-1").info())             # S-1: 10.50 € pro Stunde`],
+    ['out', `S-1: 10.50 € pro Stunde`],
     ['h', 'Polymorphie in Aktion'],
     ['code', 'python', `fuhrpark = [EScooter("S-1"), EBike("B-7"), EScooter("S-2")]
 

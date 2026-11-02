@@ -31,6 +31,14 @@ print(s[::2])    # Pto  (jedes zweite Zeichen)
 print(s[::-1])   # nohtyP (rückwärts)
 # s[0] = "J"     # TypeError: Strings sind unveränderlich!
 s = "J" + s[1:]  # stattdessen neuen String bauen: "Jython"`],
+    ['out', `P
+n
+n
+Py
+thon
+Pyt
+Pto
+nohtyP`],
     ['warn', '`s[6]` bei `"Python"` erzeugt einen **IndexError** (es gibt nur die Indizes 0 bis 5). Slicing dagegen ist tolerant: `s[2:100]` liefert einfach `"thon"`.'],
     ['h', 'Wichtige String-Methoden'],
     ['table', ['Methode', 'Bedeutung', 'Beispiel', 'Ergebnis'], [
@@ -52,6 +60,7 @@ name = teile[1]
 preis = float(teile[2])
 menge = int(teile[3])
 print(name, "Lagerwert:", preis * menge)  # Schraube M6 Lagerwert: 60.0`],
+    ['out', `Schraube M6 Lagerwert: 60.0`],
     ['h', 'Strings zusammensetzen und formatieren'],
     ['code', 'python', `name, alter, preis = "Anna", 21, 3.5
 print("Name: " + name + ", Alter: " + str(alter))     # Verkettung: Zahlen umwandeln!
@@ -62,6 +71,14 @@ print(f"{'Artikel':<10}|{'Preis':>8}")                   # Tabelle: links / rech
 print(f"{'Apfel':<10}|{0.5:>8.2f}")
 print(f"Rechnung: {2 * 3 = }")                           # Rechnung: 2 * 3 = 6  (Debug-Hilfe)
 print("Wert: {:.1f}".format(3.14159))                    # ältere Variante mit format()`],
+    ['out', `Name: Anna, Alter: 21
+Name: Anna Alter: 21
+Name: Anna, Alter: 21
+Preis: 3.50 EUR
+Artikel   |   Preis
+Apfel     |    0.50
+Rechnung: 2 * 3 = 6
+Wert: 3.1`],
     ['table', ['Format', 'Bedeutung', 'Beispiel', 'Ergebnis'], [['`:.2f`', '2 Nachkommastellen', '`f"{3.14159:.2f}"`', '`3.14`'], ['`:8`', 'Mindestbreite 8', '`f"{42:8}"`', '`      42`'], ['`:<8` `:>8` `:^8`', 'links, rechts, zentriert', '`f"{"ab":^6}"`', '`  ab  `'], ['`:05d`', 'mit Nullen auffüllen', '`f"{7:05d}"`', '`00007`'], ['`:,`', 'Tausendertrennzeichen', '`f"{1234567:,}"`', '`1,234,567`'], ['`:.1%`', 'als Prozent', '`f"{0.256:.1%}"`', '`25.6%`']]],
     ['h', 'Zeichen und Zeichencodes'],
     ['p', 'Jedes Zeichen hat einen **Zahlenwert** (Unicode/ASCII). `ord("A")` ergibt `65`, `chr(65)` ergibt `"A"`. Großbuchstaben A-Z liegen bei 65-90, Kleinbuchstaben a-z bei 97-122, Ziffern 0-9 bei 48-57. Das nutzt man zum Beispiel für die **Caesar-Verschlüsselung** oder Prüfziffern.'],
@@ -74,6 +91,7 @@ print("Wert: {:.1f}".format(3.14159))                    # ältere Variante mit 
             erg += z                                    # andere Zeichen unverändert
     return erg
 print(caesar("HALLO", 3))   # KDOOR`],
+    ['out', `KDOOR`],
     ['h', 'Übungen'],
     ['qa', 'Gegeben `s = "Fachinformatiker"`. Was liefern `s[0]`, `s[-1]`, `s[4:9]`, `s[::-1][:3]`, `len(s)`?', ['`s[0]` = `"F"`, `s[-1]` = `"r"`, `s[4:9]` = `"infor"` (Index 4 bis 8), `s[::-1][:3]` = `"rek"`, `len(s)` = `16`.'], 5],
     ['qa', 'Schreiben Sie eine Funktion `ist_palindrom(wort)`, die `True` liefert, wenn ein Wort vorwärts und rückwärts gleich ist (Groß-/Kleinschreibung ignorieren, zum Beispiel "Anna").', [['code', 'python', `def ist_palindrom(wort):

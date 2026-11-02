@@ -32,6 +32,17 @@ AP2.page('course-html-03', {
 th, td { border: 1px solid #999; padding: 6px 10px; }
 td { text-align: right; }                            /* Zahlen rechtsbündig */
 tbody tr:nth-child(even) { background: #f3f3f3; }    /* Zebrastreifen */`],
+    ['result', {t: 'Tabelle gestalten', html: `<table>
+  <thead><tr><th>Tag</th><th>Gericht</th><th>Preis</th></tr></thead>
+  <tbody>
+    <tr><td>Mo</td><td>Schnitzel</td><td>5,50 €</td></tr>
+    <tr><td>Di</td><td>Pasta</td><td>4,20 €</td></tr>
+    <tr><td colspan="2">Summe</td><td>9,70 €</td></tr>
+  </tbody>
+</table>`, css: `table { border-collapse: collapse; }
+th, td { border: 1px solid #999; padding: 6px 12px; }
+th { background: #2c3e50; color: #fff; }
+tbody tr:nth-child(even) { background: #f1f1f1; }`, h: 200}],
     ['h', 'Zellen verbinden'],
     ['code', 'html', `<table>
   <tr><th rowspan="2">Tag</th><th colspan="2">Gerichte</th></tr>

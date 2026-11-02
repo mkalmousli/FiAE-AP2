@@ -47,6 +47,7 @@ AP2.page('course-html-01', {
 <input type="checkbox" checked>                                                 <!-- boolesches Attribut -->
 <p id="hinweis" class="info klein" title="Tooltip">Text</p>`],
     ['warn', 'Falsch verschachtelt: `<p><strong>Text</p></strong>`. Richtig: `<p><strong>Text</strong></p>`. Browser "reparieren" vieles stillschweigend, aber das Ergebnis ist unvorhersehbar. Prüfen kann man mit dem W3C-Validator (validator.w3.org).'],
+    ['result', {t: 'Verschachtelte Elemente', html: `<p>Ein Absatz mit <em>betontem</em> und <strong>wichtigem</strong> Text.</p>`, h: 80}],
     ['h', 'id und class'],
     ['table', ['', '`id`', '`class`'], [
       ['Häufigkeit', 'Genau **einmal** pro Seite', 'Beliebig oft, ein Element kann mehrere Klassen haben'],

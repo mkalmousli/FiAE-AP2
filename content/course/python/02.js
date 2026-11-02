@@ -22,6 +22,8 @@ print(menge)
 
 a, b = 1, 2            # Mehrfachzuweisung
 a, b = b, a            # Tauschen ohne Hilfsvariable: a=2, b=1`],
+    ['out', `59.97
+5`],
     ['table', ['Regel für Namen', 'Erlaubt', 'Nicht erlaubt'], [
       ['Buchstaben, Ziffern, Unterstrich', '`anzahl_kunden`, `wert2`', '`anzahl-kunden` (Minus), `mein wert` (Leerzeichen)'],
       ['Nicht mit Ziffer beginnen', '`zahl1`', '`1zahl`'],
@@ -41,6 +43,10 @@ a, b = b, a            # Tauschen ohne Hilfsvariable: a=2, b=1`],
 print(type(4.2))       # <class 'float'>
 print(type("42"))      # <class 'str'>
 print(isinstance(42, int))   # True: Typ prüfen`],
+    ['out', `<class 'int'>
+<class 'float'>
+<class 'str'>
+True`],
     ['note', 'Zum Vergleich: In **Java und C#** muss man den Typ **vorher angeben** (`int menge = 3;`). Das nennt man **statische Typisierung**: Der Compiler prüft Typen vor dem Start. Python prüft erst **zur Laufzeit**.'],
     ['h', 'Arithmetische Operatoren'],
     ['table', ['Operator', 'Bedeutung', 'Beispiel', 'Ergebnis'], [
@@ -73,6 +79,12 @@ print(round(3.5), round(2.5))   # 4 2  (Banker's Rounding: zur geraden Zahl)
 print(float("2.5") * 2)     # 5.0
 print(str(42) + " Stück")   # "42 Stück"
 print(bool(0), bool(""), bool("0"), bool([]))   # False False True False`],
+    ['out', `43
+3
+4 2
+5.0
+42 Stück
+False False True False`],
     ['warn', '**Gleitkomma-Ungenauigkeit:** `0.1 + 0.2` ergibt `0.30000000000000004`, weil 0,1 im Binärsystem nicht exakt darstellbar ist. Für **Geldbeträge** nutzt man `decimal.Decimal` oder rechnet in **Cent als int**. Gleitkommazahlen nie mit `==` vergleichen, sondern `abs(a - b) < 1e-9` oder `math.isclose(a, b)`.'],
     ['h', 'Konstanten und Speicherbedarf'],
     ['p', 'Python kennt keine echten Konstanten. Per Konvention schreibt man sie **GROSS**: `MWST = 0.19`. In Java heißt das `final double MWST = 0.19;`, in C# `const double MWST = 0.19;`.'],

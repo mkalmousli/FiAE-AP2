@@ -17,6 +17,9 @@ AP2.page('course-python-08', {
 print(brutto(100))          # 119.0   (Standardwert 19 wird benutzt)
 print(brutto(100, 7))       # 107.0
 print(brutto(steuersatz=7, netto=50))   # Schlüsselwort-Argumente: Reihenfolge egal`],
+    ['out', `119.0
+107.0
+53.5`],
     ['list', [
       '`def` leitet die Definition ein, danach Name, Klammern mit Parametern, Doppelpunkt, eingerückter Rumpf.',
       'Der **Docstring** (erste Zeile in dreifachen Anführungszeichen) beschreibt, was die Funktion tut. `help(brutto)` zeigt ihn an.',
@@ -51,6 +54,7 @@ static void Gruss(string name)
 
 kleinster, groesster, schnitt = statistik([4, 8, 6])
 print(kleinster, groesster, schnitt)    # 4 8 6.0`],
+    ['out', `4 8 6.0`],
     ['h', 'Lokale und globale Variablen'],
     ['code', 'python', `zaehler = 0               # global
 
@@ -66,6 +70,9 @@ erhoehen()                # 10
 print(zaehler)            # 0
 erhoehen_global()
 print(zaehler)            # 1`],
+    ['out', `10
+0
+1`],
     ['tip', 'Globale Variablen machen Programme schwer verständlich und testbar. Besser: Werte als **Parameter** hineingeben und mit **return** herausgeben.'],
     ['h', 'Parameterübergabe: Was passiert mit dem Argument?'],
     ['p', 'In Java und C# spricht man von **call by value** (Kopie des Wertes) und **call by reference** (Verweis auf die Variable, in C# mit `ref`). Python übergibt immer eine **Referenz auf das Objekt** ("call by object reference"). Die Wirkung hängt davon ab, ob das Objekt **veränderbar** ist:'],
@@ -82,6 +89,8 @@ print(x)                     # 5   (int ist unveränderbar)
 l = [1, 2]
 anhaengen(l)
 print(l)                     # [1, 2, 99]  (Liste wurde verändert!)`],
+    ['out', `5
+[1, 2, 99]`],
     ['warn', '**Veränderbarer Standardwert:** `def neu(x, liste=[])` legt die Standardliste **einmal** an und teilt sie zwischen allen Aufrufen. Richtig: `def neu(x, liste=None):` und im Rumpf `if liste is None: liste = []`.'],
     ['h', 'Beliebig viele Argumente'],
     ['code', 'python', `def summe_alle(*zahlen):          # zahlen ist ein Tupel
@@ -94,6 +103,9 @@ def profil(**angaben):            # angaben ist ein dict
         print(k, "=", v)
 
 profil(name="Max", ort="Ulm")`],
+    ['out', `10
+name = Max
+ort = Ulm`],
     ['h', 'Typ-Hinweise (Type Hints)'],
     ['p', 'Python ist **dynamisch typisiert**, man kann aber Typen **annotieren**. Der Interpreter prüft sie nicht, Werkzeuge wie mypy und die IDE aber schon. Das macht Code lesbarer, besonders bei Prüfungsaufgaben, die Typen aus dem UML-Diagramm vorgeben.'],
     ['code', 'python', `def pruefe_wert(wert: float, minimum: float = 0.05, maximum: float = 2.0) -> bool:

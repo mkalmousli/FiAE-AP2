@@ -58,6 +58,7 @@ def binaer_suche(liste, x, links, rechts):
     return binaer_suche(liste, x, mitte + 1, rechts)
 
 print(binaer_suche([2, 5, 8, 12, 20], 12, 0, 4))   # 3`],
+    ['out', `3`],
     ['table', ['', 'Rekursion', 'Iteration (Schleife)'], [
       ['Vorteil', 'Elegant bei selbstähnlichen Problemen (Bäume, Teile und herrsche, Quicksort)', 'Schneller, kein Stack-Verbrauch'],
       ['Nachteil', 'Speicherbedarf je Aufruf, Gefahr des Stack Overflow, teils Mehrfachberechnungen (fib)', 'Bei Baumstrukturen umständlich'],
@@ -70,6 +71,8 @@ artikel = [("Linde", 42.5), ("Feuerdorn", 5.0), ("Flieder", 19.5)]
 nach_preis = sorted(artikel, key=lambda a: a[1])     # nach 2. Element sortieren
 print(nach_preis[0])                                 # ('Feuerdorn', 5.0)
 teuerster = max(artikel, key=lambda a: a[1])`],
+    ['out', `16
+('Feuerdorn', 5.0)`],
     ['h', 'List Comprehensions'],
     ['p', 'Eine Comprehension ist eine **Kurzschreibweise** für das Muster "neue Liste anlegen, in einer Schleife füllen, eventuell mit Bedingung".'],
     ['codes', [
@@ -105,6 +108,10 @@ for n, a in zip(namen, alter):                     # paarweise durchlaufen
 
 print(any(p > 15 for p in preise))   # True: mindestens einer
 print(all(p > 1 for p in preise))    # True: alle`],
+    ['out', `Anna 25
+Ben 30
+True
+True`],
     ['h', 'Übungen'],
     ['qa', 'Schreiben Sie eine rekursive Funktion `potenz(basis, exp)` für exp ≥ 0, ohne `**` zu verwenden.', [['code', 'python', `def potenz(basis, exp):
     if exp == 0:

@@ -18,6 +18,7 @@ def brutto(netto):
 
 if __name__ == "__main__":       # läuft nur bei "python rechnung.py", nicht beim Import
     print(brutto(100))`],
+    ['out', `119.0`],
     ['code', 'python', `# datei: main.py
 import rechnung
 from datetime import date, timedelta

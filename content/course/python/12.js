@@ -89,6 +89,7 @@ k = Konto("Max")
 k.einzahlen(100)
 print(k.saldo)        # 100.0
 # k.saldo = 5         # AttributeError: kein Setter definiert -> nur lesbar`],
+    ['out', `100.0`],
     ['h', 'Klassenattribute und statische Methoden'],
     ['code', 'python', `class Kunde:
     anzahl = 0                          # Klassenattribut: gemeinsam für alle Objekte (UML: unterstrichen)
@@ -105,6 +106,8 @@ print(k.saldo)        # 100.0
 k1 = Kunde("Anna"); k2 = Kunde("Ben")
 print(k2.nummer, Kunde.anzahl)          # 2 2
 print(Kunde.ist_gueltige_plz("72764"))  # True`],
+    ['out', `2 2
+True`],
     ['h', 'Objekte vergleichen und sortieren'],
     ['code', 'python', `class Note:
     def __init__(self, fach, wert):
@@ -118,6 +121,7 @@ print(Kunde.ist_gueltige_plz("72764"))  # True`],
 
 noten = [Note("Mathe", 3), Note("Deutsch", 1), Note("IT", 2)]
 print(sorted(noten))                    # nach wert sortiert`],
+    ['out', `[Note(Deutsch, 1), Note(IT, 2), Note(Mathe, 3)]`],
     ['h', 'Objekte in Listen verwalten'],
     ['code', 'python', `class Lager:
     def __init__(self):

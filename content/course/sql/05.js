@@ -14,6 +14,8 @@ AP2.page('course-sql-05', {
 FROM Bestellung b
 INNER JOIN Kunde k ON b.kunde_id = k.kunde_id
 ORDER BY b.datum;`],
+    ['p', '**Ergebnis** mit den Beispieldaten:'],
+    ['table', ['bestell_id', 'datum', 'nachname', 'vorname'], [['100', '2026-03-02', 'Muster', 'Max'], ['101', '2026-03-05', 'Könner', 'Tom'], ['102', '2026-04-11', 'Muster', 'Max'], ['103', '2026-04-20', 'Weiß', 'Anna']]],
     ['table', ['bestell_id', 'datum', 'nachname', 'vorname'], [
       ['100', '2026-03-02', 'Muster', 'Max'], ['101', '2026-03-05', 'Könner', 'Tom'], ['102', '2026-04-11', 'Muster', 'Max'], ['103', '2026-04-20', 'Weiß', 'Anna'],
     ]],
@@ -30,12 +32,16 @@ SELECT k.nachname, COUNT(b.bestell_id) AS bestellungen
 FROM Kunde k
 LEFT JOIN Bestellung b ON b.kunde_id = k.kunde_id
 GROUP BY k.kunde_id, k.nachname;`],
+    ['p', '**Ergebnis** mit den Beispieldaten:'],
+    ['table', ['nachname', 'bestellungen'], [['Muster', '2'], ['Könner', '1'], ['Weiß', '1'], ['Yilmaz', '0']]],
     ['table', ['nachname', 'bestellungen'], [['Muster', '2'], ['Könner', '1'], ['Weiß', '1'], ['Yilmaz', '**0**']]],
     ['code', 'sql', `-- Kunden, die noch NIE bestellt haben
 SELECT k.nachname
 FROM Kunde k
 LEFT JOIN Bestellung b ON b.kunde_id = k.kunde_id
 WHERE b.bestell_id IS NULL;              -- Yilmaz`],
+    ['p', '**Ergebnis** mit den Beispieldaten:'],
+    ['table', ['nachname'], [['Yilmaz']]],
     ['warn', 'Mit `COUNT(*)` statt `COUNT(b.bestell_id)` hätte Yilmaz **1** statt 0, weil der LEFT JOIN für ihn eine Zeile (mit NULL-Werten) erzeugt. Und: Eine Bedingung auf die rechte Tabelle im **WHERE** (zum Beispiel `WHERE b.datum >= \'2026-04-01\'`) macht aus dem LEFT JOIN faktisch einen INNER JOIN; solche Bedingungen gehören in die **ON**-Klausel.'],
     ['h', 'Über mehrere Tabellen (n:m)'],
     ['code', 'sql', `-- Rechnung: welche Artikel hat Max Muster in Bestellung 100 gekauft?
@@ -45,6 +51,8 @@ JOIN Bestellung b ON b.kunde_id   = k.kunde_id
 JOIN Position   p ON p.bestell_id = b.bestell_id
 JOIN Artikel    a ON a.artikel_id = p.artikel_id
 WHERE b.bestell_id = 100;`],
+    ['p', '**Ergebnis** mit den Beispieldaten:'],
+    ['table', ['bezeichnung', 'menge', 'preis', 'gesamt'], [['Feuerdorn', '10', '5', '50'], ['rote Rosen', '10', '2.3', '23']]],
     ['table', ['bezeichnung', 'menge', 'preis', 'gesamt'], [['Feuerdorn', '10', '5.00', '50.00'], ['rote Rosen', '10', '2.30', '23.00']]],
     ['code', 'sql', `-- Umsatz je Kunde
 SELECT k.nachname, SUM(p.menge * a.preis) AS umsatz
@@ -55,6 +63,8 @@ JOIN Artikel a    ON a.artikel_id = p.artikel_id
 GROUP BY k.kunde_id, k.nachname
 ORDER BY umsatz DESC;
 -- Muster 137.00 (73 + 25 + 39), Könner 42.50, Weiß 36.00`],
+    ['p', '**Ergebnis** mit den Beispieldaten:'],
+    ['table', ['nachname', 'umsatz'], [['Muster', '137'], ['Könner', '42.5'], ['Weiß', '36']]],
     ['h', 'Self Join und Cross Join'],
     ['code', 'sql', `-- Self Join: Mitarbeiter mit ihrem Vorgesetzten (beide in derselben Tabelle)
 SELECT m.name AS mitarbeiter, v.name AS vorgesetzter
@@ -72,6 +82,8 @@ SELECT g.groesse, f.farbe FROM Groesse g CROSS JOIN Farbe f;`],
 FROM Kunde k, Bestellung b
 WHERE k.kunde_id = b.kunde_id;     -- gleichwertig zum INNER JOIN, aber unübersichtlicher.
 -- Vergisst man das WHERE, entsteht ein Kreuzprodukt (4 x 4 = 16 Zeilen)!`],
+    ['p', '**Ergebnis** mit den Beispieldaten:'],
+    ['table', ['nachname', 'datum'], [['Muster', '2026-03-02'], ['Könner', '2026-03-05'], ['Muster', '2026-04-11'], ['Weiß', '2026-04-20']]],
     ['h', 'Übungen'],
     ['qa', 'Geben Sie alle Artikel mit der insgesamt verkauften Menge aus, auch Artikel, die nie verkauft wurden (Menge 0).', [['code', 'sql', `SELECT a.bezeichnung, COALESCE(SUM(p.menge), 0) AS verkauft
 FROM Artikel a

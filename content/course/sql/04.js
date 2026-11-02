@@ -24,6 +24,8 @@ SELECT COUNT(DISTINCT kunde_id) FROM Bestellung;              -- 3 verschiedene 
 FROM Artikel
 GROUP BY kategorie
 ORDER BY anzahl DESC;`],
+    ['p', '**Ergebnis** mit den Beispieldaten:'],
+    ['table', ['kategorie', 'anzahl', 'schnitt'], [['Strauch', '2', '12.25'], ['Blume', '2', '2.05'], ['Baum', '1', '42.5']]],
     ['table', ['kategorie', 'anzahl', 'schnitt'], [['Strauch', '2', '12.25'], ['Blume', '2', '2.05'], ['Baum', '1', '42.50']]],
     ['diagram', AP2.dg.flow(['FROM Artikel (5 Zeilen)', 'WHERE (optional)', 'GROUP BY kategorie (3 Gruppen)', 'HAVING (Gruppen filtern)', 'SELECT + ORDER BY'], {w: 760, h: 110, styles: ['plain', 'soft', 'accent', 'soft', 'ok'], cap: 'Logische Abarbeitung einer Gruppierungsabfrage.'})],
     ['warn', '`SELECT kategorie, bezeichnung, COUNT(*) FROM Artikel GROUP BY kategorie` ist **falsch**: Welche der Bezeichnungen einer Gruppe soll angezeigt werden? Standard-SQL, PostgreSQL und SQL Server melden einen Fehler; MySQL liefert ohne `ONLY_FULL_GROUP_BY` einen zufälligen Wert. Regel: Jede Spalte im SELECT steht entweder im **GROUP BY** oder in einer **Aggregatfunktion**.'],
