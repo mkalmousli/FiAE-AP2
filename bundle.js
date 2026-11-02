@@ -3394,6 +3394,37 @@ AP2.pages = function () {};
   };
 })();
 ;
+// viz/netplan.js
+// Netzplan-Vorgangsknoten in Prüfungsform: oben FAZ | FEZ, Mitte Nr. Name | Dauer, unten SAZ | SEZ, darunter GP | FP.
+// Knoten: {k: 'np', x, y, s: 'accent' (kritisch), t: {nr, name, d, faz, fez, saz, sez, gp, fp}}; null oder fehlende Werte bleiben leer.
+(function () {
+  const {svg} = AP2;
+  const W = 156;
+  const RH = 24;
+  const val = (v) => (v === null || v === undefined ? '' : String(v));
+  AP2.npSize = (n) => { n.w = n.w || W; n.h = n.h || RH * 4; };
+  AP2.drawNp = (n, g, paint) => {
+    const t = n.t;
+    const left = n.x - n.w / 2;
+    const top = n.y - n.h / 2;
+    const crit = n.s === 'accent';
+    const line = (x1, y1, x2, y2, sw) => g.appendChild(paint(svg('line', {x1, y1, x2, y2}), {s: crit ? 'accent' : 'line', sw: sw || 1}));
+    g.appendChild(paint(svg('rect', {x: left, y: top, width: n.w, height: n.h, rx: 3}), {s: crit ? 'accent' : 'line', f: crit ? 'accentSoft' : 'surface', sw: crit ? 2 : 1.5}));
+    const cell = (cx, row, txt, o) => AP2.shapes.text(g, paint, cx, top + RH * row + RH / 2 + 1, val(txt), Object.assign({size: 13, color: 'text', max: n.w / 2 - 6}, o));
+    const half = n.w / 2;
+    // Zeilen: 0 = FAZ | FEZ, 1 = Nr. Name | Dauer, 2 = SAZ | SEZ, 3 = GP | FP (leicht abgesetzt)
+    [1, 2, 3].forEach((r) => line(left, top + RH * r, left + n.w, top + RH * r, r === 3 ? 2 : 1));
+    [0, 2].forEach((r) => line(n.x, top + RH * r, n.x, top + RH * (r + 1)));
+    line(n.x, top + RH * 3, n.x, top + n.h);
+    line(left + n.w * 0.75, top + RH, left + n.w * 0.75, top + RH * 2);
+    cell(left + half / 2, 0, t.faz); cell(n.x + half / 2, 0, t.fez);
+    AP2.shapes.text(g, paint, left + n.w * 0.375, top + RH * 1.5 + 1, val(t.nr) + (t.nr && t.name ? '  ' : '') + val(t.name), {size: 12, bold: true, color: 'text', max: n.w * 0.75 - 8});
+    AP2.shapes.text(g, paint, left + n.w * 0.875, top + RH * 1.5 + 1, val(t.d), {size: 12, color: 'text2', max: n.w * 0.25 - 4});
+    cell(left + half / 2, 2, t.saz); cell(n.x + half / 2, 2, t.sez);
+    cell(left + half / 2, 3, t.gp, {size: 12, color: crit ? 'accent' : 'text2'}); cell(n.x + half / 2, 3, t.fp, {size: 12, color: 'text2'});
+  };
+})();
+;
 // viz/path.js
 // Pfadtext für SVG: Linienzug oder weiche Kurve durch Punkte.
 (function () {
@@ -3430,6 +3461,7 @@ AP2.pages = function () {};
   };
   const SIZE = {dot: [14, 14], ring: [20, 20], bar: [70, 7], actor: [40, 56]};
   const prep = (n) => {
+    if (n.k === 'np') return AP2.npSize(n);
     const lines = [].concat(n.t || '');
     const wide = Math.max(...lines.map((s) => String(s).length)) * 7 + 30;
     const size = SIZE[n.k] || [wide, lines.length * 17 + 18];
@@ -3455,6 +3487,7 @@ AP2.pages = function () {};
   };
   const drawNode = (n, g, paint) => {
     if (n.k === 'cls') return AP2.drawClass(n, g, paint);
+    if (n.k === 'np') return AP2.drawNp(n, g, paint);
     const style = STYLE[n.s || 'plain'];
     AP2.shapes.make(n).forEach((d) => g.appendChild(paint(svg(d.tag, d.a), Object.assign({sw: 1.5}, style.p, d.o))));
     const raw = [].concat(n.t || []);
@@ -5221,40 +5254,42 @@ AP2.page('ps-netzplan', {
       ['Kritischer Pfad', '-', 'Kette aller kritischen Vorgänge von Start bis Ende. Bestimmt die Projektdauer.'],
     ]],
     ['h', 'So liest man einen Knoten'],
-    ['diagram', {w: 520, h: 190, cap: 'Aufbau eines Vorgangsknotens (Standardform in der IHK-Prüfung)', nodes: [
-      {id: 'n', x: 200, y: 95, w: 300, h: 150, k: 'box', s: 'plain', t: ''},
-      {id: 'l1', x: 110, y: 50, t: 'FAZ  (früheste Startzeit)', k: 'text', fs: 12},
-      {id: 'l2', x: 295, y: 50, t: 'FEZ  (früheste Endzeit)', k: 'text', fs: 12},
-      {id: 'l3', x: 200, y: 95, t: 'Nr.  Bezeichnung  /  Dauer D', k: 'text', fs: 13, b: true},
-      {id: 'l4', x: 110, y: 140, t: 'SAZ  (späteste Startzeit)', k: 'text', fs: 12},
-      {id: 'l5', x: 295, y: 140, t: 'SEZ  (späteste Endzeit)', k: 'text', fs: 12},
-      {id: 'gp', x: 440, y: 70, t: ['GP: Gesamtpuffer', 'FP: Freier Puffer'], k: 'note', s: 'accent', w: 140, h: 50, fs: 12},
-    ], edges: [
-      {a: [50, 72], b: [350, 72], ea: 'none', s: 'border', w: 1}, {a: [50, 118], b: [350, 118], ea: 'none', s: 'border', w: 1}, {a: [200, 22], b: [200, 72], ea: 'none', s: 'border', w: 1}, {a: [200, 118], b: [200, 168], ea: 'none', s: 'border', w: 1},
-    ]}],
+    ['diagram', {w: 560, h: 150, cap: 'Vorgangsknoten (Standardform der IHK-Prüfung): vier Zeilen, jedes Feld hat eine feste Bedeutung.', nodes: [
+      {id: 'n', k: 'np', x: 190, y: 70, w: 220, t: {nr: 'Nr.', name: 'Bezeichnung', d: 'D', faz: 'FAZ', fez: 'FEZ', saz: 'SAZ', sez: 'SEZ', gp: 'GP', fp: 'FP'}},
+      {id: 'l1', k: 'text', x: 440, y: 22, t: 'Zeile 1: frühester Start | frühestes Ende', fs: 12, anchorEnd: false},
+      {id: 'l2', k: 'text', x: 440, y: 46, t: 'Zeile 2: Nummer, Name | Dauer', fs: 12},
+      {id: 'l3', k: 'text', x: 440, y: 70, t: 'Zeile 3: spätester Start | spätestes Ende', fs: 12},
+      {id: 'l4', k: 'text', x: 440, y: 94, t: 'Zeile 4: Gesamtpuffer | freier Puffer', fs: 12},
+    ], edges: []}],
+    ['tip', '**Merkregel:** oben die **frühen** Zeiten (Vorwärtsrechnung), unten die **späten** Zeiten (Rückwärtsrechnung). Links ist immer der **Anfang**, rechts das **Ende**. Der Puffer ist der Unterschied zwischen unten und oben.'],
+    ['h', 'Ablauf in vier Schritten'],
+    ['steps', ['**Vorgänge und Abhängigkeiten** aus der Tabelle als Knoten und Pfeile zeichnen.', '**Vorwärts** von links nach rechts: FAZ und FEZ eintragen (bei Zusammenlauf das **Maximum**).', '**Rückwärts** von rechts nach links: SEZ und SAZ eintragen (bei Verzweigung das **Minimum**).', '**Puffer** berechnen (GP = SAZ - FAZ); Vorgänge mit GP = 0 bilden den **kritischen Pfad**.']],
+    ['note', 'Ein Pfad ist eine Kette von Vorgängen von Start bis Ende. Seine Länge ist die Summe der Dauern. Der **längste Pfad** ist der kritische Pfad und bestimmt die Projektdauer. Pfade daneben haben Puffer.'],
   ],
 });
 ;
 // content/ps/netzplan-2.js
 (function () {
-  const node = (id, x, y, name, d, faz, fez, saz, sez, gp, fp, crit) => ({id, x, y, w: 134, h: 88, k: 'box', s: crit ? 'accent' : 'plain', fs: 12,
-    t: [id.toUpperCase() + ' ' + name + ' (' + d + ')', 'FAZ ' + faz + '   FEZ ' + fez, 'SAZ ' + saz + '   SEZ ' + sez, 'GP ' + gp + '   FP ' + fp], b: true});
+  // Vorgangsknoten in Prüfungsform; phase 1 = nur Vorwärts, 2 = mit Rückwärts, 3 = komplett mit Puffern.
+  const T = [['a', 'Analyse', 3, 0, 3, 0, 3, 0, 0, 1], ['b', 'Entwurf', 4, 3, 7, 3, 7, 0, 0, 1], ['c', 'Datenbank', 5, 7, 12, 7, 12, 0, 0, 1], ['e', 'Backend', 8, 12, 20, 12, 20, 0, 0, 1],
+    ['f', 'Integration', 3, 20, 23, 20, 23, 0, 0, 1], ['g', 'Test', 4, 23, 27, 23, 27, 0, 0, 1], ['d', 'Oberfläche', 6, 7, 13, 14, 20, 7, 7, 0]];
+  const X = {a: 90, b: 280, c: 470, e: 660, f: 850, g: 1040, d: 565};
+  const net = (phase, cap) => ({w: 1130, h: 270, keep: 900, cap, nodes: T.map(([id, name, d, faz, fez, saz, sez, gp, fp, crit]) => ({id, k: 'np', x: X[id], y: id === 'd' ? 215 : 70,
+    s: phase === 3 && crit ? 'accent' : 'plain', t: Object.assign({nr: id.toUpperCase(), name, d, faz, fez}, phase > 1 ? {saz, sez} : {}, phase > 2 ? {gp, fp} : {})})),
+  edges: [{a: 'a', b: 'b'}, {a: 'b', b: 'c'}, {a: 'c', b: 'e'}, {a: 'e', b: 'f'}, {a: 'f', b: 'g'}, {a: 'b', b: 'd', via: [[280, 215]]}, {a: 'd', b: 'f', via: [[850, 215]]}]});
   AP2.add('ps-netzplan', [
     ['h', 'Schritt für Schritt: ein vollständiges Beispiel'],
     ['p', 'Ein Team entwickelt eine kleine Web-Anwendung. Die Vorgänge, ihre Dauern (in Tagen) und Vorgänger:'],
     ['table', ['Vorgang', 'Bezeichnung', 'Dauer', 'Vorgänger'], [['A', 'Analyse', '3', '-'], ['B', 'Entwurf', '4', 'A'], ['C', 'Datenbank', '5', 'B'], ['D', 'Oberfläche', '6', 'B'], ['E', 'Backend', '8', 'C'], ['F', 'Integration', '3', 'D, E'], ['G', 'Test', '4', 'F']]],
     ['h3', 'Schritt 1: Vorwärtsrechnung (früheste Zeiten)'],
     ['steps', ['**A** startet bei 0: FAZ = 0, FEZ = 0 + 3 = **3**.', '**B** startet, wenn A fertig ist: FAZ = 3, FEZ = 3 + 4 = **7**.', '**C** und **D** starten beide nach B: FAZ = 7. FEZ(C) = 7 + 5 = **12**, FEZ(D) = 7 + 6 = **13**.', '**E** startet nach C: FAZ = 12, FEZ = 12 + 8 = **20**.', '**F** hat zwei Vorgänger (D und E). Er kann erst starten, wenn **beide** fertig sind: FAZ = max(13, 20) = **20**. FEZ = 20 + 3 = **23**.', '**G** startet nach F: FAZ = 23, FEZ = 23 + 4 = **27**. Die Gesamtdauer des Projekts ist **27 Tage**.']],
+    ['diagram', net(1, 'Nach der Vorwärtsrechnung: oben links FAZ, oben rechts FEZ. Bei F laufen D (FEZ 13) und E (FEZ 20) zusammen: das Maximum 20 zählt.')],
     ['h3', 'Schritt 2: Rückwärtsrechnung (späteste Zeiten)'],
     ['steps', ['Beim letzten Vorgang gilt: SEZ = FEZ = **27**. SAZ(G) = 27 - 4 = **23**.', '**F:** SEZ = SAZ(G) = 23, SAZ = 23 - 3 = **20**.', '**E:** SEZ = SAZ(F) = 20, SAZ = 20 - 8 = **12**.', '**D:** SEZ = SAZ(F) = 20, SAZ = 20 - 6 = **14**.', '**C:** SEZ = SAZ(E) = 12, SAZ = 12 - 5 = **7**.', '**B** hat zwei Nachfolger (C und D): SEZ = min(7, 14) = **7**. SAZ = 7 - 4 = **3**.', '**A:** SEZ = SAZ(B) = 3, SAZ = 3 - 3 = **0**. Das passt zum Start bei 0.']],
+    ['diagram', net(2, 'Nach der Rückwärtsrechnung: unten links SAZ, unten rechts SEZ. Bei B laufen C und D auseinander: das Minimum der SAZ (7 und 14) zählt.')],
     ['h3', 'Schritt 3: Puffer und kritischer Pfad'],
     ['p', '**GP = SAZ - FAZ.** Nur Vorgang **D** hat Spielraum: GP(D) = 14 - 7 = **7**. Alle anderen haben GP = 0. Der **freie Puffer** von D ist FP = FAZ(F) - FEZ(D) = 20 - 13 = **7**.'],
-    ['diagram', {w: 900, h: 280, keep: 860, cap: 'Netzplan des Beispiels. Hervorgehoben: kritischer Pfad A, B, C, E, F, G mit 27 Tagen.', nodes: [
-      node('a', 76, 90, 'Analyse', 3, 0, 3, 0, 3, 0, 0, true), node('b', 226, 90, 'Entwurf', 4, 3, 7, 3, 7, 0, 0, true),
-      node('c', 376, 90, 'Datenbank', 5, 7, 12, 7, 12, 0, 0, true), node('e', 526, 90, 'Backend', 8, 12, 20, 12, 20, 0, 0, true),
-      node('f', 676, 90, 'Integration', 3, 20, 23, 20, 23, 0, 0, true), node('g', 826, 90, 'Test', 4, 23, 27, 23, 27, 0, 0, true),
-      node('d', 451, 220, 'Oberfläche', 6, 7, 13, 14, 20, 7, 7, false),
-    ], edges: [{a: 'a', b: 'b'}, {a: 'b', b: 'c'}, {a: 'c', b: 'e'}, {a: 'e', b: 'f'}, {a: 'f', b: 'g'}, {a: 'b', b: 'd', via: [[226, 220]]}, {a: 'd', b: 'f', via: [[676, 220]]}]}],
+    ['diagram', net(3, 'Fertiger Netzplan. Hervorgehoben: kritischer Pfad A, B, C, E, F, G mit 27 Tagen (GP = 0). Nur D hat Puffer.')],
     ['tip', 'Kritische Vorgänge erkennst du an **GP = 0**. Der kritische Pfad ist immer der **längste** Weg. Zur Kontrolle: A + B + C + E + F + G = 3 + 4 + 5 + 8 + 3 + 4 = 27. Der Weg über D wäre nur 3 + 4 + 6 + 3 + 4 = 20 lang.'],
     ['h', 'Was bedeutet das für das Projekt?'],
     ['list', ['**Verzögert sich C um 2 Tage**, endet das Projekt 2 Tage später (29 statt 27 Tage), denn C ist kritisch.', '**Verzögert sich D um 5 Tage**, passiert nichts: D hat 7 Tage Gesamtpuffer.', '**Verzögert sich D um 9 Tage**, endet das Projekt 2 Tage später (9 - 7 = 2).', 'Wer das Projekt beschleunigen will, muss **kritische** Vorgänge verkürzen (mehr Personal, Parallelisierung). Bei D zu sparen bringt nichts.']],

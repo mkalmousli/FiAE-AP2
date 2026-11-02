@@ -15,6 +15,7 @@
   };
   const SIZE = {dot: [14, 14], ring: [20, 20], bar: [70, 7], actor: [40, 56]};
   const prep = (n) => {
+    if (n.k === 'np') return AP2.npSize(n);
     const lines = [].concat(n.t || '');
     const wide = Math.max(...lines.map((s) => String(s).length)) * 7 + 30;
     const size = SIZE[n.k] || [wide, lines.length * 17 + 18];
@@ -40,6 +41,7 @@
   };
   const drawNode = (n, g, paint) => {
     if (n.k === 'cls') return AP2.drawClass(n, g, paint);
+    if (n.k === 'np') return AP2.drawNp(n, g, paint);
     const style = STYLE[n.s || 'plain'];
     AP2.shapes.make(n).forEach((d) => g.appendChild(paint(svg(d.tag, d.a), Object.assign({sw: 1.5}, style.p, d.o))));
     const raw = [].concat(n.t || []);

@@ -26,16 +26,16 @@ AP2.page('ps-netzplan', {
       ['Kritischer Pfad', '-', 'Kette aller kritischen Vorgänge von Start bis Ende. Bestimmt die Projektdauer.'],
     ]],
     ['h', 'So liest man einen Knoten'],
-    ['diagram', {w: 520, h: 190, cap: 'Aufbau eines Vorgangsknotens (Standardform in der IHK-Prüfung)', nodes: [
-      {id: 'n', x: 200, y: 95, w: 300, h: 150, k: 'box', s: 'plain', t: ''},
-      {id: 'l1', x: 110, y: 50, t: 'FAZ  (früheste Startzeit)', k: 'text', fs: 12},
-      {id: 'l2', x: 295, y: 50, t: 'FEZ  (früheste Endzeit)', k: 'text', fs: 12},
-      {id: 'l3', x: 200, y: 95, t: 'Nr.  Bezeichnung  /  Dauer D', k: 'text', fs: 13, b: true},
-      {id: 'l4', x: 110, y: 140, t: 'SAZ  (späteste Startzeit)', k: 'text', fs: 12},
-      {id: 'l5', x: 295, y: 140, t: 'SEZ  (späteste Endzeit)', k: 'text', fs: 12},
-      {id: 'gp', x: 440, y: 70, t: ['GP: Gesamtpuffer', 'FP: Freier Puffer'], k: 'note', s: 'accent', w: 140, h: 50, fs: 12},
-    ], edges: [
-      {a: [50, 72], b: [350, 72], ea: 'none', s: 'border', w: 1}, {a: [50, 118], b: [350, 118], ea: 'none', s: 'border', w: 1}, {a: [200, 22], b: [200, 72], ea: 'none', s: 'border', w: 1}, {a: [200, 118], b: [200, 168], ea: 'none', s: 'border', w: 1},
-    ]}],
+    ['diagram', {w: 560, h: 150, cap: 'Vorgangsknoten (Standardform der IHK-Prüfung): vier Zeilen, jedes Feld hat eine feste Bedeutung.', nodes: [
+      {id: 'n', k: 'np', x: 190, y: 70, w: 220, t: {nr: 'Nr.', name: 'Bezeichnung', d: 'D', faz: 'FAZ', fez: 'FEZ', saz: 'SAZ', sez: 'SEZ', gp: 'GP', fp: 'FP'}},
+      {id: 'l1', k: 'text', x: 440, y: 22, t: 'Zeile 1: frühester Start | frühestes Ende', fs: 12, anchorEnd: false},
+      {id: 'l2', k: 'text', x: 440, y: 46, t: 'Zeile 2: Nummer, Name | Dauer', fs: 12},
+      {id: 'l3', k: 'text', x: 440, y: 70, t: 'Zeile 3: spätester Start | spätestes Ende', fs: 12},
+      {id: 'l4', k: 'text', x: 440, y: 94, t: 'Zeile 4: Gesamtpuffer | freier Puffer', fs: 12},
+    ], edges: []}],
+    ['tip', '**Merkregel:** oben die **frühen** Zeiten (Vorwärtsrechnung), unten die **späten** Zeiten (Rückwärtsrechnung). Links ist immer der **Anfang**, rechts das **Ende**. Der Puffer ist der Unterschied zwischen unten und oben.'],
+    ['h', 'Ablauf in vier Schritten'],
+    ['steps', ['**Vorgänge und Abhängigkeiten** aus der Tabelle als Knoten und Pfeile zeichnen.', '**Vorwärts** von links nach rechts: FAZ und FEZ eintragen (bei Zusammenlauf das **Maximum**).', '**Rückwärts** von rechts nach links: SEZ und SAZ eintragen (bei Verzweigung das **Minimum**).', '**Puffer** berechnen (GP = SAZ - FAZ); Vorgänge mit GP = 0 bilden den **kritischen Pfad**.']],
+    ['note', 'Ein Pfad ist eine Kette von Vorgängen von Start bis Ende. Seine Länge ist die Summe der Dauern. Der **längste Pfad** ist der kritische Pfad und bestimmt die Projektdauer. Pfade daneben haben Puffer.'],
   ],
 });
