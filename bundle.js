@@ -3395,7 +3395,7 @@ AP2.pages = function () {};
 })();
 ;
 // viz/netplan.js
-// Netzplan-Vorgangsknoten: Kopf mit Nr. und Name, darunter 3 Spalten x 2 Zeilen: FAZ | D | FEZ  und  SAZ | GP | SEZ.
+// Netzplan-Vorgangsknoten: oben FAZ | D | FEZ, in der Mitte Nr. und Name (über alle Spalten), unten SAZ | GP | SEZ.
 // Knoten: {k: 'np', x, y, s: 'accent' (kritisch), t: {nr, name, d, faz, fez, saz, sez, gp, fp}}; null oder fehlende Werte bleiben leer.
 (function () {
   const {svg} = AP2;
@@ -3412,13 +3412,13 @@ AP2.pages = function () {};
     const stroke = crit ? 'accent' : 'line';
     const line = (x1, y1, x2, y2) => g.appendChild(paint(svg('line', {x1, y1, x2, y2}), {s: stroke, sw: 1}));
     g.appendChild(paint(svg('rect', {x: left, y: top, width: n.w, height: n.h, rx: 3}), {s: stroke, f: crit ? 'accentSoft' : 'surface', sw: crit ? 2 : 1.5}));
-    line(left, top + HEAD, left + n.w, top + HEAD);
-    line(left, top + HEAD + ROW, left + n.w, top + HEAD + ROW);
-    [1, 2].forEach((c) => line(left + col * c, top + HEAD, left + col * c, top + n.h));
+    line(left, top + ROW, left + n.w, top + ROW);
+    line(left, top + ROW + HEAD, left + n.w, top + ROW + HEAD);
+    [1, 2].forEach((c) => [[top, top + ROW], [top + ROW + HEAD, top + n.h]].forEach((r) => line(left + col * c, r[0], left + col * c, r[1])));
     const head = val(t.nr) + (t.nr && t.name ? '  ' : '') + val(t.name);
-    AP2.shapes.text(g, paint, n.x, top + HEAD / 2 + 1, head, {size: 12, bold: true, color: 'text', max: n.w - 8});
+    AP2.shapes.text(g, paint, n.x, top + ROW + HEAD / 2 + 1, head, {size: 12, bold: true, color: 'text', max: n.w - 8});
     // Spalten: links früh/spät Anfang, Mitte Dauer bzw. Gesamtpuffer, rechts Ende
-    const cell = (c, row, txt, o) => AP2.shapes.text(g, paint, left + col * (c + 0.5), top + HEAD + ROW * row + ROW / 2 + 1, val(txt), Object.assign({size: 13, color: 'text', max: col - 4}, o));
+    const cell = (c, row, txt, o) => AP2.shapes.text(g, paint, left + col * (c + 0.5), top + (row ? ROW + HEAD : 0) + ROW / 2 + 1, val(txt), Object.assign({size: 13, color: 'text', max: col - 4}, o));
     cell(0, 0, t.faz); cell(1, 0, t.d, {bold: true}); cell(2, 0, t.fez);
     cell(0, 1, t.saz); cell(1, 1, t.gp, {color: crit ? 'accent' : 'text2'}); cell(2, 1, t.sez);
     if (t.fp !== undefined && t.fp !== null) AP2.shapes.text(g, paint, left + n.w, top + n.h + 10, (isNaN(t.fp) ? '' : 'FP ') + t.fp, {anchor: 'end', size: 11, color: 'text2', max: col});
@@ -5254,14 +5254,14 @@ AP2.page('ps-netzplan', {
       ['Kritischer Pfad', '-', 'Kette aller kritischen Vorgänge von Start bis Ende. Bestimmt die Projektdauer.'],
     ]],
     ['h', 'So liest man einen Knoten'],
-    ['diagram', {w: 560, h: 170, cap: 'Vorgangsknoten: Kopf mit Nummer und Name, darunter 3 Spalten und 2 Zeilen.', nodes: [
+    ['diagram', {w: 560, h: 170, cap: 'Vorgangsknoten: oben und unten je 3 Felder, in der Mitte Nummer und Name.', nodes: [
       {id: 'n', k: 'np', x: 150, y: 80, w: 240, t: {nr: 'Nr.', name: 'Bezeichnung', d: 'D', faz: 'FAZ', fez: 'FEZ', saz: 'SAZ', sez: 'SEZ', gp: 'GP', fp: 'FP'}},
       {id: 'l1', k: 'text', x: 420, y: 38, t: 'Oben: früheste Zeiten (vorwärts)', fs: 12},
       {id: 'l2', k: 'text', x: 420, y: 72, t: 'Unten: späteste Zeiten (rückwärts)', fs: 12},
       {id: 'l3', k: 'text', x: 420, y: 106, t: 'Mitte: oben Dauer, unten Gesamtpuffer', fs: 12},
       {id: 'l4', k: 'text', x: 420, y: 140, t: 'Links: Anfang, rechts: Ende', fs: 12},
     ], edges: []}],
-    ['tip', '**Merkregel:** `FAZ | D | FEZ` oben, `SAZ | GP | SEZ` unten. Oben die **frühen**, unten die **späten** Zeiten; links der **Anfang**, rechts das **Ende**. In der Mitte steht oben die **Dauer** und unten der **Gesamtpuffer**. Der **freie Puffer (FP)** steht klein unter dem Knoten.'],
+    ['tip', '**Merkregel:** `FAZ | D | FEZ` oben, Nummer und Name in der Mitte, `SAZ | GP | SEZ` unten. Oben die **frühen**, unten die **späten** Zeiten; links der **Anfang**, rechts das **Ende**. In der Mitte steht oben die **Dauer** und unten der **Gesamtpuffer**. Der **freie Puffer (FP)** steht klein unter dem Knoten.'],
     ['h', 'Ablauf in vier Schritten'],
     ['steps', ['**Vorgänge und Abhängigkeiten** aus der Tabelle als Knoten und Pfeile zeichnen.', '**Vorwärts** von links nach rechts: FAZ und FEZ eintragen (bei Zusammenlauf das **Maximum**).', '**Rückwärts** von rechts nach links: SEZ und SAZ eintragen (bei Verzweigung das **Minimum**).', '**Puffer** berechnen (GP = SAZ - FAZ); Vorgänge mit GP = 0 bilden den **kritischen Pfad**.']],
     ['note', 'Ein Pfad ist eine Kette von Vorgängen von Start bis Ende. Seine Länge ist die Summe der Dauern. Der **längste Pfad** ist der kritische Pfad und bestimmt die Projektdauer. Pfade daneben haben Puffer.'],
