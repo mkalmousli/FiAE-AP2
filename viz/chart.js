@@ -10,10 +10,13 @@
     return step * pow;
   };
   const grid = (g, paint, cfg, plot, ymax) => {
+    // ymin (nur Liniendiagramme): negative Werte, zum Beispiel kumulierte Zahlungen bei der Amortisation; die Nulllinie wird betont.
+    const ymin = cfg.ymin || 0;
     for (let i = 0; i <= 4; i++) {
       const y = M.t + plot.h - (plot.h * i) / 4;
-      g.appendChild(paint(svg('line', {x1: M.l, x2: M.l + plot.w, y1: y, y2: y}), {s: 'border', sw: 1}));
-      AP2.shapes.text(g, paint, M.l - 8, y, String(Math.round((ymax * i) / 4 * 100) / 100), {anchor: 'end', size: 11, color: 'text3'});
+      const val = ymin + ((ymax - ymin) * i) / 4;
+      g.appendChild(paint(svg('line', {x1: M.l, x2: M.l + plot.w, y1: y, y2: y}), {s: val === 0 && ymin < 0 ? 'text3' : 'border', sw: val === 0 && ymin < 0 ? 1.5 : 1}));
+      AP2.shapes.text(g, paint, M.l - 8, y, String(Math.round(val * 100) / 100), {anchor: 'end', size: 11, color: 'text3'});
     }
     if (cfg.yl) AP2.shapes.text(g, paint, M.l, 16, cfg.yl, {anchor: 'start', size: 12, color: 'text2'});
   };
@@ -34,7 +37,8 @@
     const xs = cfg.labels.map((l, i) => M.l + (plot.w * i) / (cfg.labels.length - 1));
     cfg.labels.forEach((label, i) => AP2.shapes.text(g, paint, xs[i], M.t + plot.h + 18, String(label), {size: 12, color: 'text2', max: plot.w / (cfg.labels.length - 1) - 6}));
     cfg.series.forEach((s, j) => {
-      const pts = s.d.map((v, i) => xs[i].toFixed(1) + ',' + (M.t + plot.h - (Math.min(v, ymax) / ymax) * plot.h).toFixed(1));
+      // null = noch kein Wert (zum Beispiel Ist-Linie im Burndown bis heute).
+      const pts = s.d.map((v, i) => (v === null ? null : xs[i].toFixed(1) + ',' + (M.t + plot.h - ((Math.max(Math.min(v, ymax), cfg.ymin || 0) - (cfg.ymin || 0)) / (ymax - (cfg.ymin || 0))) * plot.h).toFixed(1))).filter(Boolean);
       g.appendChild(paint(svg('polyline', {points: pts.join(' ')}), {s: s.k || COLORS[j], sw: 2.5, dash: s.dash}));
     });
   };
@@ -44,7 +48,7 @@
       const j = cfg.series.length - 1 - ri;
       const txt = AP2.shapes.text(g, paint, x, 16, s.n, {anchor: 'end', size: 12, color: 'text2'});
       x -= AP2.shapes.width(s.n, 12) + 14;
-      g.appendChild(paint(svg('rect', {x: x + 8, y: 11, width: 11, height: 11, rx: 2}), {f: s.k || COLORS[j]}));
+      g.appendChild(paint(svg('rect', {x: x + 1, y: 11, width: 11, height: 11, rx: 2}), {f: s.k || COLORS[j]}));
       x -= 12;
       return txt;
     });

@@ -27,7 +27,7 @@
   };
   // Nutzbare Textbreite je Form; Formen ohne Rahmen (Text, Akteur, Punkt) begrenzen ihren Text nur über n.mw.
   const FREE = ['text', 'actor', 'dot', 'ring', 'bar'];
-  const INNER = {diamond: (w) => w * 0.62, oval: (w) => w * 0.82, circle: (w) => w * 0.82, para: (w) => w - 34, proc2: (w) => w - 28, cyl: (w) => w - 12};
+  const INNER = {diamond: (w) => w * 0.62, oval: (w) => w * 0.82, circle: (w) => w * 0.82, para: (w) => w - 34, hex: (w) => w - 30, proc2: (w) => w - 28, cyl: (w) => w - 12};
   const room = (n) => (FREE.includes(n.k) ? n.mw || 0 : (INNER[n.k] || ((w) => w - 12))(n.w));
   // Zu lange Beschriftungen werden umbrochen und verkleinert, damit sie in ihrer Form bleiben.
   const fit = (n, lines) => {
@@ -91,18 +91,15 @@
     if (cfg.keep) keepWidth(box, root, cfg.keep);
     return AP2.theme.bind(box, (n, c) => { n.style.backgroundColor = c.surface; n.style.borderColor = c.border; });
   };
-  // Breite Diagramme: nie schmaler als "keep" Pixel, darunter scrollt der Rahmen.
+  // Breite Diagramme: nie schmaler als "keep" Pixel, darunter scrollt der Rahmen (auch in schmalen Lösungskästen).
   const keepWidth = (box, root, keep) => {
     box.style.overflowX = 'auto';
-    let seen = false;
-    const off = AP2.layout.bind((L) => {
-      if (box.isConnected) seen = true; else if (seen) { off(); return; }
-      root.style.width = Math.max(keep, L.contentW - 2 * (S.sp[3] + 1)) + 'px';
-    });
+    root.style.minWidth = keep + 'px';
   };
   AP2.blocks.diagram = (cfg) => {
     const root = svg('svg', {viewBox: '0 0 ' + cfg.w + ' ' + cfg.h, role: 'img', 'aria-label': cfg.cap || 'Diagramm'});
-    st(root, {width: '100%', height: 'auto', display: 'block', fontFamily: S.font.sans});
+    // Kleine Diagramme nicht über ihre natürliche Größe hinaus aufblähen.
+    st(root, {width: '100%', maxWidth: Math.round(cfg.w * 1.25) + 'px', margin: '0 auto', height: 'auto', display: 'block', fontFamily: S.font.sans});
     const paint = AP2.paint(root);
     const nodes = {};
     (cfg.nodes || []).forEach((n) => { prep(n); nodes[n.id] = n; });

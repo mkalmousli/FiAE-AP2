@@ -1,6 +1,6 @@
 # FiAE-AP2
 
-Study site for the IHK AP2 exam (Fachinformatiker Anwendungsentwicklung): Planen eines Softwareproduktes (incl. infrastructure and IT security), Entwicklung und Umsetzung von Algorithmen, WiSo, two complete mock exam sets, calculators, crash courses, and a gamified trainer.
+Study site for the IHK AP2 exam (Fachinformatiker Anwendungsentwicklung): Planen eines Softwareproduktes (incl. infrastructure and IT security), Entwicklung und Umsetzung von Algorithmen, WiSo, five complete mock exam sets, calculators, crash courses, and a gamified trainer.
 
 Live: https://al-mo.de/apps/fiae-ap2/
 
@@ -13,7 +13,7 @@ Plain JavaScript, no dependencies. Serve the folder with any static server, e.g.
 - **Trainer** (`#/trainer`): daily mix with Leitner spaced repetition over all ~1,100 quiz questions and open exam tasks (as self-rated flashcards), 60-second Blitz mode, error training, per-topic and per-block drills, keyboard shortcuts.
 - **Gamification** (`core/game.js`): XP with combo bonus, levels with titles, daily goal, learning streak, 40 achievements, mastery stars per topic, activity heatmap, exam countdown. Progress is stored in `localStorage` only.
 - **Themenkarte** (`#/themen`): every topic as a tile with mastery, filterable by block, text, open/weak/due.
-- **Mock exams** (`exam1-*`, `exam2-*`): timed, self-graded with IHK grading key.
+- **Mock exams** (`exam1-*` to `exam5-*`): timed, graded with the IHK grading key. Sets 3 to 5 follow the AP2 format since 2021 (cover sheet, company scenario, attachments, 4 x 25 points) with auto-graded WiSo tasks (multiple choice, matching, ordering, numeric), step-by-step solution walkthroughs (`['walk', ...]`), diagram solutions, grading keys and a per-topic evaluation that links to the pages where points were lost.
 - **Calculators** (`tools/`): subnetting, VLSM, IPv6 subnets, routing decisions, RAID, availability, network plan, ROI, DPMO, energy cost, transfer time, RSA, toy blockchain, neuron, check digits, pass/grade rules incl. Ergänzungsprüfung, and more.
 
 ## Development and build

@@ -12,6 +12,8 @@
     oval: (n) => [{tag: 'ellipse', a: {cx: n.x, cy: n.y, rx: n.w / 2, ry: n.h / 2}}],
     circle: (n) => [{tag: 'ellipse', a: {cx: n.x, cy: n.y, rx: n.w / 2, ry: n.h / 2}}],
     diamond: (n) => { const e = edges(n); return poly([[n.x, e.t], [e.r, n.y], [n.x, e.b], [e.l, n.y]]); },
+    // Sechseck (EPK-Ereignis).
+    hex: (n) => { const e = edges(n); const d = Math.min(18, n.w / 6); return poly([[e.l + d, e.t], [e.r - d, e.t], [e.r, n.y], [e.r - d, e.b], [e.l + d, e.b], [e.l, n.y]]); },
     para: (n) => { const e = edges(n); return poly([[e.l + 14, e.t], [e.r, e.t], [e.r - 14, e.b], [e.l, e.b]]); },
     proc2: (n) => { const e = edges(n); return rect(n, 2).concat([path('M' + (e.l + 10) + ' ' + e.t + 'V' + e.b + 'M' + (e.r - 10) + ' ' + e.t + 'V' + e.b, {s: 'line', f: null, sw: 1.5})]); },
     note: (n) => { const e = edges(n); return poly([[e.l, e.t], [e.r - 12, e.t], [e.r, e.t + 12], [e.r, e.b], [e.l, e.b]]); },

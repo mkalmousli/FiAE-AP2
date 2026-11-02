@@ -45,17 +45,24 @@
       row: (blocks) => blocks.forEach(block),
       exam: (cfg) => {
         emit('note', cfg.hint);
+        (cfg.cover || []).forEach(block);
+        (cfg.intro || []).forEach(block);
         cfg.parts.forEach((part) => {
           title(part.t);
           emit('text', part.intro);
+          (part.ctx || []).forEach(block);
           part.tasks.forEach((task) => {
             (task.ctx || []).forEach(block);
             emit('qa', task.q);
+            if (task.mc) each('qa', task.mc.o);
+            if (task.match) { each('qa', task.match.keys); task.match.items.forEach((it) => emit('qa', it[0])); }
+            if (task.order) task.order.forEach((it) => emit('qa', it[0]));
             answer(task.a);
             inSol(() => (task.sol || []).forEach(block));
           });
         });
       },
+      walk: (cfg) => { emit('fig', cfg.t); (cfg.steps || []).forEach((st) => { emit('text', st.t); (st.b || []).forEach(block); }); },
       see: () => {},
       signs: (items, cap) => { items.forEach((it) => { emit('fig', it[2]); emit('fig', it[3]); }); emit('fig', cap); },
       tool: () => {},

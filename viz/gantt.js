@@ -13,7 +13,7 @@
     for (let t = 0; t <= total; t += opt.tick || 1) {
       const x = left + t * unit;
       edges.push({a: [x, 30], b: [x, h - 8], ea: 'none', s: 'border', w: 1});
-      nodes.push({id: 'tk' + t, k: 'text', x, y: 16, t: String(t), fs: 11, tc: 'text3', w: 20, h: 14});
+      nodes.push({id: 'tk' + t, k: 'text', x, y: 16, t: opt.tickLabel ? opt.tickLabel(t) : String(t), fs: 11, tc: 'text3', w: 20, h: 14});
     }
     const pos = tasks.map((task, i) => ({x0: left + task[1] * unit, x1: left + (task[1] + task[2]) * unit, y: 40 + i * row + row / 2}));
     tasks.forEach((task, i) => {
