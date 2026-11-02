@@ -3,9 +3,9 @@
   const T = [['a', 'Analyse', 3, 0, 3, 0, 3, 0, 0, 1], ['b', 'Entwurf', 4, 3, 7, 3, 7, 0, 0, 1], ['c', 'Datenbank', 5, 7, 12, 7, 12, 0, 0, 1], ['e', 'Backend', 8, 12, 20, 12, 20, 0, 0, 1],
     ['f', 'Integration', 3, 20, 23, 20, 23, 0, 0, 1], ['g', 'Test', 4, 23, 27, 23, 27, 0, 0, 1], ['d', 'Oberfläche', 6, 7, 13, 14, 20, 7, 7, 0]];
   const X = {a: 90, b: 280, c: 470, e: 660, f: 850, g: 1040, d: 565};
-  const net = (phase, cap) => ({w: 1130, h: 270, keep: 900, cap, nodes: T.map(([id, name, d, faz, fez, saz, sez, gp, fp, crit]) => ({id, k: 'np', x: X[id], y: id === 'd' ? 215 : 70,
+  const net = (phase, cap) => ({w: 1130, h: 240, keep: 900, cap, nodes: T.map(([id, name, d, faz, fez, saz, sez, gp, fp, crit]) => ({id, k: 'np', x: X[id], y: id === 'd' ? 190 : 60,
     s: phase === 3 && crit ? 'accent' : 'plain', t: Object.assign({nr: id.toUpperCase(), name, d, faz, fez}, phase > 1 ? {saz, sez} : {}, phase > 2 ? {gp, fp} : {})})),
-  edges: [{a: 'a', b: 'b'}, {a: 'b', b: 'c'}, {a: 'c', b: 'e'}, {a: 'e', b: 'f'}, {a: 'f', b: 'g'}, {a: 'b', b: 'd', via: [[280, 215]]}, {a: 'd', b: 'f', via: [[850, 215]]}]});
+  edges: [{a: 'a', b: 'b'}, {a: 'b', b: 'c'}, {a: 'c', b: 'e'}, {a: 'e', b: 'f'}, {a: 'f', b: 'g'}, {a: 'b', b: 'd', via: [[280, 190]]}, {a: 'd', b: 'f', via: [[850, 190]]}]});
   AP2.add('ps-netzplan', [
     ['h', 'Schritt für Schritt: ein vollständiges Beispiel'],
     ['p', 'Ein Team entwickelt eine kleine Web-Anwendung. Die Vorgänge, ihre Dauern (in Tagen) und Vorgänger:'],

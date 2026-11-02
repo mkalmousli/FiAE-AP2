@@ -3395,33 +3395,33 @@ AP2.pages = function () {};
 })();
 ;
 // viz/netplan.js
-// Netzplan-Vorgangsknoten in Prüfungsform: oben FAZ | FEZ, Mitte Nr. Name | Dauer, unten SAZ | SEZ, darunter GP | FP.
+// Netzplan-Vorgangsknoten: Kopf mit Nr. und Name, darunter 3 Spalten x 2 Zeilen: FAZ | D | FEZ  und  SAZ | GP | SEZ.
 // Knoten: {k: 'np', x, y, s: 'accent' (kritisch), t: {nr, name, d, faz, fez, saz, sez, gp, fp}}; null oder fehlende Werte bleiben leer.
 (function () {
   const {svg} = AP2;
-  const W = 156;
-  const RH = 24;
+  const HEAD = 24;
+  const ROW = 26;
   const val = (v) => (v === null || v === undefined ? '' : String(v));
-  AP2.npSize = (n) => { n.w = n.w || W; n.h = n.h || RH * 4; };
+  AP2.npSize = (n) => { n.w = n.w || 150; n.h = n.h || HEAD + ROW * 2; };
   AP2.drawNp = (n, g, paint) => {
     const t = n.t;
     const left = n.x - n.w / 2;
     const top = n.y - n.h / 2;
+    const col = n.w / 3;
     const crit = n.s === 'accent';
-    const line = (x1, y1, x2, y2, sw) => g.appendChild(paint(svg('line', {x1, y1, x2, y2}), {s: crit ? 'accent' : 'line', sw: sw || 1}));
-    g.appendChild(paint(svg('rect', {x: left, y: top, width: n.w, height: n.h, rx: 3}), {s: crit ? 'accent' : 'line', f: crit ? 'accentSoft' : 'surface', sw: crit ? 2 : 1.5}));
-    const cell = (cx, row, txt, o) => AP2.shapes.text(g, paint, cx, top + RH * row + RH / 2 + 1, val(txt), Object.assign({size: 13, color: 'text', max: n.w / 2 - 6}, o));
-    const half = n.w / 2;
-    // Zeilen: 0 = FAZ | FEZ, 1 = Nr. Name | Dauer, 2 = SAZ | SEZ, 3 = GP | FP (leicht abgesetzt)
-    [1, 2, 3].forEach((r) => line(left, top + RH * r, left + n.w, top + RH * r, r === 3 ? 2 : 1));
-    [0, 2].forEach((r) => line(n.x, top + RH * r, n.x, top + RH * (r + 1)));
-    line(n.x, top + RH * 3, n.x, top + n.h);
-    line(left + n.w * 0.75, top + RH, left + n.w * 0.75, top + RH * 2);
-    cell(left + half / 2, 0, t.faz); cell(n.x + half / 2, 0, t.fez);
-    AP2.shapes.text(g, paint, left + n.w * 0.375, top + RH * 1.5 + 1, val(t.nr) + (t.nr && t.name ? '  ' : '') + val(t.name), {size: 12, bold: true, color: 'text', max: n.w * 0.75 - 8});
-    AP2.shapes.text(g, paint, left + n.w * 0.875, top + RH * 1.5 + 1, val(t.d), {size: 12, color: 'text2', max: n.w * 0.25 - 4});
-    cell(left + half / 2, 2, t.saz); cell(n.x + half / 2, 2, t.sez);
-    cell(left + half / 2, 3, t.gp, {size: 12, color: crit ? 'accent' : 'text2'}); cell(n.x + half / 2, 3, t.fp, {size: 12, color: 'text2'});
+    const stroke = crit ? 'accent' : 'line';
+    const line = (x1, y1, x2, y2) => g.appendChild(paint(svg('line', {x1, y1, x2, y2}), {s: stroke, sw: 1}));
+    g.appendChild(paint(svg('rect', {x: left, y: top, width: n.w, height: n.h, rx: 3}), {s: stroke, f: crit ? 'accentSoft' : 'surface', sw: crit ? 2 : 1.5}));
+    line(left, top + HEAD, left + n.w, top + HEAD);
+    line(left, top + HEAD + ROW, left + n.w, top + HEAD + ROW);
+    [1, 2].forEach((c) => line(left + col * c, top + HEAD, left + col * c, top + n.h));
+    const head = val(t.nr) + (t.nr && t.name ? '  ' : '') + val(t.name);
+    AP2.shapes.text(g, paint, n.x, top + HEAD / 2 + 1, head, {size: 12, bold: true, color: 'text', max: n.w - 8});
+    // Spalten: links früh/spät Anfang, Mitte Dauer bzw. Gesamtpuffer, rechts Ende
+    const cell = (c, row, txt, o) => AP2.shapes.text(g, paint, left + col * (c + 0.5), top + HEAD + ROW * row + ROW / 2 + 1, val(txt), Object.assign({size: 13, color: 'text', max: col - 4}, o));
+    cell(0, 0, t.faz); cell(1, 0, t.d, {bold: true}); cell(2, 0, t.fez);
+    cell(0, 1, t.saz); cell(1, 1, t.gp, {color: crit ? 'accent' : 'text2'}); cell(2, 1, t.sez);
+    if (t.fp !== undefined && t.fp !== null) AP2.shapes.text(g, paint, left + n.w, top + n.h + 10, (isNaN(t.fp) ? '' : 'FP ') + t.fp, {anchor: 'end', size: 11, color: 'text2', max: col});
   };
 })();
 ;
@@ -5254,14 +5254,14 @@ AP2.page('ps-netzplan', {
       ['Kritischer Pfad', '-', 'Kette aller kritischen Vorgänge von Start bis Ende. Bestimmt die Projektdauer.'],
     ]],
     ['h', 'So liest man einen Knoten'],
-    ['diagram', {w: 560, h: 150, cap: 'Vorgangsknoten (Standardform der IHK-Prüfung): vier Zeilen, jedes Feld hat eine feste Bedeutung.', nodes: [
-      {id: 'n', k: 'np', x: 190, y: 70, w: 220, t: {nr: 'Nr.', name: 'Bezeichnung', d: 'D', faz: 'FAZ', fez: 'FEZ', saz: 'SAZ', sez: 'SEZ', gp: 'GP', fp: 'FP'}},
-      {id: 'l1', k: 'text', x: 440, y: 22, t: 'Zeile 1: frühester Start | frühestes Ende', fs: 12, anchorEnd: false},
-      {id: 'l2', k: 'text', x: 440, y: 46, t: 'Zeile 2: Nummer, Name | Dauer', fs: 12},
-      {id: 'l3', k: 'text', x: 440, y: 70, t: 'Zeile 3: spätester Start | spätestes Ende', fs: 12},
-      {id: 'l4', k: 'text', x: 440, y: 94, t: 'Zeile 4: Gesamtpuffer | freier Puffer', fs: 12},
+    ['diagram', {w: 560, h: 170, cap: 'Vorgangsknoten: Kopf mit Nummer und Name, darunter 3 Spalten und 2 Zeilen.', nodes: [
+      {id: 'n', k: 'np', x: 150, y: 80, w: 240, t: {nr: 'Nr.', name: 'Bezeichnung', d: 'D', faz: 'FAZ', fez: 'FEZ', saz: 'SAZ', sez: 'SEZ', gp: 'GP', fp: 'FP'}},
+      {id: 'l1', k: 'text', x: 420, y: 38, t: 'Oben: früheste Zeiten (vorwärts)', fs: 12},
+      {id: 'l2', k: 'text', x: 420, y: 72, t: 'Unten: späteste Zeiten (rückwärts)', fs: 12},
+      {id: 'l3', k: 'text', x: 420, y: 106, t: 'Mitte: oben Dauer, unten Gesamtpuffer', fs: 12},
+      {id: 'l4', k: 'text', x: 420, y: 140, t: 'Links: Anfang, rechts: Ende', fs: 12},
     ], edges: []}],
-    ['tip', '**Merkregel:** oben die **frühen** Zeiten (Vorwärtsrechnung), unten die **späten** Zeiten (Rückwärtsrechnung). Links ist immer der **Anfang**, rechts das **Ende**. Der Puffer ist der Unterschied zwischen unten und oben.'],
+    ['tip', '**Merkregel:** `FAZ | D | FEZ` oben, `SAZ | GP | SEZ` unten. Oben die **frühen**, unten die **späten** Zeiten; links der **Anfang**, rechts das **Ende**. In der Mitte steht oben die **Dauer** und unten der **Gesamtpuffer**. Der **freie Puffer (FP)** steht klein unter dem Knoten.'],
     ['h', 'Ablauf in vier Schritten'],
     ['steps', ['**Vorgänge und Abhängigkeiten** aus der Tabelle als Knoten und Pfeile zeichnen.', '**Vorwärts** von links nach rechts: FAZ und FEZ eintragen (bei Zusammenlauf das **Maximum**).', '**Rückwärts** von rechts nach links: SEZ und SAZ eintragen (bei Verzweigung das **Minimum**).', '**Puffer** berechnen (GP = SAZ - FAZ); Vorgänge mit GP = 0 bilden den **kritischen Pfad**.']],
     ['note', 'Ein Pfad ist eine Kette von Vorgängen von Start bis Ende. Seine Länge ist die Summe der Dauern. Der **längste Pfad** ist der kritische Pfad und bestimmt die Projektdauer. Pfade daneben haben Puffer.'],
@@ -5274,9 +5274,9 @@ AP2.page('ps-netzplan', {
   const T = [['a', 'Analyse', 3, 0, 3, 0, 3, 0, 0, 1], ['b', 'Entwurf', 4, 3, 7, 3, 7, 0, 0, 1], ['c', 'Datenbank', 5, 7, 12, 7, 12, 0, 0, 1], ['e', 'Backend', 8, 12, 20, 12, 20, 0, 0, 1],
     ['f', 'Integration', 3, 20, 23, 20, 23, 0, 0, 1], ['g', 'Test', 4, 23, 27, 23, 27, 0, 0, 1], ['d', 'Oberfläche', 6, 7, 13, 14, 20, 7, 7, 0]];
   const X = {a: 90, b: 280, c: 470, e: 660, f: 850, g: 1040, d: 565};
-  const net = (phase, cap) => ({w: 1130, h: 270, keep: 900, cap, nodes: T.map(([id, name, d, faz, fez, saz, sez, gp, fp, crit]) => ({id, k: 'np', x: X[id], y: id === 'd' ? 215 : 70,
+  const net = (phase, cap) => ({w: 1130, h: 240, keep: 900, cap, nodes: T.map(([id, name, d, faz, fez, saz, sez, gp, fp, crit]) => ({id, k: 'np', x: X[id], y: id === 'd' ? 190 : 60,
     s: phase === 3 && crit ? 'accent' : 'plain', t: Object.assign({nr: id.toUpperCase(), name, d, faz, fez}, phase > 1 ? {saz, sez} : {}, phase > 2 ? {gp, fp} : {})})),
-  edges: [{a: 'a', b: 'b'}, {a: 'b', b: 'c'}, {a: 'c', b: 'e'}, {a: 'e', b: 'f'}, {a: 'f', b: 'g'}, {a: 'b', b: 'd', via: [[280, 215]]}, {a: 'd', b: 'f', via: [[850, 215]]}]});
+  edges: [{a: 'a', b: 'b'}, {a: 'b', b: 'c'}, {a: 'c', b: 'e'}, {a: 'e', b: 'f'}, {a: 'f', b: 'g'}, {a: 'b', b: 'd', via: [[280, 190]]}, {a: 'd', b: 'f', via: [[850, 190]]}]});
   AP2.add('ps-netzplan', [
     ['h', 'Schritt für Schritt: ein vollständiges Beispiel'],
     ['p', 'Ein Team entwickelt eine kleine Web-Anwendung. Die Vorgänge, ihre Dauern (in Tagen) und Vorgänger:'],
