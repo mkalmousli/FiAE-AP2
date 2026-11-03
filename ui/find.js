@@ -212,6 +212,7 @@
   AP2.find = {
     // hit: {si, a} aus der Suche oder null (nur markieren, nicht springen).
     open(id, terms, hit, shown) {
+      if (AP2.router.tab) { AP2.router.go(id); return; } // Strg-/Mittelklick: neuer Tab, hier nichts markieren
       const hits = AP2.search.marks(id, terms);
       cur = hits.length ? {id, shown, hits, at: hit ? hits.findIndex((x) => x.si === hit.si && x.a <= hit.a && hit.a < x.b) : -1} : null;
       if (AP2.router.current() === id) { show(true); sync(); } else AP2.router.go(id);
