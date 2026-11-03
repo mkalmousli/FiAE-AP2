@@ -310,3 +310,4 @@ AP2.quest('infra', [
     {lv: 2, k: 'tf', q: 'IP-Telefone werden oft per **PoE** über das Netzwerkkabel mit Strom versorgt.', a: true, e: 'Power over Ethernet spart Netzteile.'},
     {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['VoIP sollte TCP nutzen, damit verlorene Sprachpakete wiederholt werden.', 'RTCP liefert Qualitätsberichte.', 'Eine IP-PBX ist eine Telefonanlage für VoIP.', 'Ein ATA bindet analoge Telefone an.'], a: 0, e: 'Wiederholte Sprachpakete kämen zu spät, daher **UDP**.'}
   ]},
+]);

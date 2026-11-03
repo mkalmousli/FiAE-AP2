@@ -244,3 +244,4 @@ AP2.quest('eua', [
     {k: 'multi', lv: 2, q: 'Welche Informationen entnimmt man einem UML-Klassendiagramm für die Programmierung? (mehrere)', o: ['Attribute mit Typ und Sichtbarkeit', 'Methodensignaturen', 'Beziehungen und Multiplizitäten', 'Die genaue Implementierung der Methodenrümpfe'], a: [0, 1, 2], e: 'Das Klassendiagramm zeigt die **Struktur**, nicht die Algorithmen.'},
     {lv: 3, q: 'Was bedeutet ein **Pfeil** an einer Assoziation (Navigierbarkeit) von Rechnung zu Kunde?', o: ['Rechnung kennt Kunde (hat eine Referenz), Kunde muss Rechnung nicht kennen', 'Kunde erbt von Rechnung', 'Rechnung ist Teil von Kunde', 'Beide kennen sich gegenseitig'], a: 0, e: 'Navigierbarkeit: nur die Klasse am Pfeilanfang braucht das **Referenzattribut**.'},
   ]},
+]);

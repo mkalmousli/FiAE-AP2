@@ -273,3 +273,4 @@ AP2.quest('ps', [
     {q: 'Wo findet der **Systemtest** statt?', o: ['In einer produktionsnahen Testumgebung', 'Auf dem Rechner des Kunden im Livebetrieb', 'Nur im Kopf des Entwicklers', 'Im Compiler'], a: 0, lv: 2, e: 'Gesamtsystem in einer **Testumgebung**, die der Produktion ähnelt.'},
     {q: 'Welche Aussage ist **FALSCH**?', o: ['Der Abnahmetest ist ein White-Box-Test.', 'Regressionstests lassen sich gut automatisieren.', 'Ein Unit-Test prüft eine einzelne Klasse.', 'Integrationstests prüfen Schnittstellen.'], a: 0, lv: 2, e: 'Der Kunde testet gegen Anforderungen = **Black-Box**.'},
   ]},
+]);

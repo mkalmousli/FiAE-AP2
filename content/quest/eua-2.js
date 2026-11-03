@@ -347,3 +347,4 @@ if (!res.ok) {
     {q: 'Was bedeutet Statuscode **204**?', o: ['Erfolg, aber kein Inhalt im Body', 'Nicht gefunden', 'Weitergeleitet', 'Zu viele Anfragen'], a: 0, lv: 2, e: 'Typisch nach DELETE oder PUT ohne Rückgabedaten.'},
     {k: 'tf', q: 'Eine API sollte API-Schlüssel und Tokens nur über HTTPS übertragen.', a: true, lv: 1, e: 'Über HTTP wären sie im Klartext mitlesbar.'},
   ]},
+]);

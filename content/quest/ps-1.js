@@ -223,3 +223,4 @@ AP2.quest('ps', [
     {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Selbstkosten = Herstellkosten ohne Gemeinkosten', 'HK = FM + MGK + FL + FGK', 'SK = HK + VwGK + VtGK', 'Der Gewinn wird auf die Selbstkosten aufgeschlagen'], a: 0, e: 'Selbstkosten enthalten **zusätzlich** Verwaltungs- und Vertriebsgemeinkosten.'},
     {k: 'gap', q: 'Herstellkosten plus Verwaltungs- und Vertriebsgemeinkosten ergeben die ___.', a: ['Selbstkosten', 'SK'], e: '**Selbstkosten** sind die gesamten Kosten eines Produkts.'},
   ]},
+]);

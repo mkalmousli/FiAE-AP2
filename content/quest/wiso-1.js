@@ -237,3 +237,4 @@ AP2.quest('wiso', [
     {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['In der PKV sind Kinder automatisch beitragsfrei mitversichert.', 'Zahnersatz bekommt in der GKV einen Festzuschuss.', 'Vorsorge und Impfungen sind GKV-Leistungen.', 'Der allgemeine Beitragssatz der GKV beträgt 14,6 %.'], a: 0, e: 'In der PKV braucht **jede Person einen eigenen Vertrag**.'},
     {k: 'gap', lv: 2, q: 'Den kassenindividuellen Aufschlag auf 14,6 % nennt man ___.', a: ['Zusatzbeitrag'], e: 'Durchschnittlich **2,9 %** (2026), je Hälfte AG/AN.'},
   ]},
+]);

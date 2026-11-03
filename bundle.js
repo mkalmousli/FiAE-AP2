@@ -4,7 +4,7 @@ AP2.pages = function () {};
 // Einzige Quelle der Wahrheit für Theme, Fortschritt und Navigation.
 (function () {
   const PREFIX = 'ap2.';
-  const saved = ['theme', 'done', 'scores', 'sideW', 'navOpen', 'exams', 'game', 'srs', 'badges', 'recent', 'sideBlock'];
+  const saved = ['theme', 'done', 'scores', 'sideW', 'navOpen', 'exams', 'game', 'srs', 'badges', 'recent', 'sideBlock', 'quest'];
   const dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
   const data = {theme: dark ? 'dark' : 'light', done: {}, scores: {}, drawer: false, route: '', sideW: 0, navOpen: {}, exams: {}, game: {}, srs: {}, badges: {}, recent: [], sideBlock: ''};
   const subs = {};
@@ -249,9 +249,13 @@ AP2.pages = function () {};
 // Hash-Router: #/seiten-id
 (function () {
   const current = () => decodeURIComponent(location.hash.replace(/^#\/?/, '')) || 'home';
-  const go = (id) => { location.hash = '/' + id; };
+  // Während eines Strg-/Mittelklicks (router.tab, gesetzt von AP2.press) öffnet go die Seite in einem neuen Tab.
+  const go = (id) => {
+    if (AP2.router.tab) { AP2.router.tab = false; window.open(location.pathname + location.search + '#/' + id, '_blank', 'noopener'); return; }
+    location.hash = '/' + id;
+  };
   window.addEventListener('hashchange', () => AP2.state.set('route', current()));
-  AP2.router = {current, go};
+  AP2.router = {current, go, tab: false};
 })();
 ;
 // core/store.js
@@ -951,9 +955,13 @@ AP2.pages = function () {};
     on(el, 'pointercancel', () => { hovered = false; paint(); });
     on(el, 'focus', () => { focused = true; paint(); });
     on(el, 'blur', () => { focused = false; paint(); });
-    on(el, 'click', (ev) => cfg.fn(ev));
+    // Strg/Cmd/Umschalt + Klick oder Mittelklick: Navigation (AP2.router.go) öffnet einen neuen Tab.
+    const run = (ev, tab) => { AP2.router.tab = tab; try { cfg.fn(ev); } finally { AP2.router.tab = false; } };
+    on(el, 'click', (ev) => run(ev, ev.ctrlKey || ev.metaKey || ev.shiftKey));
+    on(el, 'auxclick', (ev) => { if (ev.button === 1) { ev.preventDefault(); run(ev, true); } });
+    on(el, 'mousedown', (ev) => { if (ev.button === 1) ev.preventDefault(); });
     on(el, 'keydown', (ev) => {
-      if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); cfg.fn(ev); }
+      if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); run(ev, ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)); }
     });
     el.repaint = paint;
     return el;
@@ -2194,6 +2202,7 @@ AP2.pages = function () {};
     ex.ids.forEach((id) => {
       if (!sheets.length || sheets.includes(id)) btns.push(AP2.btn({text: multi ? 'Spickzettel ' + shortOf(id) : 'Spickzettel', small: true, icon: AP2.icon('cards', 15), fn: () => AP2.router.go('spick/' + id)}));
     });
+    ex.ids.forEach((id) => { if (AP2.questData && AP2.questData()[id]) btns.push(AP2.btn({text: multi ? 'Quest ' + shortOf(id) : 'Quest', small: true, kind: 'primary', icon: AP2.icon('sword', 15), fn: () => AP2.router.go('quest/' + id)})); });
     ex.ids.forEach((id) => btns.push(AP2.btn({text: multi ? 'Trainieren ' + shortOf(id) : 'Trainieren', small: true, icon: AP2.icon('play', 15), fn: () => AP2.router.go('trainer/block/' + id)})));
     if (st.next) btns.push(AP2.btn({text: 'Themen', small: true, kind: 'ghost', icon: AP2.icon('book', 15), fn: () => AP2.router.go(st.next.id)}));
     return gk().panel([title, meta, desc, prog, gk().bar(st.list.length ? st.done / st.list.length : 0),
@@ -2204,6 +2213,7 @@ AP2.pages = function () {};
     return row(list.map(examCard));
   };
   const examLinks = () => row([
+    AP2.btn({text: 'Alle Quests', small: true, icon: AP2.icon('sword', 15), fn: () => AP2.router.go('quest')}),
     AP2.btn({text: 'Alle Spickzettel', small: true, icon: AP2.icon('cards', 15), fn: () => AP2.router.go('spick')}),
     AP2.views['exam-info'] || AP2.store.get('exam-info') ? AP2.btn({text: 'Probeprüfungen schreiben', small: true, icon: AP2.icon('trophy', 15), fn: () => AP2.router.go('exam-info')}) : null,
   ].filter(Boolean), S.sp[2]);
@@ -2219,7 +2229,7 @@ AP2.pages = function () {};
       return chip(p ? p.t : (AP2.viewTitles[id.split('/')[0]] || id), id);
     }));
   };
-  const quick = () => row([['cards', 'Spickzettel', 'spick'], ['map', 'Themenkarte', 'themen'], ['chart', 'Formelsammlung', 'ref-formeln'], ['clock', 'Prüfungsablauf und Notenrechner', 'ref-ablauf']]
+  const quick = () => row([['sword', 'Quests', 'quest'], ['cards', 'Spickzettel', 'spick'], ['map', 'Themenkarte', 'themen'], ['chart', 'Formelsammlung', 'ref-formeln'], ['clock', 'Prüfungsablauf und Notenrechner', 'ref-ablauf']]
     .filter(([, , id]) => AP2.views[id] || AP2.store.get(id)).map(([icon, text, id]) => AP2.btn({text, icon: AP2.icon(icon, 18), fn: () => AP2.router.go(id)})), S.sp[2]);
   AP2.views.home = () => {
     AP2.ctx.id = 'home';
@@ -2994,6 +3004,7 @@ AP2.pages = function () {};
     {t: 'Planen eines Softwareproduktes', time: '90 Min', pts: '100 Punkte', ids: ['ps', 'infra'], d: 'Projektmanagement, Anforderungen, UML, Datenmodell, Qualität, Recht sowie Infrastruktur und IT-Sicherheit'},
     {t: 'Entwicklung und Umsetzung von Algorithmen', time: '90 Min', pts: '100 Punkte', ids: ['eua'], d: 'Pseudocode, Struktogramm, OOP, Datenstrukturen, Sortieren und Suchen, SQL, Testen'},
     {t: 'Wirtschafts- und Sozialkunde', time: '60 Min', pts: '100 Punkte', ids: ['wiso'], d: 'Ausbildung, Arbeitsrecht, Mitbestimmung, Sozialversicherung, Wirtschaft, Unternehmen'},
+    {t: 'Deutsch (Berufsschule)', time: 'Schulprüfung', pts: 'Zusatz', ids: ['de'], d: 'Geschäftsbrief nach DIN 5008, Bewerbung, Erörterung, Kommunikation, Präsentation, Sprachrichtigkeit'},
   ];
   AP2.spickExams = EXAMS;
 
@@ -3149,6 +3160,7 @@ AP2.pages = function () {};
     const meta = sheet.meta ? h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[2], marginBottom: S.sp[4]}}, sheet.meta.map(metaTile)) : null;
     const blk = sheet.block || sheet.id;
     const actions = h('div', {attrs: {class: 'spick-noprint'}, style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[2], marginBottom: S.sp[4]}}, [
+      AP2.questData && AP2.questData()[blk] ? AP2.btn({text: 'Quest starten', icon: AP2.icon('sword', 16), kind: 'primary', small: true, fn: () => AP2.router.go('quest/' + blk)}) : null,
       AP2.btn({text: 'Bereich trainieren', icon: AP2.icon('play', 16), kind: 'primary', small: true, fn: () => AP2.router.go('trainer/block/' + blk)}),
       AP2.btn({text: 'Drucken / PDF', icon: AP2.icon('copy', 16), small: true, fn: () => window.print()}),
       AP2.btn({text: 'Themenkarte', icon: AP2.icon('map', 16), small: true, fn: () => AP2.router.go('themen')}),
@@ -3210,6 +3222,348 @@ AP2.pages = function () {};
     return overview();
   };
   AP2.viewTitles.spick = 'Spickzettel';
+})();
+;
+// ui/quest.js
+// Quest: je Prüfungsbereich ein Abenteuer aus Stationen (eine je Thema), nur über Fragen. Routen: #/quest, #/quest/<block>, #/quest/<block>/<station>|boss|marathon.
+// Daten: content/quest/<block>-N.js ruft AP2.quest(block, [{id: Seiten-ID, t: Stationsname, qs: [Fragen]}]) auf.
+// Fragetypen: Auswahl {q,o,a}, {k:'multi',a:[..]}, {k:'tf',a:bool}, {k:'num',a,tol,u}, {k:'gap',a:[..]}, {k:'order',o:[richtige Reihenfolge]}, {k:'match',o:[[l,r]..]}; optional c (Code), lv (1 bis 3), e (Erklärung).
+(function () {
+  const {h, on, rich} = AP2;
+  const S = AP2.S;
+  const data = {};
+  const AREAS = ['ps', 'infra', 'eua', 'wiso'];
+  AP2.quest = (block, stations) => { (data[block] = data[block] || []).push(...stations); };
+  AP2.questData = () => data;
+  const qid = (st, q) => 'quest:' + AP2.bank.qid(st, q.q + (q.c || '')).split(':')[1];
+  const prog = () => AP2.state.get('quest') || {};
+  const saveProg = (key, pct) => {
+    const all = Object.assign({}, prog());
+    const old = all[key] || {best: 0, runs: 0};
+    all[key] = {best: Math.max(old.best, pct), runs: old.runs + 1, last: pct};
+    AP2.state.set('quest', all);
+  };
+  const starsOf = (pct) => (pct >= 0.9 ? 3 : pct >= 0.7 ? 2 : pct >= 0.5 ? 1 : 0);
+  const shuffle = (list) => { const a = list.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const nameOf = (st) => st.t || (AP2.store.get(st.id) || {}).t || st.id;
+  const blockName = (b) => (AP2.store.block(b) || {t: b}).t;
+  const KIND = {mc: 'Auswahl', multi: 'Mehrfachauswahl', tf: 'Wahr oder falsch', num: 'Berechnung', gap: 'Lückentext', order: 'Reihenfolge', match: 'Zuordnung'};
+  const title = (txt, size) => AP2.tint(h('h1', {text: txt, style: {fontSize: size || S.f.h1, fontWeight: S.fw.bold, letterSpacing: '-0.02em', lineHeight: S.lh.tight, margin: '0 0 ' + S.sp[2]}}), 'text');
+  const para = (txt, tone) => AP2.tint(h('p', {style: {fontSize: S.f.md, lineHeight: S.lh.body, margin: '0 0 ' + S.sp[4]}}, rich(txt)), tone || 'text2');
+  const pill = (text, tone) => {
+    const el = h('span', {text, style: {padding: '2px 9px', borderRadius: S.r.pill, fontSize: '11px', fontWeight: S.fw.bold, letterSpacing: '0.04em'}});
+    return AP2.theme.bind(el, (n, c) => { n.style.backgroundColor = c[tone + 'Soft'] || c.accentSoft; n.style.color = c[tone] || c.accent; });
+  };
+  const starRow = (n, size) => (() => {
+    const row = h('span', {style: {display: 'inline-flex', gap: '1px'}});
+    for (let i = 0; i < 3; i++) { const s = AP2.tint(h('span', {style: {display: 'flex'}}, [AP2.icon('star', size || 14)]), i < n ? 'gold' : 'border'); row.appendChild(s); }
+    return row;
+  })();
+
+  // ---------- Übersicht aller Quests ----------
+  const overview = () => {
+    const root = h('div', {}, [AP2.gk.kicker('Lernabenteuer', 'accent'), title('Quests'),
+      para('Jeder Prüfungsbereich ist eine Reise durch **alle Themen**, eine Station je Thema, nur mit Fragen: Auswahl, Rechnen, Lückentext, Reihenfolge, Zuordnen, Code lesen. Sammle **bis zu drei Sterne** je Station, baue **Combos** auf und besiege am Ende den **Endboss**.')]);
+    const grid = h('div', {style: {display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: S.sp[3]}});
+    AREAS.filter((b) => data[b]).forEach((b) => {
+      const list = data[b];
+      const n = list.reduce((a, st) => a + st.qs.length, 0);
+      const p = prog();
+      const stars = list.reduce((a, st) => a + starsOf((p[b + '/' + st.id] || {}).best || 0), 0);
+      const cleared = list.filter((st) => starsOf((p[b + '/' + st.id] || {}).best || 0) > 0).length;
+      const el = h('div', {style: {padding: '18px 20px', borderRadius: S.r.lg, border: '1px solid', borderTop: '5px solid'}}, [
+        AP2.tint(h('div', {text: blockName(b), style: {fontSize: S.f.lg, fontWeight: S.fw.bold, marginBottom: '4px'}}), 'text'),
+        AP2.tint(h('div', {text: list.length + ' Stationen  ·  ' + n + ' Fragen', style: {fontSize: S.f.sm}}), 'text2'),
+        h('div', {style: {display: 'flex', alignItems: 'center', gap: S.sp[2], margin: S.sp[3] + ' 0 ' + S.sp[2]}}, [AP2.tint(h('span', {style: {display: 'flex'}}, [AP2.icon('star', 16)]), 'gold'),
+          AP2.tint(h('span', {text: stars + ' / ' + list.length * 3 + ' Sterne  ·  ' + cleared + ' Stationen geschafft', style: {fontSize: S.f.sm, fontWeight: S.fw.semi}}), 'text')]),
+        AP2.gk.bar(list.length ? stars / (list.length * 3) : 0)]);
+      grid.appendChild(AP2.press(el, {fn: () => AP2.router.go('quest/' + b), label: 'Quest ' + blockName(b), base: (c) => ({backgroundColor: c.surface, borderColor: c.border, borderTopColor: c.block[b]}), hover: (c) => ({backgroundColor: c.hover})}));
+    });
+    root.appendChild(grid);
+    return root;
+  };
+
+  // ---------- Karte eines Bereichs: Stationen als Pfad ----------
+  const mapView = (b) => {
+    AP2.theme.setTone(b);
+    const list = data[b];
+    const p = prog();
+    const nextIdx = Math.max(0, list.findIndex((st) => starsOf((p[b + '/' + st.id] || {}).best || 0) === 0));
+    const n = list.reduce((a, st) => a + st.qs.length, 0);
+    const root = h('div', {}, [AP2.gk.kicker('Quest  ·  ' + list.length + ' Stationen  ·  ' + n + ' Fragen', 'accent'), title(blockName(b)),
+      para('Arbeite dich Station für Station durch alle Themen. Ab **50 %** gibt es einen Stern, ab **70 %** zwei, ab **90 %** drei. Die markierte Station ist dein nächstes Ziel.')]);
+    const modes = h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[2], marginBottom: S.sp[5]}}, [
+      AP2.btn({text: 'Weiter: ' + nameOf(list[nextIdx]), icon: AP2.icon('play', 16), kind: 'primary', fn: () => AP2.router.go('quest/' + b + '/' + list[nextIdx].id)}),
+      AP2.btn({text: 'Endboss (30 Fragen, 3 Leben)', icon: AP2.icon('sword', 16), fn: () => AP2.router.go('quest/' + b + '/boss')}),
+      AP2.btn({text: 'Marathon: alle ' + n + ' Fragen', icon: AP2.icon('route', 16), fn: () => AP2.router.go('quest/' + b + '/marathon')}),
+      AP2.spickSheets && AP2.spickSheets().some((s) => s.id === b) ? AP2.btn({text: 'Spickzettel', icon: AP2.icon('cards', 16), fn: () => AP2.router.go('spick/' + b)}) : null]);
+    root.appendChild(modes);
+    // Serpentine: Reihen abwechselnd links und rechts, verbunden durch eine gestrichelte Linie (Rand der Kacheln).
+    const path = h('div', {style: {display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 210px), 1fr))', gap: S.sp[3]}});
+    list.forEach((st, i) => {
+      const rec = p[b + '/' + st.id];
+      const stars = starsOf(rec ? rec.best : 0);
+      const isNext = i === nextIdx;
+      const num = h('div', {text: String(i + 1), style: {width: '34px', height: '34px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: S.fw.bold, fontSize: S.f.sm, flexShrink: 0, border: '3px solid'}});
+      AP2.theme.bind(num, (nn, c) => { const done = stars > 0; nn.style.backgroundColor = done ? c.accent : isNext ? c.goldSoft : c.surface2; nn.style.color = done ? c.onAccent : c.text; nn.style.borderColor = isNext ? c.gold : done ? c.accent : c.border; });
+      const el = h('div', {style: {padding: '12px 14px', borderRadius: S.r.lg, border: '2px solid', display: 'flex', gap: S.sp[3], alignItems: 'center', position: 'relative'}}, [num,
+        h('div', {style: {minWidth: 0, flex: '1 1 0'}}, [AP2.tint(h('div', {text: nameOf(st), style: {fontSize: S.f.sm, fontWeight: S.fw.semi, lineHeight: '1.3'}}), 'text'),
+          h('div', {style: {display: 'flex', alignItems: 'center', gap: S.sp[2], marginTop: '4px'}}, [starRow(stars, 13),
+            AP2.tint(h('span', {text: st.qs.length + ' Fragen' + (rec ? '  ·  Bestwert ' + Math.round(rec.best * 100) + ' %' : ''), style: {fontSize: '11px'}}), 'text3')])]),
+        isNext ? pill('NÄCHSTES ZIEL', 'gold') : null]);
+      if (isNext) { el.lastChild.style.position = 'absolute'; el.lastChild.style.top = '-10px'; el.lastChild.style.right = '10px'; }
+      path.appendChild(AP2.press(el, {fn: () => AP2.router.go('quest/' + b + '/' + st.id), label: 'Station ' + (i + 1) + ': ' + nameOf(st),
+        base: (c) => ({backgroundColor: stars === 3 ? c.goldSoft : c.surface, borderColor: isNext ? c.gold : stars ? c.accent : c.border, borderStyle: stars || isNext ? 'solid' : 'dashed'}), hover: (c) => ({backgroundColor: c.hover})}));
+    });
+    root.appendChild(path);
+    return root;
+  };
+
+  // ---------- Eingaben je Fragetyp: liefern {el, check() -> bool|null, show(ok)} ----------
+  const choiceBtn = (label, idx, onPick) => {
+    const badge = h('span', {text: idx < 9 ? String(idx + 1) : '', style: {width: '26px', height: '26px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: S.f.xs, fontWeight: S.fw.bold, flexShrink: 0, border: '1px solid'}});
+    const el = h('div', {style: {display: 'flex', alignItems: 'center', gap: S.sp[3], padding: '11px 14px', borderRadius: S.r.md, border: '2px solid', marginBottom: S.sp[2], fontSize: S.f.md, lineHeight: '1.45'}},
+      [badge, h('div', {style: {flex: '1 1 0', overflowWrap: 'anywhere'}}, rich(label))]);
+    el.mode = 'idle';
+    AP2.press(el, {fn: () => onPick(idx), label: String(label).replace(/\*\*|`/g, ''), base: (c) => {
+      const m = el.mode;
+      const col = m === 'right' ? [c.okSoft, c.ok] : m === 'wrong' ? [c.badSoft, c.bad] : m === 'sel' ? [c.accentSoft, c.accent] : m === 'miss' ? [c.surface, c.ok] : [c.surface, c.border];
+      AP2.st(badge, {backgroundColor: col[1] === c.border ? c.surface2 : col[1], color: col[1] === c.border ? c.text2 : c.surface, borderColor: col[1]});
+      return {backgroundColor: col[0], borderColor: col[1], color: m === 'dim' ? c.text3 : c.text, borderStyle: m === 'miss' ? 'dashed' : 'solid'};
+    }, hover: (c) => (el.locked ? {} : {borderColor: c.accent})});
+    el.set = (m) => { el.mode = m; el.repaint(); };
+    return el;
+  };
+  const inputs = {};
+  inputs.mc = (q, done) => {
+    const idx = shuffle(q.o.map((_, i) => i));
+    let locked = false;
+    const btns = idx.map((orig, pos) => choiceBtn(q.o[orig], pos, () => { if (locked) return; locked = true; const ok = orig === q.a; btns.forEach((b, j) => { b.locked = true; b.set(idx[j] === q.a ? 'right' : j === pos ? 'wrong' : 'dim'); }); done(ok, ok ? '' : rich('Richtig: **' + q.o[q.a] + '**')); }));
+    return {el: h('div', {}, btns), instant: true, key: (n) => { if (btns[n]) btns[n].click(); }};
+  };
+  inputs.tf = (q, done) => inputs.mc({q: q.q, o: ['Wahr', 'Falsch'], a: q.a ? 0 : 1}, done);
+  inputs.multi = (q, done) => {
+    const idx = shuffle(q.o.map((_, i) => i));
+    const sel = new Set();
+    let locked = false;
+    const btns = idx.map((orig, pos) => choiceBtn(q.o[orig], pos, () => { if (locked) return; if (sel.has(pos)) sel.delete(pos); else sel.add(pos); btns[pos].set(sel.has(pos) ? 'sel' : 'idle'); }));
+    return {el: h('div', {}, [AP2.tint(h('div', {text: 'Mehrere Antworten richtig. Wähle alle passenden aus und prüfe.', style: {fontSize: S.f.xs, marginBottom: S.sp[2]}}), 'text3')].concat(btns)),
+      key: (n) => { if (btns[n]) btns[n].click(); },
+      submit: () => {
+        locked = true;
+        const want = new Set(q.a);
+        let ok = true;
+        btns.forEach((b, j) => { const should = want.has(idx[j]); const has = sel.has(j); if (should !== has) ok = false; b.locked = true; b.set(should && has ? 'right' : should ? 'miss' : has ? 'wrong' : 'dim'); });
+        done(ok, ok ? '' : rich('Richtig sind: **' + q.a.map((i) => q.o[i]).join('**, **') + '**'));
+      }};
+  };
+  const textField = (ph, mono) => AP2.field(h('input', {attrs: {type: 'text', placeholder: ph, autocomplete: 'off', spellcheck: 'false'}, style: {width: '100%', fontFamily: mono ? S.font.mono : S.font.sans, fontSize: S.f.lg}}));
+  inputs.num = (q, done) => {
+    const f = textField('Ergebnis' + (q.u ? ' in ' + q.u : ''), true);
+    const unit = q.u ? AP2.tint(h('span', {text: q.u, style: {fontSize: S.f.md, fontWeight: S.fw.semi, whiteSpace: 'nowrap'}}), 'text2') : null;
+    setTimeout(() => f.focus(), 30);
+    return {el: h('div', {style: {display: 'flex', gap: S.sp[3], alignItems: 'center'}}, [f, unit]), field: f,
+      submit: () => {
+        const raw = f.value.trim().replace(/\s|€|%/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.');
+        const val = parseFloat(raw);
+        const ok = !isNaN(val) && Math.abs(val - q.a) <= (q.tol || 0) + 1e-6 + Math.abs(q.a) * 1e-9;
+        f.disabled = true;
+        done(ok, ok ? '' : rich('Richtig: **' + String(q.a).replace('.', ',') + (q.u ? ' ' + q.u : '') + '**'));
+      }};
+  };
+  const norm = (s) => String(s).toLowerCase().replace(/[\s\-_.]+/g, ' ').replace(/ß/g, 'ss').trim();
+  inputs.gap = (q, done) => {
+    const f = textField('Antwort eintippen');
+    setTimeout(() => f.focus(), 30);
+    return {el: f, field: f, submit: () => { const v = norm(f.value); const ok = !!v && [].concat(q.a).some((a) => norm(a) === v); f.disabled = true; done(ok, ok ? '' : rich('Richtig: **' + [].concat(q.a)[0] + '**')); }};
+  };
+  const chip = (text, i, fn) => {
+    const el = h('span', {style: {display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 12px', borderRadius: S.r.md, border: '2px solid', fontSize: S.f.sm, lineHeight: '1.4', margin: '0 6px 6px 0'}}, rich(text));
+    el.tone = null;
+    AP2.press(el, {fn, label: String(text), base: (c) => (el.tone != null ? {backgroundColor: c.catSoft[el.tone % 7], borderColor: c.cat[el.tone % 7], color: c.text} : el.bad ? {backgroundColor: c.badSoft, borderColor: c.bad, color: c.text} : el.good ? {backgroundColor: c.okSoft, borderColor: c.ok, color: c.text} : {backgroundColor: c.surface, borderColor: c.border, color: c.text}), hover: (c) => ({borderColor: c.accent})});
+    return el;
+  };
+  inputs.order = (q, done) => {
+    let pool = shuffle(q.o.map((_, i) => i));
+    if (pool.every((v, i) => v === i) && pool.length > 1) pool = pool.slice(1).concat(pool[0]);
+    const picked = [];
+    let locked = false;
+    const top = h('div', {style: {minHeight: '48px', padding: '8px', borderRadius: S.r.md, border: '2px dashed', marginBottom: S.sp[3]}});
+    AP2.theme.bind(top, (n, c) => { n.style.borderColor = c.border; });
+    const bottom = h('div');
+    const draw = () => {
+      AP2.dispose(top); AP2.dispose(bottom);
+      if (!picked.length) top.appendChild(AP2.tint(h('span', {text: 'Tippe die Elemente unten in der richtigen Reihenfolge an.', style: {fontSize: S.f.xs}}), 'text3'));
+      picked.forEach((orig, pos) => { const c = chip((pos + 1) + '. ' + q.o[orig], pos, () => { if (locked) return; picked.splice(pos, 1); draw(); }); c.tone = pos; top.appendChild(c); c.repaint(); });
+      pool.filter((x) => !picked.includes(x)).forEach((orig) => bottom.appendChild(chip(q.o[orig], 0, () => { if (locked) return; picked.push(orig); draw(); })));
+    };
+    draw();
+    return {el: h('div', {}, [top, bottom]), submit: () => {
+      if (picked.length < q.o.length) { pool.filter((x) => !picked.includes(x)).forEach((x) => picked.push(x)); }
+      locked = true;
+      const ok = picked.every((v, i) => v === i);
+      draw();
+      [].forEach.call(top.children, (c, i) => { c.tone = null; c.good = picked[i] === i; c.bad = !c.good; c.repaint(); });
+      done(ok, ok ? '' : rich('Richtig: ' + q.o.map((x, i) => (i + 1) + '. **' + x + '**').join('  ')));
+    }};
+  };
+  inputs.match = (q, done) => {
+    const right = shuffle(q.o.map((_, i) => i));
+    const pair = {};
+    let cur = null;
+    let locked = false;
+    const lefts = q.o.map((p, i) => chip(p[0], i, () => { if (locked) return; cur = i; paint(); }));
+    const rights = right.map((orig) => chip(q.o[orig][1], 0, () => {
+      if (locked || cur == null) return;
+      Object.keys(pair).forEach((k) => { if (pair[k] === orig) delete pair[k]; });
+      pair[cur] = orig; cur = null; paint();
+    }));
+    const paint = () => {
+      lefts.forEach((el, i) => { el.tone = pair[i] != null ? i : null; el.style.outline = cur === i ? '3px solid' : 'none'; el.repaint(); });
+      rights.forEach((el, j) => { const owner = Object.keys(pair).find((k) => pair[k] === right[j]); el.tone = owner != null ? Number(owner) : null; el.repaint(); });
+    };
+    const col = (kids, label) => h('div', {style: {flex: '1 1 240px', minWidth: 0}}, [AP2.tint(h('div', {text: label, style: {fontSize: '11px', fontWeight: S.fw.bold, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px'}}), 'text3'),
+      h('div', {style: {display: 'flex', flexDirection: 'column', alignItems: 'stretch'}}, kids)]);
+    return {el: h('div', {}, [AP2.tint(h('div', {text: 'Links antippen, dann rechts das passende Gegenstück.', style: {fontSize: S.f.xs, marginBottom: S.sp[2]}}), 'text3'),
+      h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[4]}}, [col(lefts, 'Begriff'), col(rights, 'Gegenstück')])]),
+    submit: () => {
+      locked = true;
+      let ok = true;
+      lefts.forEach((el, i) => { el.tone = null; el.good = pair[i] === i; el.bad = !el.good; if (!el.good) ok = false; el.style.outline = 'none'; el.repaint(); });
+      rights.forEach((el) => { el.tone = null; el.repaint(); });
+      done(ok, ok ? '' : rich(q.o.map((p) => '**' + p[0] + '** → ' + p[1]).join('  ·  ')));
+    }};
+  };
+
+  // ---------- Spielrunde ----------
+  const play = (b, mode) => {
+    AP2.theme.setTone(b);
+    const list = data[b];
+    const station = list.find((st) => st.id === mode);
+    let qs;
+    let label;
+    let lives = Infinity;
+    if (station) { qs = shuffle(station.qs.map((q) => ({q, st: station}))); label = nameOf(station); } else if (mode === 'boss') {
+      qs = shuffle([].concat(...list.map((st) => st.qs.filter((q) => (q.lv || 2) >= 2).map((q) => ({q, st}))))).slice(0, 30); label = 'Endboss'; lives = 3;
+    } else { qs = shuffle([].concat(...list.map((st) => st.qs.map((q) => ({q, st}))))); label = 'Marathon'; }
+    const key = b + '/' + mode;
+    const total = qs.length;
+    const st = {i: 0, right: 0, combo: 0, best: 0, xp: 0, wrong: []};
+    const root = h('div');
+    const head = h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[3], alignItems: 'center', marginBottom: S.sp[3]}});
+    const barWrap = h('div', {style: {marginBottom: S.sp[5]}});
+    const stage = h('div');
+    root.appendChild(head); root.appendChild(barWrap); root.appendChild(stage);
+    let handler = null;
+    const keyFn = (ev) => {
+      if (!root.isConnected) { document.removeEventListener('keydown', keyFn); return; }
+      if (handler) handler(ev);
+    };
+    document.addEventListener('keydown', keyFn);
+    const hud = () => {
+      AP2.dispose(head); AP2.dispose(barWrap);
+      head.appendChild(AP2.btn({text: 'Karte', icon: AP2.icon('map', 16), small: true, kind: 'ghost', fn: () => AP2.router.go('quest/' + b)}));
+      head.appendChild(AP2.tint(h('div', {text: label, style: {fontWeight: S.fw.bold, fontSize: S.f.lg, flex: '1 1 200px'}}), 'text'));
+      const flame = h('span', {style: {display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: S.fw.bold}}, [AP2.icon('flame', 18), 'x' + st.combo]);
+      AP2.theme.bind(flame, (n, c) => { n.style.color = st.combo >= 3 ? c.fire : c.text3; n.style.transform = st.combo >= 5 ? 'scale(1.15)' : 'none'; });
+      head.appendChild(flame);
+      if (lives !== Infinity) head.appendChild(h('span', {style: {display: 'inline-flex', gap: '2px'}}, [0, 1, 2].map((k) => AP2.tint(h('span', {style: {display: 'flex'}}, [AP2.icon('heart', 18)]), k < lives ? 'bad' : 'border'))));
+      head.appendChild(AP2.tint(h('span', {text: Math.min(st.i + 1, total) + ' / ' + total, style: {fontWeight: S.fw.semi, fontSize: S.f.sm, fontVariantNumeric: 'tabular-nums'}}), 'text2'));
+      head.appendChild(AP2.tint(h('span', {text: st.xp + ' XP', style: {fontWeight: S.fw.bold, fontSize: S.f.sm}}), 'gold'));
+      barWrap.appendChild(AP2.gk.bar(total ? st.i / total : 0));
+    };
+    const finish = () => {
+      handler = null;
+      hud();
+      AP2.dispose(stage);
+      const done = st.i || 1;
+      const pct = total ? st.right / total : 0;
+      const stars = starsOf(pct);
+      if (station || mode === 'boss') saveProg(key, mode === 'boss' && lives <= 0 ? st.right / total : pct);
+      if (stars === 3) { AP2.fx.confetti(); AP2.game.award(AP2.game.XP.perfect); }
+      const big = AP2.tint(h('div', {text: Math.round(pct * 100) + ' %', style: {fontSize: '64px', fontWeight: S.fw.bold, lineHeight: '1'}}), stars === 3 ? 'gold' : stars ? 'accent' : 'text2');
+      const msg = mode === 'boss' && lives <= 0 ? 'Der Endboss hat gewonnen. Noch einmal!' : stars === 3 ? 'Meisterhaft! Drei Sterne.' : stars === 2 ? 'Stark! Noch ein bisschen bis drei Sterne.' : stars === 1 ? 'Geschafft. Wiederhole die Fehler für mehr Sterne.' : 'Noch nicht bestanden. Lies die Themenseite und versuch es erneut.';
+      const idx = list.indexOf(station);
+      const next = station && list[idx + 1];
+      const box = AP2.gk.panel([h('div', {style: {textAlign: 'center', padding: S.sp[4] + ' 0'}}, [
+        h('div', {style: {display: 'flex', justifyContent: 'center', marginBottom: S.sp[3]}}, [starRow(stars, 40)]), big,
+        AP2.tint(h('div', {text: st.right + ' von ' + total + ' richtig' + (done < total ? ' (' + done + ' beantwortet)' : '') + '  ·  beste Combo ' + st.best + '  ·  ' + st.xp + ' XP', style: {fontSize: S.f.sm, margin: S.sp[3] + ' 0'}}), 'text2'),
+        AP2.tint(h('div', {text: msg, style: {fontSize: S.f.lg, fontWeight: S.fw.semi}}), 'text'),
+        h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[2], justifyContent: 'center', marginTop: S.sp[5]}}, [
+          next ? AP2.btn({text: 'Nächste Station: ' + nameOf(next), icon: AP2.icon('arrow', 16), kind: 'primary', fn: () => AP2.router.go('quest/' + b + '/' + next.id)}) : null,
+          AP2.btn({text: 'Nochmal', icon: AP2.icon('repeat', 16), fn: () => AP2.state.set('route', AP2.state.get('route'))}),
+          AP2.btn({text: 'Zur Karte', icon: AP2.icon('map', 16), fn: () => AP2.router.go('quest/' + b)}),
+          station && AP2.store.get(station.id) ? AP2.btn({text: 'Themenseite lesen', icon: AP2.icon('book', 16), fn: () => AP2.router.go(station.id)}) : null])])]);
+      stage.appendChild(box);
+      if (st.wrong.length) {
+        stage.appendChild(AP2.blocks.h('Deine Fehler zum Nachlesen'));
+        st.wrong.forEach(({q, sol}) => stage.appendChild(AP2.gk.panel([AP2.tint(h('div', {style: {fontWeight: S.fw.semi, marginBottom: '4px'}}, rich(q.q)), 'text'),
+          sol ? AP2.tint(h('div', {style: {fontSize: S.f.sm, marginBottom: '4px'}}, [sol]), 'ok') : null, q.e ? AP2.tint(h('div', {style: {fontSize: S.f.sm}}, rich(q.e)), 'text2') : null], {marginBottom: S.sp[2]})));
+      }
+      window.scrollTo(0, 0);
+    };
+    const ask = () => {
+      if (st.i >= total || lives <= 0) return finish();
+      hud();
+      AP2.dispose(stage);
+      const {q, st: from} = qs[st.i];
+      const kind = q.k || 'mc';
+      const meta = h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[2], alignItems: 'center', marginBottom: S.sp[3]}}, [pill(KIND[kind] || kind, 'accent'),
+        q.lv ? pill(['', 'Leicht', 'Mittel', 'Schwer'][q.lv] || '', q.lv === 3 ? 'fire' : q.lv === 2 ? 'gold' : 'ok') : null,
+        station ? null : AP2.tint(h('span', {text: nameOf(from), style: {fontSize: S.f.xs}}), 'text3')]);
+      const qText = AP2.tint(h('div', {style: {fontSize: S.f.xl, fontWeight: S.fw.semi, lineHeight: '1.4', marginBottom: S.sp[4]}}, rich(q.q)), 'text');
+      const code = q.c ? AP2.theme.bind(h('pre', {text: q.c, style: {fontFamily: S.font.mono, fontSize: S.f.sm, lineHeight: S.lh.code, padding: '12px 14px', borderRadius: S.r.md, overflowX: 'auto', margin: '0 0 ' + S.sp[4], border: '1px solid'}}),
+        (n, c) => { n.style.backgroundColor = c.surface2; n.style.borderColor = c.border; n.style.color = c.text; }) : null;
+      const fb = h('div');
+      const actions = h('div', {style: {display: 'flex', gap: S.sp[2], flexWrap: 'wrap', marginTop: S.sp[3]}});
+      let answered = false;
+      const goNext = () => { st.i++; ask(); };
+      const done = (ok, sol) => {
+        if (answered) return;
+        answered = true;
+        if (ok) { st.right++; st.combo++; st.best = Math.max(st.best, st.combo); } else { st.combo = 0; st.wrong.push({q, sol}); if (lives !== Infinity) lives--; }
+        const gained = AP2.game.answer(qid(from.id, q), ok, {combo: st.combo}) || 0;
+        st.xp += gained;
+        if (gained && ok) AP2.fx.pop(gained);
+        AP2.fx.sound(ok ? 'right' : 'wrong');
+        if (ok && [5, 10, 20, 30].includes(st.combo)) AP2.fx.toast('Combo x' + st.combo + '!', 'Du bist on fire.', 'fire', 'flame');
+        const head2 = h('div', {style: {display: 'flex', alignItems: 'center', gap: S.sp[2], fontWeight: S.fw.bold, fontSize: S.f.lg, marginBottom: '4px'}}, [AP2.icon(ok ? 'check' : 'close', 20),
+          ok ? ['Richtig!', 'Genau!', 'Stark!', 'Perfekt!', 'Sitzt!'][Math.floor(Math.random() * 5)] : 'Leider falsch']);
+        const box = h('div', {style: {padding: '14px 18px', borderRadius: S.r.md, borderLeft: '5px solid', marginTop: S.sp[3]}}, [head2,
+          sol ? h('div', {style: {fontSize: S.f.md, marginBottom: '4px'}}, [sol]) : null, q.e ? h('div', {style: {fontSize: S.f.sm, lineHeight: S.lh.body}}, rich(q.e)) : null]);
+        AP2.theme.bind(box, (n, c) => { n.style.backgroundColor = ok ? c.okSoft : c.badSoft; n.style.borderLeftColor = ok ? c.ok : c.bad; n.style.color = c.text; head2.style.color = ok ? c.ok : c.bad; });
+        fb.appendChild(box);
+        AP2.dispose(actions);
+        const nextBtn = AP2.btn({text: st.i + 1 >= total || lives <= 0 ? 'Ergebnis' : 'Weiter (Enter)', icon: AP2.icon('arrow', 16), kind: 'primary', fn: goNext});
+        actions.appendChild(nextBtn);
+        hud();
+        setTimeout(() => { box.scrollIntoView({block: 'nearest', behavior: 'smooth'}); }, 20);
+      };
+      const inp = (inputs[kind] || inputs.mc)(q, done);
+      if (inp.submit) actions.appendChild(AP2.btn({text: 'Prüfen (Enter)', icon: AP2.icon('check', 16), kind: 'primary', fn: () => inp.submit()}));
+      actions.appendChild(AP2.btn({text: 'Weiß ich nicht', kind: 'ghost', small: true, fn: () => { if (inp.submit) inp.submit(); else done(false, rich('Richtig: **' + (kind === 'tf' ? (q.a ? 'Wahr' : 'Falsch') : q.o[q.a]) + '**')); }}));
+      handler = (ev) => {
+        if (ev.key === 'Enter') { ev.preventDefault(); if (answered) goNext(); else if (inp.submit) inp.submit(); return; }
+        if (answered || (inp.field && document.activeElement === inp.field)) return;
+        const n = parseInt(ev.key, 10);
+        if (n >= 1 && n <= 9 && inp.key) inp.key(n - 1);
+      };
+      const card = AP2.gk.panel([meta, qText, code, inp.el, fb, actions]);
+      stage.appendChild(card);
+    };
+    if (!total) { stage.appendChild(AP2.blocks.note('Für diese Auswahl gibt es noch keine Fragen.')); return root; }
+    ask();
+    return root;
+  };
+
+  AP2.views.quest = (arg) => {
+    AP2.ctx.id = 'quest';
+    const [b, mode] = (arg || '').split('/');
+    if (!data[b]) { AP2.ctx.wide = true; return overview(); }
+    if (!mode) { AP2.ctx.wide = true; return mapView(b); }
+    return play(b, mode);
+  };
+  AP2.viewTitles.quest = 'Quest';
 })();
 ;
 // ui/erfolge.js
@@ -3631,6 +3985,7 @@ AP2.pages = function () {};
   AP2.find = {
     // hit: {si, a} aus der Suche oder null (nur markieren, nicht springen).
     open(id, terms, hit, shown) {
+      if (AP2.router.tab) { AP2.router.go(id); return; } // Strg-/Mittelklick: neuer Tab, hier nichts markieren
       const hits = AP2.search.marks(id, terms);
       cur = hits.length ? {id, shown, hits, at: hit ? hits.findIndex((x) => x.si === hit.si && x.a <= hit.a && hit.a < x.b) : -1} : null;
       if (AP2.router.current() === id) { show(true); sync(); } else AP2.router.go(id);
@@ -3874,7 +4229,7 @@ AP2.pages = function () {};
     const collapse = AP2.btn({text: 'Zuklappen', small: true, fn: () => { AP2.state.set('navOpen', {}); reveal(AP2.state.get('route')); }});
     const head = h('div', {style: {display: 'flex', gap: S.sp[2], padding: '12px 12px 8px', alignItems: 'center', flexShrink: 0}}, [input, collapse]);
     const home = AP2.navRow({level: 'block', label: 'Startseite', inner: [h('span', {text: 'Startseite'})], fn: () => AP2.router.go('home'), active: () => AP2.state.get('route') === 'home'});
-    const special = [['trainer', 'Trainer', 'play'], ['spick', 'Spickzettel', 'cards'], ['themen', 'Themenkarte', 'map'], ['erfolge', 'Erfolge', 'trophy']].map(([id, text, icon]) => AP2.navRow({level: 'block', label: text,
+    const special = [['trainer', 'Trainer', 'play'], ['quest', 'Quests', 'sword'], ['spick', 'Spickzettel', 'cards'], ['themen', 'Themenkarte', 'map'], ['erfolge', 'Erfolge', 'trophy']].map(([id, text, icon]) => AP2.navRow({level: 'block', label: text,
       inner: [AP2.icon(icon, 15), h('span', {text})], fn: () => AP2.router.go(id), active: () => AP2.state.get('route').split('/')[0] === id}));
     const sep = AP2.fill(h('div', {style: {height: '1px', margin: '6px 4px 8px'}}), 'border');
     const list = h('div', {style: {flex: '1 1 0', overflowY: 'auto', padding: '4px 10px 64px'}}, [home].concat(special, [sep, tree.el]));
@@ -32496,6 +32851,2072 @@ AP2.spick('wiso', {
     ]},
   ],
 });
+;
+// content/spick/de.js
+AP2.spick('de', {
+  exam: 'Schulprüfung: Deutsch/Kommunikation (Berufsschule)', t: 'Spickzettel Deutsch',
+  s: 'Geschäftsbrief nach DIN 5008, Bewerbung, Erörterung, Textanalyse, Kommunikation, Präsentation und Sprachrichtigkeit auf einer Seite',
+  top: [
+    ['tip', 'Immer **Einleitung - Hauptteil - Schluss**. Erst **beschreiben**, dann **analysieren**, am Ende **bewerten**. Aufgabenstellung (Operatoren) genau lesen.'],
+    ['mnemo', 'Vier Seiten einer Nachricht: **Sach, Selbstkundgabe, Beziehung, Appell** (Schulz von Thun). Brief: **Betreff ohne „Betreff“, kein Punkt, Gruß ohne Komma davor**.'],
+  ],
+  sections: [
+    {t: 'Geschäftsbrief und E-Mail', icon: 'book', ids: ['de-brief', 'de-bewerbung'], items: [
+      ['flow', ['Absender', 'Anschrift', 'Datum', 'Betreff', 'Anrede', 'Text', 'Gruß', 'Unterschrift', 'Anlagen']],
+      ['pairs', [
+        ['Betreff', 'Ohne das Wort „Betreff“, **kein Punkt** am Ende, fett oder normal'],
+        ['Anrede', '„Sehr geehrte Frau …,“ / „Sehr geehrte Damen und Herren,“ - danach **klein** weiter'],
+        ['Gruß', '„Mit freundlichen Grüßen“ - **kein Komma** davor, **kein Punkt** danach'],
+        ['Datum', 'Zum Beispiel 03.11.2026 oder 3. November 2026'],
+        ['Anlagen', 'Nach der Unterschrift mit **Anlage(n)** aufführen'],
+      ]],
+      ['sub', 'Bewerbung'],
+      ['li', ['**Anschreiben:** höchstens 1 Seite, Bezug zur Stelle, Motivation, Qualifikation, Nutzen für die Firma', '**Lebenslauf:** tabellarisch, lückenlos, aktuelles zuerst (antichronologisch), Foto freiwillig', '**Anlagen:** Zeugnisse, Zertifikate, Nachweise', 'Nach dem **AGG** sind Fragen nach Alter, Herkunft, Religion usw. nicht zulässig']],
+      ['links', ['de-brief', 'de-bewerbung']],
+    ]},
+    {t: 'Erörterung und Textanalyse', icon: 'pen', ids: ['de-eroerterung', 'de-text'], items: [
+      ['flow', ['Einleitung (Thema, Frage)', 'Hauptteil (Pro, Kontra)', 'Schluss (Fazit, Meinung)']],
+      ['li', ['**Argument = Behauptung + Begründung + Beispiel**', 'Reihenfolge: **steigern**, stärkstes Argument zuletzt', '**Lineare** Erörterung: eine Position; **dialektische**: Pro und Kontra', '**Stellungnahme** immer begründen']],
+      ['sub', 'Textanalyse und Zusammenfassung'],
+      ['li', ['Zusammenfassung: **Präsens**, **eigene Worte**, **indirekte Rede** (Konjunktiv I), keine Wertung', 'Angaben nennen: **Autor, Titel, Textart, Quelle, Thema**', 'Aufbau: Kernaussage → Gedankengang → Absicht']],
+      ['tip', 'Operatoren: **nennen** (kurz), **beschreiben** (sachlich), **erläutern** (mit Beispiel), **beurteilen/Stellung nehmen** (mit Begründung).'],
+      ['links', ['de-eroerterung', 'de-text']],
+    ]},
+    {t: 'Kommunikation, Zuhören, Präsentation', icon: 'user', ids: ['de-kommunikation', 'de-zuhoeren', 'de-praesentation'], items: [
+      ['cards', [
+        ['Vier-Seiten-Modell', ['**Sachinhalt**: worüber', '**Selbstkundgabe**: was ich preisgebe', '**Beziehung**: wie wir zueinander stehen', '**Appell**: was ich will']],
+        ['Watzlawick', ['Man kann **nicht nicht kommunizieren**', '**Inhalts-** und **Beziehungsebene**', 'Digital (Wort) / analog (Körper)']],
+      ]],
+      ['sub', 'Aktives Zuhören und Feedback'],
+      ['li', ['Aktiv zuhören: **Blickkontakt, Nachfragen, Paraphrasieren, Zusammenfassen**', '**Ich-Botschaften** statt Du-Vorwürfe', 'Feedback: **konkret, beschreibend, wertschätzend**, erst Positives, dann Verbesserung']],
+      ['sub', 'Präsentation'],
+      ['flow', ['Ziel und Publikum', 'Gliederung', 'Medien', 'Üben', 'Vortrag', 'Fragen']],
+      ['li', ['Folie: wenig Text, **Stichpunkte**, lesbare Schrift', 'Sprache: laut, langsam, Pausen, **freier Vortrag**', 'Aufbau: **Einstieg - Hauptteil - Schluss**']],
+      ['links', ['de-kommunikation', 'de-zuhoeren', 'de-praesentation']],
+    ]},
+    {t: 'Sprachrichtigkeit und Prüfung', icon: 'check', ids: ['de-sprache', 'de-pruefung'], items: [
+      ['pairs', [
+        ['das / dass', '**das** = Artikel/Pronomen (ersetzbar durch dieses/welches), **dass** = Konjunktion'],
+        ['Groß/Klein', 'Substantivierungen groß (**das Lernen**), Anreden Sie/Ihr groß'],
+        ['Konjunktiv I', 'Indirekte Rede: er **sei**, sie **habe**, sie **kämen** (wenn Konjunktiv I = Indikativ)'],
+        ['Konjunktiv II', 'Irreales: **wäre, hätte, würde**'],
+        ['Zeiten', 'Präsens, Präteritum, Perfekt, Plusquamperfekt, Futur I/II'],
+      ]],
+      ['sub', 'Prüfung'],
+      ['li', ['Aufgaben: **Textverständnis, Sprachwissen, Schreibaufgabe**', 'Zeit einteilen, Entwurf vor Reinschrift, **am Ende Korrektur lesen**', 'Schreibaufgaben aus den Vorjahren üben']],
+      ['warn', 'Typische Fehler: **Komma vor „Mit freundlichen Grüßen“**, **„Betreff:“ im Betreff**, **Umgangssprache** und **Ich-Form im Fachbrief**.'],
+      ['links', ['de-sprache', 'de-pruefung']],
+    ]},
+  ],
+});
+;
+// content/quest/ps-1.js
+AP2.quest('ps', [
+  {id: 'ps-phasen', t: 'Projektphasen', qs: [
+    {q: 'Welches Merkmal gehört **nicht** zu einem Projekt?', o: ['Es ist dauerhaftes Tagesgeschäft', 'Es ist einmalig', 'Es ist zeitlich begrenzt', 'Es hat begrenzte Ressourcen'], a: 0, e: 'Projekte sind **einmalig** und **zeitlich begrenzt**. Wiederkehrendes Tagesgeschäft ist **Linienarbeit**, kein Projekt.'},
+    {k: 'order', q: 'Bringe die vier Projektphasen in die richtige Reihenfolge', o: ['Initiierung', 'Planung', 'Durchführung', 'Abschluss'], e: 'Erst Idee und Projektauftrag (**Initiierung**), dann **Planung**, **Durchführung** mit Steuerung und am Ende **Abschluss** mit Abnahme.'},
+    {q: 'In welcher Phase entsteht der **Projektauftrag** mit SMART-Ziel?', o: ['Initiierung', 'Planung', 'Durchführung', 'Abschluss'], a: 0, e: 'Der Projektauftrag ist das Ergebnis der **Initiierung**. Erst danach wird detailliert geplant.'},
+    {q: 'Wofür steht das **T** in SMART?', o: ['Terminiert', 'Teamfähig', 'Technisch', 'Transparent'], a: 0, e: 'SMART = Spezifisch, Messbar, Attraktiv, Realistisch, **Terminiert** (mit festem Datum).'},
+    {lv: 2, q: 'Welches Ziel ist **SMART** formuliert?', o: ['Bis 30.06. sinkt die Bearbeitungszeit je Auftrag von 20 auf 10 Minuten', 'Die Software soll schneller werden', 'Wir verbessern die Kundenzufriedenheit deutlich', 'Das Team arbeitet bald effizienter'], a: 0, e: 'Nur das erste Ziel ist **messbar** (20 auf 10 Minuten) und **terminiert** (30.06.). Die anderen sind vage.'},
+    {k: 'tf', q: 'Am magischen Dreieck gilt: Wird der Termin verkürzt, steigen meist die Kosten oder der Umfang/die Qualität sinkt.', a: true, e: '**Zeit, Kosten, Qualität** hängen zusammen. Eine Ecke ändern beeinflusst die anderen.'},
+    {k: 'multi', q: 'Welche Größen bilden das **magische Dreieck**? (mehrere)', o: ['Zeit', 'Kosten', 'Qualität', 'Motivation', 'Standort'], a: [0, 1, 2], e: 'Das magische Dreieck: **Zeit, Kosten, Qualität**. Erweitert um den Umfang ergibt sich das Teufelsquadrat.'},
+    {q: 'Wer **bestellt und bezahlt** das Projekt?', o: ['Auftraggeber', 'Projektleiter', 'Projektteam', 'Scrum Master'], a: 0, e: 'Der **Auftraggeber** bestellt und bezahlt. Der Projektleiter plant und steuert.'},
+    {q: 'Was passiert typischerweise in der **Abschlussphase**?', o: ['Abnahme, Übergabe und Lessons Learned', 'SMART-Ziel formulieren', 'Netzplan erstellen', 'Stakeholder erstmals identifizieren'], a: 0, e: 'Im **Abschluss**: Abnahme durch den Kunden, Übergabe, Dokumentation und **Lessons Learned**.'},
+    {k: 'match', q: 'Ordne die Tätigkeit der Phase zu', o: [['Projektauftrag', 'Initiierung'], ['Zeit- und Kostenplan', 'Planung'], ['Fortschritt kontrollieren, steuern', 'Durchführung'], ['Lessons Learned', 'Abschluss']], e: 'Jede Phase hat typische Ergebnisse: Auftrag, Pläne, Umsetzung mit Controlling, Abnahme und Rückblick.'},
+    {k: 'gap', q: 'Ein Ziel nach dem ___-Prinzip ist spezifisch, messbar, attraktiv, realistisch und terminiert.', a: ['SMART'], e: '**SMART** ist das Standardschema für Projektziele.'},
+    {lv: 2, q: 'Der Kunde verlangt mitten im Projekt mehr Funktionen bei gleichem Termin und Budget. Was ist die realistische Folge?', o: ['Die Qualität leidet, wenn Zeit und Kosten fix bleiben', 'Nichts, das Dreieck ist unabhängig', 'Die Kosten sinken automatisch', 'Der Termin wird automatisch früher'], a: 0, e: 'Mehr **Umfang** bei fixer Zeit und fixen Kosten geht auf Kosten der **Qualität**. Richtig wäre ein Change Request mit neuer Planung.'},
+    {k: 'tf', q: 'Stakeholder sind nur die Personen, die direkt im Projektteam mitarbeiten.', a: false, e: '**Stakeholder** sind **alle** Betroffenen und Interessierten, auch Betriebsrat, Kunden, Behörden.'},
+    {lv: 2, q: 'Was bedeutet das **A** in SMART im Sinne der Beteiligten?', o: ['Attraktiv bzw. akzeptiert', 'Automatisiert', 'Abgeschlossen', 'Analysiert'], a: 0, e: 'Das Ziel muss von den Beteiligten **gewollt/akzeptiert** sein, sonst fehlt die Motivation.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Ein Projekt hat grundsätzlich unbegrenzte Ressourcen', 'Projekte sind oft neuartig und riskant', 'Projekte haben eine eigene Projektorganisation', 'Projekte haben ein klares Ziel'], a: 0, e: 'Ressourcen sind **begrenzt** (Budget, Personal, Zeit). Das ist gerade ein Merkmal von Projekten.'},
+    {q: 'Wer **plant und steuert** das Projekt?', o: ['Projektleiter', 'Auftraggeber', 'Lieferant', 'Betriebsrat'], a: 0, e: 'Der **Projektleiter** plant, steuert und berichtet an den Auftraggeber.'},
+  ]},
+  {id: 'ps-orga', t: 'Projektorganisation', qs: [
+    {q: 'In welcher Organisationsform hat der Projektleiter **keine Weisungsbefugnis**?', o: ['Einfluss-PO (Stab-Linie)', 'Matrix-PO', 'Reine PO', 'Autonome PO mit eigenem Budget'], a: 0, e: 'In der **Einfluss-PO** berät und koordiniert der Projektleiter nur, die Mitarbeiter bleiben ihrem Linienchef unterstellt.'},
+    {q: 'In welcher Form haben Mitarbeitende **zwei Vorgesetzte**?', o: ['Matrix-PO', 'Einfluss-PO', 'Reine PO', 'Linienorganisation ohne Projekt'], a: 0, e: 'In der **Matrix-PO**: Fachabteilung und Projektleiter. Daraus entsteht Konfliktgefahr.'},
+    {q: 'In der Matrix-PO bestimmt die Fachabteilung ...', o: ['wie gearbeitet wird', 'was und wann gemacht wird', 'das Projektbudget allein', 'gar nichts mehr'], a: 0, e: 'Fachabteilung: **wie** (fachlich). Projektleiter: **was und wann**.'},
+    {q: 'Ein großes, strategisch wichtiges Projekt über 2 Jahre mit Vollzeit-Team. Welche Form passt?', o: ['Reine PO', 'Einfluss-PO', 'Matrix-PO', 'Gar keine Projektorganisation'], a: 0, e: 'Große strategische Projekte: **reine PO** mit voller Weisungsbefugnis und herausgelöstem Team.'},
+    {q: 'Ein kleines Projekt mit wenigen Stunden Aufwand je Abteilung. Welche Form ist sinnvoll?', o: ['Einfluss-PO', 'Reine PO', 'Matrix-PO mit neuem Bereich', 'Eigene Tochterfirma'], a: 0, e: 'Kleine Projekte: **Einfluss-PO**, geringer Organisationsaufwand.'},
+    {k: 'tf', q: 'Ein Nachteil der reinen PO ist die Wiedereingliederung der Mitarbeiter nach Projektende.', a: true, e: 'Das Team wird aus den Abteilungen herausgelöst. Nach dem Projekt müssen sie **wieder eingegliedert** werden.'},
+    {k: 'match', q: 'Ordne Organisationsform und Merkmal zu', o: [['Einfluss-PO', 'Projektleiter ohne Weisungsbefugnis'], ['Matrix-PO', 'Zwei Vorgesetzte'], ['Reine PO', 'Volle Weisungsbefugnis']], e: 'Die Weisungsbefugnis steigt von Einfluss über Matrix bis rein.'},
+    {k: 'multi', q: 'Welche Aussagen zur **Matrix-PO** stimmen? (mehrere)', o: ['Flexibler Personaleinsatz', 'Konfliktgefahr zwischen Linie und Projekt', 'Projektleiter hat keinerlei Befugnisse', 'Team wird komplett aus der Linie gelöst'], a: [0, 1], e: 'Matrix: flexibel, aber **Konflikte** durch zwei Vorgesetzte. Komplett gelöst ist das Team nur in der reinen PO.'},
+    {lv: 2, q: 'Ein Unternehmen hat mehrere parallele Projekte, die Spezialisten teilen sich. Welche Form passt am besten?', o: ['Matrix-PO', 'Reine PO', 'Einfluss-PO', 'Keine'], a: 0, e: 'Bei **mehreren parallelen Projekten** mit geteilten Ressourcen ist die **Matrix** üblich.'},
+    {k: 'tf', q: 'In der Einfluss-PO hat der Projektleiter viel Macht, weil er direkt an die Geschäftsführung berichtet.', a: false, e: 'Er berichtet zwar oft an die Leitung (Stabsstelle), hat aber **wenig Macht**, weil er nichts anweisen darf.'},
+    {lv: 2, q: 'Welcher Vorteil gilt typisch für die **reine PO**?', o: ['Schnell und fokussiert', 'Geringster Organisationsaufwand', 'Keine Kosten', 'Mitarbeiter bleiben in ihrer Abteilung'], a: 0, e: 'Volle Konzentration auf das Projekt macht die reine PO **schnell**, aber **teuer**.'},
+    {k: 'gap', q: 'Die Einfluss-Projektorganisation heißt auch ___-Linien-Organisation.', a: ['Stab', 'Stabs'], e: 'Der Projektleiter sitzt wie eine **Stabsstelle** neben der Linie.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['In der reinen PO bleiben die Mitarbeiter fachlich ihrer Abteilung unterstellt', 'Die Matrix-PO kann zu Konflikten führen', 'Die Einfluss-PO hat geringen Organisationsaufwand', 'Die reine PO ist teuer'], a: 0, e: 'In der reinen PO sind die Mitarbeiter **dem Projektleiter** unterstellt, nicht mehr der Abteilung.'},
+    {k: 'order', q: 'Ordne die Formen nach steigender Weisungsbefugnis des Projektleiters', o: ['Einfluss-PO', 'Matrix-PO', 'Reine PO'], e: 'Keine, geteilte, volle Weisungsbefugnis.'},
+    {q: 'Wer bestimmt in der Matrix-PO, **wann** eine Aufgabe erledigt wird?', o: ['Projektleiter', 'Fachabteilungsleiter', 'Betriebsrat', 'Kunde direkt'], a: 0, e: 'Projektleiter: **was und wann**, Linie: **wie**.'},
+  ]},
+  {id: 'ps-stakeholder', t: 'Stakeholder und Risiko', qs: [
+    {k: 'multi', q: 'Welche Stakeholder sind **intern**? (mehrere)', o: ['Betriebsrat', 'Geschäftsleitung', 'Fachabteilung', 'Lieferant', 'Datenschutzaufsicht'], a: [0, 1, 2], e: 'Intern: Personen/Gruppen im Unternehmen. **Lieferant** und **Aufsichtsbehörde** sind extern.'},
+    {q: 'Nach welchen zwei Kriterien bewertet man Stakeholder in der Matrix?', o: ['Einfluss und Interesse', 'Alter und Gehalt', 'Kosten und Zeit', 'Wahrscheinlichkeit und Schaden'], a: 0, e: 'Stakeholder-Matrix: **Einfluss** (Macht) und **Interesse** (Betroffenheit). W und S gehören zur Risikomatrix.'},
+    {q: 'Stakeholder mit **hohem Einfluss und hohem Interesse**: Strategie?', o: ['Aktiv managen, eng einbinden', 'Nur beobachten', 'Regelmäßig informieren', 'Ignorieren'], a: 0, e: 'Schlüsselpersonen werden **eng eingebunden** und aktiv gemanagt.'},
+    {q: 'Die Geschäftsleitung hat hohen Einfluss, aber wenig Interesse am Detail. Strategie?', o: ['Zufriedenstellen, früh informieren', 'Eng einbinden in jedes Meeting', 'Nur beobachten', 'Nicht informieren'], a: 0, e: 'Hoher Einfluss, geringes Interesse: **zufriedenstellen**, damit sie nicht zum Gegner werden.'},
+    {q: 'Mitarbeitende, die das neue System nutzen müssen, aber wenig Einfluss haben: Strategie?', o: ['Regelmäßig informieren', 'Beobachten', 'Zufriedenstellen', 'Eng managen wie Geschäftsführung'], a: 0, e: 'Einfluss gering, Interesse hoch: **regelmäßig informieren**.'},
+    {k: 'order', q: 'Bringe die Schritte des Risikomanagements in Reihenfolge', o: ['Risiken identifizieren', 'Risiken bewerten', 'Maßnahmen festlegen', 'Risiken überwachen'], e: 'Identifizieren, bewerten (W mal S), Maßnahmen, überwachen.'},
+    {k: 'num', q: 'Ein Risiko hat Eintrittswahrscheinlichkeit 20 % und Schadenshöhe 50.000 €. Berechne den Risikowert in €.', a: 10000, tol: 0, u: '€', e: 'Risikowert = W · S = 0,2 · 50.000 € = **10.000 €**.'},
+    {k: 'match', q: 'Ordne die Risikomaßnahme dem Beispiel zu', o: [['Vermeiden', 'Riskante Technologie nicht einsetzen'], ['Vermindern', 'Zusätzliche Tests einplanen'], ['Übertragen', 'Versicherung abschließen'], ['Akzeptieren', 'Kleines Risiko bewusst tragen']], e: 'Die vier Strategien: **vermeiden, vermindern, übertragen, akzeptieren**.'},
+    {lv: 2, q: 'Ein Unternehmen schließt für den Ausfall eines Lieferanten eine Versicherung ab. Welche Strategie?', o: ['Übertragen', 'Vermeiden', 'Vermindern', 'Akzeptieren'], a: 0, e: 'Der finanzielle Schaden wird auf den Versicherer **übertragen**.'},
+    {k: 'tf', q: 'Die Datenschutzaufsichtsbehörde ist ein externer Stakeholder.', a: true, e: 'Behörden stehen außerhalb des Unternehmens, also **extern**.'},
+    {q: 'Wie heißt die typische Darstellung von Risiken nach W und S?', o: ['Risikomatrix (Heatmap)', 'Gantt-Diagramm', 'Netzplan', 'Use-Case-Diagramm'], a: 0, e: 'Die **Risikomatrix** zeigt Risiken farbig nach Wahrscheinlichkeit und Schaden.'},
+    {lv: 2, k: 'num', q: 'Risiko A: W = 10 %, S = 80.000 €. Risiko B: W = 40 %, S = 15.000 €. Wie groß ist der höhere Risikowert in €?', a: 8000, tol: 0, u: '€', e: 'A: 0,1 · 80.000 = **8.000 €**, B: 0,4 · 15.000 = 6.000 €. A ist höher.'},
+    {k: 'gap', q: 'Das magische Dreieck erweitert um den Umfang heißt ___.', a: ['Teufelsquadrat'], e: 'Das **Teufelsquadrat** ergänzt Zeit, Kosten, Qualität um den **Umfang**.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Stakeholder mit geringem Einfluss und geringem Interesse muss man eng einbinden', 'Der Betriebsrat kann hohen Einfluss haben', 'Stakeholder können sich im Projektverlauf ändern', 'Kunden sind externe Stakeholder'], a: 0, e: 'Wenig Einfluss und wenig Interesse: nur **beobachten**.'},
+    {lv: 2, q: 'Warum ist der **Betriebsrat** bei Einführung einer Zeiterfassungssoftware wichtig?', o: ['Er hat ein Mitbestimmungsrecht bei Leistungs- und Verhaltenskontrolle', 'Er bezahlt das Projekt', 'Er programmiert die Software', 'Er ist Lieferant'], a: 0, e: 'Technische Einrichtungen zur Überwachung sind **mitbestimmungspflichtig**, daher hoher Einfluss.'},
+  ]},
+  {id: 'ps-istsoll', t: 'Ist und Soll', qs: [
+    {q: 'Was beschreibt die **Ist-Analyse**?', o: ['Den heutigen Zustand', 'Den gewünschten Zielzustand', 'Die Kosten der neuen Lösung', 'Den Vertrag mit dem Lieferanten'], a: 0, e: 'Ist = **heute**. Soll = gewünschter Zielzustand.'},
+    {k: 'multi', q: 'Welche Methoden eignen sich für die Ist-Aufnahme? (mehrere)', o: ['Interview', 'Beobachtung', 'Fragebogen', 'Dokumentenanalyse', 'Netzplan'], a: [0, 1, 2, 3], e: 'Interview, Beobachtung, Fragebogen und Dokumente. Der **Netzplan** ist Zeitplanung.'},
+    {q: 'Mitarbeiter drucken Bestellungen aus und tippen sie in ein zweites System ab. Welche Schwachstelle?', o: ['Medienbruch und doppelte Dateneingabe', 'Zu hohe Verfügbarkeit', 'Fehlendes Corporate Design', 'Zu viele Stakeholder'], a: 0, e: 'Papier dazwischen = **Medienbruch**, Abtippen = **doppelte Eingabe**, fehleranfällig.'},
+    {k: 'order', q: 'Bringe in die richtige Reihenfolge', o: ['Ist-Analyse', 'Schwachstellen erkennen', 'Soll-Konzept', 'Soll-Ist-Vergleich und Maßnahmen'], e: 'Erst Zustand aufnehmen, Schwächen finden, Ziel entwerfen, Lücke ableiten.'},
+    {q: 'Was ist das Ergebnis des **Soll-Ist-Vergleichs**?', o: ['Die Lücke (Gap) und daraus abgeleitete Maßnahmen', 'Ein Arbeitsvertrag', 'Die fertige Software', 'Die Rechnung'], a: 0, e: 'Der Vergleich macht die **Lücke** sichtbar, daraus folgen Maßnahmen.'},
+    {k: 'tf', q: 'Das Soll-Konzept ist eine wichtige Basis für das Lastenheft.', a: true, e: 'Aus dem Soll werden **Anforderungen** abgeleitet, die ins Lastenheft gehen.'},
+    {q: 'Welcher Vorteil hat die **Beobachtung** gegenüber dem Interview?', o: ['Man sieht den tatsächlichen Ablauf, auch unbewusste Schritte', 'Sie ist immer schneller', 'Sie braucht keine Zustimmung', 'Sie liefert Zahlen automatisch'], a: 0, e: 'Befragte schildern oft den Soll-Ablauf. **Beobachtung** zeigt die Realität.'},
+    {q: 'Für 200 Mitarbeitende an 5 Standorten will man schnell Meinungen einholen. Welche Methode?', o: ['Fragebogen', 'Einzelinterview mit jedem', 'Beobachtung aller', 'Netzplan'], a: 0, e: 'Viele Personen, verteilt: **Fragebogen** ist effizient und auswertbar.'},
+    {k: 'multi', q: 'Welche sind typische **Schwachstellen**? (mehrere)', o: ['Lange Durchlaufzeiten', 'Fehleranfällige manuelle Schritte', 'Medienbrüche', 'Automatische Schnittstellen'], a: [0, 1, 2], e: 'Automatische Schnittstellen sind gerade die **Lösung**, keine Schwachstelle.'},
+    {k: 'gap', q: 'Wechselt ein Prozess zwischen Papier und Computer, spricht man von einem ___.', a: ['Medienbruch'], e: '**Medienbruch**: Information muss das Medium wechseln, meist durch Abtippen.'},
+    {lv: 2, q: 'Wie priorisiert man die Maßnahmen aus dem Soll-Ist-Vergleich sinnvoll?', o: ['Nach Nutzen und Aufwand', 'Alphabetisch', 'Nach Lieblingsabteilung', 'Zufällig'], a: 0, e: 'Hoher **Nutzen** bei geringem **Aufwand** zuerst (Quick Wins).'},
+    {k: 'tf', q: 'Im Soll-Konzept entwickelt man oft mehrere Varianten und bewertet sie.', a: true, e: 'Varianten (z. B. Kauf vs. Eigenentwicklung) werden etwa per **Nutzwertanalyse** bewertet.'},
+    {lv: 2, q: 'Welche Darstellung eignet sich zur Dokumentation des Ist-Ablaufs?', o: ['Ablaufdiagramm, z. B. EPK oder Aktivitätsdiagramm', 'Klassendiagramm', 'ER-Diagramm', 'Gantt mit Lizenzen'], a: 0, e: 'Abläufe werden als **Prozessdiagramm** dargestellt.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Die Ist-Analyse kann man überspringen, wenn das Soll klar ist', 'Ohne Ist-Analyse fehlen Vergleichswerte für den Erfolg', 'Interviews sind subjektiv', 'Dokumente zeigen den offiziellen Ablauf'], a: 0, e: 'Ohne Ist fehlt die **Basis**: Schwachstellen und Messwerte für den späteren Nutzen.'},
+    {k: 'match', q: 'Ordne die Methode ihrem Nachteil zu', o: [['Interview', 'Zeitaufwendig, subjektiv'], ['Fragebogen', 'Keine Rückfragen möglich'], ['Beobachtung', 'Verhalten ändert sich unter Beobachtung'], ['Dokumentenanalyse', 'Dokumente oft veraltet']], e: 'Jede Methode hat Schwächen, deshalb kombiniert man sie.'},
+  ]},
+  {id: 'ps-lastenheft', t: 'Lasten- und Pflichtenheft', qs: [
+    {q: 'Wer erstellt das **Lastenheft**?', o: ['Auftraggeber', 'Auftragnehmer', 'Scrum Master', 'Datenschutzbeauftragter'], a: 0, e: 'Lastenheft = **Auftraggeber** (was und wofür). Pflichtenheft = Auftragnehmer (wie und womit).'},
+    {q: 'Welche Frage beantwortet das **Pflichtenheft**?', o: ['Wie und womit wird umgesetzt?', 'Was und wofür?', 'Wer bezahlt?', 'Wann wird gekündigt?'], a: 0, e: 'Pflichtenheft: **Wie und womit** (Architektur, Technik, Funktionen).'},
+    {k: 'order', q: 'Bringe in die richtige Reihenfolge', o: ['Lastenheft durch Auftraggeber', 'Angebot des Auftragnehmers', 'Pflichtenheft durch Auftragnehmer', 'Abnahme gegen das Pflichtenheft'], e: 'Lastenheft ist Basis für Angebote, das Pflichtenheft wird Vertragsbestandteil und Abnahmegrundlage.'},
+    {q: '"Das System muss Rechnungen als PDF erzeugen." Welche Anforderungsart?', o: ['Funktional', 'Nichtfunktional', 'Randbedingung', 'Keine Anforderung'], a: 0, e: 'Beschreibt, **was** das System tut: **funktional**.'},
+    {q: '"Die Suche liefert Ergebnisse in unter 2 Sekunden." Welche Anforderungsart?', o: ['Nichtfunktional', 'Funktional', 'Randbedingung', 'Rechtlich'], a: 0, e: 'Beschreibt, **wie gut** (Performance): **nichtfunktional**.'},
+    {q: '"Das Budget beträgt höchstens 50.000 €." Welche Anforderungsart?', o: ['Randbedingung', 'Funktional', 'Nichtfunktional', 'User Story'], a: 0, e: 'Budget, Recht, vorgegebene Technik sind **Randbedingungen**.'},
+    {k: 'multi', q: 'Welche Eigenschaften hat eine gute Anforderung? (mehrere)', o: ['Eindeutig', 'Testbar', 'Widerspruchsfrei', 'Möglichst offen formuliert', 'Realisierbar'], a: [0, 1, 2, 4], e: 'Offene Formulierungen sind **nicht testbar** und führen zu Streit bei der Abnahme.'},
+    {lv: 2, q: 'Welche Anforderung ist **nicht testbar**?', o: ['Die Oberfläche soll benutzerfreundlich sein', 'Login sperrt nach 3 Fehlversuchen', 'Export als CSV mit Semikolon', 'Antwortzeit unter 1 s bei 100 Nutzern'], a: 0, e: '"Benutzerfreundlich" ohne Kriterium ist **nicht messbar**. Besser: konkrete Kriterien nennen.'},
+    {k: 'tf', q: 'Das Pflichtenheft wird häufig Vertragsbestandteil und dient als Basis für die Abnahme.', a: true, e: 'Gegen das **Pflichtenheft** wird abgenommen.'},
+    {k: 'match', q: 'Ordne zu', o: [['Lastenheft', 'Was und wofür'], ['Pflichtenheft', 'Wie und womit'], ['Funktionale Anforderung', 'Was das System tut'], ['Nichtfunktionale Anforderung', 'Wie gut es das tut']], e: 'Die Kernunterscheidung für die Prüfung.'},
+    {k: 'gap', q: 'Das ___ wird vom Auftragnehmer erstellt und beschreibt die konkrete Umsetzung.', a: ['Pflichtenheft'], e: '**Pflichtenheft** = Auftragnehmer.'},
+    {lv: 2, q: 'Wozu dient die Kennzeichnung **Muss / Soll / Kann**?', o: ['Priorisierung der Anforderungen', 'Kennzeichnung der Kosten', 'Lizenzart', 'Datenschutzklasse'], a: 0, e: 'Muss = zwingend, Soll = wichtig, Kann = wünschenswert. Hilft bei Budget- und Zeitdruck.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Das Lastenheft enthält die Datenbankarchitektur des Auftragnehmers', 'Das Lastenheft ist Grundlage für eine Ausschreibung', 'Das Lastenheft enthält Ziele und Rahmenbedingungen', 'Das Lastenheft beschreibt Anforderungen aus Kundensicht'], a: 0, e: 'Architektur und Technik gehören ins **Pflichtenheft**.'},
+    {k: 'multi', q: 'Welche sind **nichtfunktionale** Anforderungen? (mehrere)', o: ['Verfügbarkeit 99,5 %', 'Passwörter werden gehasht gespeichert', 'Kunde kann Bestellung stornieren', 'Bedienbar per Tastatur', 'Rechnung per E-Mail versenden'], a: [0, 1, 3], e: 'Verfügbarkeit, Sicherheit und Bedienbarkeit sind Qualitätsmerkmale. Stornieren und Versenden sind Funktionen.'},
+    {q: 'Ein IT-Dienstleister erhält ein Lastenheft. Was erstellt er als Nächstes typischerweise?', o: ['Ein Angebot', 'Die Abnahmeerklärung', 'Die Rechnung', 'Ein Lessons-Learned-Protokoll'], a: 0, e: 'Auf Basis des Lastenhefts wird ein **Angebot** erstellt, nach Auftrag das Pflichtenheft.'},
+  ]},
+  {id: 'ps-vorgehen', t: 'Vorgehensmodelle', qs: [
+    {q: 'Welches Modell arbeitet die Phasen **strikt nacheinander** ab?', o: ['Wasserfall', 'Scrum', 'Kanban', 'Spiralmodell'], a: 0, e: '**Wasserfall**: eine Phase nach der anderen, Rücksprünge sind teuer.'},
+    {q: 'Was ist das Besondere am **V-Modell**?', o: ['Jeder Entwurfsstufe ist eine Teststufe zugeordnet', 'Es hat keine Tests', 'Es arbeitet in Sprints', 'Es nutzt WIP-Limits'], a: 0, e: 'Links Entwurf, rechts Tests: z. B. Anforderungen ↔ Abnahmetest, Modulentwurf ↔ Modultest.'},
+    {k: 'match', q: 'Ordne im V-Modell die Teststufe der Entwurfsstufe zu', o: [['Anforderungsdefinition', 'Abnahmetest'], ['Systementwurf', 'Systemtest'], ['Architekturentwurf', 'Integrationstest'], ['Modulentwurf', 'Modultest']], e: 'Jede Teststufe prüft die gegenüberliegende Entwurfsstufe.'},
+    {q: 'Ein Start-up entwickelt eine neue App, der Markt ist unsicher, Anforderungen ändern sich. Welches Vorgehen?', o: ['Agil', 'Wasserfall', 'V-Modell', 'Gar keins'], a: 0, e: 'Unklare Anforderungen, schnelles Feedback: **agil**.'},
+    {q: 'Eine Behörde beauftragt sicherheitskritische Software mit festem Vertrag. Welches Modell ist üblich?', o: ['V-Modell', 'Kanban', 'Scrum ohne Vertrag', 'Extreme Programming'], a: 0, e: 'Behörden und Sicherheitskritisches: **V-Modell** (V-Modell XT beim Bund).'},
+    {k: 'tf', q: 'Beim Wasserfallmodell sieht der Kunde meist erst am Ende ein lauffähiges Ergebnis.', a: true, e: 'Das ist der Hauptnachteil: Fehler in Anforderungen fallen **spät** auf.'},
+    {k: 'multi', q: 'Welche Merkmale gehören zu **agilem** Vorgehen? (mehrere)', o: ['Iterativ und inkrementell', 'Regelmäßiges Kundenfeedback', 'Änderungen sind willkommen', 'Vollständige Spezifikation vor Beginn', 'Kunde sieht erst am Ende ein Ergebnis'], a: [0, 1, 2], e: 'Komplette Vorab-Spezifikation und spätes Ergebnis sind **klassisch**.'},
+    {k: 'gap', q: 'Agile Entwicklung arbeitet iterativ und ___: das Produkt wächst in kleinen nutzbaren Stücken.', a: ['inkrementell'], e: '**Inkrementell** = in Teilstücken, **iterativ** = in Wiederholungen.'},
+    {lv: 2, q: 'Warum sind späte Änderungen im Wasserfall teuer?', o: ['Man muss in frühere, bereits abgeschlossene Phasen zurück', 'Weil Lizenzen teurer werden', 'Weil Scrum Master fehlen', 'Weil es keine Dokumentation gibt'], a: 0, e: 'Eine geänderte Anforderung zieht Entwurf, Code und Tests nach sich.'},
+    {lv: 2, q: 'Ein Kunde will einen **Festpreis** mit genau definiertem Umfang. Was passt eher?', o: ['Klassisches Vorgehen', 'Reines Kanban', 'Agil ohne Backlog', 'Keine Planung'], a: 0, e: 'Fester Umfang + Festpreis: eher **klassisch** (Wasserfall/V-Modell).'},
+    {k: 'tf', q: 'Agil bedeutet: keine Dokumentation und keine Planung.', a: false, e: 'Agil heißt **weniger, aber passende** Dokumentation und Planung in kurzen Zyklen.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Das V-Modell eignet sich besonders für unklare, schnell wechselnde Anforderungen', 'Das V-Modell ist eine Erweiterung des Wasserfalls', 'Scrum ist ein agiles Framework', 'Wasserfall eignet sich bei stabilen Anforderungen'], a: 0, e: 'Wechselnde Anforderungen: **agil**. Das V-Modell ist klassisch und planungsgetrieben.'},
+    {k: 'order', q: 'Bringe die Wasserfallphasen in Reihenfolge', o: ['Analyse', 'Entwurf', 'Implementierung', 'Test', 'Betrieb'], e: 'Klassisch: Analyse, Entwurf, Implementierung, Test, Einführung/Betrieb.'},
+    {q: 'Welcher Test prüft im V-Modell die **Anforderungen des Kunden**?', o: ['Abnahmetest', 'Modultest', 'Integrationstest', 'Unit-Test'], a: 0, e: 'Der **Abnahmetest** (meist durch den Kunden) prüft gegen die Anforderungen.'},
+    {lv: 2, q: 'Was ist ein **Inkrement**?', o: ['Ein fertiges, nutzbares Teilergebnis', 'Eine Kostenart', 'Ein Lizenzmodell', 'Ein Puffer im Netzplan'], a: 0, e: 'Am Ende jeder Iteration liegt ein **nutzbares Inkrement** vor.'},
+  ]},
+  {id: 'ps-scrum', t: 'Scrum und Kanban', qs: [
+    {q: 'Wer verwaltet und priorisiert das **Product Backlog**?', o: ['Product Owner', 'Scrum Master', 'Developers', 'Geschäftsführer'], a: 0, e: 'Der **Product Owner** vertritt den Kunden und entscheidet, was wichtig ist.'},
+    {q: 'Was ist die Hauptaufgabe des **Scrum Masters**?', o: ['Methode sichern und Hindernisse beseitigen', 'Aufgaben verteilen wie ein Chef', 'Das Backlog priorisieren', 'Den Code reviewen'], a: 0, e: 'Der Scrum Master ist **kein Chef**, er coacht und räumt **Impediments** weg.'},
+    {q: 'Wie lange dauert ein Sprint **höchstens**?', o: ['1 Monat', '1 Woche', '3 Monate', '1 Jahr'], a: 0, e: 'Ein Sprint dauert **max. 1 Monat**, meist 2 Wochen.'},
+    {k: 'num', q: 'Wie viele Minuten dauert der **Daily Scrum** maximal?', a: 15, tol: 0, u: 'Minuten', e: 'Das Daily ist auf **15 Minuten** begrenzt.'},
+    {k: 'order', q: 'Bringe die Scrum-Ereignisse eines Sprints in Reihenfolge', o: ['Sprint Planning', 'Daily Scrum', 'Sprint Review', 'Sprint Retrospektive'], e: 'Planning, tägliche Dailys, Review (Produkt), Retro (Prozess).'},
+    {q: 'Worum geht es in der **Retrospektive**?', o: ['Wie das Team künftig besser zusammenarbeitet', 'Dem Kunden das Inkrement zeigen', 'Das Product Backlog neu schreiben', 'Gehälter verhandeln'], a: 0, e: 'Retro = **Prozess** verbessern. Review = **Produkt** zeigen.'},
+    {q: 'Im **Sprint Review** ...', o: ['wird das Inkrement vorgestellt und Feedback eingeholt', 'wird nur der Prozess verbessert', 'plant man den nächsten Tag', 'werden Rollen neu verteilt'], a: 0, e: 'Review: Ergebnis zeigen, Stakeholder geben Feedback.'},
+    {k: 'match', q: 'Ordne die Artefakte zu', o: [['Product Backlog', 'Alle Wünsche, priorisiert'], ['Sprint Backlog', 'Plan für den aktuellen Sprint'], ['Inkrement', 'Fertiges, nutzbares Ergebnis'], ['Definition of Done', 'Gemeinsame Fertig-Kriterien']], e: 'Drei Artefakte plus die DoD als Qualitätsmaßstab.'},
+    {k: 'tf', q: 'In Scrum weist der Scrum Master den Developers ihre Aufgaben zu.', a: false, e: 'Die Developers sind **selbstorganisiert** und planen ihre Arbeit selbst.'},
+    {q: 'Was begrenzt ein **WIP-Limit** in Kanban?', o: ['Die Zahl gleichzeitig bearbeiteter Aufgaben', 'Die Sprintlänge', 'Das Budget', 'Die Teamgröße'], a: 0, e: 'Work in Progress: maximale Anzahl Karten pro Spalte. So entstehen weniger Staus.'},
+    {k: 'multi', q: 'Welche Aussagen gelten für **Kanban**? (mehrere)', o: ['Arbeit wird auf einem Board visualisiert', 'Pull-Prinzip', 'Kontinuierlicher Fluss ohne feste Sprints', 'Feste Rolle Product Owner ist Pflicht'], a: [0, 1, 2], e: 'Kanban kennt **keine festen Rollen und Sprints**.'},
+    {lv: 2, q: 'Ein Entwickler meldet im Daily, dass ihm der Testserver fehlt. Wer kümmert sich um das Hindernis?', o: ['Scrum Master', 'Product Owner', 'Kunde', 'Niemand, er wartet'], a: 0, e: 'Hindernisse (**Impediments**) beseitigt der **Scrum Master**.'},
+    {lv: 2, q: 'Der Kunde will mitten im Sprint eine neue Funktion. Was ist korrekt?', o: ['Der Wunsch kommt ins Product Backlog, der PO priorisiert für einen späteren Sprint', 'Das Team bricht sofort alles ab', 'Der Scrum Master baut es selbst', 'Wunsch wird ignoriert'], a: 0, e: 'Der Sprint bleibt stabil. Neues geht ins **Product Backlog**.'},
+    {k: 'gap', q: 'Die gemeinsamen Kriterien, wann eine Aufgabe fertig ist, heißen Definition of ___.', a: ['Done'], e: '**Definition of Done** sichert gleiche Qualität aller Inkremente.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Der Daily Scrum dient dem Statusbericht an den Chef', 'Der Product Owner ist eine einzelne Person', 'Ein Sprint liefert ein Inkrement', 'Das Sprint Backlog gehört den Developers'], a: 0, e: 'Das Daily dient der **Abstimmung im Team**, kein Bericht an Vorgesetzte.'},
+    {k: 'tf', q: 'In Kanban zieht sich ein Teammitglied neue Arbeit, sobald es Kapazität hat (Pull).', a: true, e: '**Pull statt Push**: Arbeit wird nicht zugeteilt, sondern gezogen.'},
+  ]},
+  {id: 'ps-netzplan', t: 'Netzplan', qs: [
+    {k: 'match', q: 'Ordne die Abkürzung zu', o: [['FAZ', 'Frühester Anfangszeitpunkt'], ['SEZ', 'Spätester Endzeitpunkt'], ['GP', 'Gesamtpuffer'], ['FP', 'Freier Puffer']], e: 'F = früheste, S = späteste, A = Anfang, E = Ende.'},
+    {k: 'num', q: 'Vorgang B hat FAZ = 4 und Dauer D = 3. Berechne FEZ.', a: 7, tol: 0, u: 'Tage', e: 'FEZ = FAZ + D = 4 + 3 = **7**.'},
+    {k: 'num', q: 'Vorgang C hat zwei Vorgänger mit FEZ = 5 und FEZ = 8. Wie groß ist FAZ von C?', a: 8, tol: 0, u: 'Tage', e: 'Bei mehreren Vorgängern zählt der **größte** FEZ: **8**.'},
+    {k: 'num', q: 'Ein Vorgang hat SEZ = 12 und D = 4. Berechne SAZ.', a: 8, tol: 0, u: 'Tage', e: 'SAZ = SEZ - D = 12 - 4 = **8**.'},
+    {k: 'num', q: 'Vorgang A hat zwei Nachfolger mit SAZ = 10 und SAZ = 7. Wie groß ist SEZ von A?', a: 7, tol: 0, u: 'Tage', e: 'Rückwärts zählt der **kleinste** SAZ der Nachfolger: **7**.'},
+    {k: 'num', q: 'FAZ = 3, SAZ = 6. Berechne den Gesamtpuffer.', a: 3, tol: 0, u: 'Tage', e: 'GP = SAZ - FAZ = 6 - 3 = **3**.'},
+    {lv: 2, k: 'num', q: 'Vorgang X: FEZ = 9. Seine Nachfolger haben FAZ = 11 und FAZ = 12. Berechne den freien Puffer.', a: 2, tol: 0, u: 'Tage', e: 'FP = kleinster FAZ der Nachfolger - FEZ = 11 - 9 = **2**.'},
+    {q: 'Was gilt für einen **kritischen Vorgang**?', o: ['GP = 0', 'GP > 0', 'FP > GP', 'D = 0'], a: 0, e: 'Kritische Vorgänge haben **keinen Puffer**: jede Verzögerung verschiebt das Projektende.'},
+    {k: 'tf', q: 'Der kritische Pfad ist die Kette der Vorgänge mit Gesamtpuffer 0.', a: true, e: 'Er bestimmt die **Projektdauer**.'},
+    {q: 'Womit beginnt die Vorwärtsrechnung?', o: ['FAZ des ersten Vorgangs = 0', 'SEZ des letzten = 0', 'GP = 0 überall', 'FP aller Vorgänge'], a: 0, e: 'Start bei **FAZ = 0**, dann FEZ = FAZ + D.'},
+    {q: 'Womit beginnt die Rückwärtsrechnung?', o: ['SEZ des letzten Vorgangs = sein FEZ', 'SAZ des ersten = 0', 'FAZ des letzten = 0', 'Mit dem freien Puffer'], a: 0, e: 'Der letzte Vorgang: **SEZ = FEZ**, dann rückwärts SAZ = SEZ - D.'},
+    {lv: 2, k: 'num', c: 'A: D=2, kein Vorgänger\nB: D=4, Vorgänger A\nC: D=3, Vorgänger A\nD: D=1, Vorgänger B und C', q: 'Wie lange dauert das Projekt (FEZ von D)?', a: 7, tol: 0, u: 'Tage', e: 'A: 0-2. B: 2-6, C: 2-5. D: FAZ = max(6,5) = 6, FEZ = **7**.'},
+    {lv: 3, k: 'num', c: 'A: D=2, kein Vorgänger\nB: D=4, Vorgänger A\nC: D=3, Vorgänger A\nD: D=1, Vorgänger B und C', q: 'Wie groß ist der Gesamtpuffer von C?', a: 1, tol: 0, u: 'Tage', e: 'C: FAZ = 2. Rückwärts: SAZ(D) = 6, also SEZ(C) = 6, SAZ(C) = 3. GP = 3 - 2 = **1**.'},
+    {lv: 3, k: 'multi', c: 'A: D=2, kein Vorgänger\nB: D=4, Vorgänger A\nC: D=3, Vorgänger A\nD: D=1, Vorgänger B und C', q: 'Welche Vorgänge liegen auf dem kritischen Pfad? (mehrere)', o: ['A', 'B', 'C', 'D'], a: [0, 1, 3], e: 'A-B-D mit 2+4+1 = 7 Tagen hat GP = 0. C hat 1 Tag Puffer.'},
+    {lv: 2, q: 'Ein Vorgang mit GP = 3 verzögert sich um 2 Tage. Was passiert mit dem Projektende?', o: ['Nichts, der Puffer fängt es auf', 'Es verschiebt sich um 2 Tage', 'Es verschiebt sich um 3 Tage', 'Das Projekt wird abgebrochen'], a: 0, e: 'Verzögerung 2 ≤ GP 3: **kein** Einfluss auf das Projektende (aber der Puffer ist dann aufgebraucht).'},
+    {k: 'tf', q: 'Der freie Puffer kann größer sein als der Gesamtpuffer.', a: false, e: 'Es gilt immer **FP ≤ GP**.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Bei mehreren Vorgängern zählt in der Vorwärtsrechnung der kleinste FEZ', 'GP kann als SEZ - FEZ berechnet werden', 'Kritische Vorgänge haben GP = 0', 'Rückwärts zählt der kleinste SAZ'], a: 0, e: 'Vorwärts zählt der **größte** FEZ, weil alle Vorgänger fertig sein müssen.'},
+  ]},
+  {id: 'ps-gantt', t: 'Gantt-Diagramm', qs: [
+    {q: 'Wie wird ein **Meilenstein** im Gantt-Diagramm dargestellt?', o: ['Als Raute mit Dauer 0', 'Als langer Balken', 'Als Kreis mit Puffer', 'Als rote Linie über alles'], a: 0, e: 'Meilensteine sind Ereignisse **ohne Dauer**, dargestellt als **Raute**.'},
+    {k: 'multi', q: 'Welche sind **Vorteile** des Gantt-Diagramms? (mehrere)', o: ['Sehr anschaulich, auch für Laien', 'Gut für Kundenkommunikation', 'Fortschritt sichtbar', 'Automatische Pufferberechnung'], a: [0, 1, 2], e: 'Puffer berechnet man im **Netzplan**, nicht im Gantt.'},
+    {k: 'multi', q: 'Welche sind **Nachteile** des Gantt-Diagramms? (mehrere)', o: ['Abhängigkeiten nur eingeschränkt sichtbar', 'Keine Pufferberechnung', 'Kritischer Pfad nicht direkt erkennbar', 'Für Laien unverständlich'], a: [0, 1, 2], e: 'Gantt ist gerade für **Laien gut verständlich**.'},
+    {q: 'Was zeigt ein Balken im Gantt-Diagramm?', o: ['Beginn bis Ende eines Vorgangs auf der Zeitachse', 'Die Kosten eines Vorgangs', 'Die Anzahl der Mitarbeiter', 'Den Gesamtpuffer'], a: 0, e: 'Die **Länge** des Balkens entspricht der Dauer auf der Zeitachse.'},
+    {k: 'order', q: 'Wie arbeitet man typisch mit Netzplan und Gantt zusammen?', o: ['Netzplan berechnen (Dauer, Puffer)', 'Als Gantt mit Terminen darstellen', 'Meilensteinplan für Berichte ableiten'], e: 'Erst **rechnen** im Netzplan, dann **darstellen** im Gantt.'},
+    {k: 'tf', q: 'Ein Gantt-Diagramm eignet sich besonders, um den Kunden über den Zeitplan zu informieren.', a: true, e: 'Es ist **anschaulich** und auf einen Blick lesbar.'},
+    {q: 'Wofür steht die senkrechte Linie "heute" im Gantt?', o: ['Aktueller Stand zur Fortschrittskontrolle', 'Projektende', 'Budgetgrenze', 'Kritischer Pfad'], a: 0, e: 'Man sieht, welche Vorgänge **hinter** oder **vor** dem Plan liegen.'},
+    {lv: 2, q: 'Ein Projekt hat 120 Vorgänge mit vielen Abhängigkeiten. Was ist das Problem beim Gantt?', o: ['Es wird unübersichtlich', 'Es kann keine Termine zeigen', 'Es braucht Scrum', 'Es zeigt keine Zeitachse'], a: 0, e: 'Bei vielen Vorgängen werden Gantt-Diagramme **unübersichtlich**, man gliedert dann in Phasen.'},
+    {k: 'gap', q: 'Ein Ereignis ohne Dauer, z. B. "Abnahme erteilt", heißt ___.', a: ['Meilenstein'], e: '**Meilensteine** markieren wichtige Prüfpunkte.'},
+    {lv: 2, k: 'num', q: 'Vorgang A läuft Montag bis Mittwoch (3 Tage), B startet direkt danach mit 4 Arbeitstagen (Mo-Fr Woche). An welchem Arbeitstag der Woche endet B? (1 = Montag der Folgewoche)', a: 2, tol: 0, u: 'Tag', e: 'B: Do, Fr, dann Mo, Di der Folgewoche. Ende am **Dienstag** = Tag 2.'},
+    {k: 'tf', q: 'Im Gantt-Diagramm kann man den kritischen Pfad immer direkt ablesen.', a: false, e: 'Ohne Pufferrechnung ist der kritische Pfad **nicht direkt** erkennbar (manche Tools markieren ihn aber nachträglich).'},
+    {q: 'Welche Achse hat ein Gantt-Diagramm waagerecht?', o: ['Zeitachse', 'Kostenachse', 'Risikoachse', 'Mitarbeiterachse'], a: 0, e: 'Waagerecht die **Zeit**, senkrecht die Vorgänge.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Ein Gantt-Diagramm ersetzt die Netzplanrechnung vollständig', 'Gantt zeigt Termine anschaulich', 'Abhängigkeiten können mit Pfeilen ergänzt werden', 'Meilensteine sind Rauten'], a: 0, e: 'Puffer und kritischer Pfad kommen aus dem **Netzplan**.'},
+    {q: 'Wonach ist das Gantt-Diagramm benannt?', o: ['Henry Gantt', 'Einer ISO-Norm', 'Einer Programmiersprache', 'Einem Scrum-Begriff'], a: 0, e: 'Benannt nach **Henry L. Gantt**, auch **Balkendiagramm** genannt.'},
+  ]},
+  {id: 'ps-aufwand', t: 'Aufwandsschätzung', qs: [
+    {q: 'Welche Methode vergleicht mit einem **ähnlichen abgeschlossenen Projekt**?', o: ['Analogiemethode', 'Delphi-Methode', 'Function Point', 'Expertenschätzung'], a: 0, e: '**Analogie**: ähnliches Projekt als Basis, an Unterschiede anpassen.'},
+    {q: 'Was zeichnet die **Delphi-Methode** aus?', o: ['Anonyme Schätzung mehrerer Experten in mehreren Runden', 'Ein Experte schätzt aus dem Bauch', 'Zählen von Codezeilen', 'Kunde schätzt allein'], a: 0, e: 'Anonym, mehrere Runden: reduziert **Gruppendruck** und **Anker-Effekte**.'},
+    {q: 'Was misst die **Function-Point-Methode**?', o: ['Funktionsumfang aus Nutzersicht', 'Codezeilen', 'Stromverbrauch', 'Anzahl Mitarbeiter'], a: 0, e: 'Function Points messen den **Funktionsumfang**, unabhängig von der Programmiersprache.'},
+    {k: 'multi', q: 'Welche gehören zu den 5 Komponenten der Function-Point-Methode? (mehrere)', o: ['EI (Eingaben)', 'EO (Ausgaben)', 'EQ (Abfragen)', 'ILF (interne Datenbestände)', 'LOC (Codezeilen)'], a: [0, 1, 2, 3], e: 'EI, EO, EQ, ILF, **EIF** (externe Datenbestände). LOC gehört nicht dazu.'},
+    {k: 'num', q: 'Ein Projekt hat 300 Function Points. Das Team schafft 15 FP pro Personentag. Wie viele Personentage?', a: 20, tol: 0, u: 'PT', e: 'Aufwand = FP / Produktivität = 300 / 15 = **20 PT**.'},
+    {k: 'tf', q: 'Die Expertenschätzung ist schnell und günstig, aber subjektiv.', a: true, e: 'Sie hängt stark von der **Person** ab.'},
+    {q: 'Was beschreibt der **Kegel der Unsicherheit**?', o: ['Zu Projektbeginn ist die Schätzung am ungenauesten', 'Kosten sinken über die Zeit', 'Risiken verschwinden automatisch', 'Teams werden kleiner'], a: 0, e: 'Am Anfang kann eine Schätzung um Faktor **2 bis 4** danebenliegen.'},
+    {k: 'match', q: 'Ordne Methode und Nachteil zu', o: [['Expertenschätzung', 'Subjektiv'], ['Analogiemethode', 'Braucht Vergleichsprojekt'], ['Function Point', 'Aufwendig in der Zählung'], ['Delphi', 'Zeitaufwendig durch mehrere Runden']], e: 'Jede Methode hat Grenzen, deshalb kombiniert man.'},
+    {lv: 2, q: 'Ein Unternehmen hat noch nie ein ähnliches Projekt gemacht. Welche Methode scheidet aus?', o: ['Analogiemethode', 'Delphi', 'Expertenschätzung', 'Function Point'], a: 0, e: 'Ohne **Vergleichsprojekt** ist die Analogie unbrauchbar.'},
+    {lv: 2, q: 'Im Schätzmeeting nennt der Chef zuerst "10 Tage", alle schließen sich an. Welche Methode verhindert das?', o: ['Delphi-Methode (anonym)', 'Analogiemethode', 'Gantt', 'Netzplan'], a: 0, e: 'Delphi ist **anonym** und vermeidet den **Anker-Effekt**.'},
+    {k: 'multi', q: 'Was gehört zu guter Schätzpraxis? (mehrere)', o: ['Mehrere Methoden anwenden', 'Annahmen dokumentieren', 'Puffer einplanen', 'Einmal schätzen und nie anpassen'], a: [0, 1, 2], e: 'Man muss **laufend nachschätzen**.'},
+    {lv: 3, k: 'num', q: 'Ein Projekt mit 480 FP. Produktivität 12 FP pro Personentag, Tagessatz 600 €. Wie hoch sind die Personalkosten in €?', a: 24000, tol: 0, u: '€', e: '480 / 12 = 40 PT, 40 · 600 € = **24.000 €**.'},
+    {k: 'gap', q: 'Die anonyme, mehrstufige Expertenbefragung heißt ___-Methode.', a: ['Delphi'], e: '**Delphi** nach dem Orakel von Delphi.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Function Points hängen direkt von der Programmiersprache ab', 'Function Points werden mit einem Bewertungsfaktor angepasst', 'Function Points zählen Ein- und Ausgaben', 'Function Points eignen sich für frühe Phasen'], a: 0, e: 'FP sind **sprachunabhängig**, erst die Produktivität hängt von Technik und Team ab.'},
+    {k: 'order', q: 'Bringe die Function-Point-Schritte in Reihenfolge', o: ['Komponenten zählen und klassifizieren', 'Gewichten und summieren', 'Mit Bewertungsfaktor anpassen', 'In Aufwand umrechnen'], e: 'Zählen, gewichten, anpassen, durch Produktivität teilen.'},
+  ]},
+  {id: 'ps-kosten', t: 'Kosten und Nutzen', qs: [
+    {k: 'num', q: 'Investition 40.000 €, Einsparung 10.000 € pro Jahr. Berechne die Amortisationsdauer.', a: 4, tol: 0, u: 'Jahre', e: 'Amortisation = Investition / Einsparung = 40.000 / 10.000 = **4 Jahre**.'},
+    {k: 'num', q: 'Investition 50.000 €, Gewinn 12.500 €. Berechne den ROI in %.', a: 25, tol: 0, u: '%', e: 'ROI = Gewinn / Investition · 100 = 12.500 / 50.000 · 100 = **25 %**.'},
+    {k: 'multi', q: 'Welche Kosten sind **einmalig**? (mehrere)', o: ['Entwicklung', 'Hardwarekauf', 'Schulung', 'Monatliche Lizenzen', 'Hosting'], a: [0, 1, 2], e: 'Lizenzen (Abo) und Hosting sind **laufende** Kosten.'},
+    {q: 'Welcher Nutzen ist **nicht monetär**?', o: ['Höhere Mitarbeiterzufriedenheit', 'Gesenkte Druckkosten', 'Mehr Umsatz', 'Weniger Personalkosten'], a: 0, e: 'Zufriedenheit, Image, Sicherheit sind **nicht monetär**, man bewertet sie z. B. per Nutzwertanalyse.'},
+    {k: 'tf', q: 'Nicht-monetäre Nutzen kann man mit der Nutzwertanalyse vergleichbar machen.', a: true, e: 'Die **Nutzwertanalyse** gewichtet qualitative Kriterien.'},
+    {lv: 2, k: 'num', q: 'Eine Software kostet 18.000 € einmalig und spart 500 € pro Monat. Nach wie vielen Monaten ist sie amortisiert?', a: 36, tol: 0, u: 'Monate', e: '18.000 / 500 = **36 Monate** (3 Jahre).'},
+    {lv: 2, k: 'num', q: 'Einmalig 20.000 €, laufend 2.000 €/Jahr. Einsparung 7.000 €/Jahr. Amortisationsdauer in Jahren?', a: 4, tol: 0, u: 'Jahre', e: 'Netto-Einsparung = 7.000 - 2.000 = 5.000 €/Jahr. 20.000 / 5.000 = **4 Jahre**.'},
+    {q: 'Welche Formel stimmt?', o: ['Gewinn = Nutzen - Kosten', 'Gewinn = Kosten - Nutzen', 'ROI = Investition / Gewinn', 'Amortisation = Einsparung / Investition'], a: 0, e: 'Gewinn = **Nutzen - Kosten**. Die anderen sind vertauscht.'},
+    {k: 'match', q: 'Ordne die Kosten zu', o: [['Datenmigration', 'Einmalig'], ['Wartungsvertrag', 'Laufend'], ['Strom für Server', 'Laufend'], ['Einführungsschulung', 'Einmalig']], e: 'Einmalig fällt bei Einführung an, laufend über die Nutzung.'},
+    {lv: 2, q: 'Variante A: ROI 30 %, Amortisation 2 Jahre. Variante B: ROI 15 %, Amortisation 5 Jahre. Welche ist wirtschaftlich besser?', o: ['A', 'B', 'Beide gleich', 'Nicht bestimmbar'], a: 0, e: 'Höherer ROI **und** kürzere Amortisation: **A**.'},
+    {k: 'gap', q: 'Die Gesamtkosten aus Anschaffung und Betrieb über die Nutzungsdauer heißen ___.', a: ['TCO', 'Total Cost of Ownership'], e: '**TCO** = Total Cost of Ownership.'},
+    {lv: 3, k: 'num', q: 'Investition 60.000 €. Über 3 Jahre spart sie insgesamt 81.000 €. Berechne den ROI in %.', a: 35, tol: 0, u: '%', e: 'Gewinn = 81.000 - 60.000 = 21.000 €. ROI = 21.000 / 60.000 · 100 = **35 %**.'},
+    {k: 'tf', q: 'Ein negativer ROI bedeutet, dass das Projekt mehr kostet als es einbringt.', a: true, e: 'Negativer Gewinn ⇒ **negativer ROI**.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Annahmen der Rechnung muss man nicht nennen', 'Gemeinkosten sind indirekte Kosten', 'Laufende Kosten verringern die Netto-Einsparung', 'Kurze Amortisation ist vorteilhaft'], a: 0, e: 'Annahmen (Zeitraum, Stundensatz) gehören **immer** dazu, sonst ist die Rechnung nicht nachvollziehbar.'},
+    {q: 'Was sind **indirekte** Kosten?', o: ['Gemeinkosten, die keinem Projekt direkt zuordenbar sind', 'Kosten nur für Hardware', 'Kosten, die nie bezahlt werden', 'Kosten des Kunden'], a: 0, e: 'Miete, Verwaltung usw. sind **Gemeinkosten**.'},
+  ]},
+  {id: 'ps-kostenarten', t: 'Fixe und variable Kosten', qs: [
+    {q: 'Was sind **Fixkosten**?', o: ['Kosten, die unabhängig von der Menge anfallen', 'Kosten je Stück', 'Kosten, die nur bei Gewinn anfallen', 'Umsatzsteuer'], a: 0, e: 'Fixkosten (z. B. Miete) entstehen **unabhängig** von der Ausbringungsmenge.'},
+    {k: 'num', q: 'K_fix = 2.000 €, k_v = 15 €, x = 100. Berechne die Gesamtkosten K.', a: 3500, tol: 0, u: '€', e: 'K = K_fix + k_v · x = 2.000 + 15 · 100 = **3.500 €**.'},
+    {k: 'num', q: 'Preis p = 40 €, k_v = 15 €. Berechne den Stückdeckungsbeitrag db.', a: 25, tol: 0, u: '€', e: 'db = p - k_v = 40 - 15 = **25 €**.'},
+    {k: 'num', q: 'K_fix = 2.000 €, db = 25 €. Berechne die Gewinnschwelle x_BE.', a: 80, tol: 0, u: 'Stück', e: 'x_BE = K_fix / db = 2.000 / 25 = **80 Stück**.'},
+    {lv: 2, k: 'num', q: 'K_fix = 1.000 €, p = 30 €, k_v = 12 €. Ab welcher ganzen Stückzahl wird Gewinn erzielt (Break-even aufgerundet)?', a: 56, tol: 0, u: 'Stück', e: 'db = 18 €. 1.000 / 18 = 55,6. **Aufrunden** auf **56**.'},
+    {lv: 2, k: 'num', q: 'p = 50 €, k_v = 20 €, x = 200, K_fix = 4.000 €. Berechne den Gewinn.', a: 2000, tol: 0, u: '€', e: 'DB gesamt = 30 · 200 = 6.000 €. Gewinn = 6.000 - 4.000 = **2.000 €**.'},
+    {k: 'match', q: 'Ordne die Kosten einer Schulung zu', o: [['Raummiete pro Tag', 'Fix (je Termin)'], ['Schulungsunterlagen je Teilnehmer', 'Variabel'], ['Trainerhonorar pauschal', 'Fix'], ['Mittagessen je Teilnehmer', 'Variabel']], e: 'Je Teilnehmer = **variabel**, unabhängig von der Teilnehmerzahl = **fix**.'},
+    {k: 'tf', q: 'Kosten, die anfallen, egal ob die Schulung stattfindet, sind fix.', a: true, e: 'Prüfungsfalle: "unabhängig vom Abhalten" heißt **fix**.'},
+    {q: 'Wie verläuft die Fixkostenlinie im Diagramm (x = Menge)?', o: ['Waagerecht', 'Steigend ab 0', 'Fallend', 'Senkrecht'], a: 0, e: 'Fixkosten ändern sich nicht mit der Menge: **waagerechte** Linie.'},
+    {q: 'Wo beginnt die Erlöslinie E = p · x?', o: ['Im Ursprung (0)', 'Bei K_fix', 'Bei k_v', 'Bei x_BE'], a: 0, e: 'Ohne Absatz kein Erlös: Gerade **ab 0**. Die Kostengerade beginnt bei K_fix.'},
+    {q: 'Was ist der **Break-even-Point**?', o: ['Schnittpunkt von Erlös- und Kostenlinie', 'Maximaler Gewinn', 'Punkt, an dem k_v = 0 ist', 'Schnitt von Fixkosten und x-Achse'], a: 0, e: 'Am Break-even gilt **E = K**, Gewinn = 0.'},
+    {lv: 3, k: 'num', q: 'Eine Schulung: Fixkosten 1.800 € je Termin, variable Kosten 40 € je Teilnehmer, Preis 190 € je Teilnehmer. Wie viele Teilnehmer braucht man mindestens, um ohne Verlust zu sein?', a: 12, tol: 0, u: 'Teilnehmer', e: 'db = 190 - 40 = 150 €. 1.800 / 150 = **12** Teilnehmer.'},
+    {k: 'gap', q: 'Preis minus variable Stückkosten ergibt den ___.', a: ['Deckungsbeitrag', 'Stückdeckungsbeitrag', 'db'], e: 'Der **Deckungsbeitrag** deckt zuerst die Fixkosten, danach entsteht Gewinn.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Steigt die Menge, steigen die Fixkosten pro Stück', 'Variable Kosten steigen mit der Menge', 'Gewinn = DB gesamt - K_fix', 'Ein höherer db senkt die Gewinnschwelle'], a: 0, e: 'Fixkosten pro Stück **sinken** mit steigender Menge (Fixkostendegression).'},
+    {lv: 2, k: 'num', q: 'K_fix = 3.000 €, K bei x = 100 beträgt 5.500 €. Berechne k_v.', a: 25, tol: 0, u: '€', e: 'k_v = (K - K_fix) / x = 2.500 / 100 = **25 €**.'},
+  ]},
+  {id: 'ps-kalkulation', t: 'Kalkulation', qs: [
+    {k: 'order', q: 'Bringe die Zuschlagskalkulation in Reihenfolge', o: ['Fertigungsmaterial', '+ Materialgemeinkosten', '+ Fertigungslöhne', '+ Fertigungsgemeinkosten', '= Herstellkosten', '+ Verwaltungs- und Vertriebsgemeinkosten = Selbstkosten'], e: 'Material, Fertigung, Herstellkosten, dann VwGK und VtGK auf die HK.'},
+    {k: 'num', q: 'FM = 10.000 €, MGK-Zuschlag 10 %. Berechne die MGK in €.', a: 1000, tol: 0, u: '€', e: 'MGK = 10 % von FM = **1.000 €**.'},
+    {lv: 2, k: 'num', q: 'FM 10.000 €, MGK 1.000 €, FL 5.000 €, FGK 120 % auf FL. Berechne die Herstellkosten.', a: 22000, tol: 0, u: '€', e: 'FGK = 1,2 · 5.000 = 6.000. HK = 10.000 + 1.000 + 5.000 + 6.000 = **22.000 €**.'},
+    {q: 'Worauf bezieht sich der **Verwaltungsgemeinkostenzuschlag**?', o: ['Herstellkosten', 'Fertigungsmaterial', 'Fertigungslöhne', 'Listenpreis'], a: 0, e: 'VwGK und VtGK werden auf die **Herstellkosten** bezogen.'},
+    {q: 'Worauf bezieht sich der FGK-Zuschlag?', o: ['Fertigungslöhne', 'Fertigungsmaterial', 'Herstellkosten', 'Selbstkosten'], a: 0, e: 'FGK % = FGK / **FL**.'},
+    {k: 'num', q: 'MGK = 3.000 €, FM = 20.000 €. Berechne den MGK-Zuschlagssatz in %.', a: 15, tol: 0, u: '%', e: '3.000 / 20.000 · 100 = **15 %**.'},
+    {lv: 2, k: 'num', q: 'Selbstkosten 8.000 €, Gewinnzuschlag 25 %. Berechne den Barverkaufspreis.', a: 10000, tol: 0, u: '€', e: 'Gewinn **vom Hundert**: 8.000 · 1,25 = **10.000 €**.'},
+    {lv: 3, k: 'num', q: 'Barverkaufspreis 9.800 €, Kundenskonto 2 %. Berechne den Zielverkaufspreis.', a: 10000, tol: 0, u: '€', e: 'Skonto **im Hundert**: 9.800 / 0,98 = **10.000 €**. Falsch wäre 9.800 · 1,02 = 9.996 €.'},
+    {lv: 3, k: 'num', q: 'Zielverkaufspreis 9.000 €, Kundenrabatt 10 %. Berechne den Listenverkaufspreis netto.', a: 10000, tol: 0, u: '€', e: 'Im Hundert: 9.000 / 0,9 = **10.000 €**.'},
+    {k: 'tf', q: 'Kundenskonto und Kundenrabatt werden in der Verkaufskalkulation "im Hundert" gerechnet.', a: true, e: 'Weil sie später vom **höheren** Preis abgezogen werden, rechnet man vom verminderten Wert zurück.'},
+    {k: 'num', q: 'Listenverkaufspreis netto 1.000 €. Berechne den Bruttopreis mit 19 % USt.', a: 1190, tol: 0, u: '€', e: '1.000 · 1,19 = **1.190 €**.'},
+    {lv: 2, k: 'num', q: 'Kosten von 3.600 € werden nach Mitarbeitern verteilt: Abteilung A 4, B 5, C 3. Welchen Anteil trägt B in €?', a: 1500, tol: 0, u: '€', e: '12 Teile, 1 Teil = 300 €. B: 5 · 300 = **1.500 €**.'},
+    {k: 'match', q: 'Ordne die Zuschlagsbasis zu', o: [['MGK', 'Fertigungsmaterial'], ['FGK', 'Fertigungslöhne'], ['VwGK', 'Herstellkosten'], ['VtGK', 'Herstellkosten']], e: 'Typische Prüfungsfrage: welche Basis für welchen Zuschlag.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Selbstkosten = Herstellkosten ohne Gemeinkosten', 'HK = FM + MGK + FL + FGK', 'SK = HK + VwGK + VtGK', 'Der Gewinn wird auf die Selbstkosten aufgeschlagen'], a: 0, e: 'Selbstkosten enthalten **zusätzlich** Verwaltungs- und Vertriebsgemeinkosten.'},
+    {k: 'gap', q: 'Herstellkosten plus Verwaltungs- und Vertriebsgemeinkosten ergeben die ___.', a: ['Selbstkosten', 'SK'], e: '**Selbstkosten** sind die gesamten Kosten eines Produkts.'},
+  ]},
+]);
+;
+// content/quest/ps-2.js
+AP2.quest('ps', [
+  {id: 'ps-umlueberblick', t: 'UML-Überblick', qs: [
+    {q: 'Wie viele Diagrammarten kennt UML 2.x insgesamt?', o: ['14', '7', '9', '12'], a: 0, lv: 1, e: '**7 Struktur-** und **7 Verhaltensdiagramme** (davon 4 Interaktionsdiagramme) = 14.'},
+    {q: 'Welches Diagramm gehört zu den **Strukturdiagrammen**?', o: ['Verteilungsdiagramm', 'Sequenzdiagramm', 'Zustandsdiagramm', 'Aktivitätsdiagramm'], a: 0, lv: 1, e: 'Das **Verteilungsdiagramm** zeigt Hardware-Knoten und Artefakte, also Struktur. Die anderen beschreiben Verhalten.'},
+    {k: 'multi', q: 'Welche Diagramme sind **Interaktionsdiagramme**? (mehrere)', o: ['Sequenzdiagramm', 'Kommunikationsdiagramm', 'Zeitverlaufsdiagramm', 'Interaktionsübersichtsdiagramm', 'Zustandsdiagramm'], a: [0, 1, 2, 3], lv: 2, e: 'Die 4 Interaktionsdiagramme: Sequenz, Kommunikation, Zeitverlauf, Interaktionsübersicht. Das **Zustandsdiagramm** ist Verhalten, aber keine Interaktion.'},
+    {q: 'Woran erkennt man ein **Objektdiagramm**?', o: ['Kasten "kunde1 : Kunde" unterstrichen, Attribute mit Werten', 'Klassen mit Multiplizitäten', 'Lebenslinien mit Nachrichten', 'Ovale mit Akteuren'], a: 0, lv: 1, e: 'Objekte werden als **name : Klasse** unterstrichen dargestellt, Attribute haben konkrete **Werte**.'},
+    {k: 'tf', q: 'Ein Objektdiagramm enthält Multiplizitäten an den Verbindungen.', a: false, lv: 2, e: 'Objektdiagramme zeigen **Links** zwischen konkreten Objekten, keine Multiplizitäten. Diese gehören ins Klassendiagramm.'},
+    {q: 'Was bedeutet **«import»** im Paketdiagramm?', o: ['Öffentlicher Import, wird weitergegeben', 'Privater Import, nicht weitergegeben', 'Paket wird gelöscht', 'Paket erbt von einem anderen'], a: 0, lv: 2, e: '**«import»** ist öffentlich (weitergegeben), **«access»** ist privat.'},
+    {k: 'gap', q: 'Der private Import im Paketdiagramm heißt «___».', a: ['access'], lv: 2, e: '**«access»** importiert Elemente, ohne sie an andere Pakete weiterzugeben.'},
+    {q: 'Wie wird ein Paket im Paketdiagramm gezeichnet?', o: ['Rechteck mit Reiter (Karteikarte)', 'Oval', 'Raute', 'Zylinder'], a: 0, lv: 1, e: 'Ein Paket ist ein **Rechteck mit Reiter** oben links.'},
+    {q: 'Ein Admin will zeigen, auf welchem Server welche .jar-Datei läuft. Welches Diagramm?', o: ['Verteilungsdiagramm', 'Komponentendiagramm', 'Paketdiagramm', 'Klassendiagramm'], a: 0, lv: 2, e: 'Das **Verteilungsdiagramm** zeigt Knoten (Hardware/Umgebung) und darauf verteilte **Artefakte**.'},
+    {q: 'Welches Diagramm zeigt Bausteine mit **angebotenen und benötigten Schnittstellen** (Lollipop/Socket)?', o: ['Komponentendiagramm', 'Objektdiagramm', 'Use-Case-Diagramm', 'Zeitverlaufsdiagramm'], a: 0, lv: 2, e: 'Im **Komponentendiagramm** zeigen Lollipop (angeboten) und Socket (benötigt) die Schnittstellen.'},
+    {k: 'match', q: 'Ordne Fragestellung und Diagramm zu', o: [['Wer nutzt welche Funktion?', 'Anwendungsfalldiagramm'], ['In welcher Reihenfolge rufen Objekte sich auf?', 'Sequenzdiagramm'], ['Welche Zustände hat eine Bestellung?', 'Zustandsdiagramm'], ['Welche Klassen gibt es?', 'Klassendiagramm']], lv: 1, e: 'Jedes Diagramm beantwortet eine typische Frage.'},
+    {q: 'Welche Aussage ist **FALSCH**?', o: ['Das Aktivitätsdiagramm ist ein Strukturdiagramm.', 'Das Klassendiagramm ist ein Strukturdiagramm.', 'Das Use-Case-Diagramm ist ein Verhaltensdiagramm.', 'Das Sequenzdiagramm ist ein Interaktionsdiagramm.'], a: 0, lv: 1, e: 'Das **Aktivitätsdiagramm** beschreibt Abläufe, also **Verhalten**.'},
+    {k: 'tf', q: 'Ein Objektdiagramm zeigt einen Schnappschuss des Systems zu einem bestimmten Zeitpunkt.', a: true, lv: 1, e: 'Genau: konkrete Objekte mit Werten zu **einem Zeitpunkt**.'},
+    {k: 'num', q: 'Wie viele **Strukturdiagramme** gibt es in UML 2?', a: 7, tol: 0, u: 'Diagramme', lv: 2, e: 'Klassen-, Objekt-, Paket-, Komponenten-, Kompositionsstruktur-, Verteilungs-, Profildiagramm = **7**.'},
+    {q: 'Wofür steht UML?', o: ['Unified Modeling Language', 'Universal Markup Language', 'Unified Method Logic', 'User Model Layout'], a: 0, lv: 1, e: '**Unified Modeling Language**, standardisiert von der OMG.'},
+    {q: 'Welche Abhängigkeit im Paketdiagramm wird als **gestrichelter Pfeil** gezeichnet?', o: ['Alle drei: «import», «access», «use»', 'Nur «import»', 'Keine, es ist eine durchgezogene Linie', 'Nur Vererbung'], a: 0, lv: 3, e: 'Paketabhängigkeiten sind **gestrichelte Pfeile** mit Stereotyp. Vererbung wäre ein leeres Dreieck.'},
+  ]},
+  {id: 'ps-usecase', t: 'Use-Case-Diagramm', qs: [
+    {q: 'Wie wird ein **Anwendungsfall** dargestellt?', o: ['Oval mit Verb + Objekt', 'Rechteck mit drei Fächern', 'Raute', 'Sechseck'], a: 0, lv: 1, e: 'Ein Use Case ist ein **Oval**, z. B. "Artikel suchen".'},
+    {q: 'Was bedeutet **«include»**?', o: ['Der eingebundene Fall wird immer ausgeführt', 'Der Fall wird nur unter einer Bedingung ausgeführt', 'Vererbung zwischen Akteuren', 'Der Fall ist außerhalb des Systems'], a: 0, lv: 1, e: '**include** = immer, **extend** = optional unter Bedingung.'},
+    {q: 'Beim Bezahlen kann **optional** ein Gutschein eingelöst werden. Welche Beziehung?', o: ['«extend» von "Gutschein einlösen" auf "Bezahlen"', '«include» von "Bezahlen" auf "Gutschein einlösen"', 'Generalisierung', 'Assoziation zum Akteur Gutschein'], a: 0, lv: 2, e: 'Optional = **extend**. Der Pfeil zeigt vom erweiternden Fall zum Basisfall.'},
+    {k: 'tf', q: 'Bei «include» zeigt der Pfeil vom Basisfall auf den eingebundenen Fall.', a: true, lv: 2, e: 'Richtig: Basisfall --«include»--> eingebundener Fall. Bei extend ist es umgekehrt.'},
+    {k: 'tf', q: 'Ein Akteur muss immer eine Person sein.', a: false, lv: 1, e: 'Akteure können auch **externe Systeme** oder die **Zeit** (z. B. Nachtlauf) sein.'},
+    {q: 'Wie wird ein Akteur benannt?', o: ['Nach seiner Rolle, z. B. "Kunde"', 'Mit dem echten Namen, z. B. "Herr Meier"', 'Mit einem Verb', 'Mit der Abteilungsnummer'], a: 0, lv: 1, e: 'Akteure sind **Rollen**, keine konkreten Personen.'},
+    {q: 'Was stellt das große Rechteck im Use-Case-Diagramm dar?', o: ['Systemgrenze', 'Paket', 'Klasse', 'Datenbank'], a: 0, lv: 1, e: 'Die **Systemgrenze** trennt das System (innen) von den Akteuren (außen).'},
+    {q: 'Wie wird die **Generalisierung** zwischen Akteuren gezeichnet?', o: ['Pfeil mit leerem Dreieck', 'Gestrichelter Pfeil «include»', 'Linie mit Raute', 'Doppelpfeil'], a: 0, lv: 2, e: 'Generalisierung = **leeres Dreieck** zeigt auf den allgemeineren Akteur.'},
+    {k: 'gap', q: 'Eine optionale, bedingte Erweiterung eines Anwendungsfalls heißt «___».', a: ['extend'], lv: 1, e: '**extend** wird unter einer Bedingung (Extension Point) ausgeführt.'},
+    {k: 'multi', q: 'Wofür nutzt man Use-Case-Diagramme? (mehrere)', o: ['Anforderungen erfassen', 'Grundlage für Pflichtenheft und Tests', 'Verständigung Kunde und Entwickler', 'Methodenaufrufe in zeitlicher Reihenfolge zeigen'], a: [0, 1, 2], lv: 1, e: 'Die zeitliche Abfolge von Aufrufen zeigt das **Sequenzdiagramm**.'},
+    {q: 'Welcher Name passt am besten für einen Anwendungsfall?', o: ['Bestellung aufgeben', 'Bestellungsdatenbank', 'Kunde', 'Wenn der Kunde klickt'], a: 0, lv: 1, e: 'Use Cases: **Verb + Objekt** aus Sicht des Nutzers.'},
+    {q: 'Jedes Abheben am Geldautomaten erfordert "PIN prüfen". Welche Beziehung?', o: ['«include»', '«extend»', 'Generalisierung', 'Keine, nur Assoziation'], a: 0, lv: 2, e: 'Immer ausgeführt = **include**.'},
+    {k: 'match', q: 'Ordne Element und Symbol zu', o: [['Akteur', 'Strichmännchen'], ['Anwendungsfall', 'Oval'], ['Systemgrenze', 'Rechteck'], ['Assoziation', 'durchgezogene Linie']], lv: 1, e: 'Die Grundsymbole des Use-Case-Diagramms.'},
+    {q: 'Welche Aussage ist **FALSCH**?', o: ['Use-Case-Diagramme zeigen den internen Ablauf mit Verzweigungen.', 'Akteure stehen außerhalb der Systemgrenze.', 'include und extend sind gestrichelte Pfeile.', 'Ein Akteur kann ein externes System sein.'], a: 0, lv: 2, e: 'Den Ablauf im Detail zeigt das **Aktivitätsdiagramm**; das Use-Case-Diagramm zeigt nur **was**, nicht **wie**.'},
+    {q: 'Ein nächtlicher Backup-Job startet automatisch. Wer ist der Akteur?', o: ['Zeit (Timer)', 'Der Administrator, immer', 'Die Datenbank-Tabelle', 'Es gibt keinen Akteur'], a: 0, lv: 3, e: 'Zeitgesteuerte Abläufe haben die **Zeit** als Akteur.'},
+  ]},
+  {id: 'ps-klassen', t: 'Klassendiagramm', qs: [
+    {q: 'Welches Zeichen steht für **private**?', o: ['-', '+', '#', '~'], a: 0, lv: 1, e: '**+** public, **-** private, **#** protected, **~** package.'},
+    {k: 'match', q: 'Ordne Sichtbarkeit zu', o: [['+', 'public'], ['-', 'private'], ['#', 'protected'], ['~', 'package']], lv: 1, e: 'Die vier UML-Sichtbarkeiten.'},
+    {q: 'Ein Auto **besteht aus** einem Motor, der ohne Auto nicht existiert. Welche Beziehung?', o: ['Komposition (volle Raute)', 'Aggregation (leere Raute)', 'Vererbung', 'Abhängigkeit'], a: 0, lv: 2, e: 'Teil stirbt mit dem Ganzen = **Komposition**, gefüllte Raute am Ganzen.'},
+    {q: 'Eine Mannschaft **hat** Spieler, die auch ohne Mannschaft existieren. Welche Beziehung?', o: ['Aggregation', 'Komposition', 'Realisierung', 'Generalisierung'], a: 0, lv: 2, e: 'Teil lebt allein weiter = **Aggregation**, leere Raute.'},
+    {k: 'tf', q: 'Bei der Komposition sitzt die Raute an der Klasse des Teils.', a: false, lv: 2, e: 'Die Raute sitzt immer am **Ganzen**.'},
+    {q: 'Was bedeutet die Multiplizität `1..*`?', o: ['Mindestens eins', 'Genau eins', 'Keins oder eins', 'Beliebig viele, auch null'], a: 0, lv: 1, e: '`1..*` = mindestens eins; `0..*` bzw. `*` = beliebig viele.'},
+    {k: 'gap', q: 'Die Multiplizität "keins oder eins" schreibt man `___`.', a: ['0..1'], lv: 1, e: '`0..1` = optional, höchstens eins.'},
+    {q: 'Wie wird eine **Vererbung** gezeichnet?', o: ['Durchgezogene Linie mit leerem Dreieck zur Oberklasse', 'Gestrichelte Linie mit leerem Dreieck', 'Linie mit gefüllter Raute', 'Gestrichelter Pfeil mit offener Spitze'], a: 0, lv: 1, e: 'Durchgezogen + leeres Dreieck = Vererbung. Gestrichelt + leeres Dreieck = **Realisierung** (Interface).'},
+    {q: 'Die Klasse `PdfExport` implementiert das Interface `Exportierbar`. Welche Linie?', o: ['Gestrichelt mit leerem Dreieck (Realisierung)', 'Durchgezogen mit leerem Dreieck', 'Volle Raute', 'Einfache Linie'], a: 0, lv: 2, e: 'Interface-Implementierung = **Realisierung**, gestrichelt mit leerem Dreieck.'},
+    {q: 'Wie wird eine **abstrakte** Klasse gekennzeichnet?', o: ['Name kursiv oder «abstract»', 'Name unterstrichen', 'Name in Großbuchstaben', 'Mit # vor dem Namen'], a: 0, lv: 2, e: 'Abstrakt: **kursiv** oder Stereotyp **«abstract»**. Unterstrichen bedeutet statisch bzw. Objekt.'},
+    {q: 'Was steht im **mittleren** Fach einer Klasse?', o: ['Attribute', 'Methoden', 'Klassenname', 'Multiplizitäten'], a: 0, lv: 1, e: 'Oben Name, Mitte **Attribute**, unten Methoden.'},
+    {q: 'Welche UML-Zeile passt zu `private double saldo;`?', o: ['- saldo: double', '+ saldo: double', 'double saldo -', '# saldo(): double'], a: 0, lv: 1, e: 'UML: Sichtbarkeit Name: Typ, also **- saldo: double**.'},
+    {q: 'Welche Code-Struktur entsteht aus einer 1:* Assoziation Kunde -> Bestellung (Navigation zum Kunden hin zu Bestellungen)?', o: ['Kunde hat eine Liste von Bestellungen', 'Bestellung erbt von Kunde', 'Kunde implementiert Bestellung', 'Beide Klassen werden zu einer'], a: 0, lv: 3, e: 'Viele = Collection: `List<Bestellung> bestellungen` in Kunde.'},
+    {q: 'Was bedeutet eine **Abhängigkeit** (gestrichelter Pfeil)?', o: ['Eine Klasse benutzt die andere kurzzeitig, z. B. als Parameter', 'Dauerhafte Teil-Ganzes-Beziehung', 'Vererbung', 'Die Klassen sind identisch'], a: 0, lv: 2, e: '**Abhängigkeit** = "benutzt kurz", z. B. Parameter oder lokale Variable.'},
+    {k: 'multi', q: 'Welche Aussagen sind richtig? (mehrere)', o: ['Statische Attribute werden unterstrichen.', '`2..5` bedeutet zwei bis fünf.', 'Aggregation hat eine gefüllte Raute.', 'Methoden stehen im unteren Fach.'], a: [0, 1, 3], lv: 2, e: 'Aggregation = **leere** Raute; gefüllt ist Komposition.'},
+    {k: 'tf', q: 'Ein Interface kann mit dem Stereotyp «interface» gekennzeichnet werden.', a: true, lv: 1, e: 'Ja, **«interface»** über dem Namen.'},
+  ]},
+  {id: 'ps-aktivitaet', t: 'Aktivitätsdiagramm', qs: [
+    {q: 'Wie wird der **Startknoten** dargestellt?', o: ['Ausgefüllter Kreis', 'Kreis mit Punkt innen', 'Raute', 'Dicker Balken'], a: 0, lv: 1, e: 'Start = **gefüllter Kreis**, Ende = Kreis mit Punkt (Bullauge).'},
+    {q: 'Wofür steht der **dicke Balken**?', o: ['Gabelung (Fork) bzw. Vereinigung (Join) paralleler Abläufe', 'Entscheidung', 'Ende', 'Objektknoten'], a: 0, lv: 1, e: 'Fork/Join = **Parallelität**. Die Raute ist Entscheidung/Zusammenführung.'},
+    {q: 'Wie werden **Guards** notiert?', o: ['In eckigen Klammern, z. B. [betrag > 0]', 'In runden Klammern', 'Mit «guard»', 'Kursiv neben der Aktion'], a: 0, lv: 1, e: 'Guards stehen in **[eckigen Klammern]** an den Kanten.'},
+    {q: 'An einer Raute stehen [alter > 18] und [alter < 18]. Was ist falsch?', o: ['alter = 18 ist nicht abgedeckt', 'Guards dürfen keine Zahlen enthalten', 'Es fehlt ein Fork', 'Nichts'], a: 0, lv: 3, e: 'Guards müssen sich **ausschließen** und **alle Fälle abdecken**. Richtig wäre [alter >= 18] / [alter < 18].'},
+    {k: 'tf', q: 'Nach einem Fork laufen alle ausgehenden Zweige parallel.', a: true, lv: 1, e: 'Ja, der Join wartet dann auf **alle** Zweige.'},
+    {q: 'Wie zeigt man, **wer** eine Aktion ausführt (z. B. Kunde, Lager, Buchhaltung)?', o: ['Swimlanes (Partitionen)', 'Guards', 'Objektknoten', 'Pakete'], a: 0, lv: 1, e: '**Swimlanes** teilen das Diagramm nach Verantwortlichen.'},
+    {q: 'Wie wird eine **Aktion** gezeichnet?', o: ['Abgerundetes Rechteck', 'Sechseck', 'Oval', 'Raute'], a: 0, lv: 1, e: 'Aktion = **abgerundetes Rechteck**. Sechseck ist das EPK-Ereignis.'},
+    {k: 'match', q: 'Ordne Symbol und Bedeutung zu', o: [['Gefüllter Kreis', 'Start'], ['Kreis mit Punkt', 'Ende'], ['Raute', 'Entscheidung'], ['Dicker Balken', 'Fork/Join']], lv: 1, e: 'Die Knotenarten im Aktivitätsdiagramm.'},
+    {q: 'Wie modelliert man eine **Schleife**?', o: ['Rückkante zu einer Raute (Zusammenführung) vor der Aktion', 'Mit einem Fork', 'Mit zwei Startknoten', 'Gar nicht möglich'], a: 0, lv: 2, e: 'Schleife = Entscheidung mit **Rückkante** zu einer früheren Stelle.'},
+    {k: 'multi', q: 'Wann eignet sich ein Aktivitätsdiagramm? (mehrere)', o: ['Geschäftsprozess beschreiben', 'Algorithmus grob entwerfen', 'Use Case im Detail zeigen', 'Datenbanktabellen entwerfen'], a: [0, 1, 2], lv: 1, e: 'Tabellen entwirft man mit **ERM**.'},
+    {k: 'tf', q: 'Eine Raute kann Zweige wieder zusammenführen (Merge).', a: true, lv: 2, e: 'Die Raute dient für **Entscheidung** und **Zusammenführung**.'},
+    {q: 'Was passiert an einem **Join**, wenn erst ein von zwei parallelen Zweigen fertig ist?', o: ['Er wartet auf den anderen Zweig', 'Der Ablauf geht sofort weiter', 'Das Programm endet', 'Der fertige Zweig startet neu'], a: 0, lv: 2, e: 'Der Join **synchronisiert**: weiter erst, wenn alle eingehenden Zweige da sind.'},
+    {k: 'order', q: 'Bringe den Bestellablauf in Reihenfolge', o: ['Startknoten', 'Bestellung erfassen', 'Raute: [verfügbar] / [nicht verfügbar]', 'Ware versenden', 'Endknoten'], lv: 1, e: 'Start, Aktion, Entscheidung, Aktion, Ende.'},
+    {q: 'Wofür steht ein **Objektknoten** (Rechteck)?', o: ['Daten, die zwischen Aktionen fließen, z. B. Rechnung', 'Eine Klasse mit Methoden', 'Ein Akteur', 'Eine Systemgrenze'], a: 0, lv: 2, e: 'Objektknoten zeigen **Daten/Objekte**, die fließen.'},
+    {q: 'Welche Aussage ist **FALSCH**?', o: ['Ein Aktivitätsdiagramm darf nur einen Endknoten haben.', 'Guards stehen in eckigen Klammern.', 'Swimlanes zeigen Verantwortlichkeiten.', 'Fork startet parallele Zweige.'], a: 0, lv: 3, e: 'Es darf **mehrere** Endknoten geben.'},
+  ]},
+  {id: 'ps-sequenz', t: 'Sequenzdiagramm', qs: [
+    {q: 'Was ist eine **Lebenslinie**?', o: ['Gestrichelte senkrechte Linie unter einem Teilnehmer', 'Waagerechter Pfeil', 'Dicker Balken', 'Rahmen mit alt'], a: 0, lv: 1, e: 'Die **Lebenslinie** zeigt die Existenz des Teilnehmers über die Zeit.'},
+    {q: 'Wie sieht eine **synchrone** Nachricht aus?', o: ['Durchgezogen, gefüllte Spitze', 'Durchgezogen, offene Spitze', 'Gestrichelt, offene Spitze', 'Gestrichelt, gefüllte Spitze'], a: 0, lv: 1, e: 'Synchron = gefüllte Spitze, Aufrufer **wartet**. Asynchron = offene Spitze. Rückgabe = gestrichelt.'},
+    {k: 'match', q: 'Ordne Pfeil und Bedeutung zu', o: [['Durchgezogen, gefüllte Spitze', 'Synchroner Aufruf'], ['Durchgezogen, offene Spitze', 'Asynchrone Nachricht'], ['Gestrichelt, offene Spitze', 'Rückgabe']], lv: 2, e: 'Die drei Pfeilarten.'},
+    {q: 'Welches Fragment bildet **if/else** ab?', o: ['alt', 'opt', 'loop', 'par'], a: 0, lv: 1, e: '**alt** = Alternativen; **opt** = nur if ohne else.'},
+    {q: 'Für jede Position im Warenkorb wird `berechnePreis()` aufgerufen. Welches Fragment?', o: ['loop', 'alt', 'opt', 'par'], a: 0, lv: 1, e: 'Wiederholung = **loop**.'},
+    {q: 'Nur wenn ein Gutschein vorhanden ist, wird er geprüft. Welches Fragment?', o: ['opt', 'alt', 'loop', 'ref'], a: 0, lv: 2, e: 'Bedingung ohne Alternative = **opt**.'},
+    {k: 'tf', q: 'Im Sequenzdiagramm läuft die Zeit von oben nach unten.', a: true, lv: 1, e: 'Ja, spätere Nachrichten stehen **weiter unten**.'},
+    {q: 'Was zeigt der **Aktivierungsbalken**?', o: ['Dass das Objekt gerade arbeitet', 'Dass das Objekt gelöscht wird', 'Eine Schleife', 'Die Systemgrenze'], a: 0, lv: 1, e: 'Das schmale Rechteck auf der Lebenslinie = Objekt ist **aktiv**.'},
+    {k: 'gap', q: 'Das Fragment für parallele Abläufe heißt ___.', a: ['par'], lv: 2, e: '**par** = parallel.'},
+    {q: 'Ein Logger erhält eine Nachricht, der Aufrufer wartet nicht. Welche Pfeilart?', o: ['Asynchron (offene Spitze)', 'Synchron (gefüllte Spitze)', 'Rückgabe', 'Selbstaufruf'], a: 0, lv: 2, e: 'Aufrufer arbeitet weiter = **asynchron**.'},
+    {c: 'void bestellen() {\n  lager.pruefe(art);\n  if (ok) zahlung.abbuchen();\n  else kunde.info();\n}', q: 'Welche Elemente braucht man für den Code? (Methode in Kasse)', o: ['Zwei synchrone Nachrichten und ein alt-Fragment', 'Nur ein loop-Fragment', 'Ein par-Fragment', 'Ein opt-Fragment mit drei Nachrichten'], a: 0, lv: 3, e: 'pruefe() synchron, dann if/else = **alt** mit je einer Nachricht.'},
+    {q: 'Wie wird ein **Selbstaufruf** gezeichnet?', o: ['Pfeil, der zur eigenen Lebenslinie zurückführt', 'Pfeil nach links ins Leere', 'Gestrichelte Linie nach oben', 'Gar nicht'], a: 0, lv: 2, e: 'Ein Objekt ruft eigene Methode: **Schleifenpfeil** auf die eigene Lebenslinie.'},
+    {k: 'multi', q: 'Wofür eignet sich ein Sequenzdiagramm? (mehrere)', o: ['Ablauf eines Anwendungsfalls', 'Zusammenspiel von Klassen', 'Protokolle und Schnittstellen', 'Kardinalitäten von Tabellen'], a: [0, 1, 2], lv: 1, e: 'Kardinalitäten gehören ins **ERM**.'},
+    {q: 'Welche Aussage ist **FALSCH**?', o: ['Rückgabepfeile werden durchgezogen gezeichnet.', 'Teilnehmer stehen oben als Kasten.', 'alt hat mehrere Bereiche mit Guards.', 'Nachrichten sind waagerechte Pfeile.'], a: 0, lv: 2, e: 'Rückgaben sind **gestrichelt**.'},
+    {k: 'tf', q: 'Ein Sequenzdiagramm gehört zu den Interaktionsdiagrammen.', a: true, lv: 1, e: 'Es ist das bekannteste der vier Interaktionsdiagramme.'},
+  ]},
+  {id: 'ps-zustand', t: 'Zustandsdiagramm', qs: [
+    {q: 'Wie wird ein **Zustand** gezeichnet?', o: ['Abgerundetes Rechteck', 'Raute', 'Sechseck', 'Oval'], a: 0, lv: 1, e: 'Zustand = **abgerundetes Rechteck** mit Namen.'},
+    {q: 'Wie lautet die Beschriftung eines Übergangs?', o: ['Ereignis [Bedingung] / Aktion', 'Aktion [Ereignis] / Bedingung', '[Aktion] Ereignis / Zustand', 'Bedingung / Ereignis [Aktion]'], a: 0, lv: 1, e: '**Ereignis [Guard] / Aktion**.'},
+    {k: 'match', q: 'Ordne die Zustandsaktionen zu', o: [['entry', 'beim Betreten'], ['do', 'solange im Zustand'], ['exit', 'beim Verlassen']], lv: 1, e: 'Die drei internen Aktionen eines Zustands.'},
+    {c: 'zahlung_eingegangen [betrag >= summe] / rechnungSenden()', q: 'Was ist hier der **Guard**?', o: ['betrag >= summe', 'zahlung_eingegangen', 'rechnungSenden()', 'Der Zielzustand'], a: 0, lv: 2, e: 'Guard steht in **[ ]**; vorne das Ereignis, hinter / die Aktion.'},
+    {c: 'zahlung_eingegangen [betrag >= summe] / rechnungSenden()', q: 'Wann wird `rechnungSenden()` ausgeführt?', o: ['Beim Übergang, wenn das Ereignis eintritt und der Guard wahr ist', 'Dauerhaft im Zustand', 'Beim Betreten des Startzustands', 'Nie, Aktionen sind nur Kommentare'], a: 0, lv: 2, e: 'Die Aktion nach **/** läuft während des Übergangs.'},
+    {k: 'tf', q: 'Ein Übergang ohne Ereignis feuert automatisch, sobald die Aktivität im Zustand beendet ist.', a: true, lv: 3, e: 'Ein ereignisloser Übergang (completion transition) feuert nach Abschluss.'},
+    {q: 'Für welches Objekt eignet sich ein Zustandsdiagramm besonders?', o: ['Bestellung mit Lebenszyklus (neu, bezahlt, versendet)', 'Liste aller Kunden', 'Hardware-Topologie', 'Datenbankschema'], a: 0, lv: 1, e: 'Objekte mit **Lebenszyklus**, Automaten, UI-Zustände.'},
+    {k: 'gap', q: 'Die Aktion, die beim Betreten eines Zustands ausgeführt wird, heißt ___.', a: ['entry'], lv: 1, e: '**entry /** Aktion.'},
+    {k: 'order', q: 'Bringe den Lebenszyklus einer Bestellung in Reihenfolge', o: ['Startzustand', 'Neu', 'Bezahlt', 'Versendet', 'Endzustand'], lv: 1, e: 'Ein typischer Ablauf; Übergänge per Ereignis.'},
+    {q: 'Was unterscheidet das Zustandsdiagramm vom Aktivitätsdiagramm?', o: ['Es zeigt Zustände eines Objekts und Ereignisse, die sie wechseln', 'Es zeigt nur parallele Abläufe', 'Es hat keine Pfeile', 'Es ist ein Strukturdiagramm'], a: 0, lv: 2, e: 'Zustandsdiagramm: **Zustände + Ereignisse**; Aktivitätsdiagramm: **Ablauf von Aktionen**.'},
+    {k: 'tf', q: 'Ein Zustandsdiagramm darf mehrere Startzustände haben.', a: false, lv: 2, e: 'Es gibt genau **einen** Startzustand (je Region).'},
+    {q: 'Ein Ticket wechselt bei "abbrechen" aus jedem Zustand in "Storniert". Was ist die Folge, wenn der Übergang in einem Zustand fehlt?', o: ['In diesem Zustand kann nicht storniert werden', 'Das Ereignis wird automatisch umgeleitet', 'Das Diagramm ist ungültig', 'Das Objekt wird gelöscht'], a: 0, lv: 3, e: 'Ereignisse ohne passenden Übergang werden im aktuellen Zustand **ignoriert**.'},
+    {q: 'Wie wird der **Endzustand** dargestellt?', o: ['Kreis mit Punkt innen', 'Gefüllter Kreis', 'Raute', 'X im Kreis'], a: 0, lv: 1, e: 'Wie im Aktivitätsdiagramm: Kreis mit Punkt (Bullauge).'},
+    {k: 'multi', q: 'Was darf an einem Übergang stehen? (mehrere)', o: ['Ereignis', 'Guard', 'Aktion', 'Multiplizität'], a: [0, 1, 2], lv: 2, e: 'Multiplizitäten gibt es im **Klassendiagramm**.'},
+    {q: 'Was bedeutet **do / blinken()** in einem Zustand?', o: ['blinken() läuft, solange das Objekt im Zustand ist', 'blinken() läuft einmal beim Verlassen', 'blinken() ist ein Guard', 'blinken() ist der Zustandsname'], a: 0, lv: 2, e: '**do** = andauernde Aktivität im Zustand.'},
+  ]},
+  {id: 'ps-struktogramm', t: 'Struktogramm', qs: [
+    {q: 'Wie heißt das Struktogramm noch?', o: ['Nassi-Shneiderman-Diagramm', 'Programmablaufplan', 'EPK', 'Petri-Netz'], a: 0, lv: 1, e: 'Struktogramme nach **Nassi-Shneiderman** (DIN 66261).'},
+    {q: 'Wie wird eine **Verzweigung (if)** dargestellt?', o: ['Kasten mit Dreieck oben, links Ja, rechts Nein', 'Raute mit zwei Pfeilen', 'Kasten mit Rahmen unten', 'Oval'], a: 0, lv: 1, e: 'Bedingung im Dreieck, Ja-Zweig **links**, Nein-Zweig rechts.'},
+    {q: 'Wo steht die Bedingung bei einer **fußgesteuerten** Schleife?', o: ['Unten', 'Oben', 'Im Dreieck', 'Links neben dem Kasten'], a: 0, lv: 1, e: 'Fußgesteuert (do-while): Bedingung **unten**, Rumpf läuft mindestens einmal.'},
+    {k: 'tf', q: 'Eine kopfgesteuerte Schleife wird mindestens einmal durchlaufen.', a: false, lv: 2, e: 'Kopfgesteuert prüft **zuerst**; bei falscher Bedingung 0 Durchläufe. Mindestens einmal gilt für fußgesteuert.'},
+    {c: 'summe = 0\ni = 1\nsolange i <= 4\n   summe = summe + i\n   i = i + 2', q: 'Welchen Wert hat `summe` am Ende?', o: ['4', '10', '6', '3'], a: 0, lv: 2, e: 'i=1: summe=1; i=3: summe=4; i=5 > 4, Ende. **4**.'},
+    {k: 'num', c: 'x = 10\nsolange x > 1\n   x = x / 2   (ganzzahlig)\n   zaehler = zaehler + 1\n(zaehler startet bei 0)', q: 'Welchen Wert hat `zaehler` am Ende?', a: 3, tol: 0, lv: 3, e: '10->5 (1), 5->2 (2), 2->1 (3), 1 > 1 falsch. **3**.'},
+    {q: 'Welche Code-Struktur entspricht der **Fallauswahl** im Struktogramm?', o: ['switch / case', 'while', 'for', 'try / catch'], a: 0, lv: 1, e: 'Mehrfachauswahl = **switch/case**.'},
+    {q: 'Welche `for`-Schleife ist im Struktogramm?', o: ['Kopfgesteuerte Zählschleife', 'Fußgesteuerte Schleife', 'Verzweigung', 'Sequenz'], a: 0, lv: 2, e: 'for prüft vor dem Durchlauf = **kopfgesteuert**.'},
+    {k: 'multi', q: 'Welche Aussagen zu Struktogrammen stimmen? (mehrere)', o: ['Es gibt keine Sprünge (kein goto)', 'Leicht in Code umsetzbar', 'Änderungen sind aufwendig', 'Pfeile zeigen den Ablauf'], a: [0, 1, 2], lv: 2, e: 'Struktogramme haben **keine Pfeile**; das ist der PAP.'},
+    {k: 'gap', q: 'Eine Schleife mit Bedingung oben heißt ___ Schleife.', a: ['kopfgesteuerte', 'kopfgesteuert', 'abweisende'], lv: 1, e: 'Kopfgesteuert = **abweisend**.'},
+    {c: 'zahl = 7\nwenn zahl % 2 == 0\n  Ja:  ausgabe "gerade"\n  Nein: ausgabe "ungerade"', q: 'Was wird ausgegeben?', o: ['ungerade', 'gerade', 'nichts', '7'], a: 0, lv: 1, e: '7 % 2 = 1, Bedingung falsch, **Nein-Zweig**.'},
+    {q: 'Ein Passwort soll abgefragt werden, bis es richtig ist (mindestens einmal). Welche Schleife?', o: ['Fußgesteuert', 'Kopfgesteuert', 'Zählschleife mit fester Anzahl', 'Fallauswahl'], a: 0, lv: 2, e: 'Mindestens einmal fragen = **fußgesteuert** (do-while).'},
+    {q: 'Was ist ein Nachteil von Struktogrammen?', o: ['Bei tiefer Verschachtelung wenig Platz, Änderungen aufwendig', 'Sie erlauben goto-Sprünge', 'Sie sind nicht in Code umsetzbar', 'Sie zeigen keine Schleifen'], a: 0, lv: 1, e: 'Laut Spickzettel: Änderungen aufwendig, Platzprobleme.'},
+    {k: 'match', q: 'Ordne Struktogramm-Element und Code zu', o: [['Kasten untereinander', 'Sequenz'], ['Dreieck oben', 'if / else'], ['Bedingung oben, Rumpf eingerückt', 'while'], ['Bedingung unten', 'do-while']], lv: 1, e: 'Die vier Grundelemente.'},
+    {k: 'num', c: 'p = 1\nfür i = 1 bis 4\n   p = p * i', q: 'Welchen Wert hat `p` am Ende?', a: 24, tol: 0, lv: 2, e: '1*1*2*3*4 = **24** (Fakultät von 4).'},
+  ]},
+  {id: 'ps-epk', t: 'EPK', qs: [
+    {q: 'Wie wird ein **Ereignis** in der EPK dargestellt?', o: ['Sechseck', 'Abgerundetes Rechteck', 'Kreis', 'Oval'], a: 0, lv: 1, e: 'Ereignis = **Sechseck** (passiv), Funktion = abgerundetes Rechteck (aktiv).'},
+    {q: 'Welche Formulierung passt zu einer **Funktion**?', o: ['Auftrag prüfen', 'Auftrag eingegangen', 'Auftragsabteilung', 'Auftragsformular'], a: 0, lv: 1, e: 'Funktion: Substantiv + **Verb** (aktiv). "eingegangen" ist ein Ereignis.'},
+    {q: 'Was bedeutet der **XOR**-Konnektor?', o: ['Genau ein Pfad', 'Alle Pfade', 'Mindestens ein Pfad', 'Kein Pfad'], a: 0, lv: 1, e: 'XOR = **exklusives Oder**, genau einer.'},
+    {k: 'match', q: 'Ordne Konnektor und Bedeutung zu', o: [['UND (∧)', 'alle Pfade'], ['ODER (∨)', 'mindestens einer'], ['XOR (×)', 'genau einer']], lv: 1, e: 'Die drei EPK-Konnektoren.'},
+    {k: 'tf', q: 'Nach einem Ereignis darf ein ODER- oder XOR-Konnektor verzweigen.', a: false, lv: 3, e: 'Ein **Ereignis** kann nicht entscheiden. Nach einem Ereignis darf nur **UND** verzweigen.'},
+    {k: 'tf', q: 'In einer EPK wechseln sich Ereignisse und Funktionen ab.', a: true, lv: 1, e: 'Ereignis - Funktion - Ereignis ... (Konnektoren dazwischen erlaubt).'},
+    {q: 'Womit beginnt und endet eine EPK?', o: ['Mit Ereignissen', 'Mit Funktionen', 'Mit Konnektoren', 'Mit Organisationseinheiten'], a: 0, lv: 1, e: 'Start- und Endpunkt sind immer **Ereignisse**.'},
+    {q: 'Nach "Bonität prüfen" ist die Bonität entweder ok oder nicht ok. Welcher Konnektor?', o: ['XOR', 'UND', 'ODER', 'Keiner'], a: 0, lv: 2, e: 'Genau ein Ergebnis = **XOR**.'},
+    {q: 'Nach "Auftrag angenommen" sollen "Rechnung schreiben" **und** "Ware kommissionieren" gleichzeitig erfolgen. Welcher Konnektor?', o: ['UND', 'XOR', 'ODER', 'Prozesswegweiser'], a: 0, lv: 2, e: 'Beide parallel = **UND**.'},
+    {q: 'Was ist eine **eEPK**?', o: ['Erweiterte EPK mit Organisationseinheiten, Informationsobjekten, Anwendungssystemen', 'Elektronische EPK nur für Software', 'EPK ohne Konnektoren', 'Eine EPK mit Swimlanes'], a: 0, lv: 2, e: 'erweiterte EPK ergänzt **Wer, Womit, Welche Daten**.'},
+    {k: 'multi', q: 'Welche Elemente gehören zur **eEPK**? (mehrere)', o: ['Organisationseinheit (Oval)', 'Informationsobjekt (Rechteck)', 'Prozesswegweiser', 'Lebenslinie'], a: [0, 1, 2], lv: 2, e: 'Lebenslinien gibt es im **Sequenzdiagramm**.'},
+    {k: 'order', q: 'Bringe die EPK in eine gültige Reihenfolge', o: ['Bestellung eingegangen', 'Bestellung prüfen', 'Bestellung geprüft', 'Ware versenden', 'Ware versendet'], lv: 2, e: 'Wechsel Ereignis - Funktion; Start und Ende sind Ereignisse.'},
+    {q: 'Wofür steht der **Prozesswegweiser**?', o: ['Verweis auf eine andere EPK', 'Start der EPK', 'Ein Datenbankobjekt', 'Ein Mitarbeiter'], a: 0, lv: 2, e: 'Er verknüpft Teilprozesse miteinander.'},
+    {k: 'gap', q: 'EPK steht für ___ Prozesskette.', a: ['Ereignisgesteuerte', 'ereignisgesteuerte'], lv: 1, e: '**Ereignisgesteuerte Prozesskette** (ARIS, Scheer).'},
+    {q: 'Welche Aussage ist **FALSCH**?', o: ['Ein Ereignis darf direkt auf ein Ereignis folgen.', 'Funktionen sind aktiv formuliert.', 'Ein Konnektor ist ein Kreis mit Symbol.', 'Ereignisse sind passiv.'], a: 0, lv: 2, e: 'Zwei Ereignisse hintereinander sind **nicht** erlaubt; dazwischen muss eine Funktion.'},
+  ]},
+  {id: 'ps-er', t: 'ER-Diagramm', qs: [
+    {q: 'Wie wird eine **Beziehung** in der Chen-Notation gezeichnet?', o: ['Raute', 'Rechteck', 'Oval', 'Sechseck'], a: 0, lv: 1, e: 'Entität = Rechteck, **Beziehung = Raute**, Attribut = Oval.'},
+    {q: 'Wie wird ein Schlüsselattribut im ER-Diagramm gekennzeichnet?', o: ['Unterstrichen', 'Kursiv', 'Fett mit #', 'Mit Stern'], a: 0, lv: 1, e: 'Schlüssel werden **unterstrichen**.'},
+    {q: 'Ein Kunde kann viele Bestellungen haben, jede Bestellung gehört zu genau einem Kunden. Kardinalität?', o: ['1:n', 'n:m', '1:1', 'n:1 von Kunde aus'], a: 0, lv: 1, e: 'Klassisch **1:n**.'},
+    {q: 'Studierende besuchen viele Kurse, Kurse haben viele Studierende. Kardinalität?', o: ['n:m', '1:n', '1:1', '0:1'], a: 0, lv: 1, e: 'Beidseitig viele = **n:m**.'},
+    {k: 'match', q: 'Ordne (min,max) und Bedeutung zu', o: [['(0,1)', 'optional, höchstens eins'], ['(1,1)', 'genau eins'], ['(0,n)', 'beliebig viele, auch keins'], ['(1,n)', 'mindestens eins']], lv: 2, e: 'Die (min,max)-Notation.'},
+    {k: 'tf', q: 'Ein Surrogatschlüssel ist eine künstliche ID, z. B. ein Auto-Zähler.', a: true, lv: 1, e: 'Er hat keine fachliche Bedeutung, ist aber eindeutig und stabil.'},
+    {k: 'gap', q: 'Ein Attribut, das auf den Primärschlüssel einer anderen Tabelle verweist, heißt ___.', a: ['Fremdschlüssel', 'FK', 'Foreign Key'], lv: 1, e: '**Fremdschlüssel (FK)**.'},
+    {q: 'Eine Person hat genau einen Reisepass, ein Pass gehört genau einer Person. Kardinalität?', o: ['1:1', '1:n', 'n:m', 'keine'], a: 0, lv: 1, e: '**1:1**.'},
+    {q: 'Ein Mitarbeiter **kann** einen Firmenwagen haben (muss aber nicht). Welche (min,max) auf Seite Firmenwagen?', o: ['(0,1)', '(1,1)', '(1,n)', '(0,n)'], a: 0, lv: 2, e: 'Optional, höchstens einer = **(0,1)**.'},
+    {q: 'Was ist eine **Entität**?', o: ['Ein eindeutig unterscheidbares Objekt der realen Welt, z. B. Kunde Meier', 'Eine Spalte', 'Eine SQL-Abfrage', 'Ein Fremdschlüssel'], a: 0, lv: 1, e: 'Entitätstyp = Klasse gleichartiger Entitäten (Rechteck).'},
+    {k: 'multi', q: 'Welche Eigenschaften hat ein **Primärschlüssel**? (mehrere)', o: ['Eindeutig', 'Nicht NULL', 'Kann aus mehreren Attributen bestehen', 'Darf sich in jeder Zeile wiederholen'], a: [0, 1, 2], lv: 2, e: 'PK ist eindeutig, nicht NULL, ggf. zusammengesetzt.'},
+    {q: 'Welches Attribut eignet sich am **schlechtesten** als Primärschlüssel für Kunden?', o: ['Nachname', 'Kundennummer', 'Auto-ID', 'UUID'], a: 0, lv: 2, e: 'Nachnamen sind **nicht eindeutig**.'},
+    {k: 'tf', q: 'Im Chen-ER-Diagramm werden Attribute als Ovale gezeichnet.', a: true, lv: 1, e: 'Ja, Ovale an der Entität.'},
+    {q: 'Eine Beziehung "besucht" zwischen Student und Kurs hat das Attribut "Note". Wo gehört es hin?', o: ['An die Beziehung (später in die Zwischentabelle)', 'An Student', 'An Kurs', 'Nirgendwo'], a: 0, lv: 3, e: 'Die Note hängt von **beiden** ab, also an die n:m-Beziehung.'},
+    {k: 'num', q: 'Ein ER-Modell hat 4 Entitäten, eine 1:n- und zwei n:m-Beziehungen. Wie viele Tabellen entstehen im Relationenmodell?', a: 6, tol: 0, u: 'Tabellen', lv: 3, e: '4 Entitäten + **2 Zwischentabellen** für n:m = 6; 1:n braucht nur einen FK.'},
+  ]},
+  {id: 'ps-ermrm', t: 'ERM zu RM', qs: [
+    {q: 'Was ist der Hauptunterschied zwischen **ERM** und **RM**?', o: ['ERM ist eine Zeichnung, RM ist Text in Relationenschreibweise', 'ERM enthält Fremdschlüssel, RM nicht', 'RM erlaubt n:m, ERM nicht', 'Es gibt keinen Unterschied'], a: 0, lv: 1, e: 'ERM = **grafisch, DB-unabhängig**; RM = Relation(Attribute) mit PK und FK.'},
+    {q: 'Wohin kommt bei einer **1:n**-Beziehung der Fremdschlüssel?', o: ['In die Relation der n-Seite', 'In die Relation der 1-Seite', 'In eine Zwischentabelle', 'In beide Relationen'], a: 0, lv: 1, e: 'PK der 1-Seite wird **FK auf der n-Seite**. Typischer Prüfungsfehler: FK auf der 1-Seite.'},
+    {q: 'Wie wird eine **n:m**-Beziehung im RM umgesetzt?', o: ['Neue Relation mit beiden FK, zusammen PK', 'FK in einer der beiden Relationen', 'Gar nicht, n:m bleibt', 'Die Entitäten werden zusammengelegt'], a: 0, lv: 1, e: '**Zwischentabelle** mit beiden FK als zusammengesetztem PK.'},
+    {k: 'tf', q: 'Fremdschlüssel werden bereits im ERM eingezeichnet.', a: false, lv: 2, e: 'FK gehören ins **RM**. Im ERM wird die Beziehung als Linie/Raute dargestellt. Klassischer Prüfungsfehler.'},
+    {c: 'Kunde (1) ---- (n) Bestellung', q: 'Welches RM ist richtig?', o: ['Kunde(<u>kunden_id</u>, name); Bestellung(<u>bestell_id</u>, datum, #kunden_id)', 'Kunde(<u>kunden_id</u>, name, #bestell_id); Bestellung(<u>bestell_id</u>, datum)', 'Kunde_Bestellung(#kunden_id, #bestell_id)', 'Kunde(<u>kunden_id</u>, name, bestellungen)'], a: 0, lv: 2, e: 'FK **kunden_id** in der n-Tabelle Bestellung. Eine Liste in Kunde verletzt 1NF.'},
+    {c: 'Student (n) ---- besucht ---- (m) Kurs\nAttribut der Beziehung: note', q: 'Welche Relation entsteht für "besucht"?', o: ['besucht(<u>#matrikel_nr, #kurs_id</u>, note)', 'besucht(<u>besucht_id</u>)', 'Kurs(<u>kurs_id</u>, #matrikel_nr, note)', 'Student(<u>matrikel_nr</u>, #kurs_id, note)'], a: 0, lv: 2, e: 'Zwischentabelle mit **beiden FK als PK** plus Beziehungsattribut **note**.'},
+    {k: 'multi', q: 'Welche sind typische **Prüfungsfehler**? (mehrere)', o: ['FK auf der 1-Seite', 'n:m ohne Zwischentabelle', 'PK nicht unterstrichen', 'Zwischentabelle mit zwei FK'], a: [0, 1, 2], lv: 2, e: 'Die Zwischentabelle mit zwei FK ist **korrekt**.'},
+    {k: 'gap', q: 'Im RM wird der Primärschlüssel ___ dargestellt.', a: ['unterstrichen'], lv: 1, e: 'PK **unterstrichen**, FK mit # oder Kennzeichnung.'},
+    {k: 'order', q: 'Bringe die Umwandlung ERM -> RM in Reihenfolge', o: ['Jeden Entitätstyp als Relation anlegen', 'Attribute übernehmen und PK festlegen', '1:n-Beziehungen per FK auf der n-Seite auflösen', 'n:m-Beziehungen in Zwischentabellen auflösen'], lv: 2, e: 'Erst Relationen und Schlüssel, dann Beziehungen.'},
+    {k: 'num', q: 'ERM: Kunde 1:n Bestellung, Bestellung n:m Artikel, Artikel n:1 Kategorie. Wie viele Relationen?', a: 5, tol: 0, u: 'Relationen', lv: 3, e: '4 Entitäten + 1 Zwischentabelle (Bestellposition) = **5**.'},
+    {q: 'Bei 1:1 (Person - Ausweis): wie setzt man das um?', o: ['FK in einer Tabelle mit UNIQUE, oder zusammenlegen', 'Zwischentabelle zwingend', 'Kein Schlüssel nötig', 'FK in beiden Tabellen ohne UNIQUE'], a: 0, lv: 3, e: 'FK mit **UNIQUE** (bei optionaler Seite) oder beide zu einer Relation zusammenfassen.'},
+    {k: 'tf', q: 'Im RM gibt es keine n:m-Beziehungen mehr.', a: true, lv: 1, e: 'Sie werden immer über eine **Zwischentabelle** aufgelöst.'},
+    {q: 'Ein Mitarbeiter hat genau eine Abteilung, eine Abteilung viele Mitarbeiter. Wo steht `abteilung_id` als FK?', o: ['In Mitarbeiter', 'In Abteilung', 'In einer Zwischentabelle', 'In beiden'], a: 0, lv: 1, e: 'Mitarbeiter ist die **n-Seite**.'},
+    {k: 'match', q: 'Ordne Element und Modell zu', o: [['Raute für Beziehung', 'ERM'], ['Relation(Attribute)', 'RM'], ['#-markierter FK', 'RM'], ['Kardinalität an der Linie', 'ERM']], lv: 2, e: 'ERM grafisch, RM textuell mit Schlüsseln.'},
+    {q: 'Eine Zwischentabelle `Bestellposition(#bestell_id, #artikel_nr, menge)`: was ist sinnvollerweise der PK?', o: ['(bestell_id, artikel_nr) zusammen', 'nur menge', 'nur bestell_id', 'kein PK nötig'], a: 0, lv: 2, e: 'Die **Kombination beider FK** ist eindeutig.'},
+  ]},
+  {id: 'ps-relational', t: 'Relationales Modell', qs: [
+    {q: 'Was fordert die **Entitätsintegrität**?', o: ['PK eindeutig und nicht NULL', 'FK verweist auf vorhandenen PK', 'Werte passen zum Datentyp', 'Jede Tabelle hat einen FK'], a: 0, lv: 1, e: 'Entitätsintegrität = **PK eindeutig, nicht NULL**.'},
+    {q: 'Was fordert die **referentielle Integrität**?', o: ['Ein FK verweist nur auf vorhandene PK-Werte', 'PK ist nicht NULL', 'Alter ist zwischen 0 und 150', 'Spalten sind atomar'], a: 0, lv: 1, e: 'Kein FK darf ins Leere zeigen.'},
+    {k: 'match', q: 'Ordne Integritätsart und Beispiel zu', o: [['Entitätsintegrität', 'Zwei Kunden mit gleicher ID verboten'], ['Referentielle Integrität', 'Bestellung für nicht existierenden Kunden verboten'], ['Domänenintegrität', 'Preis darf nicht negativ sein']], lv: 2, e: 'Die drei Integritätsarten.'},
+    {c: 'DELETE FROM kunde WHERE kunden_id = 5;\n-- Es gibt noch Bestellungen mit kunden_id = 5', q: 'Was passiert bei aktiver referentieller Integrität (ohne CASCADE)?', o: ['Die Löschung wird abgelehnt', 'Kunde und Bestellungen werden gelöscht', 'Die Bestellungen bekommen NULL', 'Nichts, es klappt einfach'], a: 0, lv: 2, e: 'Standard (RESTRICT/NO ACTION): **Fehler**. CASCADE würde mitlöschen, SET NULL auf NULL setzen.'},
+    {q: 'Welcher Constraint stellt sicher, dass `preis > 0` gilt?', o: ['CHECK', 'UNIQUE', 'DEFAULT', 'FOREIGN KEY'], a: 0, lv: 1, e: '`CHECK (preis > 0)` sichert die **Domänenintegrität**.'},
+    {k: 'gap', q: 'Der Constraint, der doppelte E-Mail-Adressen verhindert (aber kein PK ist), heißt ___.', a: ['UNIQUE'], lv: 1, e: '**UNIQUE** erlaubt (meist) NULL, verhindert aber Duplikate.'},
+    {k: 'tf', q: 'Eine Spalte mit UNIQUE ist automatisch der Primärschlüssel.', a: false, lv: 2, e: 'UNIQUE ist ein **Kandidatenschlüssel**; PK wird extra festgelegt und ist zusätzlich NOT NULL.'},
+    {c: 'CREATE TABLE bestellung (\n  bestell_id INT PRIMARY KEY,\n  kunden_id INT NOT NULL,\n  FOREIGN KEY (kunden_id) REFERENCES kunde(kunden_id)\n);', q: 'Welche Beziehung zwischen kunde und bestellung bildet das ab?', o: ['1:n, jede Bestellung hat genau einen Kunden', 'n:m', '1:1', '1:n, Bestellung ohne Kunde erlaubt'], a: 0, lv: 2, e: 'FK in bestellung + **NOT NULL** = genau ein Kunde pro Bestellung (1,1).'},
+    {q: 'Wie wird ein Fremdschlüssel in der Schreibweise des Spickzettels markiert?', o: ['Mit #, z. B. #kunden_id', 'Unterstrichen', 'In Großbuchstaben', 'Mit Stern'], a: 0, lv: 1, e: '**#** oder FK; unterstrichen ist der PK.'},
+    {k: 'multi', q: 'Welche sind gültige SQL-Constraints? (mehrere)', o: ['NOT NULL', 'DEFAULT', 'CHECK', 'REQUIRE'], a: [0, 1, 2], lv: 1, e: 'REQUIRE gibt es nicht.'},
+    {q: 'Ein Datensatz `alter = -3` wird abgelehnt. Welche Integrität greift?', o: ['Domänenintegrität', 'Referentielle Integrität', 'Entitätsintegrität', 'Transaktionsintegrität'], a: 0, lv: 2, e: 'Wertebereich der Spalte = **Domäne**.'},
+    {q: 'Was entspricht im relationalen Modell einem **Tupel**?', o: ['Einer Zeile', 'Einer Spalte', 'Einer Tabelle', 'Einem Schlüssel'], a: 0, lv: 2, e: 'Relation = Tabelle, Tupel = **Zeile**, Attribut = Spalte.'},
+    {k: 'match', q: 'Ordne Fachbegriff und Alltagsbegriff zu', o: [['Relation', 'Tabelle'], ['Tupel', 'Zeile'], ['Attribut', 'Spalte'], ['Domäne', 'Wertebereich']], lv: 1, e: 'Begriffe des Relationenmodells.'},
+    {q: 'Welche Option löscht beim Löschen eines Kunden dessen Bestellungen automatisch mit?', o: ['ON DELETE CASCADE', 'ON DELETE SET NULL', 'ON DELETE RESTRICT', 'ON UPDATE CASCADE'], a: 0, lv: 2, e: '**CASCADE** löscht abhängige Zeilen mit.'},
+    {k: 'tf', q: 'Ein Primärschlüssel kann aus mehreren Spalten bestehen.', a: true, lv: 1, e: 'Zusammengesetzter PK, z. B. in Zwischentabellen.'},
+  ]},
+  {id: 'ps-normalisierung', t: 'Normalisierung', qs: [
+    {q: 'Was fordert die **1. Normalform**?', o: ['Atomare Werte, keine Wiederholungsgruppen', 'Keine transitiven Abhängigkeiten', 'Volle Abhängigkeit vom gesamten Schlüssel', 'Mindestens zwei Tabellen'], a: 0, lv: 1, e: '1NF: **jede Zelle genau ein Wert**.'},
+    {q: 'Eine Spalte `telefon` enthält "0171-123, 030-456". Welche NF ist verletzt?', o: ['1NF', '2NF', '3NF', 'Keine'], a: 0, lv: 1, e: 'Mehrere Werte in einer Zelle = **nicht atomar**.'},
+    {q: 'Was fordert die **2. Normalform**?', o: ['1NF und jedes Nicht-Schlüssel-Attribut hängt vom gesamten Schlüssel ab', 'Keine transitiven Abhängigkeiten', 'Nur atomare Werte', 'Jede Tabelle hat einen Surrogatschlüssel'], a: 0, lv: 1, e: '2NF: keine **Teilabhängigkeit** vom zusammengesetzten Schlüssel.'},
+    {k: 'tf', q: 'Eine Tabelle in 1NF mit einem einspaltigen Primärschlüssel ist automatisch in 2NF.', a: true, lv: 2, e: 'Teilabhängigkeiten gibt es nur bei **zusammengesetzten** Schlüsseln.'},
+    {c: 'Bestellposition(bestell_nr, artikel_nr, menge, artikelname)\nPK = (bestell_nr, artikel_nr)', q: 'Welche NF ist verletzt und warum?', o: ['2NF, artikelname hängt nur von artikel_nr ab', '3NF, menge hängt von artikelname ab', '1NF, menge ist nicht atomar', 'Keine, die Tabelle ist korrekt'], a: 0, lv: 2, e: 'artikelname hängt nur von **einem Teil** des Schlüssels ab: Teilabhängigkeit.'},
+    {c: 'Mitarbeiter(ma_id, name, abt_nr, abt_name)\nPK = ma_id', q: 'Welche NF ist verletzt?', o: ['3NF (transitiv: ma_id -> abt_nr -> abt_name)', '2NF', '1NF', 'Keine'], a: 0, lv: 2, e: 'abt_name hängt über abt_nr ab = **transitive Abhängigkeit**. Lösung: Tabelle Abteilung.'},
+    {k: 'match', q: 'Ordne Anomalie und Beispiel zu', o: [['Einfügeanomalie', 'Neue Abteilung erst anlegbar, wenn ein Mitarbeiter existiert'], ['Änderungsanomalie', 'Abteilungsname muss in 50 Zeilen geändert werden'], ['Löschanomalie', 'Letzter Mitarbeiter gelöscht, Abteilung verschwindet']], lv: 2, e: 'Die drei Anomalien.'},
+    {k: 'order', q: 'Bringe die Normalformen in die Reihenfolge, in der sie hergestellt werden', o: ['1NF: atomare Werte', '2NF: keine Teilabhängigkeiten', '3NF: keine transitiven Abhängigkeiten'], lv: 1, e: 'Jede NF setzt die vorherige voraus.'},
+    {k: 'gap', q: 'Wenn A -> B und B -> C gilt (B kein Schlüssel), ist C ___ von A abhängig.', a: ['transitiv'], lv: 2, e: '**Transitive** Abhängigkeit, verboten in der 3NF.'},
+    {q: 'Wie behebt man eine Verletzung der 3NF?', o: ['Die transitiv abhängigen Attribute in eine eigene Tabelle auslagern', 'Werte in eine Zelle schreiben', 'Den Primärschlüssel löschen', 'Alle Tabellen zusammenlegen'], a: 0, lv: 1, e: 'B und C in eigene Tabelle, B bleibt als FK.'},
+    {k: 'multi', q: 'Welche Ziele verfolgt die Normalisierung? (mehrere)', o: ['Redundanz vermeiden', 'Anomalien vermeiden', 'Konsistenz sichern', 'Abfragen immer schneller machen'], a: [0, 1, 2], lv: 2, e: 'Mehr Tabellen bedeuten mehr **JOINs**; nicht jede Abfrage wird schneller (deshalb manchmal Denormalisierung).'},
+    {k: 'tf', q: 'Eine Tabelle in 3NF ist auch in 2NF und 1NF.', a: true, lv: 1, e: 'Die Normalformen bauen aufeinander auf.'},
+    {c: 'Rechnung(re_nr, datum, kunden_nr, kunden_name, plz, ort)\nPK = re_nr', q: 'Wie viele Tabellen entstehen mindestens in 3NF, wenn plz -> ort gilt?', o: ['3', '2', '1', '4'], a: 0, lv: 3, e: 'Rechnung(re_nr, datum, #kunden_nr), Kunde(kunden_nr, name, #plz), Ort(plz, ort) = **3**.'},
+    {q: 'Welche Aussage ist **FALSCH**?', o: ['Die 2NF verbietet transitive Abhängigkeiten.', 'Die 1NF verlangt atomare Werte.', 'Die 3NF setzt 2NF voraus.', 'Änderungsanomalien entstehen durch Redundanz.'], a: 0, lv: 2, e: 'Transitive Abhängigkeiten verbietet erst die **3NF**.'},
+    {q: 'Die Spalte `name` enthält "Max Mustermann" und man will nach Nachnamen sortieren. Was ist sinnvoll?', o: ['In vorname und nachname aufteilen (atomar)', 'In eine zweite Tabelle mit Liste', 'Nichts ändern', 'In eine JSON-Spalte'], a: 0, lv: 2, e: 'Atomarität richtet sich nach der **Nutzung**: hier aufteilen.'},
+  ]},
+  {id: 'ps-ergonomie', t: 'Software-Ergonomie', qs: [
+    {k: 'match', q: 'Ordne die drei Kriterien der Gebrauchstauglichkeit (ISO 9241-11) zu', o: [['Wirksamkeit', 'Ziel erreicht?'], ['Effizienz', 'Mit wie viel Aufwand?'], ['Zufriedenstellung', 'Wie angenehm?']], lv: 1, e: 'Gebrauchstauglichkeit im Nutzungskontext.'},
+    {q: 'Ein Programm zeigt beim Löschen "Wirklich löschen? Rückgängig möglich". Welcher Grundsatz?', o: ['Fehlertoleranz', 'Individualisierbarkeit', 'Selbstbeschreibungsfähigkeit', 'Aufgabenangemessenheit'], a: 0, lv: 2, e: 'Fehler verhindern oder korrigierbar machen = **Fehlertoleranz**.'},
+    {q: 'Strg+S speichert wie in allen anderen Programmen. Welcher Grundsatz?', o: ['Erwartungskonformität', 'Steuerbarkeit', 'Lernförderlichkeit', 'Fehlertoleranz'], a: 0, lv: 1, e: 'Verhalten wie gewohnt = **Erwartungskonformität**.'},
+    {q: 'Der Nutzer kann einen langen Export jederzeit abbrechen. Welcher Grundsatz?', o: ['Steuerbarkeit', 'Erwartungskonformität', 'Aufgabenangemessenheit', 'Selbstbeschreibungsfähigkeit'], a: 0, lv: 2, e: 'Nutzer bestimmt Ablauf und Tempo = **Steuerbarkeit**.'},
+    {q: 'Ein Formularfeld zeigt "Datum (TT.MM.JJJJ)". Welcher Grundsatz?', o: ['Selbstbeschreibungsfähigkeit', 'Individualisierbarkeit', 'Steuerbarkeit', 'Fehlertoleranz'], a: 0, lv: 2, e: 'Der Nutzer weiß sofort, was erwartet wird = **Selbstbeschreibungsfähigkeit**.'},
+    {q: 'Der Nutzer kann Schriftgröße und Farbschema anpassen. Welcher Grundsatz (Fassung 2006)?', o: ['Individualisierbarkeit', 'Lernförderlichkeit', 'Erwartungskonformität', 'Aufgabenangemessenheit'], a: 0, lv: 1, e: 'Anpassung an eigene Bedürfnisse = **Individualisierbarkeit**.'},
+    {k: 'num', q: 'Wie viele Grundsätze der Dialoggestaltung nennt ISO 9241-110?', a: 7, tol: 0, u: 'Grundsätze', lv: 1, e: '**Sieben** Grundsätze.'},
+    {k: 'match', q: 'Ordne WCAG-Prinzip (POUR) und Beispiel zu', o: [['Wahrnehmbar', 'Alternativtexte für Bilder'], ['Bedienbar', 'Alles per Tastatur nutzbar'], ['Verständlich', 'Klare Sprache, vorhersehbar'], ['Robust', 'Funktioniert mit Screenreader']], lv: 2, e: 'POUR = Perceivable, Operable, Understandable, Robust.'},
+    {q: 'Welches Gesetz verpflichtet **öffentliche Stellen** des Bundes zur Barrierefreiheit?', o: ['BITV 2.0', 'BFSG', 'DSGVO', 'BDSG'], a: 0, lv: 2, e: '**BITV 2.0** für Behörden; **BFSG** für bestimmte Produkte und Dienstleistungen der Wirtschaft.'},
+    {k: 'gap', q: 'Das Barrierefreiheitsstärkungsgesetz (BFSG) gilt ab dem 28.06.___.', a: ['2025'], lv: 2, e: 'Ab **28.06.2025**.'},
+    {k: 'tf', q: 'In der Fassung ISO 9241-110:2020 wurde Individualisierbarkeit durch Benutzerbindung ersetzt.', a: true, lv: 3, e: 'Außerdem: Lernförderlichkeit -> **Erlernbarkeit**, Fehlertoleranz -> **Robustheit gegen Benutzungsfehler**.'},
+    {q: 'Eine Erfassungsmaske verlangt 12 Klicks für eine Standardbuchung. Welcher Grundsatz ist verletzt?', o: ['Aufgabenangemessenheit', 'Erwartungskonformität', 'Individualisierbarkeit', 'Robustheit'], a: 0, lv: 2, e: 'Unnötiger Aufwand für die Aufgabe = **Aufgabenangemessenheit**.'},
+    {k: 'multi', q: 'Was verbessert die Barrierefreiheit einer Webseite? (mehrere)', o: ['Ausreichender Farbkontrast', 'Alt-Texte', 'Tastaturbedienbarkeit', 'Information nur über Farbe (rot = Fehler)'], a: [0, 1, 2], lv: 1, e: 'Information **nur** über Farbe benachteiligt Menschen mit Farbsehschwäche.'},
+    {q: 'Tooltips und ein Tutorial helfen neuen Nutzern. Welcher Grundsatz?', o: ['Lernförderlichkeit', 'Steuerbarkeit', 'Fehlertoleranz', 'Erwartungskonformität'], a: 0, lv: 1, e: 'Unterstützung beim Erlernen = **Lernförderlichkeit** (2020: Erlernbarkeit).'},
+    {q: 'Welcher technische Standard ist Maßstab für Barrierefreiheit?', o: ['WCAG (EN 301 549)', 'ISO 9001', 'ISO 25010', 'ITIL'], a: 0, lv: 2, e: '**WCAG**, in Europa über **EN 301 549**.'},
+  ]},
+  {id: 'ps-ux', t: 'Usability und UX', qs: [
+    {q: 'Was unterscheidet **UX** von **Usability**?', o: ['UX umfasst das Gesamterlebnis inkl. Emotion, Ästhetik, Vertrauen; Usability ist ein Teil davon', 'Usability ist umfassender als UX', 'Beide sind identisch', 'UX betrifft nur das Design der Farben'], a: 0, lv: 1, e: 'UX **schließt Usability ein** und betrachtet auch vor und nach der Nutzung.'},
+    {k: 'order', q: 'Bringe den menschzentrierten Gestaltungsprozess (ISO 9241-210) in Reihenfolge', o: ['Nutzungskontext verstehen', 'Nutzungsanforderungen festlegen', 'Gestaltungslösungen entwickeln', 'Mit Nutzern evaluieren'], lv: 2, e: 'Danach **iterativ** wiederholen, bis die Anforderungen erfüllt sind.'},
+    {k: 'tf', q: 'Der UCD-Prozess nach ISO 9241-210 wird nur einmal linear durchlaufen.', a: false, lv: 1, e: 'Er ist **iterativ**.'},
+    {q: 'Wie heißt das Interaktionsprinzip, das in ISO 9241-110:2020 die Individualisierbarkeit ersetzt?', o: ['Benutzerbindung', 'Erlernbarkeit', 'Steuerbarkeit', 'Robustheit'], a: 0, lv: 2, e: '**Benutzerbindung** (engagement) ist neu.'},
+    {k: 'match', q: 'Ordne alten (2006) und neuen (2020) Begriff zu', o: [['Lernförderlichkeit', 'Erlernbarkeit'], ['Fehlertoleranz', 'Robustheit gegen Benutzungsfehler'], ['Individualisierbarkeit', 'Benutzerbindung']], lv: 3, e: 'Umbenennungen der Fassung 2020.'},
+    {q: 'Mit welchem Fragebogen misst man Usability standardisiert?', o: ['SUS (System Usability Scale)', 'SWOT', 'RACI', 'DMAIC'], a: 0, lv: 2, e: '**SUS**: 10 Fragen, Ergebnis 0 bis 100.'},
+    {k: 'multi', q: 'Wie kann man Usability messen? (mehrere)', o: ['Usability-Test mit echten Nutzern', 'Fragebogen (SUS)', 'Aufgabenzeit messen', 'Zeilen Quellcode zählen'], a: [0, 1, 2], lv: 1, e: 'Codezeilen sagen nichts über Bedienbarkeit.'},
+    {q: 'Was ist ein **Mock-up**?', o: ['Realistisches, aber statisches Aussehen', 'Grobe schwarz-weiße Struktur', 'Klickbare Simulation', 'Fertige Software'], a: 0, lv: 1, e: 'Wireframe (Struktur) -> **Mock-up** (Aussehen) -> Prototyp (Verhalten).'},
+    {q: 'Ein Shop zeigt beim Checkout einen Fortschrittsbalken "Schritt 2 von 4". Welches Prinzip unterstützt das?', o: ['Selbstbeschreibungsfähigkeit', 'Benutzerbindung', 'Individualisierbarkeit', 'Robustheit'], a: 0, lv: 2, e: 'Der Nutzer weiß, **wo er ist** und was kommt.'},
+    {q: 'Was ist eine **Persona**?', o: ['Fiktiver, typischer Nutzer mit Zielen und Eigenschaften', 'Ein echter Kunde mit Vertrag', 'Ein Testfall', 'Eine Rolle im Scrum-Team'], a: 0, lv: 2, e: 'Personas helfen, den **Nutzungskontext** greifbar zu machen.'},
+    {k: 'tf', q: 'Eine gute UX kann auch das Vertrauen in eine Marke stärken.', a: true, lv: 1, e: 'UX umfasst **Emotion und Vertrauen**.'},
+    {q: 'Bei einem Usability-Test sollen Nutzer laut aussprechen, was sie denken. Wie heißt die Methode?', o: ['Thinking Aloud (lautes Denken)', 'A/B-Test', 'Lasttest', 'Code Review'], a: 0, lv: 2, e: '**Thinking Aloud** deckt Verständnisprobleme auf.'},
+    {q: 'Zwei Varianten eines Buttons werden zufällig verschiedenen Nutzern gezeigt und Klickraten verglichen. Methode?', o: ['A/B-Test', 'Card Sorting', 'Walkthrough', 'Smoke-Test'], a: 0, lv: 2, e: '**A/B-Test** vergleicht Varianten mit echten Daten.'},
+    {k: 'gap', q: 'UCD steht für User-___ Design.', a: ['Centered', 'centred', 'Centred'], lv: 1, e: '**User-Centered Design**, menschzentrierte Gestaltung.'},
+    {q: 'Welche Aussage ist **FALSCH**?', o: ['Usability umfasst auch Gefühle nach der Nutzung, UX dagegen nicht.', 'UX schließt Usability ein.', 'Prototypen sind klickbar.', 'Wireframes zeigen grobe Struktur.'], a: 0, lv: 2, e: 'Genau umgekehrt: **UX** betrachtet das Gesamterlebnis.'},
+  ]},
+  {id: 'ps-wireframe', t: 'Wireframe, Mockup, Prototyp', qs: [
+    {k: 'match', q: 'Ordne Artefakt und Merkmal zu', o: [['Wireframe', 'schwarz-weiß, Aufbau und Platzierung'], ['Mockup', 'realistisches Aussehen, statisch'], ['Prototyp', 'klickbar, simuliert Abläufe']], lv: 1, e: 'Steigende Detailtiefe: Wireframe, Mockup, Prototyp.'},
+    {q: 'Ein Kunde will Farben und Logo der neuen App vor der Umsetzung absegnen. Was zeigst du?', o: ['Mockup', 'Wireframe', 'Klassendiagramm', 'Lastenheft'], a: 0, lv: 1, e: 'Realistisches Aussehen = **Mockup**.'},
+    {q: 'Ein Usability-Test soll prüfen, ob Nutzer den Bestellablauf finden. Was brauchst du?', o: ['Klickbaren Prototyp', 'Wireframe auf Papier ohne Ablauf', 'Mockup als PDF', 'ER-Diagramm'], a: 0, lv: 2, e: 'Abläufe testen erfordert **Klickbarkeit**.'},
+    {k: 'tf', q: 'Ein Wireframe soll vor allem die Optik (Farben, Schriften) zeigen.', a: false, lv: 1, e: 'Wireframes fokussieren **Funktion und Aufbau**, nicht Optik.'},
+    {q: 'Warum beginnt man mit Wireframes?', o: ['Schnell und billig änderbar', 'Sie sind direkt lauffähiger Code', 'Sie ersetzen Tests', 'Sie sind rechtlich bindend'], a: 0, lv: 1, e: 'Frühe Änderungen kosten wenig.'},
+    {k: 'multi', q: 'Welche Tools eignen sich zum Erstellen von Prototypen? (mehrere)', o: ['Figma', 'Adobe XD', 'Balsamiq', 'MySQL Workbench'], a: [0, 1, 2], lv: 1, e: 'Workbench ist ein **DB-Tool**.'},
+    {q: 'Was ist ein **Low-Fidelity**-Prototyp?', o: ['Einfacher, grober Prototyp, z. B. Papier oder Skizze', 'Fast fertige Oberfläche mit Echtdaten', 'Die Produktivversion', 'Ein Lasttest'], a: 0, lv: 2, e: 'Low-Fi = grob und schnell; **High-Fi** = nah am Endprodukt.'},
+    {k: 'order', q: 'Bringe das Vorgehen in Reihenfolge', o: ['Nutzer und Aufgaben verstehen', 'Skizzen und Wireframes', 'Feedback und Test', 'Verbessern (iterativ)'], lv: 1, e: 'Laut Spickzettel; danach wiederholen.'},
+    {k: 'gap', q: 'Ein klickbares Modell, das Abläufe simuliert, heißt ___.', a: ['Prototyp', 'Prototype', 'Klickdummy'], lv: 1, e: '**Prototyp** (Klickdummy).'},
+    {q: 'In welcher Phase (OOA/OOD/OOP) entsteht ein Wireframe typischerweise?', o: ['OOA/OOD (Analyse/Entwurf)', 'Nur OOP', 'Erst im Betrieb', 'Nach der Abnahme'], a: 0, lv: 2, e: 'Wireframe: **OOA/OOD**; Mock-up OOD; Prototyp OOD/OOP.'},
+    {k: 'tf', q: 'Ein Mockup ist nicht klickbar.', a: true, lv: 1, e: 'Mockups sind **statisch**.'},
+    {q: 'Welches Element gehört **nicht** in einen Wireframe?', o: ['Finale Corporate-Farben und Fotos', 'Platzhalterkästen für Bilder', 'Position der Navigation', 'Beschriftete Buttons'], a: 0, lv: 2, e: 'Farben und Bilder sind Sache des **Mockups**.'},
+    {q: 'Ein Wegwerf-Prototyp (throw-away) wird ...', o: ['nach dem Erkenntnisgewinn verworfen', 'zum Produkt weiterentwickelt', 'beim Kunden installiert', 'als Lastenheft genutzt'], a: 0, lv: 3, e: 'Im Gegensatz zum **evolutionären** Prototyp, der weiterentwickelt wird.'},
+    {q: 'Was ist ein Vorteil, dem Kunden früh einen Prototyp zu zeigen?', o: ['Missverständnisse in den Anforderungen werden früh erkannt', 'Der Code ist dann fertig', 'Tests entfallen', 'Das Projekt wird automatisch billiger lizenziert'], a: 0, lv: 1, e: 'Frühes **Feedback** spart späte, teure Änderungen.'},
+    {q: 'Welche Reihenfolge der Detailtiefe ist richtig (wenig nach viel)?', o: ['Skizze, Wireframe, Mockup, Prototyp', 'Prototyp, Mockup, Wireframe, Skizze', 'Mockup, Skizze, Prototyp, Wireframe', 'Wireframe, Prototyp, Skizze, Mockup'], a: 0, lv: 1, e: 'Von grob zu detailliert und interaktiv.'},
+  ]},
+  {id: 'ps-testarten', t: 'Teststufen und Testarten', qs: [
+    {k: 'order', q: 'Bringe die Teststufen in Reihenfolge', o: ['Modultest', 'Integrationstest', 'Systemtest', 'Abnahmetest'], lv: 1, e: 'Vom Kleinen zum Großen, zuletzt prüft der **Kunde**.'},
+    {q: 'Wer führt den **Abnahmetest** durch?', o: ['Der Kunde / Auftraggeber', 'Der Entwickler allein', 'Der Compiler', 'Ein Lasttest-Tool'], a: 0, lv: 1, e: 'Der **Kunde** prüft gegen seine Anforderungen.'},
+    {q: 'Was testet ein **Integrationstest**?', o: ['Das Zusammenspiel der Module über Schnittstellen', 'Eine einzelne Methode', 'Die Abnahme durch den Kunden', 'Nur die Oberfläche'], a: 0, lv: 1, e: 'Schnittstellen zwischen Modulen.'},
+    {q: 'Nach einem Bugfix werden alle alten Tests erneut ausgeführt. Welche Testart?', o: ['Regressionstest', 'Smoke-Test', 'Lasttest', 'Abnahmetest'], a: 0, lv: 1, e: '**Regressionstest**: Wurde durch die Änderung etwas kaputt gemacht?'},
+    {q: 'Nach dem Deployment wird kurz geprüft, ob die Anwendung überhaupt startet. Testart?', o: ['Smoke-Test', 'Regressionstest', 'Stresstest', 'Integrationstest'], a: 0, lv: 1, e: '**Smoke-Test**: läuft es überhaupt?'},
+    {k: 'match', q: 'Ordne Methode und Merkmal zu', o: [['Black-Box', 'nur Ein-/Ausgabe, aus Anforderungen'], ['White-Box', 'Kenntnis des Codes, Abdeckung'], ['Grey-Box', 'Mischung aus beiden']], lv: 1, e: 'Die drei Testmethoden.'},
+    {k: 'tf', q: 'Ein Black-Box-Test erfordert Kenntnis des Quellcodes.', a: false, lv: 1, e: 'Black-Box betrachtet nur **Eingabe und Ausgabe**.'},
+    {q: 'Ein Shop soll 5000 gleichzeitige Nutzer verkraften. Welche Testart?', o: ['Lasttest', 'Modultest', 'Smoke-Test', 'Abnahmetest'], a: 0, lv: 1, e: '**Lasttest**; über die Grenze hinaus = Stresstest.'},
+    {k: 'multi', q: 'Was gehört in einen **Testfall**? (mehrere)', o: ['Eindeutige ID', 'Vorbedingung', 'Eingabe', 'Erwartetes Ergebnis', 'Gehalt des Testers'], a: [0, 1, 2, 3], lv: 1, e: 'Plus tatsächliches Ergebnis und Status.'},
+    {k: 'gap', q: 'Im Testfall muss das ___ Ergebnis vorher festgelegt werden.', a: ['erwartete', 'erwartetes', 'Soll'], lv: 1, e: 'Ohne **erwartetes** Ergebnis kann man nicht entscheiden, ob der Test bestanden ist.'},
+    {q: 'Eine Funktion akzeptiert Alter 18 bis 65. Welche Werte testet man bei der **Grenzwertanalyse**?', o: ['17, 18, 65, 66', '0, 50, 100', '18 und 65 nur', '30, 40, 50'], a: 0, lv: 2, e: 'Grenzen und direkt daneben: **17, 18, 65, 66**.'},
+    {k: 'num', q: 'Eingabe: Alter 18 bis 65 gültig, darunter und darüber ungültig. Wie viele **Äquivalenzklassen** gibt es?', a: 3, tol: 0, u: 'Klassen', lv: 2, e: '<18 (ungültig), 18-65 (gültig), >65 (ungültig) = **3**.'},
+    {q: 'Wer führt typischerweise den **Modultest** durch?', o: ['Der Entwickler', 'Der Kunde', 'Der Betriebsrat', 'Der Endnutzer'], a: 0, lv: 1, e: 'Unit-Tests schreibt der **Entwickler**.'},
+    {q: 'Wo findet der **Systemtest** statt?', o: ['In einer produktionsnahen Testumgebung', 'Auf dem Rechner des Kunden im Livebetrieb', 'Nur im Kopf des Entwicklers', 'Im Compiler'], a: 0, lv: 2, e: 'Gesamtsystem in einer **Testumgebung**, die der Produktion ähnelt.'},
+    {q: 'Welche Aussage ist **FALSCH**?', o: ['Der Abnahmetest ist ein White-Box-Test.', 'Regressionstests lassen sich gut automatisieren.', 'Ein Unit-Test prüft eine einzelne Klasse.', 'Integrationstests prüfen Schnittstellen.'], a: 0, lv: 2, e: 'Der Kunde testet gegen Anforderungen = **Black-Box**.'},
+  ]},
+]);
+;
+// content/quest/infra-1.js
+AP2.quest('infra', [
+  {id: 'infra-osi', t: 'OSI-Modell', qs: [
+    {lv: 1, q: 'Wie viele Schichten hat das **OSI-Referenzmodell**?', o: ['7', '4', '5', '8'], a: 0, e: 'OSI hat **7 Schichten**. 4 Schichten hat das TCP/IP-Modell.'},
+    {lv: 1, k: 'order', q: 'Bringe die OSI-Schichten von **unten (1) nach oben** in die richtige Reihenfolge.', o: ['Bitübertragung', 'Sicherung', 'Vermittlung', 'Transport', 'Sitzung', 'Darstellung'], e: '1 Bitübertragung, 2 Sicherung, 3 Vermittlung, 4 Transport, 5 Sitzung, 6 Darstellung, 7 Anwendung.'},
+    {lv: 1, q: 'Auf welcher OSI-Schicht arbeitet ein klassischer **Switch**?', o: ['Schicht 2 (Sicherung)', 'Schicht 1 (Bitübertragung)', 'Schicht 3 (Vermittlung)', 'Schicht 4 (Transport)'], a: 0, e: 'Der Switch leitet **Frames** anhand der **MAC-Adresse** weiter, also Schicht 2. Router arbeiten auf Schicht 3.'},
+    {lv: 1, q: 'Auf welcher Schicht arbeitet ein **Router**?', o: ['Schicht 3', 'Schicht 2', 'Schicht 1', 'Schicht 7'], a: 0, e: 'Router entscheiden anhand der **IP-Adresse**, das ist die Vermittlungsschicht (3).'},
+    {lv: 2, k: 'match', q: 'Ordne der Schicht die **PDU** (Dateneinheit) zu.', o: [['Schicht 4 (TCP)', 'Segment'], ['Schicht 3', 'Paket'], ['Schicht 2', 'Frame'], ['Schicht 1', 'Bits']], e: 'Von oben: Daten, Segment, Paket, Frame, Bits.'},
+    {lv: 2, q: 'Auf welcher Schicht findet die **Verschlüsselung und Formatumwandlung** im Modell statt?', o: ['Schicht 6 (Darstellung)', 'Schicht 5 (Sitzung)', 'Schicht 7 (Anwendung)', 'Schicht 4 (Transport)'], a: 0, e: 'Die **Darstellungsschicht** kümmert sich um Format, Kodierung, Verschlüsselung und Kompression.'},
+    {lv: 2, k: 'tf', q: 'Beim **Senden** fügt jede Schicht einen eigenen Header hinzu, beim Empfangen wird er wieder entfernt.', a: true, e: 'Das ist die **Kapselung** (Encapsulation) bzw. Entkapselung.'},
+    {lv: 2, q: 'Welche Schicht hängt zusätzlich zum Header einen **Trailer** (Prüfsumme FCS) an?', o: ['Schicht 2', 'Schicht 3', 'Schicht 4', 'Schicht 1'], a: 0, e: 'Der Ethernet-Frame (Schicht 2) endet mit der **FCS** (CRC-32).'},
+    {lv: 1, q: 'Auf welcher Schicht arbeiten **TCP und UDP**?', o: ['Schicht 4', 'Schicht 3', 'Schicht 5', 'Schicht 7'], a: 0, e: 'Transportschicht: TCP/UDP mit **Ports**.'},
+    {lv: 2, k: 'multi', q: 'Welche Protokolle gehören zur **Anwendungsschicht (7)**? (mehrere)', o: ['HTTP', 'DNS', 'SMTP', 'IP', 'Ethernet'], a: [0, 1, 2], e: 'HTTP, DNS, SMTP, DHCP, FTP sind Anwendungsprotokolle. IP ist Schicht 3, Ethernet Schicht 1/2.'},
+    {lv: 2, q: 'Ein **Hub** arbeitet auf welcher Schicht?', o: ['Schicht 1', 'Schicht 2', 'Schicht 3', 'Schicht 4'], a: 0, e: 'Der Hub wiederholt nur elektrische Signale an alle Ports, ohne Adressen zu verstehen: **Bitübertragung**.'},
+    {lv: 3, q: 'Ein Kollege sagt: "Unser Webserver antwortet nicht, aber `ping` auf die IP geht." Bis zu welcher Schicht funktioniert die Verbindung sicher?', o: ['Mindestens bis Schicht 3', 'Nur Schicht 1', 'Bis Schicht 7', 'Nur Schicht 2'], a: 0, e: 'ping nutzt **ICMP** auf Schicht 3. Die Schichten 1 bis 3 funktionieren also; das Problem liegt eher bei Port/Dienst (4 bis 7).'},
+    {lv: 2, k: 'gap', q: 'Die OSI-Schicht 3 heißt ___schicht.', a: ['Vermittlung', 'Vermittlungs', 'Netzwerk', 'Network'], e: 'Schicht 3 = **Vermittlungsschicht** (Network Layer).'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Jede Schicht nutzt die Dienste der darüberliegenden Schicht.', 'Schicht 5 baut Sitzungen auf und ab.', 'Schicht 2 nutzt MAC-Adressen.', 'Schicht 1 überträgt Bits als Signale.'], a: 0, e: 'Jede Schicht nutzt die Dienste der Schicht **darunter** und bietet sie der darüber an.'},
+    {lv: 1, k: 'tf', q: 'Das OSI-Modell ist ein **Referenzmodell**, im Internet praktisch eingesetzt wird das TCP/IP-Modell.', a: true, e: 'OSI dient zur Beschreibung und Einordnung, TCP/IP ist die Praxis.'},
+    {lv: 2, q: 'Wie heißt die PDU auf den Schichten **5 bis 7**?', o: ['Daten', 'Segment', 'Frame', 'Datagramm'], a: 0, e: 'Oberhalb der Transportschicht spricht man einfach von **Daten**.'}
+  ]},
+  {id: 'infra-tcpip', t: 'TCP/IP-Modell', qs: [
+    {lv: 1, q: 'Wie viele Schichten hat das **TCP/IP-Modell**?', o: ['4', '7', '5', '3'], a: 0, e: 'Netzzugang, Internet, Transport, Anwendung: **4** Schichten.'},
+    {lv: 1, k: 'order', q: 'Ordne die TCP/IP-Schichten von **unten nach oben**.', o: ['Netzzugang', 'Internet', 'Transport', 'Anwendung'], e: 'Unten Netzzugang (Ethernet/WLAN), dann Internet (IP), Transport (TCP/UDP), Anwendung.'},
+    {lv: 2, k: 'match', q: 'Ordne die TCP/IP-Schicht den **OSI-Schichten** zu.', o: [['Anwendung', 'OSI 5, 6, 7'], ['Transport', 'OSI 4'], ['Internet', 'OSI 3'], ['Netzzugang', 'OSI 1, 2']], e: 'TCP/IP fasst OSI 1+2 und 5 bis 7 zusammen.'},
+    {lv: 1, q: 'Zu welcher TCP/IP-Schicht gehört **IP**?', o: ['Internet', 'Transport', 'Netzzugang', 'Anwendung'], a: 0, e: 'IP (Adressierung, Routing) liegt in der **Internetschicht**.'},
+    {lv: 2, q: 'Wofür wird **ICMP** hauptsächlich verwendet?', o: ['Fehlermeldungen und Diagnose, z. B. ping', 'Verschlüsselte Übertragung', 'Vergabe von IP-Adressen', 'Namensauflösung'], a: 0, e: '**ICMP** meldet Fehler (z. B. "unreachable") und wird von **ping** und traceroute genutzt.'},
+    {lv: 2, k: 'multi', q: 'Welche Protokolle gehören zur **Anwendungsschicht** des TCP/IP-Modells? (mehrere)', o: ['DHCP', 'FTP', 'DNS', 'UDP', 'ICMP'], a: [0, 1, 2], e: 'UDP ist Transport, ICMP gehört zur Internetschicht.'},
+    {lv: 1, q: 'Wo liegen **Ethernet und WLAN** im TCP/IP-Modell?', o: ['Netzzugang', 'Internet', 'Transport', 'Anwendung'], a: 0, e: 'Physische Übertragung und MAC-Ebene gehören zur **Netzzugangsschicht**.'},
+    {lv: 2, k: 'tf', q: 'Das TCP/IP-Modell entstand aus der Praxis (ARPANET), das OSI-Modell als theoretische Referenz.', a: true, e: 'Genau so: TCP/IP ist praxisgetrieben, OSI ein Referenzmodell der ISO.'},
+    {lv: 2, q: 'Welches Protokoll ist **verbindungslos** und schnell?', o: ['UDP', 'TCP', 'SSH', 'HTTPS'], a: 0, e: '**UDP** baut keine Verbindung auf und garantiert nichts, dafür wenig Overhead.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Die Transportschicht von TCP/IP entspricht OSI 3 und 4.', 'Die Internetschicht entspricht OSI 3.', 'Die Anwendungsschicht umfasst OSI 5 bis 7.', 'Netzzugang umfasst OSI 1 und 2.'], a: 0, e: 'Die Transportschicht entspricht nur **OSI 4**.'},
+    {lv: 2, k: 'gap', q: 'Im TCP/IP-Modell liegt TCP in der ___schicht.', a: ['Transport', 'Transport-'], e: 'TCP und UDP bilden die **Transportschicht**.'},
+    {lv: 3, q: 'Ein Browser ruft eine Webseite auf. Welche Kombination beschreibt die Protokolle von oben nach unten?', o: ['HTTP, TCP, IP, Ethernet', 'HTTP, UDP, ICMP, WLAN', 'TCP, HTTP, IP, Ethernet', 'IP, TCP, HTTP, Ethernet'], a: 0, e: 'Anwendung **HTTP**, Transport **TCP**, Internet **IP**, Netzzugang **Ethernet**.'},
+    {lv: 2, q: 'Welche Aufgabe hat **IP**?', o: ['Adressierung und Routing von Paketen', 'Fehlerfreie Zustellung mit Quittungen', 'Umsetzung von Namen in Adressen', 'Verschlüsselung'], a: 0, e: 'IP adressiert und leitet weiter. Zuverlässigkeit macht **TCP**, Namen **DNS**.'},
+    {lv: 1, k: 'tf', q: 'Das TCP/IP-Modell hat eine eigene Darstellungs- und Sitzungsschicht.', a: false, e: 'Diese sind in der **Anwendungsschicht** zusammengefasst.'},
+    {lv: 3, q: 'ARP wird im Merkzettel mit Sternchen bei der Internetschicht geführt. Warum?', o: ['ARP arbeitet zwischen Schicht 2 und 3 (IP zu MAC) und wird uneinheitlich zugeordnet.', 'ARP ist ein reines Anwendungsprotokoll.', 'ARP wird nur bei IPv6 genutzt.', 'ARP läuft über TCP.'], a: 0, e: 'ARP verbindet IP-Adresse (3) mit MAC-Adresse (2), daher die Grenzfall-Zuordnung.'}
+  ]},
+  {id: 'infra-tcpudp', t: 'TCP und UDP', qs: [
+    {lv: 1, q: 'Welche Eigenschaft hat **TCP**?', o: ['Verbindungsorientiert und zuverlässig', 'Verbindungslos ohne Garantie', 'Arbeitet auf Schicht 3', 'Hat einen 8-Byte-Header'], a: 0, e: 'TCP: Handshake, ACKs, Wiederholung, Reihenfolge. 8 Byte Header hat UDP.'},
+    {lv: 1, k: 'order', q: 'Bringe den **TCP-Drei-Wege-Handshake** in die richtige Reihenfolge.', o: ['Client sendet SYN', 'Server antwortet SYN-ACK', 'Client bestätigt mit ACK'], e: 'SYN, SYN-ACK, ACK. Danach ist die Verbindung aufgebaut.'},
+    {lv: 2, k: 'multi', q: 'Welche Dienste nutzen typischerweise **UDP**? (mehrere)', o: ['DNS-Abfragen', 'DHCP', 'VoIP (RTP)', 'SSH', 'SMTP'], a: [0, 1, 2], e: 'DNS, DHCP, VoIP, Streaming, NTP nutzen UDP. SSH und SMTP brauchen TCP.'},
+    {lv: 2, q: 'Warum wird für **VoIP** UDP statt TCP verwendet?', o: ['Eine verspätete Wiederholung verlorener Sprachpakete wäre nutzlos.', 'UDP ist verschlüsselt.', 'UDP garantiert die Reihenfolge.', 'TCP kann keine Audiodaten übertragen.'], a: 0, e: 'Bei Echtzeit zählt Geschwindigkeit; ein zu spät wiederholtes Paket bringt nichts.'},
+    {lv: 1, k: 'num', q: 'Wie groß ist der **UDP-Header** in Byte?', a: 8, tol: 0, u: 'Byte', e: 'UDP-Header: **8 Byte**. TCP-Header: ab **20 Byte**.'},
+    {lv: 2, k: 'num', q: 'Wie viele Ports gibt es insgesamt (Portnummern 0 bis 65535)?', a: 65536, tol: 0, u: 'Ports', e: 'Ein Port hat **16 Bit**, also 2^16 = 65.536 Nummern.'},
+    {lv: 2, k: 'match', q: 'Ordne die Portbereiche zu.', o: [['0 bis 1023', 'Well-Known'], ['1024 bis 49151', 'Registered'], ['49152 bis 65535', 'Dynamisch/Client']], e: 'Standarddienste nutzen Well-Known-Ports, Clients nehmen meist dynamische Ports.'},
+    {lv: 1, k: 'gap', q: 'IP-Adresse plus Port ergibt einen ___.', a: ['Socket'], e: 'Ein **Socket** identifiziert einen Kommunikationsendpunkt, z. B. 192.168.1.10:443.'},
+    {lv: 2, q: 'Womit wird eine TCP-Verbindung **abgebaut**?', o: ['FIN und ACK in beide Richtungen', 'RST-SYN', 'Einem einzelnen ACK', 'Dem Schließen des Browsers ohne Pakete'], a: 0, e: 'Jede Seite sendet **FIN** und bestätigt das FIN der Gegenseite mit **ACK**.'},
+    {lv: 2, k: 'tf', q: 'UDP stellt sicher, dass Pakete in der richtigen Reihenfolge ankommen.', a: false, e: 'UDP garantiert weder Zustellung noch Reihenfolge; das müsste die Anwendung selbst tun.'},
+    {lv: 3, q: 'Was regelt die **Flusskontrolle (Window)** bei TCP?', o: ['Wie viele Daten ohne Bestätigung gesendet werden dürfen, damit der Empfänger nicht überlastet wird', 'Die Verschlüsselungsstärke', 'Die Wahl des Routers', 'Die Portnummer des Servers'], a: 0, e: 'Das **Window** gibt an, wie viele Bytes unbestätigt unterwegs sein dürfen.'},
+    {lv: 3, q: 'Ein Online-Spiel ruckelt nicht, verliert aber gelegentlich einzelne Positionsupdates. Welches Protokoll wird vermutlich genutzt und warum ist das ok?', o: ['UDP, weil das nächste Update das verlorene ohnehin ersetzt', 'TCP, weil es Pakete verliert', 'UDP, weil es alles wiederholt', 'ICMP, weil es schnell ist'], a: 0, e: 'Bei Echtzeitdaten sind alte Werte schnell wertlos; **UDP** ist hier ideal.'},
+    {lv: 1, q: 'Welcher Dienst nutzt **TCP**?', o: ['HTTPS', 'NTP', 'DHCP', 'RTP'], a: 0, e: 'HTTP(S), FTP, SMTP, SSH nutzen TCP. NTP, DHCP, RTP nutzen UDP.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['TCP ist schneller als UDP, weil es weniger Overhead hat.', 'TCP bestätigt empfangene Daten mit ACK.', 'UDP ist verbindungslos.', 'Ports bestimmen den Zieldienst auf dem Rechner.'], a: 0, e: 'TCP hat **mehr** Overhead (Header, Handshake, ACKs) als UDP.'},
+    {lv: 2, q: 'Welchen Quellport nutzt ein Browser typischerweise für eine Verbindung zu Port 443?', o: ['Einen dynamischen Port, z. B. 51234', 'Ebenfalls 443', 'Port 80', 'Port 0'], a: 0, e: 'Clients bekommen vom Betriebssystem einen **dynamischen** Port aus 49152 bis 65535.'},
+    {lv: 1, k: 'num', q: 'Aus wie vielen Bit besteht eine Portnummer?', a: 16, tol: 0, u: 'Bit', e: '16 Bit, daher 0 bis 65535.'}
+  ]},
+  {id: 'infra-ports', t: 'Ports und Dienste', qs: [
+    {lv: 1, q: 'Welchen Standardport nutzt **HTTPS**?', o: ['443', '80', '8080', '22'], a: 0, e: 'HTTPS = **443**, HTTP = 80.'},
+    {lv: 1, k: 'match', q: 'Ordne Dienst und Port zu.', o: [['SSH', '22'], ['SMTP', '25'], ['DNS', '53'], ['IMAP', '143'], ['POP3', '110']], e: 'Klassiker der Prüfung: 22, 25, 53, 110, 143.'},
+    {lv: 1, q: 'Welcher Port wird für die **FTP-Steuerung** verwendet?', o: ['21', '20', '22', '23'], a: 0, e: 'FTP: **21** Steuerung, **20** Daten.'},
+    {lv: 2, q: 'Welche Ports nutzt **DHCP**?', o: ['67/68 UDP', '53 TCP', '80/443', '161/162 UDP'], a: 0, e: 'DHCP: Server **67**, Client **68**, beides UDP.'},
+    {lv: 2, q: 'Ein Admin will sich per **Remotedesktop** auf einen Windows-Server verbinden. Welcher Port muss offen sein?', o: ['3389', '22', '445', '5900'], a: 0, e: '**RDP** nutzt 3389. 22 = SSH, 445 = SMB.'},
+    {lv: 2, k: 'match', q: 'Ordne die Datenbank ihrem Standardport zu.', o: [['MySQL', '3306'], ['PostgreSQL', '5432'], ['MS SQL Server', '1433'], ['Oracle', '1521']], e: 'Typische DB-Ports für Firewall-Freigaben.'},
+    {lv: 2, q: 'Was ist die sichere Alternative zu **Telnet**?', o: ['SSH', 'FTP', 'HTTP', 'SNMP'], a: 0, e: 'Telnet überträgt alles im Klartext, **SSH** verschlüsselt.'},
+    {lv: 2, k: 'gap', q: '**DNS** übersetzt ___ in IP-Adressen.', a: ['Namen', 'Hostnamen', 'Domainnamen', 'Domänennamen'], e: 'DNS löst Namen wie www.example.de in IP-Adressen auf.'},
+    {lv: 3, q: 'Was ist **ODBC**?', o: ['Eine einheitliche Treiber-Schnittstelle für den Zugriff auf Datenbanken', 'Ein Netzwerkprotokoll auf Port 1433', 'Ein Verschlüsselungsverfahren für SQL', 'Ein DNS-Eintragstyp'], a: 0, e: '**ODBC** (Open Database Connectivity) entkoppelt die Anwendung vom DB-Hersteller. Einen eigenen Port hat es nicht.'},
+    {lv: 2, k: 'tf', q: 'DNS nutzt sowohl UDP als auch TCP auf Port 53.', a: true, e: 'Normale Abfragen über **UDP**, große Antworten und Zonentransfers über **TCP**.'},
+    {lv: 2, k: 'match', q: 'Ordne die verschlüsselte Mail-Variante ihrem Port zu.', o: [['SMTPS', '465'], ['IMAPS', '993'], ['POP3S', '995']], e: 'Sichere Varianten: 465, 993, 995.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['SFTP ist FTP über TLS.', 'FTPS ist FTP mit TLS.', 'SFTP läuft über SSH (Port 22).', 'HTTPS nutzt TLS.'], a: 0, e: '**SFTP** läuft über **SSH**, FTP über TLS heißt **FTPS**.'},
+    {lv: 2, q: 'Welcher Dienst läuft auf Port **389**?', o: ['LDAP', 'Kerberos', 'SNMP', 'Syslog'], a: 0, e: 'LDAP 389, LDAPS 636, Kerberos 88, SNMP 161, Syslog 514.'},
+    {lv: 2, k: 'num', q: 'Welchen Port nutzt **NTP** (Zeitsynchronisation)?', a: 123, tol: 0, u: '', e: 'NTP: **123/UDP**.'},
+    {lv: 3, q: 'Eine Firma will Windows-Dateifreigaben aus dem Internet **sperren**. Welcher Port ist entscheidend?', o: ['445 (SMB)', '443 (HTTPS)', '25 (SMTP)', '110 (POP3)'], a: 0, e: '**SMB** auf 445 sollte nie aus dem Internet erreichbar sein (Wurm-Angriffe).'},
+    {lv: 2, k: 'multi', q: 'Welche Protokolle übertragen Daten **im Klartext**? (mehrere)', o: ['Telnet', 'HTTP', 'FTP', 'SSH', 'HTTPS'], a: [0, 1, 2], e: 'Telnet, HTTP, FTP sind unverschlüsselt; SSH und HTTPS verschlüsseln.'},
+    {lv: 1, q: 'Welcher Port gehört zu **RADIUS** (Authentifizierung)?', o: ['1812', '1433', '3306', '8080'], a: 0, e: 'RADIUS Authentifizierung: **1812/UDP**.'}
+  ]},
+  {id: 'infra-ipv4', t: 'IPv4-Adressen', qs: [
+    {lv: 1, k: 'num', q: 'Wie viele Bit hat eine **IPv4-Adresse**?', a: 32, tol: 0, u: 'Bit', e: '4 Oktette zu je 8 Bit = **32 Bit**.'},
+    {lv: 1, q: 'Welche Adresse ist eine **gültige** IPv4-Adresse?', o: ['192.168.10.77', '192.168.300.1', '10.0.0.0.1', '172.16.1'], a: 0, e: 'Jedes Oktett liegt zwischen 0 und 255, genau vier Oktette.'},
+    {lv: 2, k: 'multi', q: 'Welche Adressen sind **privat** (RFC 1918)? (mehrere)', o: ['10.20.30.40', '172.20.1.1', '192.168.5.5', '172.32.1.1', '8.8.8.8'], a: [0, 1, 2], e: '172.16.0.0/12 geht nur bis **172.31.255.255**, daher ist 172.32.1.1 öffentlich.'},
+    {lv: 1, q: 'Was ist bei der **Netzadresse** gesetzt?', o: ['Alle Hostbits sind 0', 'Alle Hostbits sind 1', 'Alle Netzbits sind 0', 'Das letzte Bit ist 1'], a: 0, e: 'Netzadresse: Hostbits alle **0**; Broadcast: alle **1**.'},
+    {lv: 2, q: 'Wie lautet die Broadcast-Adresse von `192.168.10.0/24`?', o: ['192.168.10.255', '192.168.10.0', '192.168.255.255', '192.168.10.254'], a: 0, e: 'Bei /24 sind die letzten 8 Bit Host; alle auf 1 = .255.'},
+    {lv: 1, k: 'gap', q: 'Die Adresse 127.0.0.1 nennt man ___.', a: ['Loopback', 'localhost', 'Loopback-Adresse'], e: '**Loopback** (localhost): der eigene Rechner.'},
+    {lv: 2, k: 'num', q: 'Wie viele **nutzbare Hosts** hat ein /24-Netz?', a: 254, tol: 0, u: 'Hosts', e: '2^8 - 2 = **254** (Netz- und Broadcastadresse abziehen).'},
+    {lv: 2, q: 'Welche Maske entspricht **/24**?', o: ['255.255.255.0', '255.255.0.0', '255.255.255.128', '255.0.0.0'], a: 0, e: '24 Einsen = drei volle Oktette 255.'},
+    {lv: 2, k: 'num', q: 'Rechne die Binärzahl `11000000` in Dezimal um.', a: 192, tol: 0, u: '', e: '128 + 64 = **192**.'},
+    {lv: 3, k: 'num', q: 'Rechne das Oktett **77** in Binär um und gib an, wie viele Einsen es hat.', a: 4, tol: 0, u: 'Einsen', e: '77 = 64 + 8 + 4 + 1 = `01001101`, also **4** Einsen.'},
+    {lv: 2, k: 'tf', q: 'Private IPv4-Adressen werden im Internet nicht geroutet und brauchen NAT, um ins Internet zu kommen.', a: true, e: 'Der Router übersetzt per **NAT** in eine öffentliche Adresse.'},
+    {lv: 2, q: 'In der Subnetzmaske stehen Einsen für ...', o: ['den Netzanteil', 'den Hostanteil', 'die Broadcast-Adresse', 'das Gateway'], a: 0, e: 'Maske: **Einsen = Netz**, Nullen = Host.'},
+    {lv: 3, q: 'Liegen `192.168.1.10/24` und `192.168.2.10/24` im **selben Netz**?', o: ['Nein, das dritte Oktett unterscheidet sich und gehört zum Netzanteil.', 'Ja, die ersten zwei Oktette sind gleich.', 'Ja, weil beide privat sind.', 'Nur wenn das Gateway gleich ist.'], a: 0, e: 'Bei /24 müssen die ersten **drei** Oktette übereinstimmen.'},
+    {lv: 1, k: 'num', q: 'Wie viel ist 2^7?', a: 128, tol: 0, u: '', e: '2^7 = **128**.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Die Broadcast-Adresse darf einem Host zugewiesen werden.', 'Netzadresse und Broadcast sind nicht vergebbar.', 'Ein Oktett hat 8 Bit.', 'Hosts = 2^h - 2.'], a: 0, e: 'Netz- und Broadcastadresse werden **nicht** an Hosts vergeben.'}
+  ]},
+  {id: 'infra-subnetting', t: 'Subnetting', qs: [
+    {lv: 2, k: 'num', q: 'Ein Netz hat die Maske **255.255.255.192**. Wie groß ist die **Blockgröße**?', a: 64, tol: 0, u: 'Adressen', e: '256 - 192 = **64**.'},
+    {lv: 2, q: 'In welchem Netz liegt `192.168.1.77/26`?', o: ['192.168.1.64', '192.168.1.0', '192.168.1.76', '192.168.1.128'], a: 0, e: 'Blockgröße 64: Netze .0, .64, .128, .192. 77 liegt in **.64**.'},
+    {lv: 2, q: 'Wie lautet der Broadcast von `192.168.1.77/26`?', o: ['192.168.1.127', '192.168.1.255', '192.168.1.128', '192.168.1.126'], a: 0, e: 'Nächstes Netz .128 minus 1 = **.127**.'},
+    {lv: 2, k: 'num', q: 'Wie viele Hosts hat ein **/26**-Netz?', a: 62, tol: 0, u: 'Hosts', e: '6 Hostbits: 2^6 - 2 = **62**.'},
+    {lv: 2, q: 'Ein Netz soll **50 Hosts** aufnehmen. Welches Präfix ist am kleinsten passend?', o: ['/26', '/27', '/25', '/28'], a: 0, e: '2^6 - 2 = 62 ≥ 50, 2^5 - 2 = 30 reicht nicht: **/26**.'},
+    {lv: 2, k: 'num', q: 'Ein /24-Netz soll in **6 Subnetze** gleicher Größe geteilt werden. Wie viele Bits müssen mindestens geborgt werden?', a: 3, tol: 0, u: 'Bit', e: '2^3 = 8 ≥ 6, 2^2 = 4 reicht nicht: **3 Bit**, neue Maske /27.'},
+    {lv: 3, k: 'num', q: '`10.0.0.0/24` wird in 6 Subnetze geteilt (3 geborgte Bits). Wie viele Hosts hat jedes Subnetz?', a: 30, tol: 0, u: 'Hosts', e: '/27: 5 Hostbits, 2^5 - 2 = **30**.'},
+    {lv: 1, k: 'order', q: 'Bringe die **Blockgrößen-Methode** in die richtige Reihenfolge.', o: ['Interessantes Oktett der Maske bestimmen', 'Blockgröße = 256 - Maskenwert', 'Netzadresse = Vielfaches der Blockgröße ≤ IP', 'Broadcast = nächste Netzadresse - 1', 'Hostbereich = Netz+1 bis Broadcast-1'], e: 'So findet man Netz, Broadcast und Hosts ohne Binärrechnung.'},
+    {lv: 3, q: 'Welcher ist der **erste nutzbare Host** in `172.16.5.130/25`?', o: ['172.16.5.129', '172.16.5.128', '172.16.5.1', '172.16.5.131'], a: 0, e: 'Blockgröße 128: Netz .128, erster Host **.129**, Broadcast .255.'},
+    {lv: 2, q: 'Welche Maske gehört zu **/27**?', o: ['255.255.255.224', '255.255.255.240', '255.255.255.192', '255.255.255.248'], a: 0, e: '128+64+32 = **224**.'},
+    {lv: 3, q: 'Was ist das Problem: Host `192.168.0.70/26`, Gateway `192.168.0.1`?', o: ['Gateway liegt in einem anderen Subnetz (.0 bis .63) als der Host (.64 bis .127).', 'Gateway muss immer .254 sein.', '/26 ist zu klein für ein Gateway.', 'Es gibt kein Problem.'], a: 0, e: 'Das Gateway muss **im eigenen Subnetz** liegen, sonst ist es nicht erreichbar.'},
+    {lv: 2, k: 'tf', q: 'Beim Subnetting werden Bits vom **Netzanteil** in den Hostanteil verschoben.', a: false, e: 'Umgekehrt: Bits werden vom **Hostanteil** geborgt und dem Netzanteil zugeschlagen.'},
+    {lv: 2, k: 'num', q: 'Wie viele Hosts hat ein **/30**-Netz?', a: 2, tol: 0, u: 'Hosts', e: '2^2 - 2 = **2**, typisch für Punkt-zu-Punkt-Verbindungen.'},
+    {lv: 3, k: 'gap', q: 'Das dritte Subnetz (Index 2) von `192.168.4.0/24` bei Präfix /26 hat die Netzadresse 192.168.4.___.', a: ['128'], e: 'Subnetze: .0, .64, **.128**, .192.'},
+    {lv: 2, q: 'Ein Netz soll **100 Hosts** aufnehmen. Welches Präfix?', o: ['/25', '/26', '/24', '/27'], a: 0, e: '2^7 - 2 = 126 ≥ 100: **/25**.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Ein /28-Netz hat 16 nutzbare Hosts.', 'Ein /28-Netz hat 16 Adressen.', 'Die Maske von /28 ist 255.255.255.240.', 'Die Blockgröße von /28 ist 16.'], a: 0, e: '/28 hat 16 Adressen, aber nur **14** nutzbare Hosts.'}
+  ]},
+  {id: 'infra-vlsm', t: 'VLSM', qs: [
+    {lv: 1, q: 'Was ermöglicht **VLSM**?', o: ['Subnetze unterschiedlicher Größe mit eigener Präfixlänge', 'Nur gleich große Subnetze', 'Mehr als 32 Bit pro Adresse', 'Verschlüsselte Subnetze'], a: 0, e: 'Variable Length Subnet Mask: jedes Netz bekommt genau so viel wie nötig.'},
+    {lv: 1, k: 'order', q: 'Bringe das **VLSM-Vorgehen** in die richtige Reihenfolge.', o: ['Bedarf je Netz ermitteln', 'Absteigend nach Größe sortieren', 'Kleinste passende Netzgröße wählen', 'Ab Startadresse lückenlos vergeben', 'Netz-ID, Maske, Hosts, Broadcast notieren'], e: 'Größtes zuerst, dann passen die kleineren automatisch auf ihre Grenzen.'},
+    {lv: 2, k: 'match', q: 'Ordne das Präfix der Anzahl **nutzbarer Hosts** zu.', o: [['/25', '126'], ['/26', '62'], ['/27', '30'], ['/28', '14'], ['/29', '6']], e: 'Hosts = 2^(32-Präfix) - 2.'},
+    {lv: 2, q: 'Eine Abteilung braucht **25 Hosts**. Welches Netz ist das kleinste passende?', o: ['/27', '/28', '/26', '/29'], a: 0, e: '/27 = 30 Hosts ≥ 25; /28 = 14 reicht nicht.'},
+    {lv: 2, q: 'Warum vergibt man bei VLSM das **größte Netz zuerst**?', o: ['Damit jedes Netz auf einem Vielfachen seiner Größe beginnt und keine Lücken entstehen', 'Weil es am wichtigsten ist', 'Weil der Router es so verlangt', 'Damit die Broadcasts kleiner werden'], a: 0, e: 'Netze müssen an Vielfachen ihrer Größe starten; absteigend sortiert passt das lückenlos.'},
+    {lv: 3, q: 'Netz `192.168.10.0/24`: A braucht 100 Hosts, B 50, C 20. Welche Netz-ID bekommt **B**?', o: ['192.168.10.128/26', '192.168.10.100/26', '192.168.10.64/26', '192.168.10.192/27'], a: 0, e: 'A: .0/25 (bis .127). B: **.128/26** (bis .191). C: .192/27.'},
+    {lv: 3, q: 'Im selben Beispiel: welche Netz-ID bekommt **C** (20 Hosts)?', o: ['192.168.10.192/27', '192.168.10.160/27', '192.168.10.224/28', '192.168.10.192/28'], a: 0, e: 'Nach B (bis .191) folgt **.192/27** (30 Hosts, bis .223).'},
+    {lv: 3, k: 'gap', q: 'Der Broadcast von `192.168.10.128/26` ist 192.168.10.___.', a: ['191'], e: 'Nächstes Netz .192 minus 1 = **.191**.'},
+    {lv: 2, q: 'Welches Präfix nutzt man typischerweise für eine **Router-zu-Router-Verbindung**?', o: ['/30', '/24', '/28', '/32'], a: 0, e: '/30 bietet genau **2** Hosts.'},
+    {lv: 2, k: 'tf', q: 'Ein /27-Netz kann bei `.48` beginnen.', a: false, e: 'Ein /27 (32 Adressen) muss auf einem **Vielfachen von 32** beginnen: .0, .32, .64 ... .48 ist ungültig.'},
+    {lv: 2, k: 'num', q: 'Wie viele Adressen (nicht Hosts) umfasst ein **/29**?', a: 8, tol: 0, u: 'Adressen', e: '2^3 = **8** Adressen, davon 6 Hosts.'},
+    {lv: 3, k: 'num', q: 'Netze A (/25), B (/26), C (/27) und D (/30) werden ab .0 vergeben. Bei welchem letzten Oktett beginnt D?', a: 224, tol: 0, u: '', e: 'A .0 bis .127, B .128 bis .191, C .192 bis .223, D ab **.224**.'},
+    {lv: 2, q: 'Was ist ein typischer Nachteil, wenn man **ohne VLSM** alle Netze als /24 plant?', o: ['Viele Adressen werden verschwendet', 'Netze werden zu klein', 'Router können /24 nicht routen', 'Broadcasts funktionieren nicht'], a: 0, e: 'Ein Netz mit 10 Hosts verschwendet bei /24 über 240 Adressen.'},
+    {lv: 1, q: 'Welche Adresse wird im Subnetz oft für das **Gateway** verwendet?', o: ['Die erste Hostadresse', 'Die Netzadresse', 'Der Broadcast', 'Eine zufällige Adresse'], a: 0, e: 'Konvention: erste (oder letzte) Hostadresse für den Router.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Bei VLSM müssen alle Subnetze dieselbe Maske haben.', 'Bei VLSM spart man Adressraum.', 'Größte Netze werden zuerst vergeben.', 'Broadcast = nächste Netz-ID minus 1.'], a: 0, e: 'Genau das Gegenteil: VLSM erlaubt **unterschiedliche** Masken.'}
+  ]},
+  {id: 'infra-ipv6', t: 'IPv6', qs: [
+    {lv: 1, k: 'num', q: 'Wie viele Bit hat eine **IPv6-Adresse**?', a: 128, tol: 0, u: 'Bit', e: '8 Gruppen zu je 16 Bit = **128 Bit**.'},
+    {lv: 1, q: 'Wie wird eine IPv6-Adresse geschrieben?', o: ['8 Gruppen aus je 4 Hexziffern, getrennt durch Doppelpunkt', '4 Dezimal-Oktette mit Punkten', '6 Hex-Bytes mit Bindestrich', '16 Dezimalgruppen'], a: 0, e: 'Beispiel: `2001:0db8:0000:0000:0000:ff00:0042:8329`.'},
+    {lv: 2, q: 'Wie lautet `2001:0db8:0000:0000:0000:ff00:0042:8329` **korrekt gekürzt**?', o: ['2001:db8::ff00:42:8329', '2001:db8:0:ff00:42:8329', '2001:db8::ff:42:8329', '21:db8::ff00:42:8329'], a: 0, e: 'Führende Nullen weg, eine Null-Gruppenfolge durch `::` ersetzen. ff00 hat keine führenden Nullen.'},
+    {lv: 2, k: 'tf', q: 'In einer IPv6-Adresse darf `::` **zweimal** vorkommen.', a: false, e: 'Nur **einmal**, sonst wäre nicht eindeutig, wie viele Nullgruppen wo fehlen.'},
+    {lv: 1, k: 'tf', q: 'IPv6 kennt **keinen Broadcast**.', a: true, e: 'Stattdessen werden **Multicast**-Adressen (ff00::/8) genutzt.'},
+    {lv: 2, k: 'match', q: 'Ordne die IPv6-Adresse ihrer Bedeutung zu.', o: [['::1', 'Loopback'], ['fe80::/10', 'Link-Local'], ['ff00::/8', 'Multicast'], ['2001:db8::/32', 'Dokumentation'], ['2000::/3', 'Global Unicast']], e: 'Wichtige Sonderbereiche für die Prüfung.'},
+    {lv: 1, q: 'Welches Präfix ist das Standard-Subnetz für ein **LAN** in IPv6?', o: ['/64', '/48', '/24', '/128'], a: 0, e: '64 Bit Netz, 64 Bit **Interface-ID**.'},
+    {lv: 2, q: 'Was ist eine **Anycast**-Adresse?', o: ['Eine Adresse mehrerer Geräte, das Paket geht an das nächstgelegene', 'Eine Adresse für alle Geräte im Netz', 'Eine nur lokal gültige Adresse', 'Die Loopback-Adresse'], a: 0, e: 'Anycast: mehrere Empfänger, zugestellt wird an den **nächsten** (z. B. DNS-Root-Server).'},
+    {lv: 2, q: 'Warum ist bei IPv6 **NAT** grundsätzlich nicht nötig?', o: ['Der Adressraum ist so groß, dass jedes Gerät eine globale Adresse bekommen kann', 'IPv6 verschlüsselt immer', 'IPv6 nutzt keine Router', 'NAT ist in IPv6 verboten'], a: 0, e: '2^128 Adressen reichen für alle Geräte.'},
+    {lv: 3, q: 'Welche Kürzung ist **ungültig**?', o: ['2001:db8::1::5', '2001:db8::1', 'fe80::1', '::1'], a: 0, e: 'Zwei `::` sind nicht erlaubt.'},
+    {lv: 2, q: 'Welche Adresse hat **jedes** IPv6-Interface automatisch?', o: ['Eine Link-Local-Adresse (fe80::)', 'Eine Global-Unicast-Adresse', 'Eine ULA (fc00::)', 'Die Adresse ::'], a: 0, e: 'Link-Local wird automatisch gebildet und gilt nur im lokalen Segment.'},
+    {lv: 3, k: 'gap', q: 'Schreibe `fe80:0000:0000:0000:0000:0000:0000:0001` maximal gekürzt: ___', a: ['fe80::1'], e: 'Alle Nullgruppen zu `::`, führende Nullen von 0001 weg: **fe80::1**.'},
+    {lv: 2, q: 'Wofür steht `::` alleine?', o: ['Unspezifizierte Adresse', 'Loopback', 'Broadcast', 'Default-Gateway'], a: 0, e: '`::` = alle Bits 0 = unspezifiziert; Loopback ist `::1`.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Eine Hexziffer entspricht 8 Bit.', 'Eine IPv6-Gruppe hat 16 Bit.', 'IPv6 nutzt Multicast statt Broadcast.', 'ULA-Adressen beginnen mit fc00::/7.'], a: 0, e: 'Eine Hexziffer entspricht **4 Bit**.'},
+    {lv: 2, k: 'multi', q: 'Welche sind **Unicast**-Adresstypen? (mehrere)', o: ['Global Unicast (2000::/3)', 'Link-Local (fe80::/10)', 'ULA (fc00::/7)', 'ff02::1', 'Broadcast'], a: [0, 1, 2], e: 'ff02::1 ist Multicast, Broadcast gibt es nicht.'}
+  ]},
+  {id: 'infra-ipv6sub', t: 'IPv6-Subnetting', qs: [
+    {lv: 2, k: 'num', q: 'Ein Unternehmen hat ein **/48** und bildet /64-Subnetze. Wie viele Subnetze sind möglich?', a: 65536, tol: 0, u: 'Subnetze', e: '64 - 48 = 16 Bit: 2^16 = **65.536**.'},
+    {lv: 2, k: 'num', q: 'Aus einem **/56** werden /64-Netze gebildet. Wie viele?', a: 256, tol: 0, u: 'Subnetze', e: '8 Bit: 2^8 = **256**.'},
+    {lv: 1, k: 'match', q: 'Ordne das Präfix der typischen Verwendung zu.', o: [['/32', 'Provider'], ['/48', 'Unternehmen/Standort'], ['/56', 'Privatkunde'], ['/64', 'Ein LAN'], ['/128', 'Einzelne Adresse']], e: 'Typische Präfixgrößen bei IPv6.'},
+    {lv: 2, q: 'Warum bekommt ein LAN standardmäßig ein **/64**?', o: ['Die hinteren 64 Bit sind die Interface-ID, die SLAAC benötigt', 'Weil /64 die kleinste mögliche Größe ist', 'Weil Router nur /64 kennen', 'Wegen NAT'], a: 0, e: '**SLAAC** bildet die Interface-ID aus 64 Bit.'},
+    {lv: 2, k: 'num', q: 'Ein /48 soll in **10 Subnetze** geteilt werden. Wie viele Bits muss man mindestens hinzunehmen?', a: 4, tol: 0, u: 'Bit', e: '2^4 = 16 ≥ 10, 2^3 = 8 reicht nicht: **4 Bit**, neues Präfix /52.'},
+    {lv: 3, q: '`2001:db8:abcd::/48` wird in /52-Netze geteilt. Wie lautet das **zweite** Subnetz?', o: ['2001:db8:abcd:1000::/52', '2001:db8:abcd:0001::/52', '2001:db8:abcd:0100::/52', '2001:db8:abce::/52'], a: 0, e: '/52 = 13 Hexziffern fest; die 13. Ziffer (erste der 4. Gruppe) zählt hoch: 0000, **1000**, 2000 ...'},
+    {lv: 3, q: '`2001:db8:abcd::/48` in **4** Subnetze (/50). Welche Werte nimmt die erste Ziffer der 4. Gruppe an?', o: ['0, 4, 8, c', '0, 1, 2, 3', '0, 8', '0, 2, 4, 6'], a: 0, e: '2 Bit der Ziffer werden genutzt: Schrittweite **4**.'},
+    {lv: 2, k: 'match', q: 'Ordne die Anzahl genutzter Bits einer Hexziffer der **Schrittweite** zu.', o: [['1 Bit', '8'], ['2 Bit', '4'], ['3 Bit', '2'], ['4 Bit', '1']], e: 'Schrittweite = 2^(4 - genutzte Bits).'},
+    {lv: 1, k: 'num', q: 'Wie viele Bit entspricht **eine Hexziffer**?', a: 4, tol: 0, u: 'Bit', e: '16 Werte = 2^4: **4 Bit**.'},
+    {lv: 2, k: 'num', q: 'Wie viele Hexziffern sind bei einem **/48** fest?', a: 12, tol: 0, u: 'Ziffern', e: '48 / 4 = **12** Hexziffern (3 Gruppen).'},
+    {lv: 2, k: 'tf', q: 'Aus einem /56 lassen sich 512 /64-Netze bilden.', a: false, e: '64 - 56 = 8 Bit: **256** Netze.'},
+    {lv: 3, q: 'Welches Präfix gehört **nicht** zu den /64-Subnetzen von `2001:db8:1200::/56`?', o: ['2001:db8:1300::/64', '2001:db8:1200::/64', '2001:db8:1201::/64', '2001:db8:12ff::/64'], a: 0, e: 'Bei /56 sind die ersten 14 Hexziffern fest (..12), nur die letzten 2 der 3. Gruppe ändern sich: 1200 bis 12ff.'},
+    {lv: 1, k: 'order', q: 'Bringe den **Rechenweg** in die richtige Reihenfolge.', o: ['n bestimmen mit 2^n ≥ Anzahl Subnetze', 'Neues Präfix = alt + n', 'Grenze in Hexziffern umrechnen (Präfix / 4)', 'Betroffene Hexziffer schrittweise hochzählen'], e: 'Danach die Präfixe mit `::` am Ende notieren.'},
+    {lv: 2, k: 'gap', q: 'Ein IPv6-LAN-Subnetz hat die Präfixlänge /___.', a: ['64'], e: 'Standard: **/64**.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Ein /64 sollte für ein LAN weiter in /80 geteilt werden, um Adressen zu sparen.', 'Ein /48 ergibt 65.536 /64-Netze.', 'SLAAC braucht eine 64-Bit-Interface-ID.', 'Ein /60 ergibt 16 /64-Netze.'], a: 0, e: 'Kleinere LANs als /64 brechen **SLAAC**; Adressen sparen ist bei IPv6 kein Thema.'}
+  ]},
+  {id: 'infra-ipconfig', t: 'IP-Konfiguration und DHCP', qs: [
+    {lv: 1, k: 'multi', q: 'Welche Angaben braucht ein Client mindestens, um **im Internet zu surfen**? (mehrere)', o: ['IP-Adresse', 'Subnetzmaske', 'Standardgateway', 'DNS-Server', 'MAC-Adresse des Servers'], a: [0, 1, 2, 3], e: 'Die vier Pflichtangaben. Die MAC-Adresse ermittelt ARP selbst.'},
+    {lv: 1, k: 'order', q: 'Bringe den **DHCP-Ablauf (DORA)** in die richtige Reihenfolge.', o: ['Discover', 'Offer', 'Request', 'Acknowledge'], e: 'Client sucht (Discover), Server bietet an (Offer), Client fordert an (Request), Server bestätigt (ACK).'},
+    {lv: 2, k: 'match', q: 'Ordne die DHCP-Vergabeart zu.', o: [['manuell/statisch', 'feste Zuordnung MAC zu IP'], ['automatisch', 'erste Vergabe, danach immer dieselbe'], ['dynamisch', 'Vergabe für eine Lease-Zeit']], e: 'Eine Reservierung ist die manuelle Vergabe im DHCP.'},
+    {lv: 2, q: 'Ein Client hat die Adresse **169.254.12.7**. Was ist die wahrscheinlichste Ursache?', o: ['Der DHCP-Server war nicht erreichbar (APIPA)', 'Die Adresse kam vom Provider', 'Es ist eine Loopback-Adresse', 'DNS ist falsch'], a: 0, e: '**APIPA** (169.254.0.0/16) vergibt Windows selbst, wenn kein DHCP antwortet.'},
+    {lv: 2, q: 'Ein PC erreicht Rechner im **eigenen Netz**, aber **nicht das Internet** (auch nicht per IP). Was fehlt wahrscheinlich?', o: ['Das Standardgateway', 'Der DNS-Server', 'Die Subnetzmaske', 'Die MAC-Adresse'], a: 0, e: 'Ohne Gateway weiß der PC nicht, wohin Pakete für fremde Netze gehen.'},
+    {lv: 2, q: 'Ein PC erreicht `8.8.8.8` per ping, aber `www.example.de` wird nicht gefunden. Was ist falsch?', o: ['DNS-Server', 'Gateway', 'Subnetzmaske', 'Netzwerkkabel'], a: 0, e: 'IP-Verbindung ins Internet geht, nur die **Namensauflösung** fehlt.'},
+    {lv: 2, k: 'tf', q: 'Der DHCP-Discover wird als **Broadcast** gesendet, weil der Client noch keine IP und keinen Server kennt.', a: true, e: 'Der Client sendet an 255.255.255.255 von 0.0.0.0.'},
+    {lv: 1, k: 'gap', q: 'Mit dem Windows-Befehl `ipconfig /___` erhält man eine neue Adresse vom DHCP-Server.', a: ['renew'], e: '`/release` gibt sie ab, `/renew` fordert neu an.'},
+    {lv: 2, k: 'match', q: 'Ordne das Werkzeug seinem Zweck zu.', o: [['ping', 'Erreichbarkeit prüfen'], ['tracert', 'Weg über Router anzeigen'], ['nslookup', 'DNS-Abfrage'], ['arp -a', 'ARP-Cache anzeigen']], e: 'Standardwerkzeuge der Fehlersuche.'},
+    {lv: 3, q: 'PC A: `192.168.1.20/24`, PC B: `192.168.1.20/24`. Was passiert?', o: ['Adresskonflikt, Verbindungen sind gestört', 'Beide funktionieren normal', 'Der Switch vergibt automatisch eine andere Adresse', 'Nur A bekommt Internet'], a: 0, e: '**Doppelte IP-Adressen** führen zu Konflikten; Windows meldet einen Adresskonflikt.'},
+    {lv: 3, q: 'PC: `192.168.10.50`, Maske `255.255.255.0`, Gateway `192.168.1.1`. Wo liegt der Fehler?', o: ['Das Gateway liegt nicht im Subnetz des PCs', 'Die Maske ist zu groß', 'Die IP ist öffentlich', 'Kein Fehler'], a: 0, e: 'Gateway muss im Netz 192.168.10.0/24 liegen.'},
+    {lv: 2, q: 'Was macht **NAT** am Router?', o: ['Übersetzt private in öffentliche IP-Adressen', 'Vergibt IP-Adressen an Clients', 'Löst Namen auf', 'Verschlüsselt das WLAN'], a: 0, e: 'Network Address Translation übersetzt die privaten Adressen in die öffentliche des Routers.'},
+    {lv: 1, q: 'Mit welchem Windows-Befehl sieht man **alle** IP-Einstellungen inkl. DNS und MAC?', o: ['ipconfig /all', 'ping -a', 'netstat', 'tracert'], a: 0, e: '`ipconfig /all` zeigt die vollständige Konfiguration.'},
+    {lv: 3, q: 'Ein Drucker soll vom DHCP **immer dieselbe Adresse** bekommen. Welche Lösung ist am besten?', o: ['DHCP-Reservierung anhand der MAC-Adresse', 'Kürzere Lease-Zeit', 'Zweiten DHCP-Server einrichten', 'APIPA aktivieren'], a: 0, e: 'Eine **Reservierung** (manuelle Vergabe) bindet die IP an die MAC.'},
+    {lv: 2, k: 'tf', q: 'Nach Ablauf der Lease-Zeit bekommt ein Client bei dynamischer Vergabe garantiert dieselbe Adresse.', a: false, e: 'Bei **dynamischer** Vergabe kann er danach eine andere Adresse erhalten.'}
+  ]},
+  {id: 'infra-routing', t: 'Routing', qs: [
+    {lv: 1, q: 'Auf welcher OSI-Schicht findet **Routing** statt?', o: ['Schicht 3', 'Schicht 2', 'Schicht 4', 'Schicht 1'], a: 0, e: 'Wegewahl anhand von IP-Adressen = Vermittlungsschicht.'},
+    {lv: 1, k: 'multi', q: 'Was enthält ein Eintrag der **Routing-Tabelle**? (mehrere)', o: ['Zielnetz mit Präfix', 'Next Hop', 'Ausgehendes Interface', 'MAC-Adresse jedes Clients', 'Benutzername'], a: [0, 1, 2], e: 'Dazu oft eine **Metrik**. MAC-Adressen stehen in der MAC-Tabelle des Switches.'},
+    {lv: 2, q: 'Ein Paket an `10.10.1.70`. Einträge: `10.10.0.0/16`, `10.10.1.0/24`, `10.10.1.64/27`, `0.0.0.0/0`. Welcher gewinnt?', o: ['10.10.1.64/27', '10.10.1.0/24', '10.10.0.0/16', '0.0.0.0/0'], a: 0, e: '**Longest Prefix Match**: /27 umfasst .64 bis .95 und ist am spezifischsten.'},
+    {lv: 2, q: 'Ein Paket an `10.10.1.200`, gleiche Tabelle. Welcher Eintrag gewinnt?', o: ['10.10.1.0/24', '10.10.1.64/27', '10.10.0.0/16', '0.0.0.0/0'], a: 0, e: '.200 liegt nicht im /27 (.64 bis .95), aber im **/24**.'},
+    {lv: 1, k: 'gap', q: 'Die Default-Route wird als ___ geschrieben.', a: ['0.0.0.0/0', '0.0.0.0 0.0.0.0'], e: '**0.0.0.0/0** passt auf jede Adresse, "Gateway of last resort".'},
+    {lv: 2, q: 'Was passiert, wenn **kein Eintrag** passt und keine Default-Route existiert?', o: ['Paket wird verworfen, ICMP "unreachable" zurück', 'Paket geht an alle Interfaces', 'Paket wird zwischengespeichert', 'Router fragt per DNS nach'], a: 0, e: 'Der Router verwirft das Paket und meldet per **ICMP** "Destination unreachable".'},
+    {lv: 2, k: 'match', q: 'Ordne das Routingprotokoll seiner Eigenschaft zu.', o: [['RIPv2', 'Distance-Vector, Metrik Hops'], ['OSPF', 'Link-State, Metrik Kosten'], ['BGP', 'Routing zwischen Providern (EGP)']], e: 'RIP und OSPF sind IGPs, BGP ist das EGP des Internets.'},
+    {lv: 2, k: 'num', q: 'Wie viele Hops sind bei **RIP** maximal erreichbar (16 = unerreichbar)?', a: 15, tol: 0, u: 'Hops', e: 'RIP: max. **15** Hops, daher nur für kleine Netze.'},
+    {lv: 2, k: 'tf', q: 'Der **Next Hop** muss eine IP-Adresse in einem direkt angeschlossenen Netz des Routers sein.', a: true, e: 'Der Router muss den nächsten Router direkt erreichen können.'},
+    {lv: 3, q: 'Welcher Vorteil spricht für **statisches Routing**?', o: ['Kein Protokoll-Overhead und gut kontrollierbar', 'Automatische Anpassung bei Ausfällen', 'Skaliert besonders gut in großen Netzen', 'Lastverteilung automatisch'], a: 0, e: 'Statisch: einfach, sicher, kein Overhead, aber **keine** automatische Anpassung.'},
+    {lv: 3, q: 'Welche Aussage über **OSPF** ist richtig?', o: ['Schnelle Konvergenz, Areas und Lastverteilung über mehrere gleich teure Wege', 'Metrik ist ausschließlich die Hopanzahl', 'Maximal 15 Hops', 'Wird zwischen Providern im Internet genutzt'], a: 0, e: 'OSPF: Link-State, Kosten nach Bandbreite, schnelle Konvergenz, **ECMP**.'},
+    {lv: 1, k: 'order', q: 'Bringe die **Routingentscheidung** in die richtige Reihenfolge.', o: ['Alle Einträge suchen, die die Ziel-IP enthalten', 'Längstes Präfix auswählen', 'Bei Gleichstand kleinste Metrik', 'Über Next Hop/Interface weiterleiten'], e: 'Passt nichts, wird verworfen.'},
+    {lv: 2, q: 'Wann wird die **Metrik** relevant?', o: ['Wenn mehrere Einträge mit gleich langem Präfix passen', 'Immer vor dem Präfix', 'Nur bei der Default-Route', 'Nie bei statischen Routen'], a: 0, e: 'Erst Präfixlänge, dann bei Gleichstand die Metrik.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Die Default-Route gewinnt immer, weil sie alle Adressen abdeckt.', 'Ein /27 ist spezifischer als ein /24.', 'RIP hat eine langsame Konvergenz.', 'Router trennen Broadcastdomänen.'], a: 0, e: 'Die Default-Route hat das **kürzeste** Präfix (/0) und gilt nur, wenn nichts anderes passt.'},
+    {lv: 2, k: 'multi', q: 'Welche sind **dynamische** Routingprotokolle? (mehrere)', o: ['RIP', 'OSPF', 'BGP', 'ARP', 'DHCP'], a: [0, 1, 2], e: 'ARP und DHCP sind keine Routingprotokolle.'}
+  ]},
+  {id: 'infra-vlan', t: 'VLAN und DMZ', qs: [
+    {lv: 1, q: 'Was bewirkt ein **VLAN**?', o: ['Logische Trennung eines Switch-Netzes in eigene Broadcastdomänen', 'Verschlüsselung des LAN', 'Physische Trennung durch neue Kabel', 'Beschleunigung von WLAN'], a: 0, e: 'Jedes VLAN ist eine eigene **Broadcastdomäne** mit eigenem Subnetz.'},
+    {lv: 1, k: 'gap', q: 'VLAN-Tags auf einem Trunk werden nach dem Standard IEEE ___ gesetzt.', a: ['802.1Q', '802.1q'], e: '**IEEE 802.1Q** fügt ein 4-Byte-Tag mit VLAN-ID ein.'},
+    {lv: 2, k: 'match', q: 'Ordne den Begriff zu.', o: [['Access-Port', 'Endgerät, untagged, ein VLAN'], ['Trunk', 'Mehrere VLANs, getaggt'], ['Native VLAN', 'Untagged auf dem Trunk']], e: 'Endgeräte hängen an Access-Ports, Switches untereinander über Trunks.'},
+    {lv: 2, k: 'num', q: 'Wie viele Bit hat die **VLAN-ID** im 802.1Q-Tag?', a: 12, tol: 0, u: 'Bit', e: '12 Bit = 4096 Werte (nutzbar 1 bis 4094).'},
+    {lv: 2, q: 'Wie können Geräte aus **VLAN 10** mit Geräten aus **VLAN 20** kommunizieren?', o: ['Über einen Router oder Layer-3-Switch (Inter-VLAN-Routing)', 'Direkt über den Switch, ohne Routing', 'Nur per WLAN', 'Gar nicht'], a: 0, e: 'Verschiedene VLANs = verschiedene Netze, dazwischen muss **geroutet** werden; dort greifen Firewall-Regeln.'},
+    {lv: 2, k: 'multi', q: 'Welche **Vorteile** bieten VLANs? (mehrere)', o: ['Mehr Sicherheit durch Trennung', 'Weniger Broadcasts', 'Abteilungswechsel ohne Umverkabeln', 'Verschlüsselung aller Daten', 'Keine Router mehr nötig'], a: [0, 1, 2], e: 'VLANs verschlüsseln nicht und ersetzen keinen Router.'},
+    {lv: 1, q: 'Welche Server gehören typischerweise in eine **DMZ**?', o: ['Webserver und Mail-Gateway', 'Datenbankserver mit Kundendaten', 'Domänencontroller', 'Arbeitsplatzrechner'], a: 0, e: 'Aus dem Internet erreichbare Dienste in die DMZ, **Datenbanken bleiben intern**.'},
+    {lv: 2, q: 'Was ist eine **zweistufige DMZ**?', o: ['DMZ zwischen zwei Firewalls, idealerweise verschiedener Hersteller', 'Eine Firewall mit drei Zonen', 'Zwei VLANs ohne Firewall', 'Zwei Webserver hintereinander'], a: 0, e: 'Einstufig: eine Firewall, 3 Zonen. Zweistufig: äußere und innere Firewall.'},
+    {lv: 2, k: 'tf', q: 'Geräte im selben VLAN, aber an verschiedenen Switches, können über einen Trunk kommunizieren.', a: true, e: 'Der Trunk transportiert getaggte Frames aller VLANs zwischen den Switches.'},
+    {lv: 3, q: 'Ein Unternehmen möchte, dass Gäste-Laptops **nicht** auf Server zugreifen können. Beste Maßnahme?', o: ['Eigenes Gäste-VLAN mit Firewall-Regeln am Inter-VLAN-Router', 'Alle Geräte in VLAN 1', 'Statische IP für Gäste', 'Hub statt Switch'], a: 0, e: 'Trennung per **VLAN** plus Regeln am Router/Firewall.'},
+    {lv: 2, k: 'num', q: 'Wie viele Byte fügt das 802.1Q-Tag einem Frame hinzu?', a: 4, tol: 0, u: 'Byte', e: 'Das VLAN-Tag ist **4 Byte** groß.'},
+    {lv: 3, q: 'VLAN Verwaltung braucht 25 Hosts, VLAN Produktion 60 Hosts. Welche Präfixe sind jeweils am kleinsten passend?', o: ['/27 und /26', '/28 und /26', '/27 und /25', '/26 und /26'], a: 0, e: '25 Hosts: /27 (30). 60 Hosts: /26 (62).'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Ein VLAN-Trunk verbindet ein Endgerät mit genau einem VLAN.', 'VLANs reduzieren Broadcasts.', 'Inter-VLAN-Routing kann ein Layer-3-Switch übernehmen.', 'Jedes VLAN hat typischerweise ein eigenes Subnetz.'], a: 0, e: 'Das beschreibt einen **Access-Port**, nicht einen Trunk.'},
+    {lv: 1, k: 'tf', q: 'Ein VLAN ist eine eigene Kollisionsdomäne, aber keine eigene Broadcastdomäne.', a: false, e: 'Ein VLAN ist gerade eine eigene **Broadcastdomäne**.'},
+    {lv: 2, q: 'Warum sollte der **Datenbankserver** nicht in der DMZ stehen?', o: ['Er enthält schützenswerte Daten und muss nicht direkt aus dem Internet erreichbar sein', 'Er ist zu langsam', 'DMZ erlaubt keine Datenbanken technisch', 'Weil Datenbanken UDP nutzen'], a: 0, e: 'Webserver in der DMZ greift durch die innere Firewall auf die interne DB zu.'}
+  ]},
+  {id: 'infra-komponenten', t: 'Netzwerkkomponenten', qs: [
+    {lv: 1, k: 'match', q: 'Ordne die Komponente ihrer OSI-Schicht zu.', o: [['Hub', 'Schicht 1'], ['Switch', 'Schicht 2'], ['Router', 'Schicht 3']], e: 'Hub: Signale, Switch: MAC, Router: IP.'},
+    {lv: 1, q: 'Anhand welcher Adresse leitet ein **Switch** Frames weiter?', o: ['MAC-Adresse', 'IP-Adresse', 'Portnummer', 'Hostname'], a: 0, e: 'Der Switch lernt **MAC-Adressen** in seiner MAC-Tabelle.'},
+    {lv: 1, q: 'Welches Gerät verbindet **verschiedene IP-Netze**?', o: ['Router', 'Switch', 'Hub', 'Repeater'], a: 0, e: 'Der **Router** entscheidet per Routingtabelle anhand der IP.'},
+    {lv: 2, q: 'Warum ist ein **Hub** heute veraltet?', o: ['Er sendet alles an alle Ports, eine Kollisionsdomäne, wenig Bandbreite', 'Er ist zu teuer', 'Er arbeitet nur mit IPv6', 'Er braucht eine IP-Adresse'], a: 0, e: 'Alle teilen sich die Bandbreite, und jeder sieht jeden Verkehr.'},
+    {lv: 2, k: 'tf', q: 'Ein Switch trennt **Kollisionsdomänen**, ein Router trennt **Broadcastdomänen**.', a: true, e: 'Jeder Switchport ist eine eigene Kollisionsdomäne; Broadcasts gehen erst am Router nicht weiter (außer bei VLANs).'},
+    {lv: 2, q: 'Was macht ein **Access Point**?', o: ['Bindet WLAN-Geräte an das kabelgebundene LAN an', 'Wandelt DSL-Signale um', 'Vergibt nur IP-Adressen', 'Filtert Viren'], a: 0, e: 'Der AP ist die Brücke zwischen Funk und LAN.'},
+    {lv: 2, q: 'Welches Gerät **wandelt Signale** um, z. B. für DSL oder Kabel?', o: ['Modem', 'Switch', 'Hub', 'Access Point'], a: 0, e: 'Modem = Modulator/Demodulator.'},
+    {lv: 2, k: 'multi', q: 'Welche Funktionen übernimmt ein typischer **Heimrouter** zusätzlich? (mehrere)', o: ['NAT', 'DHCP-Server', 'Firewall', 'RAID', 'Datenbankserver'], a: [0, 1, 2], e: 'Router bringen oft NAT, DHCP und Firewall mit.'},
+    {lv: 3, q: 'Ein Switch empfängt einen Frame an eine **unbekannte** Ziel-MAC. Was tut er?', o: ['Er sendet den Frame an alle Ports außer dem Eingangsport (Flooding)', 'Er verwirft den Frame', 'Er fragt den DNS-Server', 'Er sendet ihn zum Router'], a: 0, e: 'Unbekanntes Ziel oder Broadcast: **Flooding**.'},
+    {lv: 2, k: 'gap', q: 'Ein ___ verstärkt nur das Signal, um die Reichweite zu erhöhen.', a: ['Repeater'], e: 'Der **Repeater** arbeitet auf Schicht 1.'},
+    {lv: 3, q: 'Was trennt ein Switch **mit VLANs** zusätzlich?', o: ['Broadcastdomänen', 'IP-Adressen', 'Ports in TCP und UDP', 'Nichts zusätzlich'], a: 0, e: 'Mit VLANs teilt ein Switch das Netz in mehrere **Broadcastdomänen**.'},
+    {lv: 2, q: 'Was ist ein **Gateway** im allgemeinen Sinn?', o: ['Übergang zwischen Netzen oder Protokollen', 'Ein WLAN-Repeater', 'Ein Patchfeld', 'Ein Netzwerkkabel'], a: 0, e: 'Im LAN meist der Router als Standardgateway.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Ein Router leitet Broadcasts standardmäßig in alle Netze weiter.', 'Ein Switch lernt Quell-MAC-Adressen.', 'Eine Firewall filtert Verkehr nach Regeln.', 'Ein Hub hat eine einzige Kollisionsdomäne.'], a: 0, e: 'Router **stoppen** Broadcasts.'},
+    {lv: 1, k: 'tf', q: 'Eine **Firewall** filtert den Datenverkehr nach festgelegten Regeln.', a: true, e: 'Zum Beispiel nach IP, Port, Protokoll.'},
+    {lv: 3, q: 'Ein Büro hat 20 PCs an einem Hub, das Netz ist sehr langsam. Beste Maßnahme?', o: ['Hub durch einen Switch ersetzen', 'Zweiten Hub hinzufügen', 'Router durch Hub ersetzen', 'Kabel auf Cat3 tauschen'], a: 0, e: 'Der Switch leitet gezielt weiter und eliminiert Kollisionen.'}
+  ]},
+  {id: 'infra-ethernet', t: 'Ethernet und MAC', qs: [
+    {lv: 1, k: 'num', q: 'Wie viele Bit hat eine **MAC-Adresse**?', a: 48, tol: 0, u: 'Bit', e: '48 Bit = 6 Byte, hexadezimal geschrieben.'},
+    {lv: 1, q: 'Welcher IEEE-Standard beschreibt **Ethernet**?', o: ['802.3', '802.11', '802.1Q', '802.1X'], a: 0, e: '802.11 = WLAN, 802.1Q = VLAN, 802.1X = Port-Authentifizierung.'},
+    {lv: 2, k: 'order', q: 'Bringe die Felder des **Ethernet-Frames** in die richtige Reihenfolge.', o: ['Präambel', 'SFD', 'Ziel-MAC', 'Quell-MAC', 'Type/Length', 'Daten + FCS'], e: 'Ziel-MAC kommt **vor** der Quell-MAC, damit der Switch früh entscheiden kann.'},
+    {lv: 2, q: 'Wie lautet die **Broadcast-MAC-Adresse**?', o: ['FF-FF-FF-FF-FF-FF', '00-00-00-00-00-00', '01-00-5E-00-00-01', '255.255.255.255'], a: 0, e: 'Alle Bits 1. 255.255.255.255 ist ein IPv4-Broadcast.'},
+    {lv: 2, k: 'num', q: 'Wie viele Byte Nutzdaten fasst ein Ethernet-Frame **maximal** (MTU)?', a: 1500, tol: 0, u: 'Byte', e: 'Payload 46 bis **1.500 Byte**.'},
+    {lv: 2, k: 'match', q: 'Ordne den Type-Wert zu.', o: [['0x0800', 'IPv4'], ['0x86DD', 'IPv6'], ['0x0806', 'ARP']], e: 'Das Type-Feld sagt, welches Protokoll in der Payload steckt.'},
+    {lv: 2, q: 'Wofür steht die **OUI** in der MAC-Adresse?', o: ['Herstellerkennung (die ersten 24 Bit)', 'Die VLAN-ID', 'Die IP-Adresse des Geräts', 'Die Seriennummer des Switches'], a: 0, e: 'Organizationally Unique Identifier: 24 Bit Hersteller, Rest gerätespezifisch.'},
+    {lv: 2, q: 'Was macht **ARP**?', o: ['Ermittelt zu einer bekannten IP-Adresse die MAC-Adresse', 'Ermittelt zu einem Namen die IP', 'Vergibt IP-Adressen', 'Verschlüsselt Frames'], a: 0, e: 'ARP-Request als **Broadcast**: "Wer hat 192.168.1.20?", Antwort per Unicast.'},
+    {lv: 2, k: 'tf', q: 'Ein ARP-Request wird als **Broadcast** verschickt.', a: true, e: 'Der Absender kennt die Ziel-MAC ja noch nicht.'},
+    {lv: 1, k: 'num', q: 'Wie viele Byte hat die **FCS** (CRC-32) am Ende des Frames?', a: 4, tol: 0, u: 'Byte', e: 'Prüfsumme über den Frame: **4 Byte**.'},
+    {lv: 3, q: 'Was lernt ein Switch aus einem eingehenden Frame?', o: ['Die **Quell**-MAC und den Eingangsport', 'Die Ziel-MAC und den Ausgangsport', 'Die IP-Adresse', 'Die Portnummer der Anwendung'], a: 0, e: 'Er trägt **Quell-MAC + Port** ein; so weiß er später, wohin Frames an diese MAC gehen.'},
+    {lv: 3, k: 'num', q: 'Wie viele Byte hat ein Frame mit **maximaler Payload** ohne Präambel/SFD (DA + SA + Type + 1500 + FCS)?', a: 1518, tol: 0, u: 'Byte', e: '6 + 6 + 2 + 1500 + 4 = **1518 Byte**.'},
+    {lv: 2, q: 'Was bedeutet das **I/G-Bit** = 1 in einer MAC-Adresse?', o: ['Multicast-Adresse', 'Lokal vergebene Adresse', 'Unicast-Adresse', 'Fehlerhafte Adresse'], a: 0, e: 'I/G-Bit: 0 Unicast, 1 **Multicast**. Das U/L-Bit kennzeichnet lokal vergeben.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Router leiten Frames anhand der MAC-Adresse über Netzgrenzen weiter.', 'Ethernet arbeitet auf OSI 1 und 2.', 'Jeder Switchport ist eine eigene Kollisionsdomäne.', 'Mit 802.1Q-Tag wird der Frame 4 Byte länger.'], a: 0, e: 'Router arbeiten mit **IP**; MAC-Adressen gelten nur im lokalen Segment.'},
+    {lv: 1, k: 'gap', q: 'Das Protokoll, das eine IP-Adresse in eine MAC-Adresse auflöst, heißt ___.', a: ['ARP'], e: '**ARP** (Address Resolution Protocol).'}
+  ]},
+  {id: 'infra-medien', t: 'Übertragungsmedien', qs: [
+    {lv: 1, k: 'num', q: 'Wie lang darf ein **Twisted-Pair-Segment** maximal sein?', a: 100, tol: 0, u: 'm', e: 'Kupfer: max. **100 m** pro Segment.'},
+    {lv: 1, q: 'Welcher Stecker wird für Twisted-Pair-Netzwerkkabel verwendet?', o: ['RJ45', 'RJ11', 'BNC', 'LC'], a: 0, e: 'RJ45. RJ11 ist Telefon, BNC Koax, LC ein Glasfaserstecker.'},
+    {lv: 2, q: 'Welche Kategorie schafft **10 Gbit/s über 100 m**?', o: ['Cat6a', 'Cat5e', 'Cat6', 'Cat5'], a: 0, e: 'Cat6 nur bis ca. 55 m mit 10 Gbit/s, **Cat6a** bis 100 m.'},
+    {lv: 2, q: 'Zwei Gebäude sind **2 km** voneinander entfernt. Welches Medium ist richtig?', o: ['Singlemode-Glasfaser', 'Multimode-Glasfaser', 'Cat6a-Kupfer', 'Cat5e-Kupfer'], a: 0, e: 'Multimode nur einige hundert Meter, Kupfer 100 m. **Singlemode** schafft viele km.'},
+    {lv: 2, k: 'multi', q: 'Welche Vorteile hat **Glasfaser** gegenüber Kupfer? (mehrere)', o: ['Unempfindlich gegen elektromagnetische Störungen', 'Große Reichweite', 'Hohe Bandbreite', 'Billiger und biegeunempfindlich', 'Mit RJ45 steckbar'], a: [0, 1, 2], e: 'LWL ist teurer und biegeempfindlich.'},
+    {lv: 2, q: 'Warum sind die Adern bei Twisted Pair **verdrillt**?', o: ['Um elektromagnetische Störungen zu verringern', 'Um Material zu sparen', 'Damit das Kabel biegsamer ist', 'Für die Stromversorgung'], a: 0, e: 'Verdrillung reduziert Übersprechen und Einstreuungen.'},
+    {lv: 2, k: 'match', q: 'Ordne die Abkürzung zu.', o: [['UTP', 'ungeschirmt'], ['S/FTP', 'Gesamt- und Paarschirm'], ['MM', 'Multimode-LWL'], ['SM', 'Singlemode-LWL']], e: 'S/FTP: Geflecht außen, Folie um jedes Paar.'},
+    {lv: 3, q: 'In einer Produktionshalle mit vielen **großen Motoren** soll ein 60 m langer Link verlegt werden. Beste Wahl?', o: ['Glasfaser', 'UTP Cat5e', 'WLAN 2,4 GHz', 'Koaxialkabel'], a: 0, e: 'Starke EMV-Störungen: Glasfaser ist **unempfindlich**.'},
+    {lv: 2, k: 'tf', q: 'Funk (WLAN) ist ein **geteiltes Medium**, alle Geräte in Reichweite teilen sich die Bandbreite.', a: true, e: 'Deshalb sinkt die Leistung pro Gerät bei vielen Clients.'},
+    {lv: 2, q: 'Welches WLAN-Band hat die **größte Reichweite**?', o: ['2,4 GHz', '5 GHz', '6 GHz', 'Alle gleich'], a: 0, e: 'Niedrigere Frequenz durchdringt Wände besser, ist aber stärker gestört.'},
+    {lv: 1, k: 'tf', q: 'Für die WLAN-Verschlüsselung ist **WEP** heute noch ausreichend.', a: false, e: 'WEP ist geknackt; mindestens **WPA2**, besser WPA3.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Cat5e unterstützt 10 Gbit/s über 100 m.', 'Cat5e unterstützt 1 Gbit/s.', 'LWL ist abhörsicherer als Kupfer.', 'Multimode ist für kurze Strecken.'], a: 0, e: 'Cat5e: **1 Gbit/s**. 10 Gbit/s über 100 m braucht Cat6a.'},
+    {lv: 2, k: 'multi', q: 'Welche Kriterien entscheiden über die **Medienwahl**? (mehrere)', o: ['Reichweite', 'Bandbreite', 'Kosten', 'Störanfälligkeit', 'Farbe des Kabels'], a: [0, 1, 2, 3], e: 'Dazu Sicherheit und Zukunftssicherheit.'},
+    {lv: 3, k: 'num', q: 'Ein Server-Raum soll mit 10 Gbit/s Kupfer an einen 80 m entfernten Verteiler angebunden werden. Welche Cat-Kategorie (Zahl, z. B. 6 für Cat6) ist mindestens nötig? Gib 6.5 für Cat6a ein.', a: 6.5, tol: 0, u: '', e: 'Cat6 schafft 10G nur bis 55 m, also **Cat6a**.'},
+    {lv: 1, q: 'Womit überträgt Glasfaser die Daten?', o: ['Lichtsignale', 'Elektrische Spannung', 'Funkwellen', 'Magnetfelder'], a: 0, e: 'Licht im Glaskern.'}
+  ]},
+  {id: 'infra-topologien', t: 'Topologien', qs: [
+    {lv: 1, q: 'Welche Topologie ist heute **Standard im Ethernet-LAN**?', o: ['Stern', 'Bus', 'Ring', 'Vollvermaschung'], a: 0, e: 'Alle Geräte hängen an einem zentralen **Switch**.'},
+    {lv: 1, k: 'match', q: 'Ordne die Topologie ihrer Eigenschaft zu.', o: [['Stern', 'Zentraler Switch'], ['Bus', 'Ein gemeinsames Kabel'], ['Ring', 'Jeder hat zwei Nachbarn'], ['Mesh', 'Viele redundante Verbindungen']], e: 'Die vier Grundformen (plus Baum).'},
+    {lv: 2, q: 'Was passiert in einer **Sterntopologie**, wenn der zentrale Switch ausfällt?', o: ['Alle Geräte sind betroffen', 'Nur ein Gerät ist betroffen', 'Nichts, die Geräte sprechen direkt', 'Nur die Hälfte fällt aus'], a: 0, e: 'Der zentrale Knoten ist der **Single Point of Failure**.'},
+    {lv: 2, k: 'num', q: 'Wie viele Leitungen braucht ein **vollvermaschtes** Netz mit **6** Knoten?', a: 15, tol: 0, u: 'Leitungen', e: 'n(n-1)/2 = 6 * 5 / 2 = **15**.'},
+    {lv: 3, k: 'num', q: 'Wie viele Leitungen braucht eine Vollvermaschung mit **10** Standorten?', a: 45, tol: 0, u: 'Leitungen', e: '10 * 9 / 2 = **45**.'},
+    {lv: 2, k: 'tf', q: 'In einer Bustopologie legt ein **Kabelbruch** das gesamte Netz lahm.', a: true, e: 'Alle teilen sich ein Kabel; ein Bruch trennt alle.'},
+    {lv: 2, q: 'Wo findet man heute typischerweise **Vermaschung**?', o: ['WAN, Backbone und WLAN-Mesh', 'Am Arbeitsplatz zwischen PC und Drucker', 'In alten Koax-Netzen', 'Nur in Token-Ring-Netzen'], a: 0, e: 'Wo Ausfallsicherheit zählt: Backbone, WAN, Mesh-WLAN.'},
+    {lv: 2, q: 'Was unterscheidet die **physische** von der **logischen** Topologie?', o: ['Physisch = Verkabelung, logisch = Datenfluss', 'Physisch = Datenfluss, logisch = Verkabelung', 'Es gibt keinen Unterschied', 'Logisch gilt nur für WLAN'], a: 0, e: 'Beispiel: Hub ist physisch Stern, logisch Bus.'},
+    {lv: 3, q: 'Ein **Hub**-Netz ist physisch ein Stern. Welche logische Topologie hat es?', o: ['Bus', 'Stern', 'Ring', 'Mesh'], a: 0, e: 'Der Hub verteilt alles an alle wie ein gemeinsames Kabel: logischer **Bus**.'},
+    {lv: 2, q: 'Wie wird bei einer **Ringtopologie** der Ausfall eines Knotens abgefangen?', o: ['Durch einen Doppelring', 'Durch einen Hub', 'Gar nicht möglich', 'Durch längere Kabel'], a: 0, e: 'Ein zweiter Ring (z. B. FDDI) erlaubt den Umweg.'},
+    {lv: 1, k: 'multi', q: 'Welche Topologien sind **veraltet** im LAN? (mehrere)', o: ['Bus (Koax)', 'Token Ring', 'Stern mit Switch', 'Erweiterter Stern (Baum)'], a: [0, 1], e: 'Bus und Token Ring sind durch geswitchtes Ethernet ersetzt.'},
+    {lv: 2, k: 'gap', q: 'Mehrere über einen zentralen Verteiler verbundene Sterne ergeben eine ___topologie.', a: ['Baum', 'Baum-', 'erweiterte Stern', 'Stern'], e: 'Baum = erweiterter Stern (z. B. Etagenverteiler am Gebäudeverteiler).'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Ein vollvermaschtes Netz ist billig, weil es wenig Kabel braucht.', 'Vollvermaschung ist sehr ausfallsicher.', 'Im Stern betrifft der Ausfall eines PCs nur diesen.', 'Der Bus braucht wenig Kabel.'], a: 0, e: 'Vollvermaschung ist **teuer**; n(n-1)/2 Leitungen.'},
+    {lv: 3, q: 'Ein Unternehmen hat 4 Standorte und will, dass der Ausfall **einer** WAN-Leitung keinen Standort isoliert, aber Kosten sparen. Was ist sinnvoll?', o: ['Teilvermaschung, bei der jeder Standort mindestens zwei Verbindungen hat', 'Stern mit einer Zentrale', 'Bus über alle Standorte', 'Keine Redundanz'], a: 0, e: 'Teilvermaschung (z. B. Ring mit Querverbindung) bietet Redundanz zu geringeren Kosten.'},
+    {lv: 1, k: 'tf', q: 'Bei einer Sterntopologie fällt beim Ausfall eines einzelnen Endgeräts das ganze Netz aus.', a: false, e: 'Nur dieses Endgerät ist betroffen.'}
+  ]},
+  {id: 'infra-wlan', t: 'WLAN', qs: [
+    {lv: 1, q: 'Welcher IEEE-Standard beschreibt **WLAN**?', o: ['802.11', '802.3', '802.1Q', '802.15'], a: 0, e: '802.3 ist Ethernet, 802.1Q VLAN.'},
+    {lv: 1, k: 'match', q: 'Ordne den Standard dem Wi-Fi-Namen zu.', o: [['802.11n', 'Wi-Fi 4'], ['802.11ac', 'Wi-Fi 5'], ['802.11ax', 'Wi-Fi 6/6E'], ['802.11be', 'Wi-Fi 7']], e: 'Neue Namensgebung der Wi-Fi Alliance.'},
+    {lv: 1, k: 'order', q: 'Ordne die WLAN-Sicherheitsverfahren von **am unsichersten** bis **am sichersten**.', o: ['WEP', 'WPA (TKIP)', 'WPA2 (AES-CCMP)', 'WPA3 (SAE)'], e: 'WEP ist unsicher, WPA2 Mindeststandard, WPA3 aktuell.'},
+    {lv: 2, q: 'Was unterscheidet **WPA2-Enterprise** von **WPA2-Personal**?', o: ['Jeder Benutzer meldet sich einzeln per 802.1X/EAP an einem RADIUS-Server an', 'Enterprise nutzt WEP', 'Personal nutzt einen RADIUS-Server', 'Enterprise hat keine Verschlüsselung'], a: 0, e: 'Personal: ein gemeinsamer **PSK**. Enterprise: individuelle Anmeldung.'},
+    {lv: 2, k: 'multi', q: 'Welche Vorteile bietet **WPA2/3-Enterprise** einem Unternehmen? (mehrere)', o: ['Einzelne Benutzer oder Zertifikate sperrbar', 'Protokollierung, wer wann online war', 'Kein gemeinsames Passwort, das bei Austritt geändert werden muss', 'Kein Server nötig', 'Schnellere Funkübertragung'], a: [0, 1, 2], e: 'Enterprise braucht einen **RADIUS**-Server und ändert nichts an der Funkgeschwindigkeit.'},
+    {lv: 2, q: 'Wie trennt man ein **Gäste-WLAN** sauber vom internen Netz?', o: ['Eigene SSID in einem eigenen VLAN, plus Client-Isolation', 'Gleiche SSID mit anderem Passwort', 'Nur einen anderen Kanal wählen', 'WEP für Gäste'], a: 0, e: 'Eigene **SSID + VLAN**, Firewall-Regeln nur Richtung Internet.'},
+    {lv: 2, k: 'tf', q: '**WPS** sollte aus Sicherheitsgründen deaktiviert werden.', a: true, e: 'WPS (PIN-Verfahren) ist anfällig für Brute-Force-Angriffe.'},
+    {lv: 2, q: 'Welches Verfahren nutzt **WPA3-Personal** statt PSK-Handshake?', o: ['SAE', 'TKIP', 'RC4', 'EAP-TLS'], a: 0, e: '**SAE** (Simultaneous Authentication of Equals) schützt gegen Offline-Wörterbuchangriffe.'},
+    {lv: 2, k: 'gap', q: 'Der Name eines WLANs heißt ___.', a: ['SSID'], e: '**SSID** (Service Set Identifier).'},
+    {lv: 3, q: 'Ein Mitarbeiter verlässt die Firma. Im WLAN wird **WPA2-Personal** genutzt. Was muss passieren?', o: ['Der PSK muss geändert und auf allen Geräten neu eingegeben werden', 'Nur sein Konto im RADIUS sperren', 'Nichts', 'Die SSID verstecken'], a: 0, e: 'Genau dieses Problem löst **Enterprise** mit individuellen Konten.'},
+    {lv: 2, q: 'Welches Band gibt es erst ab **Wi-Fi 6E**?', o: ['6 GHz', '5 GHz', '2,4 GHz', '60 GHz'], a: 0, e: 'Wi-Fi 6E erweitert 802.11ax um das **6-GHz**-Band.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Das Verstecken der SSID ersetzt eine Verschlüsselung.', 'WPA2 nutzt AES-CCMP.', 'Firmware sollte aktuell gehalten werden.', 'Das Admin-Passwort des AP sollte geändert werden.'], a: 0, e: 'Eine versteckte SSID ist leicht auffindbar und **kein Schutz**.'},
+    {lv: 2, k: 'multi', q: 'Welche Komponenten gehören zu **WPA-Enterprise**? (mehrere)', o: ['802.1X', 'EAP', 'RADIUS-Server', 'Pre-Shared Key für alle', 'WEP'], a: [0, 1, 2], e: 'Supplicant (Client), Authenticator (AP), Authentication Server (RADIUS).'},
+    {lv: 1, k: 'tf', q: 'Weil jeder in Funkreichweite mithören kann, ist Verschlüsselung im WLAN Pflicht.', a: true, e: 'Funk ist ein offenes Medium.'},
+    {lv: 3, q: 'Ein Kunde möchte, dass Gäste-Geräte im Gast-WLAN **sich nicht gegenseitig** erreichen. Welche Funktion?', o: ['Client-Isolation', 'MAC-Filter', 'WPS', 'DHCP-Reservierung'], a: 0, e: '**Client-Isolation** verhindert Verkehr zwischen Clients am AP.'}
+  ]},
+  {id: 'infra-voip', t: 'Voice over IP', qs: [
+    {lv: 1, q: 'Welches Protokoll baut VoIP-Gespräche typischerweise **auf und ab**?', o: ['SIP', 'RTP', 'SMTP', 'SNMP'], a: 0, e: '**SIP** ist die Signalisierung, RTP transportiert die Sprache.'},
+    {lv: 1, q: 'Über welches Transportprotokoll läuft **RTP** bei VoIP?', o: ['UDP', 'TCP', 'ICMP', 'ARP'], a: 0, e: 'Echtzeit: **UDP**, weil Wiederholungen zu spät kämen.'},
+    {lv: 2, k: 'order', q: 'Bringe den SIP-Gesprächsablauf in die richtige Reihenfolge.', o: ['INVITE', '180 Ringing', '200 OK', 'Gespräch (RTP)', 'BYE'], e: 'Einladung, Klingeln, Annahme, Sprachdaten, Auflegen.'},
+    {lv: 2, k: 'match', q: 'Ordne den Qualitätsbegriff zu.', o: [['Latenz', 'Verzögerung'], ['Jitter', 'Schwankende Laufzeit'], ['Paketverlust', 'Aussetzer']], e: 'Alle drei stören die Sprachqualität.'},
+    {lv: 2, k: 'num', q: 'Ab wie vielen Millisekunden **Latenz** (Einweg) wird ein Gespräch als störend empfunden?', a: 150, tol: 0, u: 'ms', e: 'Faustwert: ab **150 ms**.'},
+    {lv: 2, q: 'Was gleicht ein **Jitter-Buffer** aus?', o: ['Schwankende Paketlaufzeiten', 'Fehlende Bandbreite', 'Fehlende Verschlüsselung', 'Falsche Codecs'], a: 0, e: 'Er puffert kurz und gibt gleichmäßig wieder aus.'},
+    {lv: 2, k: 'multi', q: 'Welche Maßnahmen verbessern die **VoIP-Qualität**? (mehrere)', o: ['QoS mit DSCP EF', 'Eigenes Voice-VLAN', 'Ausreichend Bandbreite', 'Umstellung auf TCP', 'WEP-Verschlüsselung'], a: [0, 1, 2], e: 'Priorisierung und Trennung helfen; TCP würde schaden.'},
+    {lv: 2, k: 'match', q: 'Ordne den Codec seiner Eigenschaft zu.', o: [['G.711', '64 kbit/s, unkomprimiert'], ['G.729', '8 kbit/s, stark komprimiert'], ['G.722', 'HD-Voice'], ['Opus', 'Modern, adaptiv (WebRTC)']], e: 'Codecwahl ist ein Kompromiss aus Qualität und Bandbreite.'},
+    {lv: 3, k: 'num', q: '10 gleichzeitige Gespräche mit **G.711** (64 kbit/s Nutzdaten je Richtung, Overhead ignorieren). Wie viel kbit/s je Richtung?', a: 640, tol: 0, u: 'kbit/s', e: '10 * 64 = **640 kbit/s**.'},
+    {lv: 2, q: 'Wofür dient **SDP**?', o: ['Aushandlung von Codec und Ports', 'Verschlüsselung der Sprache', 'Vergabe von Telefonnummern', 'Stromversorgung der Telefone'], a: 0, e: 'SDP beschreibt die Mediensitzung innerhalb der SIP-Nachrichten.'},
+    {lv: 2, q: 'Wie werden VoIP-Gespräche **verschlüsselt**?', o: ['SRTP für Sprache und SIP over TLS für Signalisierung', 'Nur mit WPA2', 'Mit FTP', 'Gar nicht möglich'], a: 0, e: '**SRTP + SIPS/TLS**.'},
+    {lv: 1, k: 'gap', q: 'Eine Software, die einen PC zum Telefon macht, heißt ___.', a: ['Softphone'], e: '**Softphone**.'},
+    {lv: 2, q: 'Wozu dient ein **VoIP-Gateway**?', o: ['Übergang ins klassische Telefonnetz', 'Stromversorgung über LAN', 'Verschlüsselung', 'DHCP für Telefone'], a: 0, e: 'Es verbindet VoIP mit dem öffentlichen Telefonnetz.'},
+    {lv: 2, k: 'tf', q: 'IP-Telefone werden oft per **PoE** über das Netzwerkkabel mit Strom versorgt.', a: true, e: 'Power over Ethernet spart Netzteile.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['VoIP sollte TCP nutzen, damit verlorene Sprachpakete wiederholt werden.', 'RTCP liefert Qualitätsberichte.', 'Eine IP-PBX ist eine Telefonanlage für VoIP.', 'Ein ATA bindet analoge Telefone an.'], a: 0, e: 'Wiederholte Sprachpakete kämen zu spät, daher **UDP**.'}
+  ]},
+]);
+;
+// content/quest/infra-2.js
+AP2.quest('infra', [
+  {id: 'infra-storage', t: 'Speicher: DAS, NAS, SAN', qs: [
+    {lv: 1, q: 'Welche Speichertechnik stellt **Dateien** über das vorhandene LAN bereit?', o: ['NAS', 'SAN', 'DAS', 'LUN'], a: 0, e: '**NAS** arbeitet auf **File-Level** (SMB/NFS) im normalen Ethernet. SAN liefert Blöcke, DAS hängt direkt am Server.'},
+    {lv: 1, q: 'Welche Speichertechnik arbeitet auf **Block-Level** in einem eigenen Speichernetz?', o: ['SAN', 'NAS', 'DAS', 'Cloud-Sync'], a: 0, e: 'Ein **SAN** liefert rohe Blöcke, der Server formatiert sie selbst. NAS liefert fertige Dateien.'},
+    {lv: 1, k: 'match', q: 'Ordne die Protokolle zu.', o: [['SMB/CIFS', 'NAS für Windows-Clients'], ['NFS', 'NAS für Unix/Linux'], ['Fibre Channel', 'SAN mit eigenem Glasfasernetz'], ['iSCSI', 'SAN über Ethernet']], e: 'SMB und NFS sind **Dateiprotokolle** (NAS), FC und iSCSI **Blockprotokolle** (SAN).'},
+    {lv: 2, q: 'Ein Kunde möchte eine **hochperformante Datenbank** und eine Virtualisierungsfarm mit gemeinsamem Speicher betreiben. Was empfiehlst du?', o: ['SAN (Fibre Channel oder iSCSI)', 'NAS mit SMB-Freigabe', 'USB-Festplatte (DAS) am Server', 'Cloud-Dateifreigabe'], a: 0, e: 'Datenbanken und Virtualisierung brauchen **Block-Zugriff mit geringer Latenz**: das ist das Einsatzgebiet des **SAN**.'},
+    {lv: 1, q: 'Ein kleines Büro braucht günstig einen zentralen **Dateiablageort** für 8 Mitarbeiter. Was passt am besten?', o: ['NAS', 'SAN mit Fibre Channel', 'Blade-Chassis', 'Tape-Library'], a: 0, e: 'Ein **NAS** ist ein fertiges, günstiges Gerät im vorhandenen LAN. Ein SAN wäre teuer und komplex.'},
+    {lv: 2, k: 'tf', q: 'Bei einem SAN verwaltet das Speichersystem das Dateisystem, der Server sieht nur Ordner und Dateien.', a: false, e: 'Genau umgekehrt: Beim SAN sieht der Server ein **rohes Laufwerk** (LUN) und **formatiert es selbst**. Ordner und Dateien liefert das NAS.'},
+    {lv: 2, k: 'gap', q: 'Ein logisches Laufwerk, das ein SAN einem Server bereitstellt, heißt ___.', a: ['LUN', 'Logical Unit Number'], e: '**LUN** = Logical Unit Number.'},
+    {lv: 2, q: 'Wofür steht **HBA** im SAN-Umfeld?', o: ['Host Bus Adapter, die FC-Karte im Server', 'High Bandwidth Access, ein Protokoll', 'Hardware Backup Appliance', 'Host Based Authentication'], a: 0, e: 'Der **Host Bus Adapter** verbindet den Server mit dem Fibre-Channel-Netz.'},
+    {lv: 2, q: 'Was regelt **Zoning bzw. LUN-Masking**?', o: ['Welcher Server welche LUN sehen darf', 'Die RAID-Stufe im Speichersystem', 'Die Kompression der Daten', 'Die IP-Vergabe im SAN'], a: 0, e: 'Zoning/LUN-Masking sind **Zugriffsrechte im SAN**, damit nicht jeder Server jede LUN beschreibt.'},
+    {lv: 2, q: 'Was bedeutet **Multipathing**?', o: ['Mehrere physische Wege vom Server zum Speicher für Redundanz und Leistung', 'Mehrere Kopien einer Datei auf dem NAS', 'Mehrere Benutzer greifen gleichzeitig auf eine Freigabe zu', 'Routing über mehrere Internetprovider'], a: 0, e: 'Fällt ein Pfad (Kabel, Switch, HBA) aus, läuft der Verkehr über den anderen: kein SPOF.'},
+    {lv: 1, k: 'multi', q: 'Welche Aussagen treffen auf **DAS** zu? (mehrere)', o: ['Direkt am Server angeschlossen', 'Schnell und einfach', 'Nicht ohne Weiteres zwischen Servern teilbar', 'Benötigt ein Fibre-Channel-Netz'], a: [0, 1, 2], e: '**DAS** (Direct Attached Storage) ist intern/USB/SAS am Server. FC gehört zum SAN.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['iSCSI benötigt zwingend Glasfaser', 'iSCSI transportiert SCSI-Blockbefehle über TCP/IP', 'iSCSI ist günstiger als Fibre Channel', 'Auch iSCSI-SANs sollten ein eigenes Netz/VLAN nutzen'], a: 0, e: '**iSCSI** läuft über normales **Ethernet** (Kupfer oder Glasfaser). Gerade das macht es günstiger als FC.'},
+    {lv: 2, k: 'match', q: 'Ordne den Einsatzzweck zu.', o: [['DAS', 'Einzelner Server mit interner Platte'], ['NAS', 'Dateiserver, Medienablage, Backup-Ziel'], ['SAN', 'Datenbanken, Virtualisierungscluster']], e: 'Je mehr gemeinsamer Blockzugriff und Leistung gefragt ist, desto eher SAN.'},
+    {lv: 3, k: 'tf', q: 'Ein NAS kann auch mehreren Servern gleichzeitig Dateien bereitstellen, weil es das Dateisystem selbst verwaltet und Sperren koordiniert.', a: true, e: 'Weil das **NAS das Dateisystem verwaltet**, können viele Clients gleichzeitig zugreifen. Beim SAN braucht es dafür ein Cluster-Dateisystem.'},
+    {lv: 2, q: 'Warum ist ein NAS **kein Ersatz für ein Backup**, wenn es im selben Raum wie der Server steht?', o: ['Brand, Diebstahl oder Ransomware treffen beide gleichzeitig', 'Ein NAS kann keine Dateien speichern', 'NAS-Geräte haben nie RAID', 'NAS ist langsamer als Band'], a: 0, e: 'Ein Backup braucht **räumliche und logische Trennung** (3-2-1-Regel). Ransomware verschlüsselt auch erreichbare Freigaben.'},
+    {lv: 1, k: 'gap', q: 'Das Netzwerkprotokoll für Dateifreigaben unter Windows heißt ___.', a: ['SMB', 'CIFS', 'SMB/CIFS'], e: '**SMB** (Server Message Block), früher CIFS.'},
+  ]},
+  {id: 'infra-raid', t: 'RAID', qs: [
+    {lv: 1, q: 'Welches RAID-Level bietet **keine** Ausfallsicherheit?', o: ['RAID 0', 'RAID 1', 'RAID 5', 'RAID 10'], a: 0, e: '**RAID 0** ist reines Striping. Fällt eine Platte aus, sind alle Daten verloren.'},
+    {lv: 1, k: 'num', q: 'RAID 5 mit **4 Platten à 2 TB**. Nutzkapazität?', a: 6, tol: 0, u: 'TB', e: '(n - 1) mal c = 3 mal 2 TB = **6 TB**. Eine Platte Kapazität geht für Parität drauf.'},
+    {lv: 1, k: 'num', q: 'RAID 6 mit **6 Platten à 4 TB**. Nutzkapazität?', a: 16, tol: 0, u: 'TB', e: '(n - 2) mal c = 4 mal 4 TB = **16 TB**.'},
+    {lv: 1, k: 'num', q: 'RAID 10 mit **8 Platten à 1 TB**. Nutzkapazität?', a: 4, tol: 0, u: 'TB', e: 'RAID 10 spiegelt: (n / 2) mal c = 4 mal 1 TB = **4 TB**.'},
+    {lv: 2, k: 'num', q: 'RAID 1 aus **2 Platten à 3 TB**. Wie viel Prozent der Rohkapazität sind nutzbar?', a: 50, tol: 0, u: '%', e: '3 TB von 6 TB = **50 %**.'},
+    {lv: 1, k: 'match', q: 'Ordne die Mindestanzahl Platten zu.', o: [['RAID 0', '2'], ['RAID 5', '3'], ['RAID 6', '4'], ['RAID 1', '2 (Spiegel)']], e: 'RAID 5 braucht 3, RAID 6 und RAID 10 brauchen 4 Platten.'},
+    {lv: 2, q: 'Wie viele Platten dürfen bei **RAID 6** gleichzeitig ausfallen?', o: ['2', '1', '0', 'die Hälfte'], a: 0, e: 'Doppelte Parität: **2 beliebige Platten**.'},
+    {lv: 2, k: 'tf', q: 'RAID ist ein Backup, weil die Daten mehrfach vorhanden sind.', a: false, e: '**RAID ist kein Backup.** Löschen, Viren, Ransomware oder Brand wirken sofort auf alle Platten.'},
+    {lv: 2, q: 'Was ist eine **Hot Spare**?', o: ['Eine Reserveplatte, die bei Ausfall automatisch den Rebuild startet', 'Eine Platte, die man im Betrieb tauscht', 'Ein zusätzliches Netzteil', 'Ein Cache-Modul des Controllers'], a: 0, e: 'Die **Hot Spare** läuft leer mit und springt automatisch ein. Hot Swap ist dagegen der Tausch im laufenden Betrieb.'},
+    {lv: 3, q: 'RAID 10 mit 4 Platten (Paare A1/A2 und B1/B2). Welcher Doppelausfall führt zu **Datenverlust**?', o: ['A1 und A2', 'A1 und B1', 'A2 und B2', 'A1 und B2'], a: 0, e: 'Verloren ist alles, wenn **beide Platten eines Spiegelpaares** ausfallen. Je Paar darf eine fehlen.'},
+    {lv: 2, q: 'Ein Kunde will **maximale Schreibleistung** für temporäre Renderdaten, Ausfall ist egal. Welches Level?', o: ['RAID 0', 'RAID 6', 'RAID 1', 'RAID 5'], a: 0, e: 'Striping ohne Paritätsberechnung ist am schnellsten. Für unwichtige temporäre Daten akzeptabel.'},
+    {lv: 2, q: 'Warum gilt RAID 5 bei **sehr großen Platten** als riskant?', o: ['Der Rebuild dauert lange, ein zweiter Ausfall in dieser Zeit zerstört das Array', 'RAID 5 unterstützt keine großen Platten', 'Die Parität benötigt die Hälfte der Kapazität', 'RAID 5 hat keine Paritätsdaten'], a: 0, e: 'Während des **Rebuilds** ist keine Redundanz da. Deshalb wird bei großen Platten oft **RAID 6** gewählt.'},
+    {lv: 1, k: 'gap', q: 'RAID 1 nennt man auch ___ (deutscher Begriff).', a: ['Spiegelung', 'Spiegeln', 'Mirroring'], e: 'RAID 1 = **Spiegelung** (Mirroring).'},
+    {lv: 3, k: 'num', q: 'Ein Server hat **5 Platten à 4 TB**: RAID 5 aus 4 Platten plus 1 Hot Spare. Nutzkapazität?', a: 12, tol: 0, u: 'TB', e: 'Die Hot Spare zählt nicht mit: (4 - 1) mal 4 TB = **12 TB**.'},
+    {lv: 2, k: 'multi', q: 'Welche RAID-Level überstehen den Ausfall **einer beliebigen** Platte? (mehrere)', o: ['RAID 1', 'RAID 5', 'RAID 6', 'RAID 0'], a: [0, 1, 2], e: 'Nur RAID 0 hat keine Redundanz.'},
+    {lv: 3, q: 'Wie wird bei RAID 5 der Inhalt einer ausgefallenen Platte wiederhergestellt?', o: ['Per XOR aus den restlichen Datenblöcken und der Parität', 'Aus einer Spiegelplatte kopiert', 'Aus dem Controller-Cache', 'Gar nicht, nur aus dem Backup'], a: 0, e: 'Die **Parität** ist das XOR der Datenblöcke. Fehlt ein Block, ergibt XOR der übrigen Blöcke den fehlenden.'},
+  ]},
+  {id: 'infra-backup', t: 'Backup', qs: [
+    {lv: 1, q: 'Was sichert eine **inkrementelle** Sicherung?', o: ['Änderungen seit der letzten Sicherung beliebiger Art', 'Änderungen seit der letzten Vollsicherung', 'Immer alle Daten', 'Nur das Betriebssystem'], a: 0, e: '**Inkrementell** = seit dem letzten Backup (egal welcher Art). Differenziell = seit der letzten **Vollsicherung**.'},
+    {lv: 1, q: 'Was sichert eine **differenzielle** Sicherung?', o: ['Änderungen seit der letzten Vollsicherung', 'Änderungen seit der letzten inkrementellen Sicherung', 'Nur gelöschte Dateien', 'Alle Daten doppelt'], a: 0, e: 'Differenzielle Sicherungen wachsen täglich, bis zur nächsten Vollsicherung.'},
+    {lv: 2, q: 'Vollsicherung am Sonntag, **inkrementell** Mo bis Fr. Der Server fällt am Freitagabend nach dem Backup aus. Was brauchst du zum Restore?', o: ['Vollsicherung + alle Inkremente Mo bis Fr', 'Vollsicherung + nur Freitag', 'Nur Freitag', 'Vollsicherung + Montag'], a: 0, e: 'Bei inkrementell braucht man die **ganze Kette**: Voll + jedes Inkrement in Reihenfolge.'},
+    {lv: 2, q: 'Gleiche Situation, aber mit **differenziellen** Sicherungen. Was brauchst du?', o: ['Vollsicherung + nur die Freitagssicherung', 'Vollsicherung + alle Sicherungen Mo bis Fr', 'Nur die Freitagssicherung', 'Nur die Vollsicherung'], a: 0, e: 'Die letzte differenzielle enthält **alle Änderungen seit der Vollsicherung**.'},
+    {lv: 1, k: 'match', q: 'Ordne die 3-2-1-Regel zu.', o: [['3', 'Kopien der Daten'], ['2', 'verschiedene Medientypen'], ['1', 'Kopie außer Haus (Offsite)']], e: '3 Kopien, 2 Medien, 1 extern. Erweitert 3-2-1-1-0.'},
+    {lv: 2, q: 'Wofür steht die zusätzliche **„1“ und „0“** in **3-2-1-1-0**?', o: ['1 unveränderbare/offline Kopie, 0 Fehler beim Restore-Test', '1 Cloud-Kopie, 0 Kosten', '1 Admin, 0 Benutzer mit Zugriff', '1 Band, 0 Festplatten'], a: 0, e: 'Eine **immutable/offline** Kopie schützt gegen Ransomware, **0 Fehler** heißt: Restore wird getestet.'},
+    {lv: 2, q: 'Was bestimmt der **RPO** (Recovery Point Objective)?', o: ['Den maximal tolerierten Datenverlust und damit die Backup-Häufigkeit', 'Die maximale Ausfalldauer', 'Die Anzahl der Backup-Medien', 'Die Aufbewahrungsdauer'], a: 0, e: '**RPO** = wie viel Daten (Zeitraum) dürfen verloren gehen. **RTO** = wie lange darf der Ausfall dauern.'},
+    {lv: 2, q: 'Ein Shop darf **maximal 1 Stunde Bestellungen** verlieren. Welche Größe ist das, und was folgt?', o: ['RPO = 1 h, also mindestens stündlich sichern bzw. replizieren', 'RTO = 1 h, also Server binnen 1 h neu aufsetzen', 'MTBF = 1 h', 'SLA = 1 h Antwortzeit'], a: 0, e: 'Datenverlust → **RPO**. Daraus folgt die Sicherungsfrequenz.'},
+    {lv: 2, k: 'tf', q: 'Ein kleinerer RTO ist in der Regel teurer, weil dafür schnellere Wiederherstellungstechnik (z. B. Standby-Systeme) nötig ist.', a: true, e: 'Kleine RPO/RTO-Werte = **teuer**.'},
+    {lv: 2, k: 'match', q: 'Ordne das Generationenprinzip (GFS) zu.', o: [['Son', 'tägliche Sicherung'], ['Father', 'wöchentliche Sicherung'], ['Grandfather', 'monatliche Sicherung']], e: '**Grandfather-Father-Son**: ältere Generationen werden länger aufbewahrt.'},
+    {lv: 1, q: 'Welche Backup-Art benötigt **am wenigsten Speicherplatz** pro Lauf?', o: ['Inkrementell', 'Differenziell', 'Vollsicherung', 'Spiegelung'], a: 0, e: 'Inkrementell sichert nur das seit dem **letzten** Lauf Geänderte. Dafür ist der Restore am aufwendigsten.'},
+    {lv: 3, k: 'num', q: 'Vollsicherung 500 GB am Sonntag. Täglich ändern sich **20 GB neue** Daten (immer andere). Wie groß ist die **differenzielle** Sicherung am Donnerstag (Mo bis Do)?', a: 80, tol: 0, u: 'GB', e: 'Differenziell kumuliert seit Sonntag: 4 Tage mal 20 GB = **80 GB**. Inkrementell wären es nur 20 GB.'},
+    {lv: 2, k: 'multi', q: 'Welche Maßnahmen schützen Backups vor **Ransomware**? (mehrere)', o: ['Offline-/Band-Kopie', 'Unveränderbarer (immutable) Speicher', 'Getrennte Zugangsdaten für das Backup-System', 'Backup als dauerhaft eingebundene Freigabe auf allen Clients'], a: [0, 1, 2], e: 'Eine ständig eingebundene Freigabe wird **mitverschlüsselt**.'},
+    {lv: 2, k: 'tf', q: 'Ein Backup gilt erst als zuverlässig, wenn die Wiederherstellung regelmäßig getestet wurde.', a: true, e: 'Ungetestete Backups sind Hoffnung, kein Konzept. Daher die **0** in 3-2-1-1-0.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Differenzielle Sicherungen werden mit jedem Tag kleiner', 'Inkrementelle Sicherungen setzen das Archivbit zurück', 'Für den Restore aus Inkrementen wird jedes Glied der Kette benötigt', 'Eine Vollsicherung braucht die längste Sicherungszeit'], a: 0, e: 'Differenzielle Sicherungen werden **größer**, weil sie alle Änderungen seit der Vollsicherung enthalten.'},
+    {lv: 2, k: 'order', q: 'Bringe den Restore mit **inkrementeller** Strategie in die richtige Reihenfolge.', o: ['Letzte Vollsicherung einspielen', 'Ältestes Inkrement danach einspielen', 'Folgende Inkremente chronologisch einspielen', 'Daten auf Vollständigkeit prüfen'], e: 'Inkremente bauen aufeinander auf, die Reihenfolge ist zwingend.'},
+  ]},
+  {id: 'infra-verfuegbarkeit', t: 'Verfügbarkeit', qs: [
+    {lv: 1, k: 'gap', q: 'Verfügbarkeit V = MTBF / (MTBF + ___)', a: ['MTTR'], e: '**MTTR** = Mean Time To Repair.'},
+    {lv: 1, k: 'num', q: 'Wie viele Stunden hat ein Jahr (365 Tage) für Verfügbarkeitsrechnungen?', a: 8760, tol: 0, u: 'h', e: '365 mal 24 = **8760 h**.'},
+    {lv: 2, k: 'num', q: 'Verfügbarkeit **99,9 %**. Wie viele Stunden Ausfall pro Jahr sind erlaubt?', a: 8.76, tol: 0.01, u: 'h', e: '0,001 mal 8760 h = **8,76 h**.'},
+    {lv: 2, k: 'num', q: 'MTBF = 990 h, MTTR = 10 h. Verfügbarkeit in Prozent?', a: 99, tol: 0, u: '%', e: '990 / (990 + 10) = 0,99 = **99 %**.'},
+    {lv: 3, k: 'num', q: 'Zwei Komponenten in **Reihe** mit je 99 %. Gesamtverfügbarkeit in %?', a: 98.01, tol: 0.01, u: '%', e: 'Reihe: 0,99 mal 0,99 = **0,9801**. Reihe macht schlechter.'},
+    {lv: 3, k: 'num', q: 'Zwei Server **parallel** (redundant) mit je 99 %. Gesamtverfügbarkeit in %?', a: 99.99, tol: 0.001, u: '%', e: '1 - (0,01 mal 0,01) = 1 - 0,0001 = **99,99 %**.'},
+    {lv: 2, q: 'Wie viel Ausfall pro Jahr entspricht etwa **99,99 %**?', o: ['ca. 52,6 Minuten', 'ca. 8,76 Stunden', 'ca. 5,26 Minuten', 'ca. 3,65 Tage'], a: 0, e: '99 % = 87,6 h, 99,9 % = 8,76 h, **99,99 % = 52,6 min**, 99,999 % = 5,26 min.'},
+    {lv: 1, q: 'Was ist ein **SPOF**?', o: ['Eine Komponente, deren Ausfall das ganze System lahmlegt', 'Ein redundantes Netzteil', 'Ein Service-Level-Vertrag', 'Ein Backup-Format'], a: 0, e: '**Single Point of Failure**: gegen ihn hilft Redundanz.'},
+    {lv: 2, k: 'tf', q: 'Schaltet man zwei Komponenten in Reihe, ist die Gesamtverfügbarkeit höher als die der schwächsten Komponente.', a: false, e: 'In Reihe multiplizieren sich die Verfügbarkeiten, das Ergebnis ist **kleiner** als jede Einzelne.'},
+    {lv: 2, k: 'multi', q: 'Welche Maßnahmen erhöhen die Verfügbarkeit? (mehrere)', o: ['Cluster mit Failover', 'Redundante Netzteile', 'Zweiter Standort (Georedundanz)', 'Alle Dienste auf einem einzigen Server bündeln'], a: [0, 1, 2], e: 'Bündelung schafft einen **SPOF**.'},
+    {lv: 1, q: 'Was regelt ein **SLA**?', o: ['Vereinbarte Servicequalität, z. B. Verfügbarkeit und Reaktionszeit', 'Die Lizenzkosten einer Software', 'Den Aufbau eines Netzwerkkabels', 'Die Verschlüsselungsstärke'], a: 0, e: 'Service Level Agreement zwischen Dienstleister und Kunde.'},
+    {lv: 3, k: 'num', q: 'Ein SLA garantiert 99,5 % pro Jahr. Wie viele Stunden Ausfall sind maximal erlaubt?', a: 43.8, tol: 0.05, u: 'h', e: '0,005 mal 8760 h = **43,8 h**.'},
+    {lv: 3, k: 'num', q: 'Firewall (99,9 %) und Server (99 %) in Reihe. Gesamtverfügbarkeit in % (2 Nachkommastellen)?', a: 98.9, tol: 0.01, u: '%', e: '0,999 mal 0,99 = 0,98901, also **98,90 %**.'},
+    {lv: 2, q: 'Ein Server fällt im Schnitt alle **2000 h** aus, Reparatur dauert **4 h**. Was verbessert V am stärksten, wenn MTBF fix ist?', o: ['MTTR senken, z. B. Ersatzteile vor Ort, Hot Swap', 'Mehr Monitoring-Dashboards', 'Längere Garantie', 'Höhere CPU-Taktung'], a: 0, e: 'V = MTBF/(MTBF+MTTR): kürzere **Reparaturzeit** erhöht V direkt.'},
+    {lv: 2, k: 'match', q: 'Ordne die Verfügbarkeit dem jährlichen Ausfall zu.', o: [['99 %', '87,6 h'], ['99,9 %', '8,76 h'], ['99,99 %', '52,6 min'], ['99,999 %', '5,26 min']], e: 'Jede zusätzliche 9 teilt die Ausfallzeit durch 10.'},
+  ]},
+  {id: 'infra-usv', t: 'USV und Energie', qs: [
+    {lv: 1, q: 'Welche USV-Klasse eignet sich für ein **Rechenzentrum**?', o: ['VFI (Online/Doppelwandler)', 'VFD (Offline)', 'VI (Line-Interactive)', 'Keine, Server brauchen keine USV'], a: 0, e: '**VFI** speist die Last immer über den Wechselrichter, also ohne Umschaltzeit und gefiltert.'},
+    {lv: 1, k: 'match', q: 'Ordne die USV-Klassen zu.', o: [['VFD', 'Offline, schaltet erst bei Ausfall um'], ['VI', 'Line-Interactive, regelt Spannung'], ['VFI', 'Online, Last immer über Wechselrichter']], e: 'VFD < VI < VFI in Schutzwirkung und Preis.'},
+    {lv: 2, k: 'tf', q: 'Bei einer Offline-USV (VFD) entsteht beim Stromausfall eine kurze Umschaltzeit im Millisekundenbereich.', a: true, e: 'Die VFD schaltet erst bei Ausfall auf Akku um.'},
+    {lv: 1, k: 'num', q: 'Ein Gerät hat P = 400 W und cos φ = 0,8. Scheinleistung S?', a: 500, tol: 0, u: 'VA', e: 'S = P / cos φ = 400 / 0,8 = **500 VA**.'},
+    {lv: 2, k: 'num', q: '3 Server à 350 W, 1 Switch 100 W. Gesamtleistung mit **30 % Reserve**?', a: 1495, tol: 0, u: 'W', e: '1050 + 100 = 1150 W, mal 1,3 = **1495 W**.'},
+    {lv: 2, k: 'num', q: 'P = 230 V mal 2 A. Leistung?', a: 460, tol: 0, u: 'W', e: 'P = U mal I = **460 W**.'},
+    {lv: 2, k: 'num', q: 'Ein Server mit 500 W läuft 24/7 ein Jahr. Energie in kWh?', a: 4380, tol: 0, u: 'kWh', e: '0,5 kW mal 8760 h = **4380 kWh**.'},
+    {lv: 2, k: 'num', q: '4380 kWh bei 0,30 Euro/kWh. Kosten?', a: 1314, tol: 0, u: 'Euro', e: '4380 mal 0,30 = **1314 Euro**.'},
+    {lv: 3, k: 'num', q: 'Alt: 800 W, neu: 600 W. Einsparung in Prozent?', a: 25, tol: 0, u: '%', e: '(800 - 600) / 800 mal 100 = **25 %**.'},
+    {lv: 2, q: 'Wozu dient bei einer USV meist die **Kommunikationsschnittstelle** (USB/Netzwerk) zum Server?', o: ['Server bei niedrigem Akkustand automatisch herunterfahren', 'Server über USV mit Internet versorgen', 'USV-Firmware ins BIOS laden', 'Netzwerkverkehr filtern'], a: 0, e: 'Ein **geordneter Shutdown** verhindert Datenverlust, wenn die Überbrückungszeit endet.'},
+    {lv: 3, q: 'Eine USV ist mit **1500 VA / 900 W** angegeben. Last: 1000 W bei cos φ 0,9 (ca. 1111 VA). Reicht sie?', o: ['Nein, die Wirkleistung 1000 W übersteigt 900 W', 'Ja, weil 1111 VA unter 1500 VA liegt', 'Ja, cos φ ist egal', 'Nein, weil VA immer kleiner als W sein muss'], a: 0, e: 'Beide Grenzen gelten: **VA und W**. Die Wattgrenze ist überschritten.'},
+    {lv: 1, k: 'multi', q: 'Welche Merkmale gehören zu **Server-Hardware** für hohe Verfügbarkeit? (mehrere)', o: ['ECC-RAM', 'Redundante Netzteile an 2 Stromkreisen', 'Remote-Management (iLO/iDRAC)', 'Ein einzelnes Consumer-Netzteil'], a: [0, 1, 2], e: 'ECC korrigiert Bitfehler, redundante Netzteile verhindern einen SPOF.'},
+    {lv: 2, k: 'tf', q: 'Eine USV ersetzt bei längerem Stromausfall (mehrere Stunden) einen Notstromgenerator.', a: false, e: 'Eine USV überbrückt **Minuten**. Für Stunden braucht man einen **Generator**, die USV überbrückt bis zu dessen Start.'},
+    {lv: 3, k: 'num', q: '12 Server à 320 W laufen 24/7. Jahreskosten bei 0,25 Euro/kWh?', a: 8409.6, tol: 0.5, u: 'Euro', e: '3,84 kW mal 8760 h = 33.638,4 kWh, mal 0,25 = **8409,60 Euro**.'},
+    {lv: 2, q: 'Was beschreibt **cos φ**?', o: ['Leistungsfaktor: Verhältnis Wirkleistung zu Scheinleistung', 'Wirkungsgrad des Akkus', 'Überbrückungszeit', 'Spannungsschwankung'], a: 0, e: 'P = S mal cos φ.'},
+  ]},
+  {id: 'infra-server', t: 'Server und Bauformen', qs: [
+    {lv: 1, k: 'match', q: 'Ordne die Bauform zu.', o: [['Tower', 'günstig, leise, schlecht skalierbar'], ['Rack', '19 Zoll, Höheneinheiten'], ['Blade', 'Chassis mit hoher Dichte, wenig Kabel']], e: 'Blade = maximale Dichte, Rack = Standard im Serverraum.'},
+    {lv: 1, k: 'gap', q: 'Racks haben eine Standardbreite von ___ Zoll.', a: ['19'], e: '**19 Zoll**, Höhe in HE (1 HE = 1,75 Zoll = 44,45 mm).'},
+    {lv: 2, q: 'Ein kleiner Handwerksbetrieb ohne Serverraum braucht **einen** Server im Büro. Welche Bauform?', o: ['Tower', 'Blade', '4-HE-Rack mit eigenem Rack', 'Mainframe'], a: 0, e: 'Der **Tower** ist günstig, leise und braucht kein Rack.'},
+    {lv: 2, q: 'Was bedeutet **N+1** bei Netzteilen?', o: ['Ein Netzteil mehr als benötigt, damit eines ausfallen darf', 'N Netzteile plus eine USV', 'Ein Netzteil pro Kern', 'Ein Netzteil für N Server'], a: 0, e: 'N+1 = **eine Reserveeinheit**.'},
+    {lv: 1, q: 'Wofür sind **iLO, iDRAC, IPMI**?', o: ['Fernwartung des Servers unabhängig vom Betriebssystem', 'RAID-Level', 'Virtualisierungsplattformen', 'Backup-Programme'], a: 0, e: 'Out-of-band-Management: Konsole, Einschalten, Sensoren, auch wenn das OS hängt.'},
+    {lv: 2, q: 'Was ist ein **Aktiv/Passiv-Cluster**?', o: ['Ein Knoten arbeitet, der zweite übernimmt bei Ausfall (Failover)', 'Beide Knoten verteilen die Last gleichzeitig', 'Ein Server mit zwei CPUs', 'Ein Backup auf Band'], a: 0, e: 'Bei **Aktiv/Aktiv** arbeiten beide gleichzeitig (Lastverteilung).'},
+    {lv: 2, k: 'tf', q: 'NIC-Teaming bündelt mehrere Netzwerkkarten für Ausfallsicherheit und/oder mehr Bandbreite.', a: true, e: 'Fällt eine Karte oder ein Switchport aus, läuft der Verkehr weiter.'},
+    {lv: 2, k: 'multi', q: 'Welche Maßnahmen erhöhen die Ausfallsicherheit eines Serverdienstes? (mehrere)', o: ['Cluster mit Failover', 'Virtualisierung mit Live-Migration', 'Notfallplan mit klaren Zuständigkeiten', 'Monitoring abschalten, um Last zu sparen'], a: [0, 1, 2], e: 'Auch **organisatorische** Maßnahmen zählen.'},
+    {lv: 1, q: 'Was leistet **ECC-RAM**?', o: ['Erkennt und korrigiert Einzelbitfehler im Speicher', 'Verdoppelt die Speicherkapazität', 'Verschlüsselt den RAM', 'Ersetzt eine SSD'], a: 0, e: 'Error Correcting Code: wichtig für Dauerbetrieb.'},
+    {lv: 3, k: 'num', q: 'Ein Rack hat 42 HE. Belegt: 2 HE Switches, 2 HE USV, 1 HE Patchpanel. Wie viele **2-HE-Server** passen noch rein?', a: 18, tol: 0, u: 'Server', e: '42 - 5 = 37 HE, 37 / 2 = 18,5, also **18 Server**.'},
+    {lv: 2, q: 'Ein Nachteil von **Blade-Systemen**?', o: ['Hohe Anschaffungskosten für das Chassis und Herstellerbindung', 'Sehr viel Verkabelung', 'Geringe Packungsdichte', 'Kein zentrales Management'], a: 0, e: 'Blades sparen Kabel und Platz, das Chassis ist aber teuer und proprietär.'},
+    {lv: 2, k: 'tf', q: 'Hot-Swap bedeutet, dass eine Komponente im laufenden Betrieb getauscht werden kann.', a: true, e: 'Netzteile, Platten und Lüfter sind bei Servern oft **hot-swap**-fähig.'},
+    {lv: 3, k: 'num', q: '8 Server à 0,45 kW laufen 24/7. Energiebedarf pro Jahr in kWh?', a: 31536, tol: 0, u: 'kWh', e: '3,6 kW mal 8760 h = **31.536 kWh**.'},
+    {lv: 2, q: 'Warum schließt man redundante Netzteile an **zwei verschiedene Stromkreise** an?', o: ['Damit ein Sicherungsausfall nicht beide Netzteile trifft', 'Um die doppelte Leistung zu bekommen', 'Wegen der Lautstärke', 'Das ist vorgeschrieben für Tower-Server'], a: 0, e: 'Sonst wäre der Stromkreis selbst der **SPOF**.'},
+    {lv: 1, k: 'gap', q: 'Die Höhe von Rackgeräten wird in ___ angegeben (Abkürzung).', a: ['HE', 'U', 'Höheneinheiten'], e: '**HE** (Höheneinheit), englisch U (Unit).'},
+  ]},
+  {id: 'infra-virtualisierung', t: 'Virtualisierung und Cloud', qs: [
+    {lv: 1, q: 'Welcher Hypervisor ist ein **Typ 1** (bare metal)?', o: ['VMware ESXi', 'VirtualBox', 'VMware Workstation', 'Docker Desktop'], a: 0, e: 'Typ 1 läuft direkt auf der Hardware: ESXi, Hyper-V, KVM, Proxmox.'},
+    {lv: 1, k: 'tf', q: 'Ein Typ-2-Hypervisor läuft als Anwendung auf einem Host-Betriebssystem.', a: true, e: 'Typ 2 = **hosted**, z. B. VirtualBox. Eher für Tests am PC.'},
+    {lv: 1, k: 'match', q: 'Ordne die Cloud-Servicemodelle zu.', o: [['IaaS', 'VMs, Speicher, Netz; Kunde verwaltet das OS'], ['PaaS', 'Laufzeitumgebung; Kunde verwaltet nur die App'], ['SaaS', 'fertige Anwendung im Browser']], e: 'Je weiter rechts im Stack, desto mehr übernimmt der Anbieter.'},
+    {lv: 2, q: 'Ein Startup will seine Webanwendung deployen, ohne sich um Betriebssystem und Patches zu kümmern. Welches Modell?', o: ['PaaS', 'IaaS', 'On-Premises', 'Colocation'], a: 0, e: 'Bei **PaaS** verwaltet der Kunde **nur die Anwendung**.'},
+    {lv: 1, q: 'Microsoft 365 als Office im Browser ist ein Beispiel für ...', o: ['SaaS', 'IaaS', 'PaaS', 'DaaS'], a: 0, e: 'Fertige Software zur Nutzung = **SaaS**.'},
+    {lv: 2, q: 'Hauptunterschied **Container** zu **VM**?', o: ['Container teilen sich den Kernel des Hosts, VMs haben ein eigenes Gast-OS', 'Container sind stärker isoliert als VMs', 'VMs starten in Sekunden, Container in Minuten', 'Container brauchen immer einen Typ-2-Hypervisor'], a: 0, e: 'Container sind **leichtgewichtig** (Sekunden), VMs stärker isoliert (Minuten).'},
+    {lv: 2, k: 'multi', q: 'Welche Vorteile hat Servervirtualisierung? (mehrere)', o: ['Bessere Auslastung der Hardware', 'Snapshots vor Updates', 'Live-Migration ohne Ausfall', 'Der Host ist kein SPOF mehr, auch ohne Cluster'], a: [0, 1, 2], e: 'Ohne Cluster ist der **Host** ein SPOF, alle VMs fallen mit ihm.'},
+    {lv: 2, q: 'Was ist **VDI**?', o: ['Desktops laufen als VMs im Rechenzentrum, Zugriff z. B. per Thin Client', 'Ein Dateisystem für VMs', 'Ein Backup-Verfahren', 'Ein Container-Format'], a: 0, e: 'Virtual Desktop Infrastructure: zentrale Verwaltung, aber **abhängig vom Netz**.'},
+    {lv: 2, k: 'tf', q: 'Ein Snapshot einer VM ersetzt ein Backup.', a: false, e: 'Ein Snapshot liegt auf **demselben Speicher** und hängt von der Basisplatte ab. Gut vor Updates, kein Backup.'},
+    {lv: 2, k: 'gap', q: 'Das verbreitete Werkzeug zur **Orchestrierung** von Containern heißt ___.', a: ['Kubernetes', 'K8s'], e: '**Kubernetes** verteilt, skaliert und überwacht Container.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Bei IaaS ist der Anbieter für die Betriebssystem-Patches der VM verantwortlich', 'Bei SaaS kümmert sich der Kunde nicht um Updates der Software', 'Bei PaaS stellt der Anbieter Laufzeit und Datenbank bereit', 'Bei IaaS mietet man virtuelle Hardware'], a: 0, e: 'Bei **IaaS** verwaltet der **Kunde** das Betriebssystem selbst.'},
+    {lv: 2, k: 'match', q: 'Ordne die Bereitstellungsmodelle zu.', o: [['Public Cloud', 'Anbieter teilt Infrastruktur mit vielen Kunden'], ['Private Cloud', 'exklusiv für eine Organisation'], ['Hybrid Cloud', 'Kombination aus eigener und öffentlicher Cloud'], ['Community Cloud', 'gemeinsam für eine Gruppe mit ähnlichen Anforderungen']], e: 'Hybrid wird oft für Lastspitzen oder sensible Daten genutzt.'},
+    {lv: 3, q: 'Ein Unternehmen hat 40 Altserver mit 10 % Auslastung. Hauptargument für Virtualisierung?', o: ['Konsolidierung auf wenige Hosts spart Strom, Platz und Hardware', 'Die Server werden dadurch sicherer gegen Phishing', 'Lizenzen werden immer überflüssig', 'Netzwerkkabel entfallen komplett'], a: 0, e: '**Konsolidierung**: viele schwach ausgelastete Server auf wenigen Hosts.'},
+    {lv: 1, q: 'Was ermöglicht **Live-Migration**?', o: ['Eine laufende VM ohne Unterbrechung auf einen anderen Host verschieben', 'Eine VM in einen Container umwandeln', 'Ein Backup in die Cloud laden', 'Den Hypervisor im Betrieb aktualisieren ohne weiteren Host'], a: 0, e: 'Z. B. für Wartung am Host.'},
+    {lv: 2, k: 'multi', q: 'Welche Nachteile hat VDI? (mehrere)', o: ['Abhängig von Netz und Bandbreite', 'Hohe Anforderungen an Server und Storage im Rechenzentrum', 'Fällt das Rechenzentrum aus, kann niemand arbeiten', 'Updates müssen an jedem Endgerät einzeln eingespielt werden'], a: [0, 1, 2], e: 'Updates sind bei VDI gerade **zentral** und einfach.'},
+  ]},
+  {id: 'infra-cia', t: 'Schutzziele (CIA)', qs: [
+    {lv: 1, k: 'match', q: 'Ordne die Schutzziele zu.', o: [['Vertraulichkeit', 'nur Berechtigte haben Zugriff'], ['Integrität', 'Daten sind vollständig und unverändert'], ['Verfügbarkeit', 'Systeme sind bei Bedarf nutzbar']], e: 'C-I-A: Confidentiality, Integrity, Availability.'},
+    {lv: 1, q: 'Ein Angreifer liest unverschlüsselte E-Mails im WLAN mit. Welches Schutzziel ist verletzt?', o: ['Vertraulichkeit', 'Integrität', 'Verfügbarkeit', 'Verbindlichkeit'], a: 0, e: 'Abhören = **Vertraulichkeit**.'},
+    {lv: 1, q: 'Ein DDoS-Angriff legt den Webshop lahm. Welches Schutzziel?', o: ['Verfügbarkeit', 'Vertraulichkeit', 'Integrität', 'Authentizität'], a: 0, e: 'Der Dienst ist nicht nutzbar.'},
+    {lv: 2, q: 'Jemand ändert in einer Überweisung die IBAN. Welches Schutzziel ist primär verletzt?', o: ['Integrität', 'Verfügbarkeit', 'Vertraulichkeit', 'Zurechenbarkeit'], a: 0, e: 'Manipulation von Daten = **Integrität**.'},
+    {lv: 2, q: '**Ransomware** verschlüsselt alle Dateien. Welches Schutzziel ist am direktesten betroffen?', o: ['Verfügbarkeit', 'Vertraulichkeit', 'Authentizität', 'Keines'], a: 0, e: 'Die Daten sind nicht mehr nutzbar. Bei Double Extortion zusätzlich Vertraulichkeit.'},
+    {lv: 2, k: 'match', q: 'Ordne die Maßnahme dem Hauptschutzziel zu.', o: [['Verschlüsselung', 'Vertraulichkeit'], ['Hashwert prüfen', 'Integrität'], ['USV und Cluster', 'Verfügbarkeit'], ['Digitale Signatur', 'Verbindlichkeit']], e: 'Die Signatur sichert auch Integrität und Authentizität.'},
+    {lv: 2, q: 'Was bedeutet **Nichtabstreitbarkeit** (Verbindlichkeit)?', o: ['Eine Handlung kann dem Urheber nachgewiesen werden, er kann sie nicht leugnen', 'Daten sind immer verfügbar', 'Niemand kann Daten lesen', 'Ein Passwort ist nicht erratbar'], a: 0, e: 'Erreicht durch **digitale Signaturen** mit privatem Schlüssel.'},
+    {lv: 2, k: 'tf', q: 'Authentizität bedeutet, dass die Identität eines Kommunikationspartners bzw. die Herkunft von Daten echt ist.', a: true, e: 'Z. B. per Zertifikat oder Signatur.'},
+    {lv: 1, k: 'multi', q: 'Welche Maßnahmen dienen der **Vertraulichkeit**? (mehrere)', o: ['Verschlüsselung', 'Zugriffsrechte', 'Multi-Faktor-Authentifizierung', 'Redundante Netzteile'], a: [0, 1, 2], e: 'Netzteile dienen der Verfügbarkeit.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Ein Hashwert schützt die Vertraulichkeit einer Datei', 'Eine Prüfsumme kann Übertragungsfehler aufdecken', 'Ein Backup unterstützt die Verfügbarkeit', 'Versionierung hilft, unerwünschte Änderungen rückgängig zu machen'], a: 0, e: 'Ein Hash verbirgt die Datei nicht, er dient der **Integrität**.'},
+    {lv: 2, q: 'Ein Mitarbeiter löscht versehentlich eine Kundentabelle. Welche Schutzziele sind betroffen?', o: ['Integrität und Verfügbarkeit', 'Nur Vertraulichkeit', 'Nur Authentizität', 'Keine, weil es kein Angriff war'], a: 0, e: 'Auch **Fehler** verletzen Schutzziele, nicht nur Angriffe.'},
+    {lv: 1, k: 'gap', q: 'Das englische Kürzel der drei Grundschutzziele lautet ___.', a: ['CIA'], e: 'Confidentiality, Integrity, Availability.'},
+    {lv: 3, q: 'Ein Logfile hält fest, **welcher Benutzer** wann einen Datensatz geändert hat. Welches Ziel unterstützt das vor allem?', o: ['Zurechenbarkeit (Accountability)', 'Verfügbarkeit', 'Vertraulichkeit', 'Performance'], a: 0, e: 'Handlungen sind einer Person **zurechenbar**.'},
+    {lv: 2, k: 'tf', q: 'Verschlüsselung allein garantiert, dass Daten unterwegs nicht verändert werden.', a: false, e: 'Für Integrität braucht es zusätzlich **MAC/AEAD** oder Signatur.'},
+    {lv: 2, q: 'Ein Phishing-Angreifer gibt sich per E-Mail als Bank aus. Welches Schutzziel fehlt bei der E-Mail?', o: ['Authentizität', 'Verfügbarkeit', 'Integrität des Speichers', 'Redundanz'], a: 0, e: 'Der **Absender** ist nicht echt.'},
+  ]},
+  {id: 'infra-krypto', t: 'Kryptografie', qs: [
+    {lv: 1, q: 'Welches Verfahren ist **symmetrisch**?', o: ['AES', 'RSA', 'ECC', 'Diffie-Hellman'], a: 0, e: '**AES** nutzt einen gemeinsamen Schlüssel. RSA/ECC sind asymmetrisch.'},
+    {lv: 1, q: 'Hauptproblem symmetrischer Verschlüsselung?', o: ['Der sichere Schlüsselaustausch', 'Sie ist zu langsam', 'Sie funktioniert nur mit Zertifikaten', 'Sie ist immer unsicher'], a: 0, e: 'Beide brauchen denselben geheimen Schlüssel, der irgendwie sicher übertragen werden muss.'},
+    {lv: 2, k: 'num', q: 'Wie viele symmetrische Schlüssel braucht man, damit **10 Personen** paarweise geheim kommunizieren?', a: 45, tol: 0, u: 'Schlüssel', e: 'n(n-1)/2 = 10 mal 9 / 2 = **45**.'},
+    {lv: 2, k: 'num', q: 'Wie viele Schlüssel insgesamt (öffentlich + privat) braucht man bei **asymmetrischer** Verschlüsselung für 10 Personen?', a: 20, tol: 0, u: 'Schlüssel', e: 'Jeder hat ein **Schlüsselpaar**: 2 mal 10 = **20**.'},
+    {lv: 1, q: 'Alice will Bob eine vertrauliche Nachricht asymmetrisch schicken. Womit verschlüsselt sie?', o: ['Mit Bobs öffentlichem Schlüssel', 'Mit ihrem privaten Schlüssel', 'Mit Bobs privatem Schlüssel', 'Mit ihrem öffentlichen Schlüssel'], a: 0, e: 'Nur Bobs **privater** Schlüssel kann wieder entschlüsseln.'},
+    {lv: 2, q: 'Alice **signiert** ein Dokument. Womit?', o: ['Mit ihrem privaten Schlüssel (über den Hash)', 'Mit Bobs öffentlichem Schlüssel', 'Mit ihrem öffentlichen Schlüssel', 'Mit einem AES-Schlüssel'], a: 0, e: 'Signieren = **privat**, prüfen = **öffentlich** (des Absenders).'},
+    {lv: 2, q: 'Wie prüft Bob Alices Signatur?', o: ['Mit Alices öffentlichem Schlüssel', 'Mit Bobs privatem Schlüssel', 'Mit Alices privatem Schlüssel', 'Gar nicht ohne Passwort'], a: 0, e: 'Er entschlüsselt die Signatur mit Alices **öffentlichem** Schlüssel und vergleicht den Hash.'},
+    {lv: 2, q: 'Was ist **hybride Verschlüsselung**?', o: ['Asymmetrisch wird ein symmetrischer Sitzungsschlüssel ausgetauscht, die Daten werden symmetrisch verschlüsselt', 'Zweimal hintereinander AES', 'Hash plus Salt', 'RSA mit zwei Schlüsselpaaren'], a: 0, e: 'Kombiniert die **Geschwindigkeit** von AES mit dem **Schlüsselaustausch** von RSA/ECDH. So arbeitet TLS.'},
+    {lv: 1, k: 'tf', q: 'Ein Hashwert lässt sich mit dem richtigen Schlüssel wieder in die Originaldaten zurückrechnen.', a: false, e: 'Hash ist eine **Einwegfunktion** ohne Schlüssel.'},
+    {lv: 2, k: 'multi', q: 'Welche Verfahren gelten als **veraltet/unsicher**? (mehrere)', o: ['MD5', 'SHA-1', 'DES', 'SHA-256'], a: [0, 1, 2], e: '**SHA-256** ist aktuell sicher.'},
+    {lv: 2, q: 'Warum speichert man Passwörter **mit Salt** gehasht?', o: ['Gleiche Passwörter ergeben unterschiedliche Hashes, Rainbow Tables werden nutzlos', 'Damit man sie wieder entschlüsseln kann', 'Um Speicherplatz zu sparen', 'Damit der Hash kürzer wird'], a: 0, e: 'Dazu ein **langsames** Verfahren wie bcrypt oder Argon2.'},
+    {lv: 2, q: 'Was speichert ein **TPM**-Chip bei BitLocker?', o: ['Den Schlüssel, freigegeben nur bei unverändertem Systemzustand', 'Die gesamten verschlüsselten Daten', 'Das Benutzerpasswort im Klartext', 'Die Windows-Lizenz'], a: 0, e: 'Wird die Platte in einen anderen PC gesteckt, gibt das TPM den Schlüssel nicht frei.'},
+    {lv: 2, k: 'tf', q: 'Den BitLocker-**Recovery-Key** sollte man getrennt vom Gerät sicher aufbewahren, z. B. im Active Directory.', a: true, e: 'Ohne Recovery-Key sind die Daten bei TPM-Problemen verloren.'},
+    {lv: 3, q: 'Warum nutzt man **ECC** statt RSA auf mobilen Geräten?', o: ['Gleiche Sicherheit mit deutlich kürzeren Schlüsseln, weniger Rechenaufwand', 'ECC ist symmetrisch', 'ECC braucht keinen privaten Schlüssel', 'RSA ist auf Smartphones verboten'], a: 0, e: 'ECC 256 Bit entspricht etwa RSA 3072 Bit.'},
+    {lv: 2, k: 'match', q: 'Ordne zu.', o: [['AES', 'symmetrisch, schnell'], ['RSA', 'asymmetrisch, Schlüsselaustausch/Signatur'], ['SHA-256', 'Hashfunktion'], ['Argon2', 'Passwort-Hashing']], e: 'Für jeden Zweck das passende Verfahren.'},
+    {lv: 1, k: 'gap', q: 'Eine RSA-Schlüssellänge sollte heute mindestens ___ Bit betragen.', a: ['2048'], e: 'Mindestens **2048 Bit**, besser 3072.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Asymmetrische Verfahren sind schneller als symmetrische und daher für große Datenmengen ideal', 'Diffie-Hellman dient dem Schlüsselaustausch', 'AES-256 nutzt einen 256-Bit-Schlüssel', 'Kleinste Änderungen an den Daten ändern den Hash völlig'], a: 0, e: 'Asymmetrisch ist **langsam**. Große Daten werden symmetrisch verschlüsselt.'},
+  ]},
+  {id: 'infra-pki', t: 'PKI und Zertifikate', qs: [
+    {lv: 1, q: 'Was bestätigt ein **Zertifikat**?', o: ['Dass ein öffentlicher Schlüssel zu einer bestimmten Identität gehört', 'Dass ein Server virenfrei ist', 'Das Passwort eines Benutzers', 'Die Verfügbarkeit eines Dienstes'], a: 0, e: 'Die CA **signiert** die Zuordnung Identität ↔ öffentlicher Schlüssel.'},
+    {lv: 1, k: 'multi', q: 'Was enthält ein X.509-Zertifikat? (mehrere)', o: ['Öffentlichen Schlüssel des Inhabers', 'Subject und Issuer', 'Gültigkeitszeitraum', 'Privaten Schlüssel des Inhabers'], a: [0, 1, 2], e: 'Der **private Schlüssel** bleibt immer beim Inhaber.'},
+    {lv: 2, k: 'order', q: 'Bringe den Ablauf zur Beantragung eines Serverzertifikats in die richtige Reihenfolge.', o: ['Schlüsselpaar auf dem Server erzeugen', 'CSR mit öffentlichem Schlüssel und Namen erstellen', 'CA prüft Identität und signiert', 'Zertifikat auf dem Server installieren'], e: 'Der private Schlüssel verlässt den Server nie.'},
+    {lv: 1, k: 'gap', q: 'Die Zertifikatsanfrage an eine CA heißt ___ (Abkürzung).', a: ['CSR', 'Certificate Signing Request'], e: '**CSR** = Certificate Signing Request.'},
+    {lv: 2, k: 'order', q: 'Bringe die Zertifikatskette von oben (Vertrauensanker) nach unten.', o: ['Root-CA', 'Intermediate-CA', 'Serverzertifikat (End-Entity)'], e: 'Jedes Zertifikat ist von der **nächsthöheren** CA signiert.'},
+    {lv: 2, k: 'tf', q: 'Ein Root-CA-Zertifikat ist selbstsigniert.', a: true, e: 'Darüber gibt es niemanden. Vertrauen entsteht, weil es im **Truststore** von Browser/OS liegt.'},
+    {lv: 2, q: 'Der private Schlüssel eines Webservers wurde gestohlen. Was ist zu tun?', o: ['Zertifikat bei der CA sperren lassen und neues Schlüsselpaar mit neuem Zertifikat erzeugen', 'Nichts, das Zertifikat läuft ja irgendwann ab', 'Nur das Admin-Passwort ändern', 'Den öffentlichen Schlüssel geheim halten'], a: 0, e: 'Sperrung (**CRL/OCSP**) und **neues Schlüsselpaar**: der alte CSR darf nicht wiederverwendet werden.'},
+    {lv: 2, k: 'match', q: 'Ordne die Sperrmechanismen zu.', o: [['CRL', 'Liste gesperrter Seriennummern'], ['OCSP', 'Online-Statusabfrage zu einem Zertifikat'], ['OCSP Stapling', 'Server liefert die OCSP-Antwort gleich mit']], e: 'Stapling entlastet den OCSP-Server und schützt die Privatsphäre des Clients.'},
+    {lv: 2, q: 'Wofür nutzt man ein **Intermediate-Zertifikat**?', o: ['Damit der private Schlüssel der Root-CA offline und geschützt bleiben kann', 'Um den Server schneller zu machen', 'Als Ersatz für den privaten Schlüssel', 'Für symmetrische Verschlüsselung'], a: 0, e: 'Die Root signiert nur Intermediates und wird sonst **offline** verwahrt.'},
+    {lv: 2, q: 'Der Browser meldet „Zertifikat nicht vertrauenswürdig“ bei einem internen Server. Häufigste Ursache?', o: ['Selbstsigniertes bzw. internes CA-Zertifikat, das nicht im Truststore des Clients liegt', 'Der Server nutzt TLS 1.3', 'Der Port 443 ist offen', 'Das Zertifikat enthält einen öffentlichen Schlüssel'], a: 0, e: 'Lösung: interne Root-CA per Gruppenrichtlinie verteilen oder öffentliches Zertifikat nutzen.'},
+    {lv: 3, q: 'Was enthält das Feld **SAN** (Subject Alternative Name)?', o: ['Weitere Domainnamen, für die das Zertifikat gilt', 'Die Adresse des Storage Area Network', 'Die Seriennummer der CA', 'Den privaten Schlüssel'], a: 0, e: 'Z. B. `example.de` und `www.example.de` in einem Zertifikat.'},
+    {lv: 2, k: 'tf', q: 'Ein Zertifikat kann auch vor Ablauf seiner Gültigkeit ungültig sein.', a: true, e: 'Wenn es **gesperrt** (revoked) wurde.'},
+    {lv: 1, q: 'Wofür steht **CA**?', o: ['Certificate Authority (Zertifizierungsstelle)', 'Central Access', 'Cipher Algorithm', 'Client Authentication'], a: 0, e: 'Die CA stellt Zertifikate aus und signiert sie.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Die CA signiert das Zertifikat mit dem öffentlichen Schlüssel des Servers', 'Der Client prüft die Signatur mit dem öffentlichen Schlüssel der CA', 'Ein abgelaufenes Zertifikat wird vom Browser abgelehnt', 'Let\'s Encrypt ist eine öffentliche CA'], a: 0, e: 'Die CA signiert mit **ihrem eigenen privaten Schlüssel**.'},
+    {lv: 2, k: 'match', q: 'Ordne zu.', o: [['Subject', 'Inhaber des Zertifikats'], ['Issuer', 'ausstellende CA'], ['Gültigkeit', 'von, bis'], ['Signatur', 'Unterschrift der CA']], e: 'Grundfelder eines X.509-Zertifikats.'},
+  ]},
+  {id: 'infra-tls', t: 'TLS', qs: [
+    {lv: 1, k: 'multi', q: 'Was erreicht TLS? (mehrere)', o: ['Vertraulichkeit', 'Integrität', 'Server-Authentizität', 'Schutz vor Phishing auf echten, gültigen Fake-Domains'], a: [0, 1, 2], e: 'Eine Phishing-Seite kann auch ein **gültiges Zertifikat** für ihre eigene Domain haben.'},
+    {lv: 2, k: 'order', q: 'Bringe den TLS-Handshake in die richtige Reihenfolge.', o: ['ClientHello mit Versionen und Cipher Suites', 'ServerHello mit Zertifikat', 'Schlüsselaustausch (ECDHE) und Zertifikatsprüfung', 'Finished: Sitzungsschlüssel stehen', 'Verschlüsselte Anwendungsdaten'], e: 'Danach läuft alles **symmetrisch** verschlüsselt.'},
+    {lv: 1, q: 'Welche TLS-Versionen sollten heute **abgeschaltet** sein?', o: ['SSL, TLS 1.0 und TLS 1.1', 'TLS 1.2 und 1.3', 'Nur TLS 1.3', 'Keine'], a: 0, e: 'Erlaubt sind **TLS 1.2** und **TLS 1.3**.'},
+    {lv: 2, q: 'Vorteil von **TLS 1.3** gegenüber 1.2?', o: ['Handshake in 1 Round-Trip und nur noch sichere Verfahren', 'Benötigt keine Zertifikate mehr', 'Ist unverschlüsselt und dadurch schneller', 'Nutzt RSA-Schlüsselaustausch ohne Forward Secrecy'], a: 0, e: 'TLS 1.3 hat schwache Verfahren entfernt und ist schneller.'},
+    {lv: 2, q: 'Womit werden die **Nutzdaten** bei TLS verschlüsselt?', o: ['Symmetrisch (z. B. AES-GCM) mit dem ausgehandelten Sitzungsschlüssel', 'Asymmetrisch mit RSA', 'Gar nicht, nur signiert', 'Mit dem privaten Schlüssel des Clients'], a: 0, e: 'Asymmetrie nur für **Schlüsselaustausch/Authentifizierung**.'},
+    {lv: 3, q: 'Was bedeutet **Perfect Forward Secrecy**?', o: ['Auch wenn der private Serverschlüssel später gestohlen wird, bleiben alte Sitzungen sicher', 'Das Zertifikat läuft nie ab', 'Der Client muss sich mit Zertifikat ausweisen', 'Sitzungen werden für immer gespeichert'], a: 0, e: 'Erreicht durch **flüchtige** Schlüssel (Ephemeral DH, ECDHE).'},
+    {lv: 2, q: 'Was ist **mTLS**?', o: ['Beide Seiten authentifizieren sich per Zertifikat', 'TLS über UDP', 'Mobile TLS ohne Verschlüsselung', 'TLS mit mehreren Servern'], a: 0, e: 'Mutual TLS, z. B. zwischen Microservices oder bei Zero Trust.'},
+    {lv: 1, k: 'num', q: 'Standardport von **HTTPS**?', a: 443, tol: 0, u: '', e: 'HTTPS = HTTP über TLS, **Port 443**.'},
+    {lv: 2, k: 'tf', q: 'Der Client prüft im Handshake, ob das Serverzertifikat zur aufgerufenen Domain passt, gültig ist und von einer vertrauenswürdigen CA stammt.', a: true, e: 'Sonst Warnung, Schutz vor **Man-in-the-Middle**.'},
+    {lv: 2, q: 'Was beschreibt eine **Cipher Suite**?', o: ['Die Kombination aus Schlüsselaustausch, Verschlüsselung und Integritätsverfahren', 'Eine Liste gesperrter Zertifikate', 'Ein Hardwaremodul', 'Die TLS-Portnummer'], a: 0, e: 'Z. B. `TLS_AES_256_GCM_SHA384`.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['TLS sichert die Daten auch noch nach der Ankunft auf dem Server in der Datenbank', 'TLS liegt zwischen Transport- und Anwendungsschicht', 'TLS kann auch für SMTP, IMAP oder FTP genutzt werden', 'TLS nutzt Zertifikate zur Server-Authentifizierung'], a: 0, e: 'TLS ist **Transportverschlüsselung**, keine Speicherverschlüsselung.'},
+    {lv: 2, k: 'gap', q: 'Das Schlüsselaustauschverfahren, das in TLS 1.3 typischerweise mit elliptischen Kurven genutzt wird, heißt ___.', a: ['ECDHE', 'ECDH'], e: '**ECDHE** = Elliptic Curve Diffie-Hellman Ephemeral.'},
+    {lv: 2, k: 'match', q: 'Ordne zu.', o: [['ClientHello', 'Client nennt Versionen und Cipher Suites'], ['ServerHello', 'Server wählt Verfahren aus'], ['Certificate', 'Server weist sich aus'], ['Finished', 'Handshake abgeschlossen']], e: 'Schritte des Handshakes.'},
+    {lv: 2, q: 'Welcher Header zwingt Browser, eine Seite **nur noch per HTTPS** aufzurufen?', o: ['HSTS (Strict-Transport-Security)', 'X-Frame-Options', 'Content-Type', 'Cache-Control'], a: 0, e: 'HSTS verhindert SSL-Stripping-Angriffe.'},
+    {lv: 3, k: 'tf', q: 'Bei TLS 1.3 ist der statische RSA-Schlüsselaustausch (ohne Forward Secrecy) nicht mehr erlaubt.', a: true, e: 'TLS 1.3 erlaubt nur noch (EC)DHE.'},
+  ]},
+]);
+;
+// content/quest/eua-1.js
+AP2.quest('eua', [
+  {id: 'eua-paradigmen', t: 'Paradigmen und Übersetzung', qs: [
+    {lv: 1, q: 'Welches Paradigma beschreibt **was** das Ergebnis sein soll, nicht **wie** es berechnet wird?', o: ['Deklarativ', 'Imperativ', 'Prozedural', 'Objektorientiert'], a: 0, e: '**Deklarativ** = "was?" (z. B. SQL). Imperativ, prozedural und objektorientiert beschreiben den Lösungsweg ("wie?").'},
+    {lv: 1, q: 'Zu welchem Paradigma gehört **SQL** typischerweise?', o: ['Deklarativ', 'Imperativ', 'Objektorientiert', 'Prozedural'], a: 0, e: 'Eine SQL-Abfrage beschreibt die gewünschte Ergebnismenge, den Ausführungsplan wählt das DBMS.'},
+    {lv: 1, q: 'Was macht ein **Compiler**?', o: ['Er übersetzt das gesamte Programm vorab in Maschinencode', 'Er führt den Quelltext Zeile für Zeile zur Laufzeit aus', 'Er verbindet nur Objektdateien zu einer ausführbaren Datei', 'Er prüft ausschließlich die Formatierung des Codes'], a: 0, e: 'Compiler = **vorab komplett** übersetzen. Zeilenweise ausführen ist der **Interpreter**, Objektdateien verbinden macht der **Linker**.'},
+    {lv: 2, q: 'Wie wird **Java** üblicherweise ausgeführt?', o: ['Kompiliert zu Bytecode, der in der JVM per JIT zur Laufzeit in Maschinencode übersetzt wird', 'Direkt als Maschinencode für jede Plattform kompiliert', 'Rein interpretiert ohne Zwischencode', 'Durch einen Linker in HTML umgewandelt'], a: 0, e: 'Java: `javac` erzeugt **Bytecode**, die **JVM** führt ihn aus und kompiliert heiße Stellen **Just-in-Time**. Das macht Java plattformunabhängig.'},
+    {k: 'match', lv: 1, q: 'Ordne die Werkzeuge ihrer Aufgabe zu.', o: [['Compiler', 'übersetzt vorab das ganze Programm'], ['Interpreter', 'führt zur Laufzeit Anweisung für Anweisung aus'], ['Linker', 'verbindet Objektdateien und Bibliotheken'], ['JIT-Compiler', 'übersetzt Bytecode zur Laufzeit in Maschinencode']], e: 'Typische Prüfungsbegriffe der Übersetzungskette.'},
+    {k: 'tf', lv: 1, q: 'Prozedurale Programmierung ist eine Form der imperativen Programmierung.', a: true, e: 'Prozedural = imperativ + Zerlegung in **Prozeduren/Funktionen** (z. B. C).'},
+    {k: 'tf', lv: 2, q: 'Eine Programmiersprache kann immer nur genau einem Paradigma folgen.', a: false, e: 'Viele Sprachen sind **multiparadigmatisch**: Python, C#, Kotlin erlauben prozedural, objektorientiert und funktional.'},
+    {lv: 2, q: 'Ein Unternehmen will **große Messdatenmengen statistisch auswerten**. Welche Sprache ist am naheliegendsten?', o: ['Python mit pandas/NumPy', 'HTML', 'Assembler', 'SQL allein ohne Programmlogik'], a: 0, e: 'Für Datenanalyse ist **Python** mit Bibliotheken wie pandas und NumPy Standard. HTML ist keine Programmiersprache, Assembler zu aufwendig.'},
+    {lv: 2, q: 'Für einen **Mikrocontroller** mit sehr wenig Speicher soll Firmware entstehen. Welche Sprache passt am besten?', o: ['C', 'Python', 'JavaScript', 'SQL'], a: 0, e: '**C** ist hardwarenah, erzeugt kompakten Maschinencode und braucht keine Laufzeitumgebung.'},
+    {k: 'multi', lv: 2, q: 'Welche Merkmale gehören zur **objektorientierten** Programmierung? (mehrere)', o: ['Kapselung', 'Vererbung', 'Polymorphie', 'Ergebnisbeschreibung ohne Ablauf', 'Ausschließlich globale Variablen'], a: [0, 1, 2], e: 'OOP: Klassen, Objekte, **Kapselung, Vererbung, Polymorphie**. "Ergebnisbeschreibung" ist deklarativ.'},
+    {lv: 2, q: 'Welche Aussage über **Interpreter** ist FALSCH?', o: ['Interpretierte Programme laufen grundsätzlich schneller als kompilierte', 'Fehler fallen oft erst beim Erreichen der Zeile auf', 'Der Quelltext kann ohne vorherigen Übersetzungslauf gestartet werden', 'Python und klassisches JavaScript werden interpretiert'], a: 0, e: 'Interpretation kostet Laufzeit, kompilierte Programme sind meist **schneller**. Die anderen Aussagen stimmen.'},
+    {k: 'gap', lv: 1, q: 'Das Paradigma, das mit Klassen und Objekten arbeitet, heißt ___ (Abkürzung reicht).', a: ['objektorientiert', 'OOP', 'Objektorientierung', 'objektorientierte Programmierung'], e: '**OOP** = objektorientierte Programmierung.'},
+    {lv: 3, q: 'Welches Paradigma nutzt vorrangig **reine Funktionen ohne Seiteneffekte** und unveränderliche Daten?', o: ['Funktional', 'Prozedural', 'Imperativ', 'Ereignisgesteuert'], a: 0, e: '**Funktional** (Haskell, Teile von JS/Python/Java-Streams) ist eine Unterform der **deklarativen** Programmierung.'},
+    {k: 'order', lv: 2, q: 'Bringe die Schritte bei einer kompilierten Sprache wie C in die richtige Reihenfolge.', o: ['Quelltext schreiben', 'Kompilieren zu Objektdateien', 'Linken mit Bibliotheken', 'Ausführbare Datei starten'], e: 'Erst übersetzen, dann linken, dann ausführen.'},
+    {lv: 1, q: 'Welche Sprache wird für ein **Web-Frontend** im Browser eingesetzt?', o: ['JavaScript/TypeScript', 'C', 'COBOL', 'SQL'], a: 0, e: 'Im Browser läuft **JavaScript** (TypeScript wird nach JS übersetzt).'},
+    {k: 'tf', lv: 2, q: 'HTML ist eine imperative Programmiersprache.', a: false, e: 'HTML ist eine **Auszeichnungssprache** und beschreibt Struktur, also eher deklarativ, keine Programmiersprache mit Ablauflogik.'},
+  ]},
+  {id: 'eua-datentypen', t: 'Datentypen und Variablen', qs: [
+    {lv: 1, q: 'Welcher Datentyp eignet sich für ein **Ja/Nein-Flag** wie `istAktiv`?', o: ['boolean', 'int', 'char', 'double'], a: 0, e: '**boolean** kennt genau `true` und `false`.'},
+    {lv: 1, c: 'int a = 7;\nint b = 2;\nSystem.out.println(a / b);', q: 'Was gibt der Java-Code aus?', o: ['3', '3.5', '4', '3.0'], a: 0, e: 'Beide Operanden sind `int`, also **Ganzzahldivision**: Nachkommastellen werden abgeschnitten.'},
+    {k: 'num', lv: 1, c: 'int x = 17 % 5;', q: 'Welchen Wert hat `x`?', a: 2, tol: 0, e: '`%` liefert den **Rest**: 17 = 3·5 + **2**.'},
+    {lv: 2, c: 'double d = 7 / 2;\nSystem.out.println(d);', q: 'Was wird ausgegeben?', o: ['3.0', '3.5', '3', '4.0'], a: 0, e: 'Die Division `7 / 2` ist noch **int** (= 3), erst danach wird zu `double` 3.0 umgewandelt. Für 3.5 bräuchte man `7.0 / 2`.'},
+    {lv: 2, q: 'Welchen Wertebereich hat ein Java-`byte` (8 Bit, vorzeichenbehaftet)?', o: ['-128 bis 127', '0 bis 255', '-127 bis 127', '-256 bis 255'], a: 0, e: '8 Bit im **Zweierkomplement**: -2^7 bis 2^7-1 = **-128 bis 127**. 0 bis 255 wäre vorzeichenlos.'},
+    {lv: 2, q: 'Welcher Datentyp ist für **Geldbeträge** in einer Buchhaltungssoftware am besten?', o: ['Dezimaltyp wie BigDecimal / decimal', 'float', 'double', 'char'], a: 0, e: '`float`/`double` sind binäre Gleitkommazahlen und können 0,10 nicht exakt darstellen. Für Geld nimmt man **BigDecimal** (Java) bzw. **decimal** (C#) oder rechnet in Cent als Ganzzahl.'},
+    {k: 'tf', lv: 2, q: 'In Java ergibt `0.1 + 0.2 == 0.3` den Wert `true`.', a: false, e: 'Gleitkomma-Rundungsfehler: `0.1 + 0.2` ist `0.30000000000000004`. Gleitkommazahlen nie mit `==` vergleichen, sondern mit Toleranz.'},
+    {k: 'match', lv: 1, q: 'Ordne den Wert dem passenden Datentyp zu.', o: [['\'A\'', 'char'], ['"Hallo"', 'String'], ['42', 'int'], ['3.14', 'double'], ['false', 'boolean']], e: 'Einfache Anführungszeichen = einzelnes Zeichen (char), doppelte = Zeichenkette (String).'},
+    {lv: 2, q: 'Wie heißt die **explizite** Umwandlung `(int) 3.9`, und welcher Wert entsteht?', o: ['Cast, Ergebnis 3', 'Cast, Ergebnis 4', 'Implizite Umwandlung, Ergebnis 3.9', 'Parsing, Ergebnis 4'], a: 0, e: 'Ein **Cast** von double nach int **schneidet ab** (kein Runden), also 3.'},
+    {k: 'tf', lv: 2, q: 'Die Umwandlung von `int` nach `long` kann in Java implizit erfolgen.', a: true, e: '**Widening**: kleiner in größeren Typ geht ohne Datenverlust automatisch. Umgekehrt braucht man einen Cast.'},
+    {lv: 3, c: 'int max = Integer.MAX_VALUE; // 2147483647\nmax = max + 1;\nSystem.out.println(max);', q: 'Was passiert?', o: ['Überlauf: Ausgabe -2147483648', 'Ausgabe 2147483648', 'Es wird eine Exception geworfen', 'Der Wert bleibt 2147483647'], a: 0, e: 'Java-`int` läuft beim **Überlauf** stillschweigend auf den kleinsten Wert um (Zweierkomplement), ohne Exception.'},
+    {lv: 1, q: 'Wie wird in Java eine **Konstante** deklariert?', o: ['final double MWST = 0.19;', 'const double MWST = 0.19; (in Java)', 'static double MWST = 0.19;', 'var MWST := 0.19;'], a: 0, e: 'Java nutzt **final**. `const` gibt es in C#/JS, in Java ist es reserviert, aber nicht nutzbar. `static` allein macht nichts unveränderlich.'},
+    {k: 'gap', lv: 1, q: 'Eine Zeichenkette wird in Java mit dem Datentyp ___ dargestellt.', a: ['String'], e: '**String** ist in Java eine Klasse (Referenztyp), kein primitiver Typ.'},
+    {k: 'multi', lv: 2, q: 'Welche sind **primitive** Datentypen in Java? (mehrere)', o: ['int', 'boolean', 'char', 'String', 'ArrayList'], a: [0, 1, 2], e: '**String** und **ArrayList** sind Klassen, also Referenztypen.'},
+    {lv: 2, c: 's = "5"\nt = s * 3\nprint(t)', q: 'Was gibt dieser Python-Code aus?', o: ['555', '15', 'Fehler', '53'], a: 0, e: 'In Python wiederholt `str * int` den Text: `"5" * 3` = **"555"**. Für 15 müsste man `int(s) * 3` rechnen.'},
+    {lv: 2, q: 'Was bedeutet **statische Typisierung** (z. B. Java)?', o: ['Der Typ einer Variablen steht zur Übersetzungszeit fest', 'Variablen können zur Laufzeit beliebig den Typ wechseln', 'Alle Variablen sind static', 'Es gibt keine Datentypen'], a: 0, e: 'Statisch typisiert: Typ wird beim **Kompilieren** geprüft. Python ist **dynamisch** typisiert.'},
+    {k: 'num', lv: 2, q: 'Wie viele verschiedene Werte kann eine vorzeichenlose 16-Bit-Variable annehmen?', a: 65536, tol: 0, u: 'Werte', e: '2^16 = **65536** (0 bis 65535).'},
+  ]},
+  {id: 'eua-bits', t: 'Bits, Zahlensysteme, Technik', qs: [
+    {k: 'num', lv: 1, q: 'Rechne **1011 0101** (binär) in eine Dezimalzahl um.', a: 181, tol: 0, e: '128 + 32 + 16 + 4 + 1 = **181**.'},
+    {k: 'num', lv: 1, q: 'Welchen Dezimalwert hat **0xFF**?', a: 255, tol: 0, e: 'F = 15: 15·16 + 15 = **255**.'},
+    {lv: 2, q: 'Wie lautet die Dezimalzahl **200** hexadezimal?', o: ['C8', 'B8', 'C0', '8C'], a: 0, e: '200 = 1100 1000 binär, Gruppen 1100 = C, 1000 = 8, also **0xC8**.'},
+    {lv: 1, q: 'Wie lautet **0xD3** binär?', o: ['1101 0011', '1011 0011', '1101 1100', '0011 1101'], a: 0, e: 'Jede Hex-Ziffer = 4 Bit: D = 1101, 3 = 0011.'},
+    {k: 'num', lv: 2, c: 'int a = 12; // 1100\nint b = 10; // 1010\nint r = a & b;', q: 'Welchen Wert hat `r`?', a: 8, tol: 0, e: 'UND bitweise: 1100 & 1010 = **1000** = 8.'},
+    {k: 'num', lv: 2, c: 'int r = 12 | 10;', q: 'Welchen Wert hat `r`?', a: 14, tol: 0, e: 'ODER: 1100 | 1010 = **1110** = 14.'},
+    {k: 'num', lv: 2, c: 'int r = 12 ^ 10;', q: 'Welchen Wert hat `r`?', a: 6, tol: 0, e: 'XOR: nur wo die Bits verschieden sind: 1100 ^ 1010 = **0110** = 6.'},
+    {k: 'num', lv: 2, c: 'int r = 5 << 2;', q: 'Welchen Wert hat `r`?', a: 20, tol: 0, e: 'Linksschieben um 2 = mal 2² = mal 4: 5·4 = **20**.'},
+    {k: 'num', lv: 2, c: 'int r = 40 >> 3;', q: 'Welchen Wert hat `r`?', a: 5, tol: 0, e: 'Rechtsschieben um 3 = durch 8 (ganzzahlig): 40 / 8 = **5**.'},
+    {lv: 3, q: 'Mit welcher Operation prüft man, ob **Bit 2** (Wert 4) in `status` gesetzt ist?', o: ['(status & 4) != 0', '(status | 4) != 0', '(status ^ 4) == 0', 'status >> 4 == 1'], a: 0, e: 'Mit **UND und einer Maske** blendet man alle anderen Bits aus. `| 4` wäre immer ungleich 0.'},
+    {k: 'num', lv: 1, q: 'Ein Sensor wird mit **12 V** an einem Widerstand von **4 Ω** betrieben. Welcher Strom fließt?', a: 3, tol: 0, u: 'A', e: 'I = U / R = 12 V / 4 Ω = **3 A**.'},
+    {k: 'num', lv: 2, q: 'Ein Gerät zieht an **230 V** einen Strom von **0,5 A**. Welche Leistung hat es?', a: 115, tol: 0, u: 'W', e: 'P = U · I = 230 · 0,5 = **115 W**.'},
+    {k: 'num', lv: 2, q: 'Ein Akku hat **2000 mAh**, das Gerät verbraucht im Mittel **250 mA**. Wie viele Stunden läuft es?', a: 8, tol: 0, u: 'h', e: 't = Q / I = 2000 mAh / 250 mA = **8 h**.'},
+    {k: 'num', lv: 2, q: 'Ein Server mit **400 W** läuft **24 Stunden**. Wie viel Energie in kWh verbraucht er?', a: 9.6, tol: 0.01, u: 'kWh', e: 'E = P · t = 0,4 kW · 24 h = **9,6 kWh**.'},
+    {k: 'match', lv: 2, q: 'Ordne die Schnittstelle ihrem Merkmal zu.', o: [['I²C', 'Bus mit Adressen über SDA und SCL'], ['SPI', 'schnell, Chip-Select-Leitung je Gerät'], ['UART', 'serielle Punkt-zu-Punkt-Verbindung mit Baudrate'], ['Bluetooth', 'Funk über kurze Distanz']], e: 'Typische IoT-Schnittstellen aus dem Cheat-Sheet.'},
+    {k: 'tf', lv: 2, q: 'Im Zweierkomplement mit 8 Bit wird -1 als `1111 1111` dargestellt.', a: true, e: '+1 = 0000 0001, invertieren = 1111 1110, plus 1 = **1111 1111**.'},
+    {lv: 1, q: 'Wie viele Bit hat ein **Byte**, wie viele ein **Nibble**?', o: ['8 und 4', '8 und 2', '16 und 8', '4 und 8'], a: 0, e: '1 Byte = 8 Bit, 1 Nibble = 4 Bit = genau eine Hex-Ziffer.'},
+  ]},
+  {id: 'eua-kontroll', t: 'Kontrollstrukturen', qs: [
+    {k: 'num', lv: 1, c: 'for (int i = 0; i < 10; i += 3) {\n    System.out.print(i + " ");\n}', q: 'Wie oft wird der Schleifenrumpf ausgeführt?', a: 4, tol: 0, u: 'mal', e: 'i = 0, 3, 6, 9 → **4** Durchläufe; bei i = 12 ist `i < 10` falsch.'},
+    {k: 'num', lv: 2, c: 'int s = 0;\nfor (int i = 1; i <= 5; i++) {\n    if (i % 2 == 0) continue;\n    s += i;\n}\nSystem.out.println(s);', q: 'Was wird ausgegeben?', a: 9, tol: 0, e: '`continue` überspringt gerade Zahlen: 1 + 3 + 5 = **9**.'},
+    {k: 'num', lv: 2, c: 'int x = 100;\nint n = 0;\nwhile (x > 1) {\n    x = x / 2;\n    n++;\n}\nSystem.out.println(n);', q: 'Welchen Wert gibt das Programm aus?', a: 6, tol: 0, e: '100 → 50 → 25 → 12 → 6 → 3 → 1: **6** Halbierungen (Ganzzahldivision).'},
+    {lv: 2, c: 'int k = 2;\nString s = "";\nswitch (k) {\n    case 1: s += "A";\n    case 2: s += "B";\n    case 3: s += "C"; break;\n    default: s += "D";\n}\nSystem.out.println(s);', q: 'Was wird ausgegeben?', o: ['BC', 'B', 'BCD', 'ABC'], a: 0, e: 'Ohne `break` nach case 2 **fällt** die Ausführung in case 3 **durch** (Fall-through). Dort stoppt `break`.'},
+    {k: 'num', lv: 2, c: 'int z = 0;\nfor (int i = 0; i < 3; i++)\n    for (int j = 0; j < 4; j++)\n        z++;', q: 'Welchen Wert hat `z` am Ende?', a: 12, tol: 0, e: 'Verschachtelt: 3 · 4 = **12**.'},
+    {k: 'num', lv: 3, c: 'int z = 0;\nfor (int i = 0; i < 4; i++)\n    for (int j = i; j < 4; j++)\n        z++;', q: 'Welchen Wert hat `z` am Ende?', a: 10, tol: 0, e: 'Innere Schleife läuft 4, 3, 2, 1 mal: 4+3+2+1 = **10**.'},
+    {lv: 1, q: 'Welche Schleife wird **mindestens einmal** ausgeführt?', o: ['do-while (fußgesteuert)', 'while (kopfgesteuert)', 'for (Zählschleife)', 'foreach'], a: 0, e: 'Bei **do-while** steht die Bedingung am Ende, der Rumpf läuft also mindestens einmal.'},
+    {lv: 2, c: 'int i = 10;\ndo {\n    i++;\n} while (i < 5);\nSystem.out.println(i);', q: 'Was wird ausgegeben?', o: ['11', '10', '5', 'Endlosschleife'], a: 0, e: 'Der Rumpf läuft **einmal** (i = 11), dann ist `11 < 5` falsch.'},
+    {k: 'match', lv: 1, q: 'Ordne die Kontrollstruktur dem Einsatz zu.', o: [['for', 'Anzahl der Durchläufe ist vorher bekannt'], ['while', 'Wiederholen, solange Bedingung gilt, evtl. 0-mal'], ['do-while', 'Menü, das mindestens einmal erscheinen soll'], ['switch', 'Fallauswahl über viele feste Werte']], e: 'Klassische Zuordnung für Struktogramm- und Codeaufgaben.'},
+    {k: 'tf', lv: 1, q: '`break` beendet die gesamte umgebende Schleife, `continue` nur den aktuellen Durchlauf.', a: true, e: 'Genau so: break = raus, continue = nächster Durchlauf.'},
+    {lv: 2, c: 'int i = 0;\nwhile (i < 5) {\n    System.out.println(i);\n}', q: 'Was ist das Problem?', o: ['Endlosschleife, weil i nie verändert wird', 'Syntaxfehler', 'Die Schleife läuft 5-mal', 'Die Schleife läuft nie'], a: 0, e: 'Die Laufvariable wird nicht erhöht, `i < 5` bleibt immer wahr.'},
+    {lv: 2, c: 'int a = 5, b = 8;\nif (a > 3 && b < 5) System.out.print("X");\nelse if (a > 3 || b < 5) System.out.print("Y");\nelse System.out.print("Z");', q: 'Was wird ausgegeben?', o: ['Y', 'X', 'Z', 'XY'], a: 0, e: '`a > 3 && b < 5` = true && false = false. `a > 3 || b < 5` = true → **Y**.'},
+    {k: 'num', lv: 2, c: 'int s = 0;\nfor (int i = 10; i >= 0; i -= 2)\n    s += i;', q: 'Welchen Wert hat `s`?', a: 30, tol: 0, e: '10 + 8 + 6 + 4 + 2 + 0 = **30**.'},
+    {lv: 3, c: 'int i;\nfor (i = 0; i < 100; i++) {\n    if (i * i > 50) break;\n}\nSystem.out.println(i);', q: 'Was wird ausgegeben?', o: ['8', '7', '50', '100'], a: 0, e: '7·7 = 49 ≤ 50, 8·8 = 64 > 50 → break bei **i = 8**.'},
+    {k: 'gap', lv: 1, q: 'Eine Schleife, bei der die Bedingung **vor** jedem Durchlauf geprüft wird, heißt ___gesteuert.', a: ['kopf', 'kopfgesteuert', 'kopfgesteuerte'], e: '**Kopfgesteuert** (while, for), im Gegensatz zu **fußgesteuert** (do-while).'},
+    {lv: 2, c: 'for i in range(2, 11, 3):\n    print(i, end=" ")', q: 'Was gibt der Python-Code aus?', o: ['2 5 8', '2 5 8 11', '3 6 9', '2 4 6 8 10'], a: 0, e: '`range(start, stop, step)`: stop ist **exklusiv**, also 2, 5, 8 (11 nicht mehr).'},
+  ]},
+  {id: 'eua-funktionen', t: 'Funktionen und Parameter', qs: [
+    {lv: 2, c: 'static void setze(int x) { x = 5; }\n\nint a = 1;\nsetze(a);\nSystem.out.println(a);', q: 'Was wird ausgegeben?', o: ['1', '5', '0', 'Kompilierfehler'], a: 0, e: 'Java übergibt primitive Typen **by value**: Die Methode ändert nur ihre Kopie.'},
+    {lv: 2, c: 'static void setze(int[] arr) { arr[0] = 9; }\n\nint[] z = {1, 2, 3};\nsetze(z);\nSystem.out.println(z[0]);', q: 'Was wird ausgegeben?', o: ['9', '1', '0', 'Laufzeitfehler'], a: 0, e: 'Kopiert wird die **Referenz**, beide zeigen auf dasselbe Array, die Änderung ist außen sichtbar.'},
+    {lv: 1, q: 'Was ist der Unterschied zwischen **Parameter** und **Argument**?', o: ['Parameter steht in der Definition, Argument ist der beim Aufruf übergebene Wert', 'Beides ist dasselbe', 'Argument steht in der Definition, Parameter beim Aufruf', 'Parameter sind nur für Rückgabewerte'], a: 0, e: '`int quadrat(int x)` → x ist **Parameter**; `quadrat(4)` → 4 ist **Argument**.'},
+    {lv: 1, q: 'Welchen Rückgabetyp hat eine Java-Methode, die **nichts** zurückgibt?', o: ['void', 'null', 'empty', 'none'], a: 0, e: '**void**. `null` ist ein Wert, kein Typ.'},
+    {lv: 2, q: 'Was versteht man unter **Überladen** (Overloading)?', o: ['Mehrere Methoden gleichen Namens mit unterschiedlicher Parameterliste', 'Eine Unterklasse ersetzt eine Methode der Oberklasse', 'Eine Methode ruft sich selbst auf', 'Zu viele Parameter in einer Methode'], a: 0, e: 'Overloading = gleicher Name, **andere Signatur**. Das Ersetzen in der Unterklasse ist **Überschreiben** (Overriding).'},
+    {k: 'tf', lv: 2, q: 'Zwei Methoden, die sich nur im Rückgabetyp unterscheiden, sind gültig überladen.', a: false, e: 'Die Signatur besteht aus Name und **Parameterliste**; der Rückgabetyp allein reicht nicht.'},
+    {k: 'num', lv: 1, c: 'static int f(int a, int b) {\n    return a * 2 + b;\n}\n\nSystem.out.println(f(3, f(1, 2)));', q: 'Was wird ausgegeben?', a: 10, tol: 0, e: 'Innen: f(1,2) = 2+2 = 4. Außen: f(3,4) = 6+4 = **10**.'},
+    {lv: 2, c: 'int x = 10;\nstatic void test() {\n    int x = 3;\n    x++;\n}\n// im Hauptprogramm:\ntest();\nSystem.out.println(x);', q: 'Welcher Wert wird für das äußere `x` ausgegeben?', o: ['10', '4', '3', '11'], a: 0, e: 'Das `x` in `test` ist eine **lokale** Variable, sie verdeckt das äußere nur innerhalb der Methode (**Gültigkeitsbereich**).'},
+    {lv: 2, q: 'Was ist ein **Seiteneffekt** einer Funktion?', o: ['Eine Änderung außerhalb der Funktion, z. B. an globalen Variablen oder Dateien', 'Der Rückgabewert', 'Ein Kommentar in der Funktion', 'Ein Syntaxfehler'], a: 0, e: 'Reine Funktionen hängen nur von Parametern ab und ändern nichts außerhalb. Seiteneffekte erschweren Tests.'},
+    {k: 'multi', lv: 2, q: 'Welche Vorteile bringt das Zerlegen in Funktionen? (mehrere)', o: ['Wiederverwendbarkeit', 'Bessere Testbarkeit', 'Bessere Lesbarkeit', 'Garantiert schnellere Laufzeit', 'Keine Fehler mehr möglich'], a: [0, 1, 2], e: 'Modularisierung hilft Wartung und Tests. Schneller ist der Code dadurch nicht automatisch.'},
+    {lv: 1, c: 'def begruesse(name, gruss="Hallo"):\n    return gruss + " " + name\n\nprint(begruesse("Mia"))', q: 'Was gibt der Python-Code aus?', o: ['Hallo Mia', 'Mia Hallo', 'Fehler: Argument fehlt', 'None'], a: 0, e: '`gruss` hat einen **Standardwert** (Default-Parameter).'},
+    {lv: 2, c: 'def f(x):\n    x = x + 1\n\nprint(f(3))', q: 'Was gibt der Python-Code aus?', o: ['None', '4', '3', 'Fehler'], a: 0, e: 'Die Funktion hat **kein return**, deshalb liefert sie `None`.'},
+    {k: 'gap', lv: 1, q: 'Name + Parameterliste einer Methode bilden ihre ___.', a: ['Signatur', 'Methodensignatur'], e: 'Die **Signatur** identifiziert die Methode beim Überladen.'},
+    {lv: 3, q: 'Welche Aussage ist FALSCH?', o: ['Java unterstützt echtes Call-by-Reference für primitive Typen', 'In Java wird alles by value übergeben, bei Objekten der Wert der Referenz', 'C# kennt mit `ref` echtes Call-by-Reference', 'Eine lokale Variable existiert nur während des Methodenaufrufs'], a: 0, e: 'Java ist **immer by value**. C# bietet zusätzlich `ref`/`out`.'},
+    {k: 'num', lv: 2, c: 'static int z = 0;\nstatic int inc() { z++; return z; }\n\nint r = inc() + inc() + inc();', q: 'Welchen Wert hat `r`?', a: 6, tol: 0, e: 'Seiteneffekt: 1 + 2 + 3 = **6**.'},
+  ]},
+  {id: 'eua-rekursion', t: 'Rekursion', qs: [
+    {k: 'num', lv: 1, c: 'int fak(int n) {\n    if (n <= 1) return 1;\n    return n * fak(n - 1);\n}\n\nfak(5)', q: 'Welchen Wert liefert `fak(5)`?', a: 120, tol: 0, e: '5·4·3·2·1 = **120**.'},
+    {k: 'num', lv: 2, c: 'int fak(int n) {\n    if (n <= 1) return 1;\n    return n * fak(n - 1);\n}', q: 'Wie viele Aufrufe von `fak` gibt es insgesamt bei `fak(5)` (inklusive des ersten)?', a: 5, tol: 0, u: 'Aufrufe', e: 'fak(5), fak(4), fak(3), fak(2), fak(1) → **5** Aufrufe.'},
+    {k: 'num', lv: 2, c: 'int fib(int n) {\n    if (n < 2) return n;\n    return fib(n - 1) + fib(n - 2);\n}\n\nfib(6)', q: 'Welchen Wert liefert `fib(6)`?', a: 8, tol: 0, e: 'Folge 0, 1, 1, 2, 3, 5, **8** (Index 0 bis 6).'},
+    {lv: 1, q: 'Was ist bei jeder rekursiven Funktion zwingend nötig?', o: ['Eine Abbruchbedingung (Basisfall)', 'Eine for-Schleife', 'Eine globale Variable', 'Ein Rückgabetyp void'], a: 0, e: 'Ohne **Basisfall** ruft sich die Funktion endlos auf.'},
+    {lv: 2, q: 'Was passiert, wenn die Abbruchbedingung fehlt?', o: ['Der Aufrufstapel läuft über: StackOverflowError', 'Die Funktion gibt 0 zurück', 'Der Compiler verweigert die Übersetzung', 'Es entsteht eine Endlosschleife ohne Speicherverbrauch'], a: 0, e: 'Jeder Aufruf legt einen Rahmen auf den **Stack**, irgendwann ist er voll.'},
+    {k: 'num', lv: 2, c: 'int q(int n) {\n    if (n == 0) return 0;\n    return n % 10 + q(n / 10);\n}\n\nq(1234)', q: 'Welchen Wert liefert `q(1234)`?', a: 10, tol: 0, e: 'Die **Quersumme**: 4 + 3 + 2 + 1 = **10**.'},
+    {k: 'num', lv: 2, c: 'int pot(int b, int e) {\n    if (e == 0) return 1;\n    return b * pot(b, e - 1);\n}\n\npot(2, 5)', q: 'Welchen Wert liefert `pot(2, 5)`?', a: 32, tol: 0, e: '2^5 = **32**.'},
+    {k: 'num', lv: 2, c: 'int ggt(int a, int b) {\n    if (b == 0) return a;\n    return ggt(b, a % b);\n}\n\nggt(48, 18)', q: 'Welchen Wert liefert `ggt(48, 18)`?', a: 6, tol: 0, e: 'ggt(48,18) → ggt(18,12) → ggt(12,6) → ggt(6,0) = **6** (Euklid).'},
+    {lv: 3, c: 'void p(int n) {\n    if (n > 0) {\n        p(n - 1);\n        System.out.print(n + " ");\n    }\n}\n\np(3);', q: 'Was wird ausgegeben?', o: ['1 2 3', '3 2 1', '3', '0 1 2 3'], a: 0, e: 'Die Ausgabe steht **nach** dem rekursiven Aufruf, also erst beim Zurückkehren: 1, 2, 3.'},
+    {lv: 3, c: 'void p(int n) {\n    if (n > 0) {\n        System.out.print(n + " ");\n        p(n - 1);\n    }\n}\n\np(3);', q: 'Was wird ausgegeben?', o: ['3 2 1', '1 2 3', '3 2 1 0', '1'], a: 0, e: 'Ausgabe **vor** dem Aufruf → absteigend.'},
+    {k: 'tf', lv: 2, q: 'Jede rekursive Lösung lässt sich auch iterativ (mit Schleife) formulieren.', a: true, e: 'Notfalls mit einem expliziten **Stack**. Iterativ spart oft Speicher.'},
+    {lv: 2, q: 'Warum ist die naive rekursive Fibonacci-Funktion für große n sehr langsam?', o: ['Dieselben Teilwerte werden vielfach neu berechnet (exponentiell viele Aufrufe)', 'Weil Rekursion grundsätzlich O(n²) ist', 'Weil die Zahlen zu groß für int werden', 'Weil der Basisfall fehlt'], a: 0, e: 'fib(n-1) und fib(n-2) überschneiden sich, Laufzeit etwa **O(2^n)**. Abhilfe: Memoisierung oder Schleife.'},
+    {k: 'match', lv: 2, q: 'Ordne zu.', o: [['Basisfall', 'Fall, der ohne weiteren Aufruf gelöst wird'], ['Rekursionsschritt', 'Rückführung auf ein kleineres Teilproblem'], ['Aufrufstapel', 'speichert lokale Variablen je Aufruf'], ['Memoisierung', 'Zwischenergebnisse merken statt neu berechnen']], e: 'Grundbegriffe der Rekursion.'},
+    {k: 'num', lv: 3, c: 'int s(int n) {\n    if (n == 1) return 1;\n    return n + s(n - 1);\n}\n\ns(10)', q: 'Welchen Wert liefert `s(10)`?', a: 55, tol: 0, e: 'Summe 1 bis 10 = 10·11/2 = **55**.'},
+    {k: 'multi', lv: 2, q: 'Für welche Probleme ist Rekursion besonders natürlich? (mehrere)', o: ['Baumdurchlauf', 'Verzeichnisstruktur durchsuchen', 'Mergesort/Quicksort', 'Einfaches Hochzählen einer Variable'], a: [0, 1, 2], e: 'Selbstähnliche Strukturen und **Teile und herrsche** passen zu Rekursion.'},
+  ]},
+  {id: 'eua-pseudocode', t: 'Pseudocode', qs: [
+    {k: 'num', lv: 1, c: 'FUNKTION summeGerade(n)\n    summe ← 0\n    FÜR i VON 1 BIS n\n        WENN i MOD 2 = 0 DANN\n            summe ← summe + i\n        ENDE WENN\n    ENDE FÜR\n    GIB ZURÜCK summe\nENDE FUNKTION\n\nsummeGerade(6)', q: 'Welchen Wert liefert `summeGerade(6)`?', a: 12, tol: 0, e: '2 + 4 + 6 = **12**.'},
+    {lv: 2, c: 'x ← 3\ny ← 5\nx ← x + y\ny ← x - y\nx ← x - y', q: 'Welche Werte haben x und y am Ende?', o: ['x = 5, y = 3', 'x = 3, y = 5', 'x = 8, y = 3', 'x = 5, y = 8'], a: 0, e: 'x = 8, y = 8-5 = 3, x = 8-3 = 5. Ein **Tausch ohne Hilfsvariable**.'},
+    {k: 'num', lv: 1, q: 'Was ergibt `17 DIV 5` (Ganzzahldivision)?', a: 3, tol: 0, e: '17 / 5 = 3 Rest 2 → **3**.'},
+    {k: 'num', lv: 2, c: 'i ← 1\nzaehler ← 0\nSOLANGE i < 50 WIEDERHOLE\n    i ← i * 3\n    zaehler ← zaehler + 1\nENDE SOLANGE', q: 'Welchen Wert hat `zaehler` am Ende?', a: 4, tol: 0, e: 'i: 1 → 3 → 9 → 27 → 81: **4** Durchläufe, dann ist 81 < 50 falsch.'},
+    {lv: 1, q: 'Was bedeutet `←` in Pseudocode?', o: ['Zuweisung', 'Vergleich auf Gleichheit', 'Rückgabe', 'Kleiner-gleich'], a: 0, e: '`←` (oder `:=`) entspricht `=` in Java. Der Vergleich `=` wird zu `==`.'},
+    {k: 'match', lv: 1, q: 'Ordne Pseudocode dem Java-Gegenstück zu.', o: [['x ← 5', 'x = 5;'], ['WENN a = b', 'if (a == b)'], ['a UND b', 'a && b'], ['NICHT a', '!a'], ['SOLANGE x > 0', 'while (x > 0)']], e: 'Typische Übersetzungstabelle.'},
+    {lv: 2, q: 'Welche Schleife ist **WIEDERHOLE ... BIS bedingung**?', o: ['Fußgesteuert, läuft bis die Bedingung wahr wird', 'Kopfgesteuert, läuft solange die Bedingung wahr ist', 'Zählschleife', 'Endlosschleife'], a: 0, e: 'Achtung: **BIS** = Abbruchbedingung (läuft, solange sie falsch ist). Java `do { } while (!bedingung);`'},
+    {k: 'num', lv: 2, c: 'zahlen ← [4, 9, 2, 7, 5]   // Index ab 1\nm ← zahlen[1]\nFÜR i VON 2 BIS 5\n    WENN zahlen[i] > m DANN\n        m ← zahlen[i]\n    ENDE WENN\nENDE FÜR\nAUSGABE m', q: 'Was wird ausgegeben?', a: 9, tol: 0, e: 'Maximumsuche mit erstem Element als Startwert: **9**.'},
+    {lv: 2, q: 'In einer Aufgabe steht "Arrays beginnen bei Index 1". Welches Element ist `zahlen[2]` bei `zahlen ← [4, 9, 2]`?', o: ['9', '2', '4', 'Fehler'], a: 0, e: 'Ab 1 gezählt: [1]=4, [2]=**9**, [3]=2. In Java (ab 0) wäre es 2. Immer die Angabe in der Aufgabe beachten!'},
+    {k: 'order', lv: 2, q: 'Bringe das empfohlene Vorgehen beim Lösen einer Pseudocode-Aufgabe in die Reihenfolge.', o: ['Ein-/Ausgaben und Variablen klären', 'Struktur erkennen (Folge, Auswahl, Wiederholung)', 'Zeile für Zeile übersetzen bzw. schreiben', 'Mit Beispielwerten durchspielen'], e: 'Laut Seite: klären, Struktur, übersetzen, Schreibtischtest.'},
+    {k: 'num', lv: 3, c: 'n ← 6\nergebnis ← 1\nFÜR i VON 1 BIS n\n    WENN i MOD 3 = 0 DANN\n        ergebnis ← ergebnis * i\n    SONST\n        ergebnis ← ergebnis + 1\n    ENDE WENN\nENDE FÜR', q: 'Welchen Wert hat `ergebnis` am Ende?', a: 66, tol: 0, e: 'i=1: 2, i=2: 3, i=3: 3·3 = 9, i=4: 10, i=5: 11, i=6: 11·6 = **66**. Nur bei 3 und 6 wird multipliziert.'},
+    {k: 'tf', lv: 1, q: 'Pseudocode muss sich exakt an die Syntax einer bestimmten Programmiersprache halten.', a: false, e: 'Pseudocode ist **sprachunabhängig**, er soll die Logik ohne Syntaxdetails zeigen.'},
+    {lv: 2, c: 'zahl ← 7\nWENN zahl MOD 2 = 0 ODER zahl > 5 DANN\n    AUSGABE "A"\nSONST\n    AUSGABE "B"\nENDE WENN', q: 'Was wird ausgegeben?', o: ['A', 'B', 'AB', 'nichts'], a: 0, e: '7 MOD 2 = 1, also false, aber `7 > 5` ist true → ODER ergibt true → **A**.'},
+    {k: 'num', lv: 2, c: 'text ← "PRUEFUNG"\nanzahl ← 0\nFÜR i VON 1 BIS LÄNGE(text)\n    WENN text[i] = "U" DANN\n        anzahl ← anzahl + 1\n    ENDE WENN\nENDE FÜR', q: 'Welchen Wert hat `anzahl`?', a: 2, tol: 0, e: 'P-R-**U**-E-F-**U**-N-G → **2**.'},
+    {k: 'gap', lv: 1, q: 'Das Durchspielen eines Algorithmus mit Beispielwerten auf Papier heißt ___.', a: ['Schreibtischtest', 'Trace', 'Tracing'], e: 'Der **Schreibtischtest** (Trace-Tabelle) ist Standard in der AP2.'},
+  ]},
+  {id: 'eua-pap', t: 'Programmablaufplan', qs: [
+    {lv: 1, q: 'Welches PAP-Symbol steht für eine **Verzweigung**?', o: ['Raute', 'Rechteck', 'Parallelogramm', 'Abgerundetes Rechteck'], a: 0, e: 'Die **Raute** enthält die Bedingung, die Ausgänge werden mit ja/nein beschriftet.'},
+    {k: 'match', lv: 1, q: 'Ordne die PAP-Symbole (DIN 66001) ihrer Bedeutung zu.', o: [['Abgerundetes Rechteck', 'Start / Ende'], ['Rechteck', 'Operation, z. B. Berechnung'], ['Parallelogramm', 'Ein- oder Ausgabe'], ['Rechteck mit Doppelstrichen', 'Unterprogrammaufruf'], ['Kreis', 'Konnektor (Sprungmarke)']], e: 'Die sechs Grundsymbole nach **DIN 66001**.'},
+    {lv: 1, q: 'Nach welcher Norm werden Programmablaufpläne gezeichnet?', o: ['DIN 66001', 'DIN 66261', 'ISO 9001', 'DIN 5008'], a: 0, e: 'PAP: **DIN 66001**. Struktogramm (Nassi-Shneiderman): **DIN 66261**.'},
+    {lv: 1, q: 'Mit welchem Symbol wird "Eingabe: Menge" dargestellt?', o: ['Parallelogramm', 'Raute', 'Rechteck', 'Kreis'], a: 0, e: 'Ein- und Ausgaben = **Parallelogramm**.'},
+    {lv: 2, q: 'Wie wird im PAP eine **Schleife** dargestellt?', o: ['Durch eine Raute und eine Ablauflinie, die zurück vor die Bedingung führt', 'Durch ein spezielles Schleifensymbol', 'Durch zwei Startsymbole', 'Gar nicht, PAP kennt keine Schleifen'], a: 0, e: 'Der PAP hat kein eigenes Schleifensymbol: **Bedingung + Rücksprungpfeil**.'},
+    {k: 'tf', lv: 2, q: 'Im PAP sind beliebige Sprünge möglich, im Struktogramm nicht.', a: true, e: 'Deshalb kann ein PAP **unstrukturiert** werden ("Spaghetti"), das Struktogramm erzwingt Folge, Auswahl, Wiederholung.'},
+    {k: 'tf', lv: 1, q: 'Ein PAP darf mehrere Startsymbole haben.', a: false, e: 'Es gibt genau **ein** Startsymbol (mehrere Enden sind erlaubt).'},
+    {lv: 2, q: 'Ein PAP berechnet eine Summe, die Variable `summe` wird aber nirgends vorher gesetzt. Was ist der Fehler?', o: ['Die Variable wurde nicht initialisiert (summe = 0 fehlt)', 'Das Startsymbol fehlt', 'Die Raute ist falsch beschriftet', 'Es fehlt ein Konnektor'], a: 0, e: 'Klassischer Prüfungsfehler: **Initialisierung** vor der Schleife vergessen.'},
+    {lv: 2, q: 'Welche Aussage über PAP und Struktogramm ist FALSCH?', o: ['Ein PAP und ein Struktogramm können nie denselben Ablauf beschreiben', 'Beide sind sprachunabhängig', 'Das Struktogramm nutzt Blöcke statt Pfeile', 'Der PAP nutzt Ablauflinien mit Pfeilen'], a: 0, e: 'Beide beschreiben **denselben Ablauf**, nur unterschiedlich dargestellt.'},
+    {lv: 2, q: 'Welche Leserichtung gilt für Ablauflinien ohne Pfeil?', o: ['Von oben nach unten und von links nach rechts', 'Von unten nach oben', 'Von rechts nach links', 'Beliebig'], a: 0, e: 'Standardrichtung: oben → unten, links → rechts. Abweichungen brauchen **Pfeile**.'},
+    {lv: 3, c: 'Start\n→ [summe = 0, i = 1]\n→ <i <= 4?> nein → /Ausgabe summe/ → Ende\n   ja ↓\n→ [summe = summe + i * i]\n→ [i = i + 1] → zurück zur Raute', q: 'Welcher Wert wird ausgegeben?', o: ['30', '10', '16', '14'], a: 0, e: '1 + 4 + 9 + 16 = **30** (Quadratsumme).'},
+    {k: 'gap', lv: 1, q: 'Die Ausgänge einer Raute werden mit ___ und nein beschriftet.', a: ['ja', 'j', 'true', 'wahr'], e: 'Jede Verzweigung braucht beschriftete Ausgänge **ja / nein**.'},
+    {k: 'order', lv: 2, q: 'Bringe die Elemente eines PAP für "Zahl einlesen, prüfen, ob positiv, Ergebnis ausgeben" in die Ablaufreihenfolge.', o: ['Start', 'Eingabe: zahl', 'Verzweigung: zahl > 0?', 'Ausgabe: "positiv" bzw. "nicht positiv"', 'Ende'], e: 'Start → Eingabe → Bedingung → Ausgabe → Ende.'},
+    {k: 'multi', lv: 2, q: 'Wofür eignet sich ein PAP? (mehrere)', o: ['Abstimmung zwischen Fachabteilung und Entwicklung', 'Planung vor dem Programmieren', 'Dokumentation eines Ablaufs', 'Ersatz für ein Datenbankschema'], a: [0, 1, 2], e: 'Der PAP ist ein **Ablauf**-Modell, kein Datenmodell.'},
+    {lv: 1, q: 'Was stellt ein **Kreis** mit einem Buchstaben im PAP dar?', o: ['Einen Konnektor, der Ablauflinien über Seiten hinweg verbindet', 'Eine Datenbank', 'Eine Schleife', 'Den Start'], a: 0, e: 'Konnektor = **Sprungmarke**, z. B. für Seitenumbrüche.'},
+  ]},
+  {id: 'eua-algoexam', t: 'Algorithmen wie in der Prüfung', qs: [
+    {lv: 2, q: 'Ein Menü soll so lange angezeigt werden, bis 0 eingegeben wird, und **mindestens einmal** erscheinen. Welche Schleife passt?', o: ['Fußgesteuerte Schleife', 'Kopfgesteuerte Schleife', 'Zählschleife von 0 bis 4', 'Keine Schleife, nur Verzweigung'], a: 0, e: 'Mindestens einmal → **fußgesteuert** (wiederhole ... solange wahl ≠ 0).'},
+    {lv: 3, c: 'int[] t = {-3, -7, -1, -5};\nint max = 0;\nfor (int x : t)\n    if (x > max) max = x;\nSystem.out.println(max);', q: 'Was wird ausgegeben, und was ist der Fehler?', o: ['0, weil der Startwert 0 statt t[0] ist', '-1, korrekt', '-7, falscher Vergleich', '-3, erster Wert'], a: 0, e: 'Bei nur negativen Werten bleibt max = 0. Richtig: **max = t[0]** als Startwert.'},
+    {k: 'num', lv: 1, c: 'int[] w = {4, 8, 6};\nint s = 0;\nfor (int x : w) s += x;\ndouble m = (double) s / w.length;', q: 'Welchen Wert hat `m`?', a: 6, tol: 0, e: '(4 + 8 + 6) / 3 = **6**.'},
+    {k: 'num', lv: 1, c: 'int[] a = {3, 7, 9, 2, 6};\nint z = 0;\nfor (int x : a)\n    if (x > 5) z++;', q: 'Welchen Wert hat `z`?', a: 3, tol: 0, e: '7, 9, 6 sind größer als 5 → **3**.'},
+    {lv: 2, q: 'Was muss bei der Mittelwertberechnung zusätzlich abgefangen werden?', o: ['Division durch 0 bei leerer Liste', 'Negative Zahlen', 'Zahlen größer 100', 'Gerade Anzahl Werte'], a: 0, e: 'Leere Eingabe ist ein klassischer **Grenzfall**: Anzahl 0 → Division durch 0.'},
+    {lv: 2, q: 'Was beschreibt der **Gruppenwechsel**?', o: ['Bei sortierten Daten werden Zwischensummen gebildet, sobald sich das Gruppierungsmerkmal ändert', 'Das Tauschen zweier Variablen', 'Der Wechsel von while zu for', 'Das Umsortieren in absteigende Reihenfolge'], a: 0, e: 'Z. B. Umsatz je Filiale: Daten nach Filiale sortiert, bei Wechsel der Filiale Zwischensumme ausgeben.'},
+    {lv: 2, c: 'boolean gefunden = false;\nint i = 0;\nwhile (i < a.length && !gefunden) {\n    if (a[i] == suchwert) gefunden = true;\n    else i++;\n}', q: 'Welche Rolle hat die Variable `gefunden`?', o: ['Ein Flag, das die lineare Suche beim Treffer beendet', 'Ein Zähler für alle Treffer', 'Die Position des Treffers', 'Ein Fehlercode'], a: 0, e: 'Lineare Suche mit **Flag**: Abbruch beim ersten Treffer, `i` enthält dann den Index.'},
+    {k: 'match', lv: 1, q: 'Ordne die Darstellungsform ihrer Norm bzw. Eigenschaft zu.', o: [['Struktogramm', 'DIN 66261'], ['PAP', 'DIN 66001'], ['Pseudocode', 'keine Norm, sprachnah'], ['Programmcode', 'direkt ausführbar']], e: 'Alle vier Formen kommen in der AP2 vor.'},
+    {k: 'multi', lv: 2, q: 'Welche Testfälle sollte man für eine Funktion `durchschnitt(liste)` mindestens prüfen? (mehrere)', o: ['Leere Liste', 'Liste mit einem Element', 'Normale Liste mehrerer Werte', 'Nur die Liste aus der Aufgabe'], a: [0, 1, 2], e: '**Grenzwerte** und leere Eingabe gehören immer dazu.'},
+    {lv: 2, q: 'Was bedeutet **Whitebox-Test** bei einem Algorithmus?', o: ['Testfälle so wählen, dass jeder Zweig des Codes mindestens einmal durchlaufen wird', 'Testen ohne Kenntnis des Codes', 'Testen nur der Benutzeroberfläche', 'Testen durch den Kunden'], a: 0, e: 'Whitebox = Code bekannt, **Zweigüberdeckung**. Ohne Codekenntnis = Blackbox (Äquivalenzklassen).'},
+    {k: 'num', lv: 2, c: 'int[] p = {5, 3, 8, 1, 9, 2};\nint min = p[0], pos = 0;\nfor (int i = 1; i < p.length; i++)\n    if (p[i] < min) { min = p[i]; pos = i; }', q: 'Welchen Wert hat `pos` am Ende?', a: 3, tol: 0, e: 'Das Minimum 1 steht an Index **3** (ab 0 gezählt).'},
+    {lv: 3, c: 'int[] a = {2, 2, 3, 3, 3, 5};\nint zaehler = 1;\nfor (int i = 1; i < a.length; i++)\n    if (a[i] != a[i - 1]) zaehler++;\nSystem.out.println(zaehler);', q: 'Was berechnet der Code und was wird ausgegeben?', o: ['Anzahl verschiedener Werte in sortierter Liste: 3', 'Anzahl aller Werte: 6', 'Anzahl der Duplikate: 3', 'Größter Wert: 5'], a: 0, e: 'Bei sortierten Daten zählt jeder **Wechsel** einen neuen Wert: 2, 3, 5 → **3**.'},
+    {k: 'order', lv: 2, q: 'Bringe die Schritte der Maximumsuche in die richtige Reihenfolge.', o: ['max mit dem ersten Element belegen', 'Schleife ab dem zweiten Element beginnen', 'Aktuelles Element mit max vergleichen', 'Bei größerem Wert max überschreiben', 'Nach der Schleife max ausgeben'], e: 'Initialisieren, durchlaufen, vergleichen, merken, ausgeben.'},
+    {k: 'tf', lv: 2, q: 'Bei einer Fallauswahl (switch) sollte ein default-Zweig für ungültige Eingaben vorgesehen werden.', a: true, e: 'Z. B. im Menü: jede andere Eingabe → Bildschirm löschen, Menü erneut zeigen.'},
+    {lv: 2, c: 'int summe = 0, anzahl = 0, x;\ndo {\n    x = leseZahl();\n    if (x != -1) { summe += x; anzahl++; }\n} while (x != -1);\n// Eingaben: 4, 6, 11, -1', q: 'Welche Werte haben `summe` und `anzahl` am Ende?', o: ['summe = 21, anzahl = 3', 'summe = 20, anzahl = 4', 'summe = 21, anzahl = 4', 'summe = 20, anzahl = 3'], a: 0, e: '-1 ist der **Endwert** (Sentinel) und wird nicht mitgezählt: 4 + 6 + 11 = 21, 3 Werte.'},
+  ]},
+  {id: 'eua-oop', t: 'Objektorientierung', qs: [
+    {lv: 1, q: 'Was ist der Unterschied zwischen **Klasse** und **Objekt**?', o: ['Die Klasse ist der Bauplan, das Objekt eine konkrete Instanz davon', 'Beides ist dasselbe', 'Ein Objekt ist der Bauplan einer Klasse', 'Klassen existieren nur zur Laufzeit'], a: 0, e: 'Klasse = **Bauplan** (Attribute, Methoden), Objekt = **Instanz** mit eigenen Werten.'},
+    {k: 'match', lv: 1, q: 'Ordne die Begriffe zu.', o: [['Attribut', 'Eigenschaft eines Objekts, z. B. farbe'], ['Methode', 'Verhalten, z. B. fahren()'], ['Instanz', 'konkretes Objekt einer Klasse'], ['Zustand', 'aktuelle Werte aller Attribute']], e: 'Ein Objekt hat **Zustand, Verhalten und Identität**.'},
+    {lv: 1, c: 'Auto a = new Auto();', q: 'Was bewirkt `new`?', o: ['Es erzeugt ein neues Objekt im Speicher und ruft den Konstruktor auf', 'Es deklariert nur eine Variable', 'Es erzeugt eine neue Klasse', 'Es löscht ein bestehendes Objekt'], a: 0, e: '`new` **instanziiert**: Speicher reservieren, Konstruktor ausführen, Referenz zurückgeben.'},
+    {lv: 2, c: 'Auto a = new Auto("rot");\nAuto b = a;\nb.setFarbe("blau");\nSystem.out.println(a.getFarbe());', q: 'Was wird ausgegeben?', o: ['blau', 'rot', 'null', 'Fehler'], a: 0, e: '`b = a` kopiert nur die **Referenz**. Es gibt nur **ein** Objekt.'},
+    {lv: 2, c: 'String s1 = new String("abc");\nString s2 = new String("abc");\nSystem.out.println(s1 == s2);\nSystem.out.println(s1.equals(s2));', q: 'Was wird ausgegeben?', o: ['false, dann true', 'true, dann true', 'true, dann false', 'false, dann false'], a: 0, e: '`==` vergleicht **Referenzen** (zwei Objekte), `equals` den **Inhalt**.'},
+    {lv: 2, q: 'Was bedeutet ein **static**-Attribut?', o: ['Es gehört zur Klasse und wird von allen Objekten geteilt', 'Es ist unveränderlich', 'Es ist privat', 'Jedes Objekt hat eine eigene Kopie'], a: 0, e: '**static** = Klassenattribut, eine Kopie für alle. Unveränderlich wäre `final`.'},
+    {k: 'num', lv: 2, c: 'class Zaehler {\n    static int anzahl = 0;\n    int nr;\n    Zaehler() { anzahl++; nr = anzahl; }\n}\nZaehler a = new Zaehler();\nZaehler b = new Zaehler();\nZaehler c = new Zaehler();\nSystem.out.println(a.nr + Zaehler.anzahl);', q: 'Was wird ausgegeben?', a: 4, tol: 0, e: 'a.nr = 1 (beim ersten Objekt), anzahl = 3 am Ende → 1 + 3 = **4**.'},
+    {k: 'tf', lv: 1, q: 'Von einer Klasse können beliebig viele Objekte erzeugt werden.', a: true, e: 'Außer man verhindert es bewusst, z. B. beim **Singleton**.'},
+    {lv: 2, q: 'Welche Aussage ist FALSCH?', o: ['Eine statische Methode kann direkt auf Instanzattribute über this zugreifen', 'Statische Methoden ruft man über den Klassennamen auf', 'main ist in Java static', 'Instanzmethoden können auf static-Attribute zugreifen'], a: 0, e: 'In static-Methoden gibt es **kein this**, da kein Objekt beteiligt ist.'},
+    {lv: 1, q: 'Was bezeichnet `this` in einer Methode?', o: ['Das aktuelle Objekt, auf dem die Methode aufgerufen wurde', 'Die Oberklasse', 'Die Klasse selbst', 'Den Rückgabewert'], a: 0, e: '`this` = Referenz auf das **eigene Objekt**, z. B. `this.name = name;`.'},
+    {k: 'gap', lv: 1, q: 'Ein konkretes Objekt einer Klasse nennt man auch ___.', a: ['Instanz', 'Exemplar'], e: '**Instanz** (oder Exemplar).'},
+    {k: 'multi', lv: 2, q: 'Was gehört in eine UML-Klasse **Konto**? (mehrere)', o: ['Attribut kontostand', 'Methode einzahlen(betrag)', 'Methode abheben(betrag)', 'Das konkrete Konto von Frau Meier'], a: [0, 1, 2], e: 'Frau Meiers Konto ist ein **Objekt**, kein Bestandteil der Klasse.'},
+    {lv: 2, q: 'Was passiert in Java mit einem Objekt, auf das keine Referenz mehr zeigt?', o: ['Der Garbage Collector gibt den Speicher irgendwann frei', 'Es bleibt bis zum Programmende im Speicher', 'Es wird sofort gelöscht und eine Exception geworfen', 'Der Programmierer muss free() aufrufen'], a: 0, e: 'Java hat automatische Speicherverwaltung (**Garbage Collection**).'},
+    {lv: 1, c: 'class Hund:\n    def __init__(self, name):\n        self.name = name\n    def bellen(self):\n        return self.name + " bellt"\n\nh = Hund("Bello")\nprint(h.bellen())', q: 'Was gibt der Python-Code aus?', o: ['Bello bellt', 'name bellt', 'Hund bellt', 'Fehler'], a: 0, e: '`self` entspricht `this`, das Objekt speichert `name = "Bello"`.'},
+    {lv: 3, q: 'Was beschreibt die **Identität** eines Objekts?', o: ['Dass zwei Objekte mit gleichen Werten trotzdem verschiedene Objekte sind', 'Den Klassennamen', 'Die Summe aller Attributwerte', 'Den Rückgabetyp der Methoden'], a: 0, e: 'Identität = eigene Existenz (z. B. Speicheradresse), unabhängig vom **Zustand**.'},
+  ]},
+  {id: 'eua-saeulen', t: 'Säulen der OOP', qs: [
+    {k: 'match', lv: 1, q: 'Ordne die Säulen der OOP ihrer Beschreibung zu.', o: [['Kapselung', 'Attribute privat, Zugriff über Methoden'], ['Vererbung', 'Unterklasse übernimmt Eigenschaften der Oberklasse'], ['Polymorphie', 'gleicher Aufruf, unterschiedliches Verhalten je Objekt'], ['Abstraktion', 'nur wesentliche Eigenschaften modellieren']], e: 'Die vier Säulen der Objektorientierung.'},
+    {lv: 2, c: 'class Tier { String laut() { return "..."; } }\nclass Hund extends Tier { String laut() { return "Wuff"; } }\n\nTier t = new Hund();\nSystem.out.println(t.laut());', q: 'Was wird ausgegeben?', o: ['Wuff', '...', 'Kompilierfehler', 'null'], a: 0, e: '**Dynamische Bindung**: maßgeblich ist der Laufzeittyp (Hund), nicht der deklarierte Typ.'},
+    {lv: 1, q: 'Wie heißt das Prinzip: **Attribute privat, Zugriff nur über Getter/Setter**?', o: ['Kapselung', 'Vererbung', 'Polymorphie', 'Rekursion'], a: 0, e: '**Kapselung** (Information Hiding) schützt den Zustand vor ungültigen Werten.'},
+    {lv: 2, q: 'Was ist der Unterschied zwischen **Überschreiben** und **Überladen**?', o: ['Überschreiben: gleiche Signatur in der Unterklasse; Überladen: gleicher Name, andere Parameter', 'Überschreiben: andere Parameter; Überladen: gleiche Signatur in der Unterklasse', 'Beides ist dasselbe', 'Überladen gibt es nur bei Konstruktoren'], a: 0, e: 'Overriding = **Laufzeit-Polymorphie**, Overloading = Auswahl zur **Übersetzungszeit**.'},
+    {k: 'match', lv: 1, q: 'Ordne das UML-Zeichen der Sichtbarkeit zu.', o: [['+', 'public'], ['-', 'private'], ['#', 'protected'], ['~', 'package']], e: 'UML-Sichtbarkeiten im Klassendiagramm.'},
+    {lv: 2, q: 'Welche Sichtbarkeit erlaubt den Zugriff **in der Klasse und ihren Unterklassen**, aber nicht von beliebigen fremden Klassen?', o: ['protected', 'private', 'public', 'static'], a: 0, e: '**protected** (#). In Java zusätzlich im selben Paket sichtbar.'},
+    {lv: 2, c: 'class Konto {\n    private double stand;\n    public void abheben(double b) {\n        if (b > 0 && b <= stand) stand -= b;\n    }\n}', q: 'Welchen Vorteil zeigt dieser Code?', o: ['Kapselung verhindert ungültige Zustände wie negative Kontostände', 'Vererbung spart Code', 'Polymorphie erlaubt verschiedene Konten', 'Es gibt keinen Vorteil'], a: 0, e: 'Der Zugriff läuft über eine Methode mit **Prüfung**, `stand` ist von außen nicht direkt änderbar.'},
+    {k: 'tf', lv: 1, q: 'Von einer abstrakten Klasse können direkt Objekte mit `new` erzeugt werden.', a: false, e: 'Abstrakte Klassen sind **nicht instanziierbar**, nur ihre konkreten Unterklassen.'},
+    {k: 'tf', lv: 2, q: 'Java erlaubt Mehrfachvererbung von Klassen.', a: false, e: 'Java/C#: nur **eine** Oberklasse (`extends`), aber mehrere Interfaces. C++ und Python erlauben Mehrfachvererbung.'},
+    {lv: 2, c: 'class A { void f() { System.out.print("A"); } }\nclass B extends A {\n    void f() { super.f(); System.out.print("B"); }\n}\nnew B().f();', q: 'Was wird ausgegeben?', o: ['AB', 'B', 'BA', 'A'], a: 0, e: '`super.f()` ruft zuerst die Methode der **Oberklasse** auf, dann folgt "B".'},
+    {lv: 2, q: 'Welche Beziehung beschreibt Vererbung korrekt?', o: ['"ist ein" (Hund ist ein Tier)', '"hat ein" (Auto hat einen Motor)', '"benutzt" (Kunde benutzt Konto)', '"kennt" (Lehrer kennt Schüler)'], a: 0, e: 'Vererbung = **ist-ein**. "hat ein" ist Aggregation/Komposition.'},
+    {lv: 3, c: 'Tier[] tiere = { new Hund(), new Katze(), new Hund() };\nfor (Tier t : tiere) System.out.print(t.laut() + " ");\n// Hund: "Wuff", Katze: "Miau"', q: 'Was wird ausgegeben?', o: ['Wuff Miau Wuff', '... ... ...', 'Wuff Wuff Wuff', 'Miau Miau Miau'], a: 0, e: 'Klassische **Polymorphie**: jedes Objekt reagiert mit seiner eigenen Implementierung.'},
+    {k: 'gap', lv: 1, q: 'In Java erbt eine Klasse mit dem Schlüsselwort ___ von einer anderen.', a: ['extends'], e: '`class Hund extends Tier`. C#: `class Hund : Tier`, Python: `class Hund(Tier):`.'},
+    {k: 'multi', lv: 2, q: 'Welche Aussagen zu Polymorphie stimmen? (mehrere)', o: ['Eine Oberklassen-Variable kann Objekte von Unterklassen referenzieren', 'Die aufgerufene Methode hängt vom tatsächlichen Objekttyp ab', 'Sie setzt meist Vererbung oder Interfaces voraus', 'Sie bedeutet, dass alle Attribute public sind'], a: [0, 1, 2], e: 'Polymorphie = **Vielgestaltigkeit**, hat nichts mit Sichtbarkeit zu tun.'},
+    {lv: 2, q: 'Welche Annotation kennzeichnet in Java eine überschriebene Methode?', o: ['@Override', '@Overload', '@Super', '@Abstract'], a: 0, e: '`@Override` lässt den Compiler prüfen, ob wirklich eine Methode der Oberklasse überschrieben wird.'},
+  ]},
+  {id: 'eua-konstruktor', t: 'Konstruktoren', qs: [
+    {lv: 1, q: 'Woran erkennt man in Java einen **Konstruktor**?', o: ['Gleicher Name wie die Klasse und kein Rückgabetyp', 'Er heißt immer init', 'Rückgabetyp void', 'Er ist immer static'], a: 0, e: 'Konstruktor: **Klassenname**, **kein** Rückgabetyp (auch nicht void).'},
+    {lv: 2, c: 'class Punkt {\n    int x, y;\n    Punkt(int x, int y) { this.x = x; this.y = y; }\n}\nPunkt p = new Punkt();', q: 'Was passiert?', o: ['Kompilierfehler, weil kein parameterloser Konstruktor existiert', 'p wird mit x = 0, y = 0 erzeugt', 'p ist null', 'Laufzeitfehler'], a: 0, e: 'Sobald ein **eigener** Konstruktor existiert, erzeugt Java den **Standardkonstruktor nicht mehr** automatisch.'},
+    {lv: 2, c: 'class A { A() { System.out.print("A"); } }\nclass B extends A { B() { System.out.print("B"); } }\nnew B();', q: 'Was wird ausgegeben?', o: ['AB', 'B', 'BA', 'A'], a: 0, e: 'Jeder Konstruktor ruft zuerst (implizit) `super()` auf, also **zuerst A**, dann B.'},
+    {lv: 3, c: 'class A { A() { System.out.print("1"); } }\nclass B extends A { B() { System.out.print("2"); } }\nclass C extends B { C() { System.out.print("3"); } }\nnew C();', q: 'Was wird ausgegeben?', o: ['123', '321', '3', '13'], a: 0, e: 'Konstruktorkette von der **obersten** Klasse nach unten.'},
+    {lv: 2, q: 'Wo muss der Aufruf `super(...)` bzw. `this(...)` im Konstruktor stehen?', o: ['In der ersten Zeile', 'In der letzten Zeile', 'Beliebig', 'Er ist in Konstruktoren verboten'], a: 0, e: 'Java verlangt `super(...)`/`this(...)` als **erste Anweisung**.'},
+    {lv: 2, c: 'class Artikel {\n    String name; double preis;\n    Artikel(String name) { this(name, 9.99); }\n    Artikel(String name, double preis) {\n        this.name = name; this.preis = preis;\n    }\n}\nArtikel a = new Artikel("Stift");', q: 'Welchen Preis hat `a`?', o: ['9.99', '0.0', 'null', 'Fehler'], a: 0, e: '`this(name, 9.99)` ruft den zweiten Konstruktor auf (**Konstruktorverkettung**).'},
+    {lv: 1, q: 'Wozu dient `this.name = name;` im Konstruktor?', o: ['Unterscheidet das Attribut name vom gleichnamigen Parameter', 'Ruft die Oberklasse auf', 'Erzeugt ein neues Objekt', 'Löscht den Parameter'], a: 0, e: '`this.name` = Attribut, `name` = Parameter, der das Attribut sonst **verdeckt**.'},
+    {k: 'tf', lv: 1, q: 'Eine Klasse kann mehrere Konstruktoren mit unterschiedlichen Parametern haben.', a: true, e: '**Überladen** von Konstruktoren ist üblich.'},
+    {k: 'tf', lv: 2, q: 'Hat eine Klasse gar keinen Konstruktor geschrieben, erzeugt Java automatisch einen parameterlosen Standardkonstruktor.', a: true, e: 'Der **Default-Konstruktor** entsteht nur, wenn kein eigener existiert.'},
+    {lv: 1, q: 'Wie heißt der Konstruktor in **Python**?', o: ['__init__', 'constructor', 'new', 'self'], a: 0, e: '`def __init__(self, ...)`. In JavaScript heißt er `constructor`.'},
+    {k: 'gap', lv: 2, q: 'Den Konstruktor der Oberklasse ruft man in Java mit ___(...) auf.', a: ['super'], e: '`super(...)`, C#: `: base(...)`.'},
+    {lv: 2, q: 'Wofür ist ein Konstruktor hauptsächlich zuständig?', o: ['Das neue Objekt in einen gültigen Anfangszustand zu versetzen', 'Das Objekt zu löschen', 'Werte zurückzugeben', 'Die Klasse zu kompilieren'], a: 0, e: 'Initialisierung, z. B. Pflichtwerte setzen und **prüfen**.'},
+    {lv: 3, c: 'class Kunde {\n    private static int naechsteNr = 100;\n    private int nr;\n    Kunde() { nr = naechsteNr++; }\n    int getNr() { return nr; }\n}\nnew Kunde(); new Kunde();\nKunde k = new Kunde();\nSystem.out.println(k.getNr());', q: 'Was wird ausgegeben?', o: ['102', '100', '103', '101'], a: 0, e: 'Postinkrement: 1. Kunde 100, 2. Kunde 101, 3. Kunde **102** (danach naechsteNr = 103).'},
+    {k: 'multi', lv: 2, q: 'Welche Aussagen über Konstruktoren sind richtig? (mehrere)', o: ['Sie werden bei new automatisch aufgerufen', 'Sie können überladen werden', 'Sie können private sein (z. B. Singleton)', 'Sie werden wie normale Methoden vererbt und überschrieben'], a: [0, 1, 2], e: 'Konstruktoren werden **nicht vererbt**, die Unterklasse ruft sie per `super` auf.'},
+    {lv: 2, q: 'Bei der **Komposition** im Klassendiagramm wird das Teilobjekt typischerweise ...', o: ['im Konstruktor des Ganzen erzeugt', 'von außen als Parameter übergeben', 'gar nicht erzeugt', 'als static deklariert'], a: 0, e: 'Komposition: Teil wird **im Konstruktor erzeugt** und lebt mit dem Ganzen. Aggregation: Teil wird **übergeben**.'},
+  ]},
+  {id: 'eua-interface', t: 'Interfaces und abstrakte Klassen', qs: [
+    {lv: 1, q: 'Mit welchem Schlüsselwort implementiert eine Java-Klasse ein Interface?', o: ['implements', 'extends', 'inherits', 'uses'], a: 0, e: '`class Pdf implements Druckbar`. Klassen erben mit `extends`.'},
+    {lv: 2, q: 'Was ist ein wesentlicher Unterschied zwischen **Interface** und **abstrakter Klasse** (Java)?', o: ['Eine Klasse kann mehrere Interfaces implementieren, aber nur von einer Klasse erben', 'Interfaces können Instanzattribute mit Zustand haben, abstrakte Klassen nicht', 'Von Interfaces kann man Objekte erzeugen', 'Abstrakte Klassen dürfen keine Methoden haben'], a: 0, e: 'Interfaces ermöglichen eine Art **Mehrfachvererbung von Typen**. Zustand (Instanzattribute) gibt es nur in Klassen.'},
+    {k: 'tf', lv: 1, q: 'Ein Interface beschreibt einen Vertrag: welche Methoden eine Klasse anbieten muss.', a: true, e: 'Interface = **Schnittstelle/Vertrag**, die Implementierung liefert die Klasse.'},
+    {k: 'tf', lv: 2, q: 'Seit Java 8 können Interfaces Methoden mit Rumpf enthalten (default-Methoden).', a: true, e: '`default void log() { ... }`, außerdem static-Methoden.'},
+    {lv: 2, q: 'Welche Attribute sind in einem Java-Interface erlaubt?', o: ['Nur Konstanten (implizit public static final)', 'Beliebige private Instanzattribute', 'Nur protected Attribute', 'Gar keine'], a: 0, e: 'Felder in Interfaces sind automatisch **public static final**.'},
+    {lv: 2, q: 'Wie wird die **Realisierung** eines Interfaces in UML dargestellt?', o: ['Gestrichelte Linie mit hohlem Dreieck zum Interface', 'Durchgezogene Linie mit hohlem Dreieck', 'Linie mit ausgefüllter Raute', 'Linie mit hohler Raute'], a: 0, e: 'Realisierung = **gestrichelt** + hohles Dreieck. Vererbung = **durchgezogen** + hohles Dreieck.'},
+    {lv: 2, c: 'interface Form { double flaeche(); }\nclass Quadrat implements Form {\n    double a;\n    Quadrat(double a) { this.a = a; }\n    public double flaeche() { return a * a; }\n}\nForm f = new Quadrat(3);\nSystem.out.println(f.flaeche());', q: 'Was wird ausgegeben?', o: ['9.0', '6.0', '3.0', 'Kompilierfehler, Form ist nicht instanziierbar'], a: 0, e: 'Die Variable hat den **Interface-Typ**, das Objekt ist ein Quadrat: 3·3 = 9.0. Instanziiert wird Quadrat, nicht Form.'},
+    {lv: 2, c: 'interface Druckbar { void drucke(); }\nclass Rechnung implements Druckbar { }', q: 'Was passiert beim Kompilieren?', o: ['Fehler: drucke() muss implementiert werden oder die Klasse muss abstract sein', 'Alles korrekt', 'Laufzeitfehler beim Aufruf', 'drucke() wird automatisch leer erzeugt'], a: 0, e: 'Eine konkrete Klasse muss **alle abstrakten** Methoden des Interfaces implementieren.'},
+    {k: 'match', lv: 2, q: 'Ordne zu.', o: [['Interface', 'nur Vertrag, mehrfach implementierbar'], ['Abstrakte Klasse', 'teilweise Implementierung mit Zustand, einfach vererbbar'], ['Konkrete Klasse', 'vollständig implementiert, instanziierbar'], ['Abstrakte Methode', 'Signatur ohne Rumpf']], e: 'Typische Abgrenzung in der AP2.'},
+    {lv: 2, q: 'Eine Software soll Zahlungen per **PayPal, Kreditkarte und Rechnung** abwickeln und später erweiterbar sein. Welche Lösung ist am saubersten?', o: ['Interface Zahlungsart mit Methode bezahlen(), je Zahlungsart eine Klasse', 'Eine große Klasse mit if-else für jede Zahlungsart', 'Drei unabhängige Klassen ohne gemeinsamen Typ', 'Eine globale Funktion je Zahlungsart'], a: 0, e: 'Gemeinsames **Interface** + Polymorphie: neue Zahlungsart = neue Klasse, bestehender Code bleibt (Open-Closed-Prinzip).'},
+    {k: 'gap', lv: 1, q: 'In UML steht über dem Namen eines Interfaces der Stereotyp <<___>>.', a: ['interface'], e: '`<<interface>>`, bei abstrakten Klassen wird der Name **kursiv** geschrieben oder `{abstract}` notiert.'},
+    {lv: 3, q: 'Welche Aussage ist FALSCH?', o: ['Eine abstrakte Klasse muss mindestens eine abstrakte Methode haben (Java)', 'Eine abstrakte Klasse darf Konstruktoren haben', 'Eine abstrakte Klasse darf konkrete Methoden haben', 'Eine Klasse mit abstrakter Methode muss selbst abstract sein'], a: 0, e: 'In Java darf eine Klasse **abstract** sein, auch ganz ohne abstrakte Methode.'},
+    {k: 'multi', lv: 2, q: 'Welche Vorteile bieten Interfaces? (mehrere)', o: ['Lose Kopplung', 'Austauschbarkeit von Implementierungen', 'Leichteres Testen mit Mock-Objekten', 'Sie speichern Daten effizienter'], a: [0, 1, 2], e: 'Man programmiert **gegen die Schnittstelle**, nicht gegen die Implementierung.'},
+    {lv: 1, q: 'Wie implementiert eine Klasse in **C#** ein Interface `IDruckbar`?', o: ['class Rechnung : IDruckbar', 'class Rechnung implements IDruckbar', 'class Rechnung extends IDruckbar', 'class Rechnung(IDruckbar)'], a: 0, e: 'C# nutzt für Vererbung und Interfaces den **Doppelpunkt**, Interfaces beginnen per Konvention mit I.'},
+    {lv: 2, c: 'from abc import ABC, abstractmethod\n\nclass Form(ABC):\n    @abstractmethod\n    def flaeche(self): pass\n\nf = Form()', q: 'Was passiert in Python?', o: ['TypeError: abstrakte Klasse kann nicht instanziiert werden', 'f ist ein leeres Form-Objekt', 'flaeche() gibt None zurück', 'SyntaxError'], a: 0, e: 'Mit **ABC** und `@abstractmethod` verhindert Python die Instanziierung.'},
+  ]},
+  {id: 'eua-umlcode', t: 'UML in Code umsetzen', qs: [
+    {lv: 1, q: 'Wie wird das UML-Attribut `- name: String` in Java umgesetzt?', o: ['private String name;', 'public String name;', 'protected String name;', 'static String name;'], a: 0, e: '`-` = **private**.'},
+    {lv: 1, q: 'Wie wird `+ getPreis(): double` in Java umgesetzt?', o: ['public double getPreis()', 'private double getPreis()', 'public void getPreis(double)', 'double public getPreis()'], a: 0, e: '`+` = public, Rückgabetyp steht nach dem Doppelpunkt.'},
+    {lv: 2, q: 'Was bedeutet ein **unterstrichenes** Attribut in UML?', o: ['static (Klassenattribut)', 'private', 'abstract', 'final'], a: 0, e: 'Unterstrichen = **static**. Kursiv = abstract.'},
+    {lv: 2, q: 'Kunde 1 —— * Bestellung. Wie bildet man das in der Klasse **Kunde** ab?', o: ['List<Bestellung> bestellungen;', 'Bestellung bestellung;', 'int bestellung;', 'Bestellung[] bestellung = new Bestellung[1];'], a: 0, e: 'Multiplizität `*` = beliebig viele → **Collection** (List).'},
+    {lv: 2, q: 'Bestellung * —— 1 Kunde. Was steht in der Klasse **Bestellung**?', o: ['Kunde kunde;', 'List<Kunde> kunden;', 'String kunde;', 'Gar nichts'], a: 0, e: 'Multiplizität 1 → **einzelne Referenz**.'},
+    {k: 'match', lv: 2, q: 'Ordne die UML-Darstellung der Beziehung zu.', o: [['Hohles Dreieck, durchgezogen', 'Vererbung (Generalisierung)'], ['Hohles Dreieck, gestrichelt', 'Realisierung (Interface)'], ['Ausgefüllte Raute', 'Komposition'], ['Hohle Raute', 'Aggregation'], ['Einfache Linie', 'Assoziation']], e: 'Die Raute sitzt immer beim **Ganzen**.'},
+    {lv: 2, q: 'Ein **Haus** besteht aus **Räumen**; ohne Haus existieren die Räume nicht. Welche Beziehung?', o: ['Komposition', 'Aggregation', 'Vererbung', 'Realisierung'], a: 0, e: 'Existenzabhängig = **Komposition** (ausgefüllte Raute).'},
+    {lv: 2, q: 'Eine **Mannschaft** hat **Spieler**, Spieler können aber auch ohne Mannschaft existieren. Welche Beziehung?', o: ['Aggregation', 'Komposition', 'Vererbung', 'Abhängigkeit'], a: 0, e: '"Hat ein" ohne Existenzabhängigkeit = **Aggregation** (hohle Raute).'},
+    {lv: 2, q: 'Wie lautet `Kind` erbt von `Person` in **Python**?', o: ['class Kind(Person):', 'class Kind extends Person:', 'class Kind : Person', 'class Kind implements Person:'], a: 0, e: 'Python: Oberklasse in Klammern.'},
+    {lv: 3, q: 'Welche Multiplizität bedeutet "keins oder eins"?', o: ['0..1', '1..*', '*', '1'], a: 0, e: '`0..1` = optional. Im Code: Referenz, die **null** sein darf.'},
+    {k: 'tf', lv: 2, q: 'Ein Klassenname in kursiver Schrift kennzeichnet in UML eine abstrakte Klasse.', a: true, e: 'Kursiv = **abstract**, alternativ `{abstract}`.'},
+    {k: 'gap', lv: 1, q: 'Das UML-Zeichen für die Sichtbarkeit protected ist ___.', a: ['#'], e: '`#` = protected, `+` public, `-` private.'},
+    {lv: 2, c: 'class Auto {\n    private Motor motor;\n    public Auto() {\n        motor = new Motor();\n    }\n}', q: 'Welche UML-Beziehung zwischen Auto und Motor setzt dieser Code am ehesten um?', o: ['Komposition', 'Aggregation', 'Vererbung', 'Realisierung'], a: 0, e: 'Der Motor wird **im Konstruktor erzeugt** und gehört fest zum Auto.'},
+    {lv: 2, q: 'Wie überschreibt man in **C#** eine abstrakte Methode `berechne()`?', o: ['public override double berechne()', 'public double berechne() @Override', 'public new double berechne()', 'public virtual abstract double berechne()'], a: 0, e: 'C# verlangt das Schlüsselwort **override**; Java nutzt die Annotation `@Override`.'},
+    {k: 'multi', lv: 2, q: 'Welche Informationen entnimmt man einem UML-Klassendiagramm für die Programmierung? (mehrere)', o: ['Attribute mit Typ und Sichtbarkeit', 'Methodensignaturen', 'Beziehungen und Multiplizitäten', 'Die genaue Implementierung der Methodenrümpfe'], a: [0, 1, 2], e: 'Das Klassendiagramm zeigt die **Struktur**, nicht die Algorithmen.'},
+    {lv: 3, q: 'Was bedeutet ein **Pfeil** an einer Assoziation (Navigierbarkeit) von Rechnung zu Kunde?', o: ['Rechnung kennt Kunde (hat eine Referenz), Kunde muss Rechnung nicht kennen', 'Kunde erbt von Rechnung', 'Rechnung ist Teil von Kunde', 'Beide kennen sich gegenseitig'], a: 0, e: 'Navigierbarkeit: nur die Klasse am Pfeilanfang braucht das **Referenzattribut**.'},
+  ]},
+]);
+;
+// content/quest/eua-2.js
+AP2.quest('eua', [
+  {id: 'eua-patterns', t: 'Entwurfsmuster', qs: [
+    {q: 'Welches Muster stellt sicher, dass es von einer Klasse **genau eine Instanz** gibt?', o: ['Singleton', 'Factory', 'Observer', 'Strategy'], a: 0, lv: 1, e: '**Singleton**: privater Konstruktor + `static getInstance()`. Factory erzeugt Objekte, legt aber keine Anzahl fest.'},
+    {q: 'Woran erkennt man ein Singleton im Code am sichersten?', o: ['Privater Konstruktor und statische getInstance()-Methode', 'Ein Interface mit einer Methode update()', 'Eine Methode create(typ) mit switch', 'Eine Liste von Listenern'], a: 0, lv: 1, e: 'Der **private Konstruktor** verhindert `new` von außen, `getInstance()` liefert immer dasselbe Objekt.'},
+    {q: 'Ein Wetterdienst soll alle angemeldeten Anzeigen automatisch benachrichtigen, wenn sich die Temperatur ändert. Welches Muster?', o: ['Observer', 'Singleton', 'Adapter', 'Factory'], a: 0, lv: 2, e: '**Observer**: Subjekt hält Liste von Beobachtern und ruft bei Änderung `notify()` / `update()` auf (1:n-Benachrichtigung).'},
+    {q: 'Ein Onlineshop soll die Versandkostenberechnung (DHL, UPS, Abholung) zur Laufzeit austauschen können. Welches Muster?', o: ['Strategy', 'Observer', 'Singleton', 'Composite'], a: 0, lv: 2, e: '**Strategy**: austauschbare Algorithmen hinter einem gemeinsamen Interface. Observer benachrichtigt, tauscht aber keinen Algorithmus.'},
+    {q: 'Welches Muster liegt vor?', c: `class Logger {
+  private static Logger inst;
+  private Logger() {}
+  public static Logger getInstance() {
+    if (inst == null) inst = new Logger();
+    return inst;
+  }
+}`, o: ['Singleton (lazy)', 'Factory Method', 'Observer', 'Decorator'], a: 0, lv: 1, e: 'Klassisches **Singleton** mit verzögerter (lazy) Erzeugung beim ersten Aufruf.'},
+    {q: 'Welches Muster liegt vor?', c: `Fahrzeug f = FahrzeugFabrik.erzeuge("LKW");
+// liefert LKW, PKW oder Motorrad`, o: ['Factory', 'Singleton', 'Strategy', 'Observer'], a: 0, lv: 1, e: 'Die **Factory** kapselt die Objekterzeugung: der Aufrufer kennt nur die Oberklasse/das Interface.'},
+    {k: 'match', q: 'Ordne das Muster seiner Kategorie zu', o: [['Singleton', 'Erzeugungsmuster'], ['Observer', 'Verhaltensmuster'], ['Adapter', 'Strukturmuster'], ['Factory', 'Erzeugungsmuster (zweites)']], e: 'Erzeugung: Singleton, Factory, Builder. Struktur: Adapter, Decorator, Composite, Facade, Proxy. Verhalten: Observer, Strategy.'},
+    {k: 'multi', q: 'Welche Muster sind **Verhaltensmuster**? (mehrere)', o: ['Observer', 'Strategy', 'Singleton', 'Adapter'], a: [0, 1], lv: 2, e: 'Observer und Strategy regeln Zusammenarbeit/Verhalten. Singleton = Erzeugung, Adapter = Struktur.'},
+    {q: 'Eine alte Bibliothek hat die Methode `getTemp()`, dein Code erwartet das Interface `Sensor.lesen()`. Welches Muster passt?', o: ['Adapter', 'Observer', 'Singleton', 'Strategy'], a: 0, lv: 2, e: 'Der **Adapter** übersetzt eine vorhandene Schnittstelle in die erwartete. Wie ein Reisestecker.'},
+    {q: 'Was ist ein typischer **Nachteil** des Singleton?', o: ['Globaler Zustand erschwert Unit-Tests', 'Es erzeugt zu viele Objekte', 'Es ist nur in Python möglich', 'Es verhindert Vererbung von Interfaces vollständig'], a: 0, lv: 2, e: 'Singleton ist **globaler Zustand**: schwer zu mocken, versteckte Abhängigkeiten, bei Threads Synchronisation nötig.'},
+    {k: 'tf', q: 'Beim Observer kennt das Subjekt die konkreten Klassen seiner Beobachter.', a: false, lv: 2, e: 'Das Subjekt kennt nur das **Observer-Interface** (`update()`). Das ist die lose Kopplung.'},
+    {q: 'Was bedeutet **MVC**?', o: ['Model, View, Controller', 'Module, Variable, Class', 'Main, Value, Code', 'Model, Vector, Component'], a: 0, lv: 1, e: '**Model** = Daten/Logik, **View** = Darstellung, **Controller** = Eingaben verarbeiten.'},
+    {k: 'match', q: 'Ordne die MVC-Teile zu', o: [['Model', 'Daten und Geschäftslogik'], ['View', 'Darstellung für den Benutzer'], ['Controller', 'Nimmt Eingaben entgegen und steuert']], e: 'Trennung der Verantwortlichkeiten: Oberfläche austauschbar, ohne die Logik zu ändern.'},
+    {q: 'Welche Aussage über Entwurfsmuster ist **FALSCH**?', o: ['Sie sind fertiger, kopierbarer Code einer Bibliothek', 'Sie sind bewährte Lösungsschablonen für wiederkehrende Probleme', 'Sie schaffen ein gemeinsames Vokabular im Team', 'Sie wurden u. a. von der Gang of Four beschrieben'], a: 0, lv: 2, e: 'Muster sind **Lösungsideen**, kein fertiger Code. Sie müssen für den Fall umgesetzt werden.'},
+    {k: 'gap', q: 'Beim Observer heißt die Methode, die jeden Beobachter informiert, oft ___ (das Subjekt ruft sie in einer Schleife auf).', a: ['notify', 'notifyObservers', 'benachrichtigen'], lv: 2, e: '`notify()` durchläuft die Liste und ruft bei jedem Beobachter `update()` auf.'},
+    {q: 'Eine Kaffeemaschine soll Extras (Milch, Zucker, Sirup) beliebig **kombiniert** um ein Getränk legen, ohne für jede Kombination eine Unterklasse. Welches Muster?', o: ['Decorator', 'Singleton', 'Factory', 'Observer'], a: 0, lv: 3, e: '**Decorator** umhüllt ein Objekt und erweitert es dynamisch. Unterklassen für jede Kombination würden explodieren.'},
+    {q: 'Was ist der Hauptnutzen der **Strategy** gegenüber einem großen `if/else` über die Varianten?', o: ['Neue Varianten ohne Änderung der Kontextklasse (Open-Closed)', 'Schnellere Ausführung', 'Weniger Klassen', 'Nur eine Instanz der Strategie'], a: 0, lv: 3, e: 'Neue Strategie = neue Klasse, der Kontext bleibt unverändert. Das ist das **Open-Closed-Prinzip**. Es entstehen eher mehr Klassen.'},
+  ]},
+  {id: 'eua-exceptions', t: 'Exceptions', qs: [
+    {q: 'Welcher Block wird **immer** ausgeführt, egal ob eine Exception auftritt?', o: ['finally', 'catch', 'try', 'throw'], a: 0, lv: 1, e: '`finally` läuft immer, auch nach `return` im try. Ideal zum Aufräumen (Datei/Verbindung schließen).'},
+    {q: 'Was wird ausgegeben?', c: `try {
+  System.out.print("A");
+  int x = 10 / 0;
+  System.out.print("B");
+} catch (ArithmeticException e) {
+  System.out.print("C");
+} finally {
+  System.out.print("D");
+}`, o: ['ACD', 'ABCD', 'ACBD', 'AD'], a: 0, lv: 2, e: 'Nach "A" wirft `10/0` eine **ArithmeticException**, "B" wird übersprungen, catch gibt "C" aus, finally "D".'},
+    {q: 'Was wird ausgegeben?', c: `try {
+  System.out.print("1");
+} catch (Exception e) {
+  System.out.print("2");
+} finally {
+  System.out.print("3");
+}
+System.out.print("4");`, o: ['134', '1234', '13', '14'], a: 0, lv: 1, e: 'Ohne Exception wird catch übersprungen, finally läuft trotzdem, danach geht es normal weiter.'},
+    {q: 'Was wird ausgegeben?', c: `try {
+  int[] a = new int[3];
+  a[3] = 5;
+} catch (ArithmeticException e) {
+  System.out.print("X");
+} catch (ArrayIndexOutOfBoundsException e) {
+  System.out.print("Y");
+} finally {
+  System.out.print("Z");
+}`, o: ['YZ', 'XZ', 'XYZ', 'Z'], a: 0, lv: 2, e: 'Index 3 bei Länge 3 ist ungültig (0..2): **ArrayIndexOutOfBounds**, passender zweiter catch, dann finally.'},
+    {k: 'gap', q: 'Mit dem Schlüsselwort ___ löst man in Java selbst eine Exception aus.', a: ['throw'], lv: 1, e: '`throw new IllegalArgumentException("...")`. `throws` (mit s) steht dagegen in der Methodensignatur.'},
+    {q: 'Was ist der Unterschied zwischen `throw` und `throws`?', o: ['throw löst aus, throws kündigt in der Signatur an', 'Beide sind identisch', 'throws löst aus, throw kündigt an', 'throw gibt es nur in Python'], a: 0, lv: 2, e: '`throw` = Anweisung, die wirft. `throws IOException` = Deklaration, dass die Methode das weitergeben kann.'},
+    {k: 'tf', q: 'Ein `catch (Exception e)` vor `catch (IOException e)` ist in Java problemlos möglich.', a: false, lv: 3, e: 'Der allgemeine Typ fängt alles ab, der spezielle catch wäre **unerreichbar**, das ist ein Compilerfehler. Spezielle zuerst!'},
+    {k: 'order', q: 'Ordne die catch-Blöcke korrekt an (von oben nach unten)', o: ['catch (FileNotFoundException e)', 'catch (IOException e)', 'catch (Exception e)'], lv: 2, e: 'Vom **speziellsten** zum allgemeinsten: FileNotFoundException erbt von IOException, diese von Exception.'},
+    {q: 'Was gibt die Methode zurück?', c: `int f() {
+  try { return 1; }
+  finally { System.out.print("F"); }
+}`, o: ['Gibt F aus und liefert 1', 'Liefert 1, F wird nie ausgegeben', 'Compilerfehler', 'Liefert 0'], a: 0, lv: 3, e: 'finally läuft auch nach `return` noch, bevor die Methode wirklich verlassen wird.'},
+    {q: 'Eine Methode erhält ein negatives Alter als Parameter. Welche Exception ist fachlich passend?', o: ['IllegalArgumentException', 'NullPointerException', 'ArithmeticException', 'FileNotFoundException'], a: 0, lv: 2, e: '**IllegalArgumentException** = ungültiger Parameterwert. NullPointer wäre bei null, Arithmetic bei Division durch 0.'},
+    {k: 'match', q: 'Ordne Fehlerursache und Exception zu', o: [['Methode auf null aufrufen', 'NullPointerException'], ['10 / 0 (int)', 'ArithmeticException'], ['Integer.parseInt("abc")', 'NumberFormatException'], ['Datei existiert nicht', 'FileNotFoundException']], e: 'Typische Laufzeitausnahmen, die in Prüfungen im Code versteckt werden.'},
+    {k: 'multi', q: 'Welche sind in Java **checked** Exceptions (müssen behandelt oder mit throws deklariert werden)? (mehrere)', o: ['IOException', 'SQLException', 'NullPointerException', 'ArithmeticException'], a: [0, 1], lv: 3, e: 'Checked: IOException, SQLException. RuntimeExceptions (NullPointer, Arithmetic, IndexOutOfBounds) sind unchecked.'},
+    {q: 'Was passiert, wenn eine Exception nirgends gefangen wird?', o: ['Sie wandert den Aufrufstack hoch und beendet das Programm mit Stacktrace', 'Sie wird automatisch ignoriert', 'Das Programm macht mit der nächsten Zeile weiter', 'Der Compiler verhindert das immer'], a: 0, lv: 2, e: 'Ungefangene Exceptions werden an den Aufrufer **weitergereicht**, ganz oben bricht das Programm mit Stacktrace ab.'},
+    {q: 'Welcher Python-Block entspricht Javas `catch`?', o: ['except', 'catch', 'rescue', 'else'], a: 0, lv: 1, e: 'Python: `try / except / else / finally`, Auslösen mit `raise`.'},
+    {k: 'tf', q: 'Ein leerer catch-Block (`catch (Exception e) {}`) ist guter Stil, weil das Programm dann nie abstürzt.', a: false, lv: 1, e: 'Fehler werden **verschluckt**, niemand bemerkt sie. Mindestens loggen oder sinnvoll reagieren.'},
+    {q: 'Was gibt das Python-Programm aus?', c: `try:
+    x = int("7")
+    print("A")
+except ValueError:
+    print("B")
+else:
+    print("C")
+finally:
+    print("D")`, o: ['A C D', 'A B D', 'A D', 'B D'], a: 0, lv: 3, e: '"7" ist gültig, keine Exception: try ("A"), dann **else** ("C", läuft nur ohne Fehler), dann finally ("D").'},
+  ]},
+  {id: 'eua-debugging', t: 'Debugging', qs: [
+    {k: 'match', q: 'Ordne die Fehlerart zu', o: [['Semikolon fehlt, Code kompiliert nicht', 'Syntaxfehler'], ['Division durch 0 während der Ausführung', 'Laufzeitfehler'], ['Programm läuft, rechnet aber falsch', 'Logischer Fehler']], e: 'Syntax: Compiler meldet. Laufzeit: Absturz/Exception. Logik: falsches Ergebnis, am schwersten zu finden.'},
+    {q: 'Welcher Fehler wird vom Compiler **nicht** gefunden?', o: ['Logischer Fehler', 'Fehlende Klammer', 'Falsch geschriebenes Schlüsselwort', 'Fehlendes Semikolon'], a: 0, lv: 1, e: 'Logische Fehler sind syntaktisch korrekt. Nur Tests oder Debugging zeigen sie.'},
+    {q: 'Welcher Fehler steckt hier? (soll die Summe 1..10 liefern)', c: `int summe = 0;
+for (int i = 1; i < 10; i++) {
+  summe += i;
+}`, o: ['Off-by-one: i < 10 statt i <= 10, Ergebnis 45 statt 55', 'Syntaxfehler im for', 'Laufzeitfehler durch Überlauf', 'Kein Fehler'], a: 0, lv: 2, e: 'Die 10 fehlt: 1..9 = **45**. Klassischer **Off-by-one**-Fehler, ein logischer Fehler.'},
+    {k: 'match', q: 'Ordne die Debugger-Befehle zu', o: [['Step Over', 'Nächste Zeile, Methodenaufruf als Ganzes'], ['Step Into', 'In die aufgerufene Methode hineinspringen'], ['Step Out', 'Aktuelle Methode zu Ende laufen lassen'], ['Continue', 'Bis zum nächsten Breakpoint laufen']], e: 'Grundbefehle jedes Debuggers (IDE: F8/F7/Shift+F8 bzw. F10/F11).'},
+    {q: 'Was ist ein **Breakpoint**?', o: ['Haltepunkt, an dem das Programm im Debugger anhält', 'Ein Laufzeitfehler', 'Das Ende einer Schleife', 'Eine Exception-Klasse'], a: 0, lv: 1, e: 'Am Haltepunkt kann man Variablen inspizieren und schrittweise weitergehen.'},
+    {q: 'Ein Fehler tritt nur bei der 500. Schleifenrunde auf. Welches Debugger-Werkzeug spart am meisten Zeit?', o: ['Bedingter Breakpoint (z. B. i == 500)', 'Step Into bei jeder Runde', 'Programm neu kompilieren', 'Mehr Kommentare schreiben'], a: 0, lv: 2, e: 'Ein **bedingter Breakpoint** hält nur an, wenn die Bedingung wahr ist.'},
+    {q: 'Was zeigt ein **Stacktrace**?', o: ['Die Aufrufkette der Methoden bis zur Fehlerstelle', 'Den Inhalt des Arbeitsspeichers', 'Alle Variablenwerte', 'Die Versionsgeschichte'], a: 0, lv: 1, e: 'Er listet Methode, Klasse und Zeile jeder Aufrufebene. Oberste Zeile = Ort der Exception.'},
+    {k: 'order', q: 'Bringe das systematische Vorgehen beim Debuggen in Reihenfolge', o: ['Fehler reproduzieren', 'Fehlerstelle eingrenzen', 'Ursache finden', 'Beheben', 'Erneut testen (Regressionstest)'], lv: 2, e: 'Erst reproduzierbar machen, sonst kann man die Korrektur nicht prüfen. Am Ende Tests erneut laufen lassen.'},
+    {q: 'Was ist **Rubber Duck Debugging**?', o: ['Den Code Zeile für Zeile jemandem (oder einer Ente) erklären', 'Ein automatisches Testwerkzeug', 'Debuggen ohne Breakpoints im Produktivsystem', 'Ein Profiler'], a: 0, lv: 1, e: 'Beim lauten Erklären fällt der Denkfehler oft selbst auf.'},
+    {q: 'Was passiert hier?', c: `String s = null;
+System.out.println(s.length());`, o: ['NullPointerException zur Laufzeit', 'Ausgabe 0', 'Syntaxfehler', 'Ausgabe null'], a: 0, lv: 1, e: 'Methodenaufruf auf `null` ergibt eine **NullPointerException**, ein Laufzeitfehler.'},
+    {k: 'tf', q: 'Logging (z. B. mit Log-Levels DEBUG/INFO/ERROR) ist besonders bei Fehlern im Produktivsystem hilfreich, wo kein Debugger angehängt werden kann.', a: true, lv: 2, e: 'Log-Dateien zeigen nachträglich, was passiert ist. Im Produktivsystem debuggt man selten interaktiv.'},
+    {q: 'Was wird ausgegeben (Python)?', c: `werte = [3, 8, 2]
+maxi = 0
+for w in werte:
+    if w < maxi:
+        maxi = w
+print(maxi)`, o: ['0', '8', '2', '3'], a: 0, lv: 2, e: 'Die Bedingung ist vertauscht (`<` statt `>`): kein Wert ist kleiner als 0, maxi bleibt **0**. Logischer Fehler.'},
+    {q: 'Was ist das Ziel eines **Schreibtischtests**?', o: ['Code ohne Rechner von Hand mit Wertetabelle durchgehen', 'Die Oberfläche testen', 'Lasttests am Arbeitsplatz', 'Kompilieren auf einem Testrechner'], a: 0, lv: 1, e: 'Variablenwerte pro Schritt in einer **Trace-Tabelle** notieren. In AP2 sehr häufig verlangt.'},
+    {k: 'num', q: 'Welchen Wert hat x am Ende?', c: `int x = 1;
+for (int i = 0; i < 4; i++) {
+  x = x * 2;
+}`, a: 16, tol: 0, lv: 1, e: '1, 2, 4, 8, 16: viermal verdoppelt = **16**.'},
+    {k: 'multi', q: 'Welche Hilfsmittel eignen sich zur Fehlersuche? (mehrere)', o: ['Debugger mit Watch-Ausdrücken', 'Log-Ausgaben', 'Unit-Tests', 'Code-Kommentare löschen'], a: [0, 1, 2], lv: 1, e: 'Kommentare löschen findet keinen Fehler. Watches, Logs und Tests helfen.'},
+  ]},
+  {id: 'eua-testfaelle', t: 'Testfälle', qs: [
+    {q: 'Ein Feld akzeptiert ein Alter von 18 bis 65. Wie viele **Äquivalenzklassen** gibt es mindestens?', o: ['3 (zu klein, gültig, zu groß)', '1', '2', '48'], a: 0, lv: 1, e: 'Eine gültige Klasse 18..65 und zwei ungültige: < 18 und > 65.'},
+    {k: 'multi', q: 'Gültig ist 18 bis 65. Welche Werte sind typische **Grenzwerte**? (mehrere)', o: ['17', '18', '65', '66', '40'], a: [0, 1, 2, 3], lv: 2, e: 'Grenzwertanalyse: direkt an und neben jeder Grenze (17/18, 65/66). 40 ist ein Repräsentant der gültigen Klasse.'},
+    {q: 'Was ist der Kerngedanke der Äquivalenzklassenbildung?', o: ['Alle Werte einer Klasse verhalten sich gleich, ein Repräsentant genügt', 'Jeder mögliche Wert muss getestet werden', 'Nur Grenzen werden getestet', 'Der Code wird Zeile für Zeile geprüft'], a: 0, lv: 1, e: 'Das reduziert die Zahl der Testfälle stark, ohne Abdeckung zu verlieren.'},
+    {k: 'match', q: 'Ordne die Testverfahren zu', o: [['Blackbox-Test', 'Testet gegen die Spezifikation, Code unbekannt'], ['Whitebox-Test', 'Testet anhand der Codestruktur'], ['Grenzwertanalyse', 'Werte an Klassengrenzen'], ['Anweisungsüberdeckung', 'Jede Anweisung mindestens einmal ausgeführt']], e: 'Äquivalenzklassen und Grenzwerte sind Blackbox, Überdeckungen (C0, C1) Whitebox.'},
+    {q: 'Rabatt: unter 100 EUR 0 %, ab 100 EUR 5 %, ab 500 EUR 10 %. Welcher Testwertsatz deckt alle Grenzen am besten ab?', o: ['99,99 / 100 / 499,99 / 500', '50 / 300 / 800', '0 / 1000', '100 / 200 / 300'], a: 0, lv: 2, e: 'Je Grenze den Wert direkt davor und genau auf der Grenze. 50/300/800 sind nur Repräsentanten.'},
+    {k: 'num', q: 'Wie viele Testfälle braucht man mindestens für **Zweigüberdeckung (C1)**?', c: `if (a > 0) {
+  x = 1;
+} else {
+  x = 2;
+}
+if (b > 0) {
+  y = 1;
+}`, a: 2, tol: 0, lv: 3, e: 'Beide ifs haben je 2 Zweige. Testfall 1: a>0, b>0. Testfall 2: a<=0, b<=0. Mit **2** Fällen sind alle 4 Zweige durchlaufen.'},
+    {k: 'tf', q: 'Volle **Anweisungsüberdeckung (C0)** garantiert, dass auch jeder Zweig durchlaufen wurde.', a: false, lv: 3, e: 'Ein `if` ohne else: C0 ist mit "Bedingung wahr" erfüllt, der leere false-Zweig fehlt. **C1 ist stärker als C0.**'},
+    {q: 'Was gehört **nicht** zu einem vollständigen Testfall?', o: ['Name des Programmierers, der den Code geschrieben hat', 'Eingabewerte', 'Erwartetes Ergebnis', 'Vorbedingung'], a: 0, lv: 1, e: 'Testfall = ID, Vorbedingung, Eingabe, **erwartetes Ergebnis**, tatsächliches Ergebnis, Status.'},
+    {k: 'gap', q: 'Ein Testfall vergleicht das tatsächliche Ergebnis mit dem ___ Ergebnis (Soll).', a: ['erwarteten', 'erwartete', 'Soll'], lv: 1, e: 'Ohne erwartetes Ergebnis kann man nicht entscheiden, ob der Test bestanden ist.'},
+    {q: 'Eine PLZ muss genau 5 Ziffern haben. Welcher Testwert gehört zu einer **ungültigen** Klasse?', o: ['"1234"', '"10115"', '"80331"', '"01067"'], a: 0, lv: 1, e: 'Nur 4 Ziffern = zu kurz. Die anderen sind gültige Repräsentanten (auch mit führender 0).'},
+    {k: 'order', q: 'Ordne die Teststufen (V-Modell) von unten nach oben', o: ['Komponententest (Unit)', 'Integrationstest', 'Systemtest', 'Abnahmetest'], lv: 2, e: 'Erst einzelne Einheiten, dann Zusammenspiel, dann Gesamtsystem, zuletzt Abnahme durch den Kunden.'},
+    {q: 'Nach einer Fehlerkorrektur werden alle bestehenden Tests erneut ausgeführt. Wie heißt das?', o: ['Regressionstest', 'Abnahmetest', 'Smoke-Test', 'Lasttest'], a: 0, lv: 1, e: 'Der **Regressionstest** prüft, dass die Änderung nichts kaputt gemacht hat.'},
+    {q: 'Wer führt den **Abnahmetest** typischerweise durch?', o: ['Der Auftraggeber / Fachanwender', 'Der Entwickler allein', 'Der Compiler', 'Der Datenbankadministrator'], a: 0, lv: 1, e: 'Der Kunde prüft gegen das **Lastenheft** und nimmt formal ab.'},
+    {k: 'multi', q: 'Ein Feld erwartet eine Menge (ganze Zahl 1 bis 99). Welche gehören zu **ungültigen** Klassen? (mehrere)', o: ['0', '100', '"zwei"', 'leeres Feld', '50'], a: [0, 1, 2, 3], lv: 2, e: 'Zu klein, zu groß, falscher Typ, leer. 50 ist gültig.'},
+    {q: 'Welche Testart misst das Verhalten bei 1000 gleichzeitigen Benutzern?', o: ['Lasttest', 'Unit-Test', 'Schreibtischtest', 'Grenzwerttest'], a: 0, lv: 1, e: 'Lasttest = nicht-funktionaler Test der Performance unter Last.'},
+    {k: 'num', q: 'Gültig: 1 bis 10. Nach Grenzwertanalyse (je Grenze Wert davor und darauf, also 0, 1, 10, 11) plus ein Repräsentant der gültigen Klasse: wie viele Testwerte?', a: 5, tol: 0, lv: 2, e: '0, 1, 10, 11 und z. B. 5 = **5** Testwerte.'},
+  ]},
+  {id: 'eua-unittest', t: 'Unit-Tests', qs: [
+    {q: 'Was testet ein **Unit-Test**?', o: ['Eine kleine Einheit (Methode/Klasse) isoliert', 'Das gesamte System mit Datenbank', 'Die Benutzeroberfläche', 'Die Netzwerkverbindung'], a: 0, lv: 1, e: 'Kleinste testbare Einheit, schnell und automatisch, Abhängigkeiten werden ersetzt (Mocks).'},
+    {k: 'order', q: 'Ordne die Phasen eines Tests nach **AAA**', o: ['Arrange (vorbereiten)', 'Act (ausführen)', 'Assert (prüfen)'], lv: 1, e: 'Arrange-Act-Assert ist das Standardschema jedes Unit-Tests.'},
+    {q: 'Welche Assertion ist hier richtig, damit der Test grün wird?', c: `@Test
+void testBrutto() {
+  Rechner r = new Rechner();
+  double b = r.brutto(100.0); // 19 % MwSt
+  assertEquals(___, b, 0.001);
+}`, o: ['119.0', '19.0', '100.19', '81.0'], a: 0, lv: 1, e: '100 * 1,19 = **119**. Der dritte Parameter 0.001 ist die Toleranz für double-Vergleiche.'},
+    {q: 'Warum gibt man bei `assertEquals(119.0, b, 0.001)` ein Delta an?', o: ['Gleitkommazahlen sind ungenau, exakter Vergleich kann fehlschlagen', 'Damit der Test schneller läuft', 'Das Delta ist die maximale Laufzeit', 'Pflicht bei allen Datentypen'], a: 0, lv: 2, e: '0.1 + 0.2 ist nicht exakt 0.3. Mit **Toleranz** vergleicht man double sicher.'},
+    {q: 'Wie prüft man in JUnit 5, dass eine Methode eine Exception wirft?', o: ['assertThrows(IllegalArgumentException.class, () -> obj.m(-1))', 'assertEquals(Exception, obj.m(-1))', 'assertTrue(obj.m(-1))', 'try ohne catch im Test'], a: 0, lv: 2, e: '`assertThrows` erwartet den Exception-Typ und ein Lambda mit dem Aufruf.'},
+    {k: 'match', q: 'Ordne die JUnit-5-Annotationen zu', o: [['@Test', 'Markiert eine Testmethode'], ['@BeforeEach', 'Läuft vor jedem Test'], ['@AfterEach', 'Läuft nach jedem Test'], ['@BeforeAll', 'Läuft einmal vor allen Tests']], e: '@BeforeEach eignet sich zum Anlegen frischer Testobjekte (Arrange).'},
+    {q: 'Was ist ein **Mock**?', o: ['Ein Ersatzobjekt, das eine echte Abhängigkeit simuliert', 'Ein fehlgeschlagener Test', 'Ein Code-Kommentar', 'Ein Teil der Produktionsdatenbank'], a: 0, lv: 2, e: 'Mocks ersetzen z. B. Datenbank oder Webservice, damit der Unit-Test isoliert und schnell bleibt.'},
+    {k: 'order', q: 'Ordne den TDD-Zyklus', o: ['Red: fehlschlagenden Test schreiben', 'Green: minimalen Code schreiben, bis der Test läuft', 'Refactor: Code verbessern, Tests bleiben grün'], lv: 2, e: '**Test Driven Development**: Test zuerst. Red, Green, Refactor.'},
+    {k: 'tf', q: 'Bei TDD wird der Test geschrieben, **bevor** der Produktivcode existiert.', a: true, lv: 1, e: 'Deshalb ist der erste Lauf rot (Red).'},
+    {k: 'multi', q: 'Welche Eigenschaften sollte ein guter Unit-Test haben (FIRST)? (mehrere)', o: ['Fast (schnell)', 'Independent (unabhängig)', 'Repeatable (wiederholbar)', 'Abhängig von der Testreihenfolge'], a: [0, 1, 2], lv: 2, e: 'FIRST: Fast, Independent, Repeatable, Self-validating, Timely. Reihenfolgeabhängigkeit ist ein Fehler.'},
+    {q: 'Welcher Test ist fehlerhaft formuliert?', c: `@Test
+void testMax() {
+  int m = Util.max(3, 7);
+  System.out.println(m);
+}`, o: ['Er enthält keine Assertion, er kann nie fehlschlagen', 'Er ruft die falsche Methode', 'Annotation fehlt', 'Er ist korrekt'], a: 0, lv: 2, e: 'Ohne `assertEquals(7, m)` prüft der Test nichts (nicht **self-validating**).'},
+    {k: 'gap', q: 'In Python heißt das eingebaute Testframework ___ (Klasse TestCase, Methoden assertEqual).', a: ['unittest'], lv: 2, e: '`import unittest`, Testklasse erbt von `unittest.TestCase`. Alternativ pytest.'},
+    {q: 'Was bedeutet eine **Testabdeckung** (Code Coverage) von 80 %?', o: ['80 % der Codezeilen/Zweige wurden durch Tests ausgeführt', '80 % der Tests sind grün', 'Der Code ist zu 80 % fehlerfrei', '80 % der Anforderungen sind umgesetzt'], a: 0, lv: 2, e: 'Coverage misst nur, was **ausgeführt** wurde, nicht ob die Assertions sinnvoll sind.'},
+    {q: 'Wo laufen Unit-Tests idealerweise automatisch bei jedem Commit?', o: ['In der CI-Pipeline (Continuous Integration)', 'Nur beim Kunden', 'Im Produktivsystem', 'Gar nicht, nur manuell'], a: 0, lv: 1, e: 'CI-Server (z. B. GitHub Actions, Jenkins) bauen und testen jede Änderung.'},
+    {k: 'tf', q: '`assertEquals(erwartet, tatsaechlich)` – in JUnit steht der **erwartete** Wert zuerst.', a: true, lv: 2, e: 'Vertauscht funktioniert der Test zwar, aber die Fehlermeldung ("expected X but was Y") wird irreführend.'},
+  ]},
+  {id: 'eua-dateien', t: 'Dateiverarbeitung', qs: [
+    {k: 'order', q: 'Bringe die Schritte der Dateiverarbeitung in Reihenfolge', o: ['Datei öffnen', 'Zeilen lesen / schreiben', 'Datei schließen'], lv: 1, e: 'Schließen gibt Ressourcen frei und schreibt Puffer. Am besten automatisch (try-with-resources / with).'},
+    {q: 'Was bewirkt der Python-Modus `"a"` bei `open("log.txt", "a")`?', o: ['Anhängen ans Dateiende', 'Datei überschreiben', 'Nur lesen', 'Binär lesen'], a: 0, lv: 1, e: '`r` lesen, `w` schreiben (überschreibt!), `a` anhängen (append).'},
+    {q: 'Warum ist `with open(...) as f:` in Python empfehlenswert?', o: ['Die Datei wird automatisch geschlossen, auch bei Exceptions', 'Es liest schneller', 'Es verschlüsselt die Datei', 'Es ist die einzige Möglichkeit zu lesen'], a: 0, lv: 2, e: 'Kontextmanager = Pendant zu Javas **try-with-resources**.'},
+    {q: 'Wie viele Zeilen werden ausgegeben?', c: `# datei.csv:
+# id;name;ort
+# 1;Anna;Köln
+# 2;Ben;Bonn
+# 3;Cem;Köln
+with open("datei.csv") as f:
+    next(f)            # Kopfzeile überspringen
+    for z in f:
+        teile = z.strip().split(";")
+        if teile[2] == "Köln":
+            print(teile[1])`, o: ['2', '3', '1', '4'], a: 0, lv: 2, e: 'Kopfzeile übersprungen, Ort Köln: Anna und Cem = **2** Ausgaben.'},
+    {k: 'gap', q: 'Beim Zerlegen einer CSV-Zeile in Felder nutzt man in Python/Java die Methode ___.', a: ['split'], lv: 1, e: '`zeile.split(";")` liefert eine Liste/Array der Felder.'},
+    {q: 'Was ist ein **Gruppenwechsel**?', o: ['Verarbeitung einer nach einem Schlüssel sortierten Datei mit Zwischensummen bei Schlüsseländerung', 'Wechsel der Benutzergruppe im Betriebssystem', 'Das Umbenennen einer Datei', 'Ein Sortierverfahren'], a: 0, lv: 2, e: 'Voraussetzung: Daten sind **nach dem Gruppenschlüssel sortiert**. Wechselt der Schlüssel, wird die Gruppensumme ausgegeben.'},
+    {q: 'Was ist Voraussetzung für den Gruppenwechsel-Algorithmus?', o: ['Die Datensätze sind nach dem Gruppierungsmerkmal sortiert', 'Die Datei ist im JSON-Format', 'Die Datei hat weniger als 100 Zeilen', 'Jeder Schlüssel kommt nur einmal vor'], a: 0, lv: 2, e: 'Unsortiert würde dieselbe Gruppe mehrfach erscheinen und die Summen wären falsch.'},
+    {k: 'num', q: 'Gruppenwechsel nach Filiale. Welche Zwischensumme wird für Filiale B ausgegeben?', c: `Filiale;Umsatz
+A;100
+A;50
+B;200
+B;30
+B;70
+C;10`, a: 300, tol: 0, lv: 2, e: 'B: 200 + 30 + 70 = **300**.'},
+    {k: 'num', q: 'Wie viele Gruppensummen werden bei obigem Beispiel (A, A, B, B, B, C) ausgegeben?', a: 3, tol: 0, lv: 1, e: 'Drei Gruppen A, B, C. Die letzte Gruppe muss **nach Dateiende** noch ausgegeben werden (häufiger Fehler!).'},
+    {k: 'tf', q: 'Beim Gruppenwechsel darf man die Ausgabe der letzten Gruppe nach dem Schleifenende vergessen, da sie automatisch erfolgt.', a: false, lv: 2, e: 'Die letzte Gruppe hat keinen Folgewechsel, sie muss **nach der Schleife** extra ausgegeben werden.'},
+    {q: 'Was passiert bei `open("daten.txt", "w")`, wenn die Datei bereits existiert?', o: ['Der Inhalt wird gelöscht und neu geschrieben', 'Es wird angehängt', 'Es gibt immer eine Exception', 'Die Datei wird nur gelesen'], a: 0, lv: 1, e: 'Modus `w` **überschreibt**. Für Anhängen `a` verwenden.'},
+    {q: 'Welche Exception tritt in Java auf, wenn eine zu lesende Datei nicht existiert?', o: ['FileNotFoundException', 'NullPointerException', 'ArithmeticException', 'ClassCastException'], a: 0, lv: 1, e: 'Eine checked Exception (Unterklasse von IOException).'},
+    {k: 'match', q: 'Ordne die Java-Klassen zu', o: [['BufferedReader', 'Zeilenweise lesen (readLine)'], ['FileWriter', 'Zeichen in eine Datei schreiben'], ['try-with-resources', 'Automatisches Schließen']], e: '`readLine()` liefert `null` am Dateiende.'},
+    {q: 'Was liefert `BufferedReader.readLine()` am Dateiende?', o: ['null', '""', '-1', 'EOF-Exception'], a: 0, lv: 2, e: 'Typische Schleife: `while ((zeile = br.readLine()) != null)`.'},
+    {q: 'Welche Zugriffsart erlaubt es, direkt zum 500. Datensatz zu springen?', o: ['Wahlfreier (direkter) Zugriff', 'Sequenzieller Zugriff', 'Append-Modus', 'Nur-Lesen-Modus'], a: 0, lv: 2, e: 'Sequenziell = der Reihe nach lesen. Wahlfrei (z. B. RandomAccessFile, seek) = Position direkt anspringen.'},
+  ]},
+  {id: 'eua-formate', t: 'Datenformate', qs: [
+    {q: 'Was ist an diesem JSON **ungültig**?', c: `{
+  'name': 'Anna',
+  "alter": 30
+}`, o: ['Schlüssel und Strings müssen in doppelten Anführungszeichen stehen', 'Zahlen müssen in Anführungszeichen', 'Es fehlt ein Wurzelelement', 'Nichts'], a: 0, lv: 2, e: 'JSON erlaubt **nur doppelte Anführungszeichen**. Einfache gehen in JavaScript, nicht in JSON.'},
+    {k: 'num', q: 'Wie viele Elemente hat das Array "kurse"?', c: `{
+  "name": "Ben",
+  "kurse": ["SQL", "Java", "Netze"],
+  "aktiv": true
+}`, a: 3, tol: 0, lv: 1, e: 'Das Array in eckigen Klammern enthält **3** Strings.'},
+    {q: 'Was ist an diesem JSON falsch?', c: `{
+  "id": 1,
+  "tags": ["a", "b"],
+}`, o: ['Komma nach dem letzten Element (trailing comma)', 'Arrays sind nicht erlaubt', 'Zahlen müssen Strings sein', 'Nichts'], a: 0, lv: 2, e: 'JSON verbietet ein **abschließendes Komma**.'},
+    {k: 'multi', q: 'Welche Datentypen kennt JSON? (mehrere)', o: ['String', 'Number', 'Boolean', 'null', 'Date'], a: [0, 1, 2, 3], lv: 2, e: 'Plus Objekt und Array. Ein Datum gibt es nicht, man speichert es als String (z. B. ISO 8601).'},
+    {q: 'Welcher Wert liefert `daten.kunde.adresse.ort`?', c: `{"kunde": {"name": "Cem",
+  "adresse": {"plz": "50667", "ort": "Köln"}}}`, o: ['"Köln"', '"50667"', '"Cem"', 'undefined'], a: 0, lv: 1, e: 'Verschachtelte Objekte werden mit Punktnotation durchlaufen.'},
+    {q: 'Was ist an diesem XML **nicht wohlgeformt**?', c: `<kunde>
+  <name>Anna</Name>
+  <ort>Bonn</ort>
+</kunde>`, o: ['Groß-/Kleinschreibung: <name> wird mit </Name> geschlossen', 'Es fehlen Attribute', 'Kein DTD vorhanden', 'Nichts'], a: 0, lv: 2, e: 'XML ist **case-sensitive**: Start- und Endtag müssen exakt gleich heißen.'},
+    {q: 'Was ist an diesem XML falsch?', c: `<a><b>Text</a></b>`, o: ['Falsche Verschachtelung der Tags', 'Text in Tags ist verboten', 'Tags dürfen nur einen Buchstaben haben nicht', 'Nichts'], a: 0, lv: 2, e: 'Tags müssen sauber verschachtelt sein: zuerst `</b>`, dann `</a>`.'},
+    {k: 'match', q: 'Ordne die Begriffe zu', o: [['Wohlgeformt', 'Hält die XML-Syntaxregeln ein'], ['Gültig (valid)', 'Entspricht zusätzlich einem Schema (XSD/DTD)'], ['XSD', 'Schema-Sprache für XML'], ['JSON Schema', 'Validierung von JSON-Strukturen']], e: 'Jedes gültige Dokument ist wohlgeformt, aber nicht umgekehrt.'},
+    {k: 'tf', q: 'Ein XML-Dokument muss genau **ein Wurzelelement** haben.', a: true, lv: 1, e: 'Alle anderen Elemente liegen darin.'},
+    {k: 'num', q: 'Wie viele **Datensätze** (ohne Kopfzeile) enthält die CSV?', c: `id;name;preis
+1;Maus;19,99
+2;Tastatur;49,00
+3;Monitor;199,00`, a: 3, tol: 0, lv: 1, e: 'Erste Zeile ist die Kopfzeile, danach **3** Datensätze.'},
+    {q: 'Warum nutzt man in deutschen CSV-Dateien oft `;` statt `,` als Trenner?', o: ['Das Komma ist das Dezimaltrennzeichen', 'Kommas sind in CSV verboten', 'Semikolon ist schneller', 'Excel kennt keine Kommas'], a: 0, lv: 2, e: '19,99 würde sonst in zwei Felder zerfallen.'},
+    {q: 'Welches Format ist für eine REST-API heute am üblichsten?', o: ['JSON', 'CSV', 'XML mit DTD', 'Binärformat ohne Struktur'], a: 0, lv: 1, e: 'JSON ist kompakt, gut lesbar und in JavaScript direkt nutzbar.'},
+    {q: 'Welcher Vorteil spricht für **XML** gegenüber JSON?', o: ['Attribute, Namensräume und strenge Schema-Validierung (XSD)', 'Kürzer und kompakter', 'Kennt den Typ Boolean nativ besser', 'Wird nur von Browsern verstanden'], a: 0, lv: 3, e: 'XML ist ausführlicher, aber mächtiger bei Validierung und Namensräumen (z. B. SOAP, Rechnungsformate).'},
+    {k: 'gap', q: 'In JSON steht ein Objekt in geschweiften Klammern, ein Array in ___ Klammern.', a: ['eckigen', 'eckige', '[]'], lv: 1, e: '`{ }` Objekt (Schlüssel-Wert), `[ ]` Array (geordnete Liste).'},
+    {q: 'Was ist der JSON-Wert von `aktiv`?', c: `{"aktiv": "false"}`, o: ['Ein String, kein Boolean', 'Boolean false', 'null', 'Ungültiges JSON'], a: 0, lv: 3, e: 'Durch die Anführungszeichen ist es der **String** "false". Ein Boolean steht ohne Anführungszeichen.'},
+    {k: 'match', q: 'Ordne die Formate zu', o: [['CSV', 'Tabellarisch, Trennzeichen'], ['JSON', 'Schlüssel-Wert, Arrays, kompakt'], ['XML', 'Tags, Attribute, Schemas'], ['YAML', 'Einrückung statt Klammern, Konfigurationen']], e: 'Typische Einsatzgebiete: CSV Export/Import, JSON APIs, XML Austauschformate, YAML Config.'},
+  ]},
+  {id: 'eua-html', t: 'HTML', qs: [
+    {q: 'Welches Element ist die größte Überschrift?', o: ['<h1>', '<h6>', '<head>', '<header>'], a: 0, lv: 1, e: '`h1` bis `h6`, h1 am wichtigsten. `<head>` enthält Metadaten, `<header>` ist ein Seitenbereich.'},
+    {q: 'Was gehört in den `<head>`?', o: ['<title>, <meta>, <link> zu CSS', 'Sichtbare Überschriften und Absätze', 'Tabellen', 'Formulare'], a: 0, lv: 1, e: 'Sichtbarer Inhalt steht im `<body>`.'},
+    {k: 'multi', q: 'Welche Elemente sind **semantische** HTML5-Elemente? (mehrere)', o: ['<nav>', '<article>', '<footer>', '<div>', '<span>'], a: [0, 1, 2], lv: 2, e: 'div und span sind neutrale Container ohne Bedeutung.'},
+    {q: 'Welches Attribut sendet Formulardaten **nicht** sichtbar in der URL?', c: `<form action="/login" method="___">`, o: ['post', 'get', 'put', 'url'], a: 0, lv: 1, e: '`GET` hängt Daten an die URL (`?user=...`), `POST` überträgt sie im Request-Body. Für Passwörter POST + HTTPS.'},
+    {q: 'Wofür steht das `alt`-Attribut bei `<img>`?', o: ['Alternativtext für Screenreader und wenn das Bild nicht lädt', 'Höhe des Bildes', 'Bildquelle', 'Animation'], a: 0, lv: 1, e: 'Wichtig für **Barrierefreiheit** (BITV/WCAG). Quelle ist `src`.'},
+    {k: 'num', q: 'Wie viele **Datenzellen** (td) hat die Tabelle?', c: `<table>
+  <tr><th>Name</th><th>Ort</th></tr>
+  <tr><td>Anna</td><td>Köln</td></tr>
+  <tr><td>Ben</td><td>Bonn</td></tr>
+  <tr><td>Cem</td><td>Ulm</td></tr>
+</table>`, a: 6, tol: 0, lv: 1, e: '3 Datenzeilen mal 2 Spalten = **6** td. Die th sind Kopfzellen.'},
+    {k: 'match', q: 'Ordne die Tabellen-Tags zu', o: [['<tr>', 'Tabellenzeile'], ['<td>', 'Datenzelle'], ['<th>', 'Kopfzelle'], ['colspan', 'Zelle über mehrere Spalten']], e: 'rowspan verbindet entsprechend Zeilen.'},
+    {q: 'Wie verknüpft man ein `<label>` korrekt mit einem Eingabefeld?', c: `<label for="mail">E-Mail</label>
+<input type="email" id="___">`, o: ['mail', 'E-Mail', 'label', 'for'], a: 0, lv: 2, e: 'Das `for` des Labels muss der **id** des inputs entsprechen. Klick auf das Label fokussiert dann das Feld.'},
+    {k: 'multi', q: 'Welche Eingabevalidierungen bietet HTML5 direkt? (mehrere)', o: ['required', 'type="email"', 'min / max bei type="number"', 'Schutz vor SQL-Injection'], a: [0, 1, 2], lv: 2, e: 'Client-Validierung ist Komfort, aber umgehbar. **Serverseitig** muss immer neu geprüft werden.'},
+    {k: 'tf', q: 'HTML5-Validierung mit `required` reicht als Schutz aus, eine serverseitige Prüfung ist dann nicht mehr nötig.', a: false, lv: 2, e: 'Ein Angreifer kann Requests ohne Browser senden. Serverseitig validieren ist Pflicht.'},
+    {q: 'Welcher Input-Typ zeigt eine Auswahl, bei der genau **eine** von mehreren Optionen wählbar ist?', o: ['radio', 'checkbox', 'text', 'range'], a: 0, lv: 1, e: 'Radiobuttons mit gleichem `name` schließen sich gegenseitig aus. Checkboxen erlauben mehrere.'},
+    {k: 'gap', q: 'Ein Link wird mit dem Element `<a>` und dem Attribut ___ für das Ziel erstellt.', a: ['href'], lv: 1, e: '`<a href="https://...">Text</a>`.'},
+    {q: 'Was bewirkt `<!DOCTYPE html>`?', o: ['Teilt dem Browser mit, dass es ein HTML5-Dokument ist', 'Lädt JavaScript', 'Definiert den Zeichensatz', 'Erstellt den body'], a: 0, lv: 1, e: 'Verhindert den Quirks-Modus. Zeichensatz: `<meta charset="utf-8">`.'},
+    {q: 'Was ist der Unterschied zwischen `<div>` und `<span>`?', o: ['div ist ein Block-Element, span ein Inline-Element', 'span ist semantisch, div nicht', 'div gibt es nur in HTML4', 'Kein Unterschied'], a: 0, lv: 2, e: 'div beginnt eine neue Zeile und nimmt die volle Breite, span fließt im Text.'},
+    {k: 'order', q: 'Ordne den Grundaufbau eines HTML-Dokuments', o: ['<!DOCTYPE html>', '<html>', '<head> mit <title>', '<body> mit Inhalt'], lv: 1, e: 'head vor body, beide innerhalb von html.'},
+    {q: 'Welches Element eignet sich für eine Auswahlliste (Dropdown)?', o: ['<select> mit <option>', '<list>', '<dropdown>', '<input type="list">'], a: 0, lv: 1, e: '`<select name="land"><option>DE</option>...</select>`.'},
+  ]},
+  {id: 'eua-css', t: 'CSS', qs: [
+    {q: 'Welcher Selektor wählt das Element mit `id="kopf"`?', o: ['#kopf', '.kopf', 'kopf', '*kopf'], a: 0, lv: 1, e: '`#` = ID, `.` = Klasse, ohne Zeichen = Elementtyp.'},
+    {q: 'Welche Farbe hat der Text?', c: `/* CSS */
+p { color: blue; }
+.hinweis { color: green; }
+#info { color: red; }
+
+<!-- HTML -->
+<p class="hinweis" id="info">Text</p>`, o: ['rot', 'grün', 'blau', 'schwarz'], a: 0, lv: 2, e: '**Spezifität**: ID (1,0,0) schlägt Klasse (0,1,0) schlägt Element (0,0,1).'},
+    {q: 'Welche Farbe hat der Text?', c: `.a { color: green; }
+.a { color: orange; }
+
+<p class="a">Text</p>`, o: ['orange', 'grün', 'schwarz', 'gemischt'], a: 0, lv: 1, e: 'Gleiche Spezifität: die **später** definierte Regel gewinnt (Kaskade).'},
+    {q: 'Welche Farbe hat der Text?', c: `#x { color: red; }
+p { color: blue !important; }
+
+<p id="x">Text</p>`, o: ['blau', 'rot', 'schwarz', 'violett'], a: 0, lv: 3, e: '`!important` überstimmt normale Spezifität, sogar eine ID. Sparsam einsetzen.'},
+    {k: 'num', q: 'Box-Modell mit `box-sizing: content-box`. Welche **Gesamtbreite** in px nimmt die Box ein?', c: `.box {
+  width: 200px;
+  padding: 10px;
+  border: 5px solid black;
+  margin: 20px;
+}`, a: 270, tol: 0, u: 'px', lv: 3, e: '200 + 2·10 Padding + 2·5 Border = 230 sichtbar, plus 2·20 Margin = **270** px Platzbedarf.'},
+    {k: 'num', q: 'Gleiche Box, aber `box-sizing: border-box`. Wie breit ist der **Inhaltsbereich** in px?', c: `.box {
+  box-sizing: border-box;
+  width: 200px;
+  padding: 10px;
+  border: 5px solid black;
+}`, a: 170, tol: 0, u: 'px', lv: 3, e: 'Bei border-box enthält width Padding und Border: 200 − 20 − 10 = **170** px.'},
+    {k: 'order', q: 'Ordne das Box-Modell von innen nach außen', o: ['Content', 'Padding', 'Border', 'Margin'], lv: 1, e: 'Padding = Innenabstand, Margin = Außenabstand.'},
+    {k: 'match', q: 'Ordne die Selektoren zu', o: [['div p', 'Alle p irgendwo innerhalb von div'], ['div > p', 'Nur direkte Kind-p von div'], ['a:hover', 'Link beim Überfahren mit der Maus'], ['p, h1', 'Alle p und alle h1']], e: 'Leerzeichen = Nachfahre, > = direktes Kind, Komma = Gruppierung.'},
+    {q: 'Was bewirkt diese Media Query?', c: `@media (max-width: 600px) {
+  nav { display: none; }
+}`, o: ['Navigation wird auf Bildschirmen bis 600px ausgeblendet', 'Navigation erscheint nur ab 600px nicht', 'Navigation wird 600px breit', 'Ein Fehler, ungültig'], a: 0, lv: 2, e: 'Responsive Design: Regel gilt nur, wenn der Viewport **höchstens 600px** breit ist.'},
+    {q: 'Mit welcher Eigenschaft ordnet man Kinder eines Containers flexibel in einer Zeile an?', o: ['display: flex', 'position: absolute', 'float: center', 'align: row'], a: 0, lv: 1, e: 'Flexbox: `justify-content` (Hauptachse), `align-items` (Querachse).'},
+    {k: 'tf', q: 'Ein **externes** Stylesheet wird mit `<link rel="stylesheet" href="style.css">` im head eingebunden.', a: true, lv: 1, e: 'Alternativ intern im `<style>`-Tag oder inline per `style`-Attribut.'},
+    {q: 'Welche Einbindungsart hat die **höchste** Priorität (ohne !important)?', o: ['Inline-Style (style-Attribut)', 'Externes Stylesheet', 'Internes <style>', 'Browser-Standard'], a: 0, lv: 2, e: 'Inline-Styles haben die höchste Spezifität, sind aber schlecht wartbar.'},
+    {q: 'Was ist der Unterschied zwischen `display: none` und `visibility: hidden`?', o: ['none entfernt das Element aus dem Layout, hidden lässt den Platz frei', 'Beide sind identisch', 'hidden löscht das Element aus dem DOM', 'none macht es nur transparent'], a: 0, lv: 2, e: 'Bei `visibility: hidden` bleibt der Platz belegt.'},
+    {k: 'gap', q: 'Die relative Einheit ___ bezieht sich auf die Schriftgröße des Wurzelelements (html).', a: ['rem'], lv: 2, e: '`em` bezieht sich auf das Elternelement, `rem` auf root. Gut für skalierbare Layouts.'},
+    {k: 'multi', q: 'Welche Selektoren treffen `<li class="neu aktiv">` innerhalb von `<ul id="menu">`? (mehrere)', o: ['#menu li', '.neu.aktiv', 'ul > li', '#neu'], a: [0, 1, 2], lv: 3, e: '`.neu.aktiv` (ohne Leerzeichen) = beide Klassen am selben Element. `#neu` sucht eine ID.'},
+    {q: 'Welche Einheit macht ein Layout relativ zur Viewport-Breite?', o: ['vw', 'px', 'pt', 'cm'], a: 0, lv: 2, e: '1vw = 1 % der Viewport-Breite. px ist absolut.'},
+  ]},
+  {id: 'eua-js', t: 'JavaScript', qs: [
+    {q: 'Was ergibt `"5" + 3` in JavaScript?', o: ['"53"', '8', 'NaN', 'Fehler'], a: 0, lv: 2, e: 'Bei `+` mit einem String wird **verkettet**. Dagegen `"5" - 3` = 2 (numerische Umwandlung).'},
+    {q: 'Was ergibt `"5" - 3`?', o: ['2', '"53"', 'NaN', '"2"'], a: 0, lv: 2, e: '`-` ist nur numerisch definiert, der String wird in eine Zahl umgewandelt.'},
+    {q: 'Welcher Vergleich liefert `false`?', o: ['5 === "5"', '5 == "5"', '0 == false', 'null == undefined'], a: 0, lv: 2, e: '`===` prüft **Wert und Typ** ohne Umwandlung. Number ist nicht String.'},
+    {k: 'match', q: 'Ordne die Variablendeklarationen zu', o: [['const', 'Blockweit, nicht neu zuweisbar'], ['let', 'Blockweit, neu zuweisbar'], ['var', 'Funktionsweit, veraltet']], e: 'Moderner Stil: standardmäßig const, sonst let.'},
+    {q: 'Was gibt der Code aus?', c: `const zahlen = [1, 2, 3, 4];
+const r = zahlen.filter(x => x % 2 === 0)
+                .map(x => x * 10);
+console.log(r);`, o: ['[20, 40]', '[10, 20, 30, 40]', '[2, 4]', '[10, 30]'], a: 0, lv: 2, e: 'filter behält gerade (2, 4), map multipliziert mit 10: **[20, 40]**.'},
+    {k: 'num', q: 'Welchen Wert hat s?', c: `const preise = [10, 20, 30];
+const s = preise.reduce((sum, p) => sum + p, 0);`, a: 60, tol: 0, lv: 2, e: '`reduce` summiert von Startwert 0: 10 + 20 + 30 = **60**.'},
+    {q: 'Was macht `document.getElementById("ausgabe").textContent = "Hallo";`?', o: ['Setzt den Text des Elements mit id ausgabe', 'Erzeugt ein neues Element', 'Liest eine Datei', 'Sendet einen HTTP-Request'], a: 0, lv: 1, e: 'DOM-Manipulation. `textContent` setzt reinen Text, `innerHTML` interpretiert HTML.'},
+    {q: 'Warum ist `element.innerHTML = benutzerEingabe` gefährlich?', o: ['Cross-Site-Scripting (XSS): eingeschleustes Script wird ausgeführt', 'Es ist zu langsam', 'Es löscht die Seite', 'SQL-Injection in der Datenbank'], a: 0, lv: 2, e: 'Unbereinigte Eingaben als HTML einfügen öffnet **XSS**. Besser `textContent` oder escapen.'},
+    {q: 'Wie reagiert man auf einen Klick auf einen Button?', o: ["btn.addEventListener('click', funktion)", 'btn.click = true', 'btn.onClickNow()', 'window.click(btn)'], a: 0, lv: 1, e: 'Event-Listener registrieren eine Callback-Funktion für ein Ereignis.'},
+    {k: 'order', q: 'In welcher Reihenfolge erscheinen die Ausgaben?', c: `console.log("A");
+setTimeout(() => console.log("B"), 0);
+console.log("C");`, o: ['A', 'C', 'B'], lv: 3, e: 'setTimeout-Callbacks kommen in die **Event-Queue** und laufen erst, wenn der aktuelle Code fertig ist, auch bei 0 ms.'},
+    {q: 'Wofür steht `await` bei `const res = await fetch(url);`?', o: ['Wartet auf das Ergebnis des Promise, ohne den Browser zu blockieren', 'Blockiert den ganzen Browser', 'Startet einen neuen Thread', 'Bricht den Request ab'], a: 0, lv: 2, e: '`await` geht nur in `async`-Funktionen und pausiert diese, bis das Promise erfüllt ist.'},
+    {k: 'tf', q: 'JavaScript läuft ausschließlich im Browser.', a: false, lv: 1, e: 'Mit **Node.js** auch serverseitig.'},
+    {q: 'Was gibt der Code aus?', c: `let x = 10;
+if (true) {
+  let x = 20;
+}
+console.log(x);`, o: ['10', '20', 'undefined', 'Fehler'], a: 0, lv: 3, e: '`let` ist **blockweit**: das innere x ist eine eigene Variable. Mit `var` wäre es 20.'},
+    {k: 'gap', q: 'Ein JSON-String wird in JavaScript mit `JSON.___(text)` in ein Objekt umgewandelt.', a: ['parse'], lv: 2, e: 'Umgekehrt: `JSON.stringify(obj)` erzeugt einen String.'},
+    {q: 'Was ist `typeof null`?', o: ['"object"', '"null"', '"undefined"', '"number"'], a: 0, lv: 3, e: 'Ein historischer Fehler in JavaScript, der aus Kompatibilitätsgründen geblieben ist.'},
+    {k: 'num', q: 'Wie lang ist das Array am Ende?', c: `const a = [1, 2, 3];
+a.push(4);
+a.push(5);
+a.pop();`, a: 4, tol: 0, lv: 1, e: '3 + 2 − 1 = **4** (pop entfernt das letzte Element).'},
+  ]},
+  {id: 'eua-webapi', t: 'Web-APIs / REST', qs: [
+    {k: 'match', q: 'Ordne die HTTP-Methoden zu', o: [['GET', 'Ressource lesen'], ['POST', 'Neue Ressource anlegen'], ['PUT', 'Ressource vollständig ersetzen'], ['PATCH', 'Ressource teilweise ändern'], ['DELETE', 'Ressource löschen']], e: 'CRUD: Create=POST, Read=GET, Update=PUT/PATCH, Delete=DELETE.'},
+    {q: 'Ein Client legt einen neuen Kunden an und erhält Erfolg. Welcher Statuscode ist am passendsten?', o: ['201 Created', '200 OK', '204 No Content', '302 Found'], a: 0, lv: 2, e: '**201 Created** nach erfolgreichem POST, oft mit Location-Header.'},
+    {k: 'match', q: 'Ordne die Statuscodes zu', o: [['404', 'Ressource nicht gefunden'], ['401', 'Nicht authentifiziert'], ['403', 'Authentifiziert, aber keine Berechtigung'], ['500', 'Interner Serverfehler']], e: '4xx = Fehler des Clients, 5xx = Fehler des Servers.'},
+    {q: 'Was bedeutet ein Statuscode der Klasse **4xx**?', o: ['Fehler auf Client-Seite', 'Erfolg', 'Weiterleitung', 'Serverfehler'], a: 0, lv: 1, e: '1xx Info, 2xx Erfolg, 3xx Umleitung, 4xx Client-Fehler, 5xx Server-Fehler.'},
+    {q: 'Welcher Request ist **RESTful**, um den Kunden 42 zu löschen?', o: ['DELETE /kunden/42', 'GET /deleteKunde?id=42', 'POST /kunden/42/loeschen', 'GET /kunden/delete/42'], a: 0, lv: 2, e: 'REST: **Substantive** in der URL (Ressource), die Aktion steckt in der HTTP-Methode.'},
+    {k: 'tf', q: 'REST ist **zustandslos**: jeder Request enthält alle nötigen Informationen, der Server speichert keine Sitzung.', a: true, lv: 2, e: 'Deshalb wird z. B. ein Token bei jedem Request mitgeschickt.'},
+    {k: 'multi', q: 'Welche HTTP-Methoden sind **idempotent** (mehrfach ausgeführt = gleiches Ergebnis)? (mehrere)', o: ['GET', 'PUT', 'DELETE', 'POST'], a: [0, 1, 2], lv: 3, e: 'POST zweimal legt zwei Ressourcen an, also nicht idempotent.'},
+    {q: 'Wie wird ein Bearer-Token typischerweise übertragen?', o: ['Im Header Authorization: Bearer <token>', 'Als Teil der URL', 'Im HTML-Body der Antwort', 'Über einen Cookie namens token immer'], a: 0, lv: 2, e: 'Der **Authorization-Header**. In der URL würde es in Logs landen.'},
+    {q: 'Welcher Header gibt an, dass der Body JSON enthält?', o: ['Content-Type: application/json', 'Accept-Language: json', 'Host: json', 'Server: application/json'], a: 0, lv: 1, e: '`Accept` sagt, was der Client empfangen möchte, `Content-Type`, was gesendet wird.'},
+    {q: 'Was gibt der Code aus, wenn der Server mit 404 antwortet?', c: `const res = await fetch("/api/kunden/99");
+if (!res.ok) {
+  console.log("Fehler " + res.status);
+} else {
+  console.log(await res.json());
+}`, o: ['Fehler 404', 'Eine Exception, fetch wirft bei 404', 'Das JSON-Objekt', 'undefined'], a: 0, lv: 3, e: '`fetch` wirft nur bei Netzwerkfehlern. Bei 404 ist `res.ok` false (ok nur bei 200-299).'},
+    {k: 'gap', q: 'Mit ___ (Cross-Origin Resource Sharing) erlaubt ein Server Anfragen von fremden Domains.', a: ['CORS'], lv: 2, e: 'Der Server setzt z. B. `Access-Control-Allow-Origin`.'},
+    {q: 'Was unterscheidet SOAP von REST?', o: ['SOAP nutzt XML-Nachrichten mit festem Umschlag (Envelope) und WSDL', 'SOAP ist immer zustandslos, REST nie', 'REST funktioniert nur mit XML', 'Kein Unterschied'], a: 0, lv: 2, e: 'SOAP ist ein strenges Protokoll, REST ein Architekturstil, meist mit JSON.'},
+    {k: 'order', q: 'Ordne die Schritte eines REST-Aufrufs', o: ['Client sendet Request (Methode, URL, Header, Body)', 'Server verarbeitet und greift auf Daten zu', 'Server sendet Response mit Statuscode und Body', 'Client wertet Statuscode und Daten aus'], lv: 1, e: 'Request-Response-Prinzip über HTTP.'},
+    {q: 'Welche URL filtert Kunden nach Ort im REST-Stil am üblichsten?', o: ['GET /kunden?ort=Koeln', 'POST /filterKunden', 'GET /kunden/filter/ort/Koeln/get', 'DELETE /kunden?ort=Koeln'], a: 0, lv: 2, e: 'Filter, Sortierung und Paginierung als **Query-Parameter**.'},
+    {q: 'Was bedeutet Statuscode **204**?', o: ['Erfolg, aber kein Inhalt im Body', 'Nicht gefunden', 'Weitergeleitet', 'Zu viele Anfragen'], a: 0, lv: 2, e: 'Typisch nach DELETE oder PUT ohne Rückgabedaten.'},
+    {k: 'tf', q: 'Eine API sollte API-Schlüssel und Tokens nur über HTTPS übertragen.', a: true, lv: 1, e: 'Über HTTP wären sie im Klartext mitlesbar.'},
+  ]},
+]);
+;
+// content/quest/wiso-1.js
+AP2.quest('wiso', [
+  {id: 'wiso-bbig', t: 'Duale Ausbildung (BBiG)', qs: [
+    {lv: 1, q: 'Welche zwei Lernorte bilden das **duale System**?', o: ['Betrieb und Berufsschule', 'Betrieb und IHK', 'Berufsschule und Hochschule', 'IHK und Arbeitsagentur'], a: 0, e: 'Dual = **Betrieb** (Praxis) + **Berufsschule** (Theorie). Die IHK prüft und überwacht, ist aber kein Lernort.'},
+    {lv: 1, q: 'Wer erlässt die **Ausbildungsordnung** für den Betrieb?', o: ['Der Bund', 'Die Länder', 'Die IHK', 'Der Ausbildungsbetrieb'], a: 0, e: 'Die **Ausbildungsordnung** ist Bundesrecht, der **Rahmenlehrplan** für die Berufsschule kommt von den **Ländern** (KMK).'},
+    {lv: 2, q: 'Ein Azubi führt sein Berichtsheft nicht. Gegen welche Pflicht verstößt er?', o: ['Nachweispflicht', 'Schweigepflicht', 'Pflegepflicht', 'Teilnahmepflicht'], a: 0, e: 'Das Führen des **Berichtshefts** (Ausbildungsnachweis) ist die **Nachweispflicht** nach § 13 BBiG.'},
+    {lv: 2, q: 'Ein Azubi veröffentlicht Kundendaten in einem Forum. Welche Pflicht ist verletzt?', o: ['Schweigepflicht', 'Lernpflicht', 'Ordnungspflicht', 'Gehorsamspflicht'], a: 0, e: '**Schweige-/Verschwiegenheitspflicht**: Betriebs- und Geschäftsgeheimnisse wahren.'},
+    {lv: 2, q: 'Der Ausbilder lässt den Azubi täglich nur Kaffee kochen und Auto waschen. Was verletzt der Betrieb?', o: ['Zweckbindung / Ausbildungspflicht', 'Vergütungspflicht', 'Zeugnispflicht', 'Freistellungspflicht'], a: 0, e: 'Es dürfen nur **ausbildungsgemäße Aufgaben** übertragen werden (Zweckbindung, Ausbildungspflicht).'},
+    {k: 'multi', lv: 2, q: 'Welche sind **Pflichten des Auszubildenden** (§ 13 BBiG)? (mehrere)', o: ['Lernpflicht', 'Pflegepflicht', 'Vergütungspflicht', 'Teilnahmepflicht', 'Zeugnispflicht'], a: [0, 1, 3], e: '**Vergütung** und **Zeugnis** sind Pflichten des **Ausbildenden**.'},
+    {k: 'multi', lv: 2, q: 'Welche sind **Pflichten des Ausbildenden**? (mehrere)', o: ['Bereitstellungspflicht', 'Freistellungspflicht', 'Gehorsamspflicht', 'Fürsorgepflicht', 'Nachweispflicht'], a: [0, 1, 3], e: '**Gehorsam** und **Nachweis** sind Pflichten des Azubis.'},
+    {k: 'tf', lv: 2, q: 'Der Azubi muss Fachbücher und Software für die Ausbildung selbst bezahlen.', a: false, e: '**Bereitstellungspflicht**: Ausbildungsmittel stellt der Betrieb **kostenlos** zur Verfügung.'},
+    {k: 'tf', lv: 1, q: 'Die Ausbildung zum Fachinformatiker für Anwendungsentwicklung dauert regulär 3 Jahre.', a: true, e: 'FiAE: **3 Jahre**; Ausbildungsberufe dauern allgemein 2 bis 3,5 Jahre.'},
+    {k: 'num', lv: 2, q: 'Mindestausbildungsvergütung im 1. Ausbildungsjahr 2026 laut Seite: wie viel Euro pro Monat?', a: 724, tol: 0, u: 'Euro', e: '2026: **724 Euro** im 1. Jahr, für spätere Jahre prozentuale Aufschläge.'},
+    {k: 'gap', lv: 1, q: 'Den schriftlichen Ausbildungsnachweis nennt man ___.', a: ['Berichtsheft', 'Ausbildungsnachweis'], e: 'Das **Berichtsheft** muss der Ausbildende auch **regelmäßig durchsehen** (Kontrollpflicht).'},
+    {k: 'match', lv: 2, q: 'Ordne Gesetz und Inhalt zu.', o: [['BBiG', 'Berufsausbildung'], ['JArbSchG', 'Schutz unter 18'], ['ArbZG', 'Arbeitszeit Erwachsener'], ['EntgFG', 'Lohnfortzahlung bei Krankheit']], e: 'Typische Prüfungszuordnung der Arbeitsgesetze.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Der Azubi muss für Berufsschultage Urlaub nehmen.', 'Der Betrieb muss für die Berufsschule freistellen.', 'Der Betrieb muss ein Zeugnis ausstellen.', 'Die Vergütung steigt mindestens jährlich.'], a: 0, e: '**Freistellungspflicht** (§ 15): Berufsschule und Prüfungen sind keine Urlaubstage.'},
+    {lv: 2, q: 'Wer nimmt die Abschlussprüfung der IT-Berufe ab?', o: ['Prüfungsausschuss der IHK', 'Die Berufsschule', 'Der Ausbildungsbetrieb', 'Das Kultusministerium'], a: 0, e: 'Die IHK ist **zuständige Stelle**, ihre **Prüfungsausschüsse** prüfen.'},
+    {k: 'tf', lv: 3, q: 'Der Ausbilder darf den Azubi anweisen, Sicherheitsvorschriften zu missachten, weil der Azubi gehorchen muss.', a: false, e: 'Gehorsamspflicht gilt nur für **rechtmäßige, ausbildungsbezogene** Weisungen; der Betrieb hat **Fürsorgepflicht**.'},
+  ]},
+  {id: 'wiso-kammern', t: 'Kammern (IHK, HWK)', qs: [
+    {lv: 1, q: 'Welche Rechtsform hat die IHK?', o: ['Körperschaft des öffentlichen Rechts', 'Eingetragener Verein', 'GmbH', 'Bundesbehörde'], a: 0, e: '**KdöR** mit **Selbstverwaltung**, der Staat übt nur Rechtsaufsicht.'},
+    {lv: 1, q: 'Ein IT-Systemhaus bildet Fachinformatiker aus. Welche Kammer ist zuständig?', o: ['IHK', 'HWK', 'Landwirtschaftskammer', 'Rechtsanwaltskammer'], a: 0, e: 'Industrie, Handel, **Dienstleistung und IT** = IHK. HWK nur für Handwerk.'},
+    {lv: 2, q: 'Eine Elektrotechnik-Meisterin mit Handwerksbetrieb bildet aus. Zuständig ist ...', o: ['die Handwerkskammer', 'die IHK', 'die Gewerkschaft', 'die Arbeitsagentur'], a: 0, e: 'Handwerksbetriebe gehören zur **HWK**.'},
+    {k: 'tf', lv: 1, q: 'Die Mitgliedschaft eines Unternehmens in der IHK ist freiwillig.', a: false, e: '**Pflichtmitgliedschaft** für gewerbliche Unternehmen im Bezirk, Finanzierung über Beiträge.'},
+    {k: 'multi', lv: 2, q: 'Welche Aufgaben hat die IHK bei der Ausbildung? (mehrere)', o: ['Ausbildungsverträge eintragen', 'Prüfungen abnehmen', 'Berufsschulunterricht erteilen', 'Eignung von Betrieb und Ausbilder überwachen', 'Ausbildungsvergütung auszahlen'], a: [0, 1, 3], e: 'Beraten, überwachen, eintragen, prüfen. Unterricht = Berufsschule, Vergütung = Betrieb.'},
+    {lv: 2, q: 'Ein Azubi hat Streit mit dem Betrieb über Ausbildungsinhalte. An wen kann er sich bei der Kammer wenden?', o: ['Ausbildungsberater der IHK', 'Gewerbeaufsichtsamt', 'Finanzamt', 'Bundesagentur für Arbeit'], a: 0, e: 'Der **Ausbildungsberater** berät und vermittelt; die Kammer hat auch einen **Schlichtungsausschuss**.'},
+    {k: 'gap', lv: 1, q: 'Die Kammer ist für die Berufsausbildung die zuständige ___.', a: ['Stelle'], e: 'Begriff aus dem BBiG: **zuständige Stelle**.'},
+    {k: 'match', lv: 2, q: 'Ordne die Kammer zu.', o: [['IHK', 'Industrie, Handel, IT'], ['HWK', 'Handwerk'], ['Ärztekammer', 'Freier Beruf Medizin'], ['Steuerberaterkammer', 'Freier Beruf Steuern']], e: 'Freie Berufe haben eigene Berufskammern.'},
+    {lv: 3, q: 'Welche Aussage über Kammern ist **FALSCH**?', o: ['Kammern schließen Tarifverträge ab.', 'Kammern vertreten Interessen der Wirtschaft gegenüber der Politik.', 'Kammern finanzieren sich über Beiträge.', 'Kammern stellen Sachverständige.'], a: 0, e: 'Tarifverträge schließen **Gewerkschaften und Arbeitgeberverbände**, nicht Kammern.'},
+    {k: 'tf', lv: 2, q: 'Die IHK überwacht die Durchführung der Ausbildung im Betrieb.', a: true, e: 'Überwachen der Eignung und der Ausbildung gehört zu den Kernaufgaben.'},
+    {lv: 2, q: 'Wo wird ein neuer Ausbildungsvertrag eingetragen?', o: ['Verzeichnis der Berufsausbildungsverhältnisse der IHK', 'Handelsregister', 'Grundbuch', 'Melderegister'], a: 0, e: 'Die Kammer führt das **Verzeichnis der Berufsausbildungsverhältnisse**.'},
+    {k: 'order', lv: 2, q: 'Bringe den Ablauf in die richtige Reihenfolge.', o: ['Ausbildungsvertrag schließen', 'Vertrag bei der IHK eintragen lassen', 'Zwischenprüfung / AP Teil 1', 'Abschlussprüfung Teil 2 vor dem Prüfungsausschuss'], e: 'Eintragung ist Voraussetzung für die Zulassung zur Prüfung.'},
+    {lv: 2, q: 'Wer führt die Rechtsaufsicht über die IHK?', o: ['Der Staat (Landesministerium)', 'Die Gewerkschaften', 'Der Bundestag direkt', 'Niemand'], a: 0, e: 'Selbstverwaltung unter **staatlicher Rechtsaufsicht** (Wirtschaftsministerium des Landes).'},
+    {k: 'multi', lv: 2, q: 'Welche weiteren Aufgaben hat die IHK? (mehrere)', o: ['Beratung bei Existenzgründung', 'Weiterbildung anbieten', 'Streiks organisieren', 'Interessenvertretung der Unternehmen'], a: [0, 1, 3], e: 'Streiks organisieren nur **Gewerkschaften**.'},
+    {k: 'tf', lv: 3, q: 'Ein Gewerbebetrieb kann aus der IHK austreten, wenn er keine Azubis ausbildet.', a: false, e: 'Die Pflichtmitgliedschaft hängt am **Gewerbebetrieb im Bezirk**, nicht an der Ausbildung.'},
+  ]},
+  {id: 'wiso-jarbschg', t: 'Jugendarbeitsschutz', qs: [
+    {lv: 1, q: 'Für wen gilt das JArbSchG als **Jugendlicher**?', o: ['15 bis unter 18 Jahre', '14 bis unter 21 Jahre', 'unter 15 Jahre', '16 bis unter 18 Jahre'], a: 0, e: 'Kind: unter 15. **Jugendlicher: 15 bis unter 18**. Ab 18 gilt das ArbZG.'},
+    {k: 'num', lv: 1, q: 'Wie viele Stunden darf ein Jugendlicher höchstens pro **Woche** arbeiten?', a: 40, tol: 0, u: 'Stunden', e: '**8 Stunden/Tag, 40 Stunden/Woche**, 5-Tage-Woche.'},
+    {k: 'num', lv: 2, q: 'Azubi Lena (17) arbeitet 5 Stunden am Stück. Wie viele Minuten Pause stehen ihr **mindestens** zu?', a: 30, tol: 0, u: 'Minuten', e: 'Mehr als **4,5 bis 6 Std**: **30 Min**. Ab mehr als 6 Std: 60 Min.'},
+    {k: 'num', lv: 2, q: 'Tim (16) arbeitet 7,5 Stunden. Mindestpause in Minuten?', a: 60, tol: 0, u: 'Minuten', e: 'Mehr als 6 Stunden: **60 Minuten**. Erwachsener hätte nur 30 Minuten.'},
+    {k: 'num', lv: 2, q: 'Jonas (17) arbeitet nur 4 Stunden. Wie viele Minuten Pause sind gesetzlich vorgeschrieben?', a: 0, tol: 0, u: 'Minuten', e: 'Pausenpflicht erst bei **mehr als 4,5 Stunden**.'},
+    {lv: 2, q: 'Wie lang muss eine Pause **mindestens** sein, damit sie als Pause zählt?', o: ['15 Minuten', '5 Minuten', '10 Minuten', '30 Minuten'], a: 0, e: 'Pausenblöcke **mindestens 15 Minuten**.'},
+    {lv: 2, q: 'Mia (16) hat um 20 Uhr Feierabend. Wann darf sie frühestens wieder arbeiten?', o: ['8 Uhr am nächsten Tag', '6 Uhr am nächsten Tag', '7 Uhr am nächsten Tag', '9 Uhr am nächsten Tag'], a: 0, e: '**12 Stunden** ununterbrochene Freizeit: 20 + 12 = **8 Uhr**. Die Nachtruhe allein (bis 6 Uhr) reicht nicht.'},
+    {k: 'gap', lv: 1, q: 'Für Jugendliche gilt Nachtruhe von 20 Uhr bis ___ Uhr.', a: ['6', '06', '6:00'], e: '**Nachtruhe 20 bis 6 Uhr** (mit Ausnahmen für bestimmte Branchen).'},
+    {k: 'num', lv: 2, q: 'Ein Azubi ist am **1. Januar** des Jahres 16 Jahre alt. Wie viele **Werktage** Urlaub hat er mindestens?', a: 27, tol: 0, u: 'Werktage', e: 'Maßgeblich ist das Alter zu Beginn des Kalenderjahres: noch nicht 17 = **27 Werktage** (unter 16: 30, unter 18: 25).'},
+    {k: 'num', lv: 3, q: 'Azubi wird am 15. Februar 18, war am 1. Januar 17. Wie viele Werktage Urlaub nach JArbSchG?', a: 25, tol: 0, u: 'Werktage', e: 'Zu Jahresbeginn 17, also **noch nicht 18**: **25 Werktage**.'},
+    {lv: 2, q: 'Ein Berufsschultag mit 6 Unterrichtsstunden à 45 Minuten (einmal pro Woche). Was gilt für den Jugendlichen?', o: ['Keine Beschäftigung mehr im Betrieb, Tag zählt als 8 Stunden', 'Er muss danach noch 2 Stunden in den Betrieb', 'Der Tag zählt als 4,5 Stunden', 'Er muss Urlaub nehmen'], a: 0, e: 'Einmal pro Woche bei **mehr als 5 Unterrichtsstunden**: Anrechnung mit **8 Stunden**, keine Arbeit mehr.'},
+    {lv: 2, q: 'Wann muss die **Erstuntersuchung** erfolgt sein?', o: ['Vor Beginn der Beschäftigung', 'Nach 6 Monaten', 'Nach 1 Jahr', 'Nur bei Krankheit'], a: 0, e: '**Erstuntersuchung** vor Beginn (nicht älter als 14 Monate), **Nachuntersuchung** nach 1 Jahr.'},
+    {k: 'tf', lv: 2, q: 'Ein 17-jähriger Azubi darf regelmäßig samstags im Büro arbeiten.', a: false, e: '**5-Tage-Woche**, Samstag und Sonntag grundsätzlich frei (Ausnahmen z. B. Handel, Gastronomie).'},
+    {k: 'tf', lv: 3, q: 'Ein Jugendlicher darf an einem Tag 8,5 Stunden arbeiten, wenn er an einem anderen Tag derselben Woche weniger arbeitet.', a: true, e: 'Ausgleich in der Woche: bis **8,5 Stunden** täglich zulässig.'},
+    {k: 'match', lv: 2, q: 'Ordne die Regelung zu.', o: [['8 Stunden', 'Tägliche Höchstarbeitszeit'], ['12 Stunden', 'Freizeit nach Arbeitsende'], ['60 Minuten', 'Pause bei mehr als 6 Std'], ['30 Werktage', 'Urlaub unter 16']], e: 'Kernzahlen des JArbSchG.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Für einen 18-jährigen Azubi gilt das JArbSchG weiter bis zum Ausbildungsende.', 'Berufsschulzeit wird auf die Arbeitszeit angerechnet.', 'Akkordarbeit ist für Jugendliche verboten.', 'Kinderarbeit unter 15 ist grundsätzlich verboten.'], a: 0, e: 'Ab dem **18. Geburtstag** gilt das **ArbZG**, unabhängig von der Ausbildung.'},
+  ]},
+  {id: 'wiso-arbeitsvertrag', t: 'Arbeitsvertrag und ArbZG', qs: [
+    {lv: 1, q: 'Was ist die **Hauptpflicht** des Arbeitnehmers?', o: ['Arbeitspflicht', 'Treuepflicht', 'Verschwiegenheitspflicht', 'Fürsorgepflicht'], a: 0, e: 'Hauptpflicht AN = **Arbeit**, Hauptpflicht AG = **Vergütung**. Der Rest sind Nebenpflichten.'},
+    {k: 'tf', lv: 2, q: 'Ein Arbeitsvertrag ist nur wirksam, wenn er schriftlich geschlossen wird.', a: false, e: 'Er ist **formfrei** (auch mündlich); das **NachwG** verlangt aber einen schriftlichen Nachweis der Bedingungen. Befristung muss schriftlich sein.'},
+    {lv: 2, q: 'Der Chef bestimmt, dass Max ab Montag im Projekt B arbeitet. Worauf stützt er sich?', o: ['Direktionsrecht (§ 106 GewO)', 'Tarifautonomie', 'Günstigkeitsprinzip', 'Koalitionsfreiheit'], a: 0, e: 'Das **Direktionsrecht** erlaubt Weisungen zu Ort, Zeit und Art der Arbeit im Rahmen des Vertrags.'},
+    {k: 'num', lv: 2, q: 'Erwachsene Entwicklerin arbeitet 8,5 Stunden. Mindestpause nach ArbZG in Minuten?', a: 30, tol: 0, u: 'Minuten', e: 'Mehr als **6 bis 9 Std**: **30 Min**.'},
+    {k: 'num', lv: 2, q: 'Ein Admin arbeitet bei einem Rollout 9,5 Stunden. Mindestpause in Minuten?', a: 45, tol: 0, u: 'Minuten', e: 'Mehr als **9 Stunden**: **45 Minuten**.'},
+    {lv: 2, q: 'Ein Mitarbeiter endet um 23 Uhr. Wann darf er frühestens wieder anfangen?', o: ['10 Uhr', '7 Uhr', '8 Uhr', '6 Uhr'], a: 0, e: '**11 Stunden Ruhezeit**: 23 + 11 = **10 Uhr**.'},
+    {k: 'num', lv: 2, q: 'Maximale tägliche Arbeitszeit nach ArbZG (mit Ausgleich) in Stunden?', a: 10, tol: 0, u: 'Stunden', e: 'Bis **10 Stunden**, wenn im Schnitt 8 Std in 6 Monaten / 24 Wochen.'},
+    {k: 'num', lv: 3, q: 'Durchschnittliche wöchentliche Höchstarbeitszeit (6 Werktage à 8 Std)?', a: 48, tol: 0, u: 'Stunden', e: 'Werktage Mo bis Sa: 6 mal 8 = **48 Stunden**.'},
+    {lv: 2, q: 'Wie oft darf ein **sachgrundlos befristeter** Vertrag innerhalb von 2 Jahren verlängert werden?', o: ['3-mal', '1-mal', '2-mal', 'unbegrenzt'], a: 0, e: 'TzBfG: bis **2 Jahre**, höchstens **3 Verlängerungen**.'},
+    {k: 'num', lv: 1, q: 'Maximale Dauer der Probezeit im Arbeitsverhältnis in Monaten?', a: 6, tol: 0, u: 'Monate', e: 'Höchstens **6 Monate**, Kündigungsfrist darin **2 Wochen**.'},
+    {k: 'multi', lv: 2, q: 'Welche sind **Nebenpflichten des Arbeitgebers**? (mehrere)', o: ['Fürsorgepflicht', 'Gleichbehandlungspflicht', 'Wettbewerbsverbot', 'Zeugnispflicht', 'Arbeitspflicht'], a: [0, 1, 3], e: 'Wettbewerbsverbot und Arbeitspflicht betreffen den **Arbeitnehmer**.'},
+    {lv: 2, q: 'Eine Entwicklerin programmiert nebenbei für einen direkten Konkurrenten. Welche Pflicht verletzt sie?', o: ['Wettbewerbsverbot / Treuepflicht', 'Fürsorgepflicht', 'Beschäftigungspflicht', 'Vergütungspflicht'], a: 0, e: 'Während des Arbeitsverhältnisses gilt ein **Wettbewerbsverbot** (Treuepflicht).'},
+    {k: 'match', lv: 2, q: 'Ordne die Pflicht der Vertragsseite zu.', o: [['Vergütungspflicht', 'Arbeitgeber (Hauptpflicht)'], ['Arbeitspflicht', 'Arbeitnehmer (Hauptpflicht)'], ['Verschwiegenheitspflicht', 'Arbeitnehmer (Nebenpflicht)'], ['Beschäftigungspflicht', 'Arbeitgeber (Nebenpflicht)']], e: 'Haupt- vs. Nebenpflichten beider Seiten.'},
+    {k: 'tf', lv: 2, q: 'Eine Befristung mit Sachgrund (z. B. Elternzeitvertretung) darf länger als 2 Jahre dauern.', a: true, e: 'Mit **Sachgrund** keine feste Höchstdauer.'},
+    {k: 'gap', lv: 2, q: 'Nach Arbeitsende steht Erwachsenen eine Ruhezeit von ___ Stunden zu.', a: ['11', 'elf'], e: 'ArbZG: **11 Stunden** (Jugendliche: 12 Stunden Freizeit).'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Eine mündliche Befristung ist wirksam.', 'Sonn- und Feiertage sind grundsätzlich arbeitsfrei.', 'Pausen dürfen in Blöcke von 15 Minuten aufgeteilt werden.', 'Der AG muss die Arbeitsbedingungen schriftlich nachweisen.'], a: 0, e: 'Befristung braucht **Schriftform**, sonst gilt der Vertrag als **unbefristet**.'},
+  ]},
+  {id: 'wiso-kuendigung', t: 'Kündigung', qs: [
+    {lv: 1, q: 'Welche Form braucht eine Kündigung?', o: ['Schriftform mit eigenhändiger Unterschrift', 'E-Mail genügt', 'Mündlich genügt', 'WhatsApp mit Lesebestätigung'], a: 0, e: '§ 623 BGB: **Schriftform**. E-Mail, SMS oder Messenger sind **unwirksam**.'},
+    {lv: 1, q: 'Wie lautet die **Grundkündigungsfrist** nach § 622 BGB?', o: ['4 Wochen zum 15. oder zum Monatsende', '1 Monat zum Monatsende', '2 Wochen zu jedem Tag', '3 Monate zum Quartalsende'], a: 0, e: '**4 Wochen** (28 Tage) zum **15.** oder **Ende** eines Monats.'},
+    {k: 'gap', lv: 2, q: 'Arbeitnehmer (2 Jahre im Betrieb) kündigt; die Kündigung geht am Dienstag, **10.03.2026** zu. Das Arbeitsverhältnis endet am ___ (TT.MM.).', a: ['15.04.', '15.04', '15.04.2026', '15.4.', '15.4', '15. April'], e: '10.03. + 4 Wochen = 07.04. Nächster Termin: **15.04.** Der AN hat immer nur die Grundfrist.'},
+    {k: 'gap', lv: 2, q: 'Kündigung geht am **03.06.** zu (Grundfrist). Ende am ___ (TT.MM.).', a: ['15.07.', '15.07', '15.7.', '15.7', '15. Juli'], e: '03.06. + 28 Tage = 01.07. Nächster Termin: **15.07.**'},
+    {k: 'gap', lv: 3, q: 'Der **Arbeitgeber** kündigt Frau Weber nach **6 Jahren** Betriebszugehörigkeit; Zugang am **10.03.** Ende am ___ (TT.MM.).', a: ['31.05.', '31.05', '31.5.', '31.5', '31. Mai'], e: 'Ab 5 Jahren: **2 Monate zum Monatsende**. 10.03. + 2 Monate = 10.05., also **31.05.**'},
+    {k: 'num', lv: 2, q: 'Wie viele **Monate** Kündigungsfrist hat der Arbeitgeber bei **10 Jahren** Betriebszugehörigkeit?', a: 4, tol: 0, u: 'Monate', e: '2 J: 1, 5 J: 2, 8 J: 3, **10 J: 4**, 12 J: 5, 15 J: 6, 20 J: 7 Monate zum Monatsende.'},
+    {k: 'num', lv: 3, q: 'Herr Kaya ist seit **20 Jahren** im Betrieb und kündigt **selbst** (keine Vertragsklausel). Frist in Wochen?', a: 4, tol: 0, u: 'Wochen', e: 'Die verlängerten Fristen gelten nur für **Kündigungen durch den Arbeitgeber**. AN: **4 Wochen**.'},
+    {k: 'num', lv: 1, q: 'Kündigungsfrist in der **Probezeit** in Wochen?', a: 2, tol: 0, u: 'Wochen', e: 'Probezeit (max. 6 Monate): **2 Wochen** zu jedem Tag.'},
+    {lv: 2, q: 'Wann gilt das **Kündigungsschutzgesetz**?', o: ['Mehr als 10 AN und Arbeitsverhältnis länger als 6 Monate', 'Ab 5 AN sofort', 'Ab 20 AN nach 1 Jahr', 'Immer, auch in Kleinbetrieben'], a: 0, e: 'Betrieb mit **mehr als 10 AN** + **Wartezeit 6 Monate**.'},
+    {k: 'num', lv: 2, q: 'Innerhalb wie vieler Wochen nach Zugang muss eine Kündigungsschutzklage erhoben werden?', a: 3, tol: 0, u: 'Wochen', e: '**3 Wochen** beim Arbeitsgericht, sonst gilt die Kündigung als wirksam.'},
+    {k: 'match', lv: 2, q: 'Ordne den Kündigungsgrund zu.', o: [['Dauerhafte Krankheit', 'personenbedingt'], ['Wiederholtes Zuspätkommen nach Abmahnung', 'verhaltensbedingt'], ['Wegfall der Abteilung', 'betriebsbedingt']], e: 'Die drei Gründe der **sozialen Rechtfertigung** nach KSchG.'},
+    {lv: 2, q: 'Der Chef erfährt am 01.04. von einem Diebstahl des Mitarbeiters. Bis wann muss er **fristlos** kündigen?', o: ['Innerhalb von 2 Wochen', 'Innerhalb von 4 Wochen', 'Innerhalb von 3 Monaten', 'Jederzeit'], a: 0, e: 'Außerordentliche Kündigung: **innerhalb 2 Wochen** ab Kenntnis (§ 626 BGB).'},
+    {k: 'tf', lv: 2, q: 'Eine Kündigung ohne vorherige Anhörung des Betriebsrats ist unwirksam.', a: true, e: '**§ 102 BetrVG**: Anhörung ist Pflicht, sonst unwirksam.'},
+    {lv: 2, q: 'Arbeitgeber kündigt und bietet zugleich einen neuen Vertrag mit anderem Standort an. Das ist eine ...', o: ['Änderungskündigung', 'Aufhebungsvertrag', 'Abmahnung', 'Befristung'], a: 0, e: '**Änderungskündigung** = Kündigung + Angebot neuer Bedingungen.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Ein Aufhebungsvertrag kann einseitig vom Arbeitgeber erklärt werden.', 'Ein befristeter Vertrag endet automatisch.', 'Vor einer verhaltensbedingten Kündigung ist meist eine Abmahnung nötig.', 'Nach Kündigung muss man sich bei der Arbeitsagentur melden.'], a: 0, e: 'Aufhebungsvertrag = **einvernehmlich** (beide Seiten), schriftlich. Achtung: oft **Sperrzeit** beim ALG.'},
+    {k: 'order', lv: 2, q: 'Reihenfolge einer ordentlichen Arbeitgeberkündigung:', o: ['Betriebsrat anhören', 'Kündigung schriftlich übergeben', 'Kündigungsfrist läuft', 'Arbeitsverhältnis endet'], e: 'Ohne vorherige **Anhörung** ist die Kündigung unwirksam.'},
+  ]},
+  {id: 'wiso-urlaub', t: 'Urlaub (BUrlG)', qs: [
+    {k: 'num', lv: 1, q: 'Gesetzlicher Mindesturlaub in **Werktagen** nach BUrlG?', a: 24, tol: 0, u: 'Werktage', e: '**24 Werktage** (Mo bis Sa) = 4 Wochen.'},
+    {k: 'num', lv: 1, q: 'Mindesturlaub bei einer **5-Tage-Woche** in Arbeitstagen?', a: 20, tol: 0, u: 'Tage', e: '24 / 6 mal 5 = **20 Arbeitstage**.'},
+    {k: 'num', lv: 2, q: 'Teilzeitkraft arbeitet **4 Tage** pro Woche. Gesetzlicher Mindesturlaub in Arbeitstagen?', a: 16, tol: 0, u: 'Tage', e: '24 / 6 mal 4 = **16 Tage** (= 4 Wochen).'},
+    {k: 'num', lv: 2, q: 'Minijobberin arbeitet **3 Tage** pro Woche. Mindesturlaub?', a: 12, tol: 0, u: 'Tage', e: '4 mal 3 = **12 Tage**. Auch Minijobber haben Urlaubsanspruch.'},
+    {k: 'num', lv: 3, q: 'Neuer Mitarbeiter beginnt am **01.08.**, 5-Tage-Woche, 20 Tage Jahresurlaub. Wie viele Tage Teilurlaub im Eintrittsjahr?', a: 8, tol: 0, u: 'Tage', e: 'Wartezeit (6 Monate) im Jahr nicht erfüllt: 5 volle Monate mal 20/12 = 8,33, **abgerundet 8** (erst ab 0,5 aufrunden).'},
+    {k: 'num', lv: 3, q: 'Mitarbeiterin (30 Tage Urlaub, seit Jahren im Betrieb) scheidet am **31.03.** aus. Teilurlaub?', a: 8, tol: 0, u: 'Tage', e: 'Ausscheiden in der 1. Jahreshälfte: 3/12 mal 30 = 7,5, **ab 0,5 aufrunden = 8**.'},
+    {lv: 3, q: 'Ein Mitarbeiter (seit 3 Jahren im Betrieb) scheidet am **30.09.** aus. Urlaubsanspruch?', o: ['Voller Jahresurlaub', '9/12 des Urlaubs', 'Kein Urlaub', 'Halber Urlaub'], a: 0, e: 'Ausscheiden in der **2. Jahreshälfte** nach erfüllter Wartezeit: **voller** gesetzlicher Urlaub.'},
+    {k: 'num', lv: 1, q: 'Wartezeit für den vollen Urlaubsanspruch in Monaten?', a: 6, tol: 0, u: 'Monate', e: '**6 Monate** Wartezeit.'},
+    {k: 'tf', lv: 2, q: 'Wer im Urlaub krank wird und ein Attest vorlegt, bekommt die Krankheitstage nicht als Urlaub angerechnet.', a: true, e: '§ 9 BUrlG: Tage mit **ärztlichem Attest** zählen nicht als Urlaub.'},
+    {k: 'tf', lv: 2, q: 'Der Arbeitnehmer kann verlangen, dass der Arbeitgeber ihm nicht genommenen Urlaub jedes Jahr auszahlt.', a: false, e: '**Abgeltung** in Geld nur bei **Ende des Arbeitsverhältnisses**. Urlaub dient der Erholung.'},
+    {k: 'gap', lv: 2, q: 'Nicht genommener Urlaub kann bei dringenden Gründen bis zum ___ des Folgejahres übertragen werden.', a: ['31.03.', '31.03', '31.3.', '31.3', '31. März'], e: 'Übertragung bis **31. März**.'},
+    {lv: 2, q: 'Wie wird das **Urlaubsentgelt** berechnet?', o: ['Durchschnittsverdienst der letzten 13 Wochen', 'Grundgehalt des Eintrittsmonats', 'Tariflicher Mindestlohn', 'Durchschnitt des letzten Jahres'], a: 0, e: '§ 11 BUrlG: **letzte 13 Wochen** vor Urlaubsbeginn.'},
+    {k: 'num', lv: 2, q: 'Ein schwerbehinderter Mitarbeiter mit 5-Tage-Woche: wie viele Tage gesetzlichen Mindesturlaub hat er insgesamt?', a: 25, tol: 0, u: 'Tage', e: '20 + **5 Zusatzurlaubstage** (SGB IX) = **25**.'},
+    {lv: 2, q: 'Wer legt den Urlaub zeitlich fest?', o: ['Der Arbeitgeber unter Berücksichtigung der Wünsche des AN', 'Allein der Arbeitnehmer', 'Der Betriebsrat allein', 'Die Gewerkschaft'], a: 0, e: 'AG legt fest, **Wünsche des AN** sind zu berücksichtigen; Urlaubsgrundsätze unterliegen der Mitbestimmung (§ 87).'},
+    {k: 'multi', lv: 2, q: 'Welche Aussagen sind richtig? (mehrere)', o: ['Feiertage zählen nicht als Urlaubstage.', 'Urlaub soll zusammenhängend gewährt werden.', 'Werktage sind Montag bis Freitag.', 'Urlaub verfällt nur, wenn der AG vorher darauf hingewiesen hat.'], a: [0, 1, 3], e: '**Werktage** = Montag bis **Samstag**, Arbeitstage = tatsächliche Arbeitstage.'},
+  ]},
+  {id: 'wiso-krank', t: 'Entgeltfortzahlung', qs: [
+    {k: 'num', lv: 1, q: 'Wie viele Wochen zahlt der Arbeitgeber das Entgelt bei Krankheit weiter?', a: 6, tol: 0, u: 'Wochen', e: '**6 Wochen** (42 Tage) zu **100 %**, danach Krankengeld.'},
+    {k: 'num', lv: 2, q: 'Ab welchem **Kalendertag** muss spätestens eine Arbeitsunfähigkeitsbescheinigung vorliegen?', a: 4, tol: 0, u: '. Tag', e: 'Ab dem **4. Kalendertag**; der AG darf sie aber schon **ab dem 1. Tag** verlangen.'},
+    {lv: 2, q: 'Paul ist ab Freitag krank. Wann muss er (ohne abweichende Regelung) spätestens die AU vorlegen bzw. die eAU abrufen lassen?', o: ['Am Montag (4. Kalendertag)', 'Am Freitag', 'Am Dienstag', 'Nach einer Woche'], a: 0, e: 'Fr = Tag 1, Sa = 2, So = 3, **Mo = 4**. Wochenenden zählen als Kalendertage mit.'},
+    {lv: 1, q: 'Wann muss die Arbeitsunfähigkeit dem Arbeitgeber gemeldet werden?', o: ['Unverzüglich, also am ersten Tag', 'Innerhalb von 3 Tagen', 'Erst mit Vorlage der AU', 'Nach einer Woche'], a: 0, e: '**Anzeigepflicht**: unverzüglich, inkl. voraussichtlicher Dauer.'},
+    {k: 'num', lv: 2, q: 'Wie viele Wochen muss das Arbeitsverhältnis bestehen, bevor Anspruch auf Entgeltfortzahlung entsteht?', a: 4, tol: 0, u: 'Wochen', e: '**4 Wochen** Wartezeit; davor zahlt die Krankenkasse Krankengeld.'},
+    {k: 'num', lv: 3, q: 'Brutto 3.000 Euro, Netto 2.000 Euro. Krankengeld pro Monat (70 % Brutto, max. 90 % Netto)?', a: 1800, tol: 0, u: 'Euro', e: '70 % von 3.000 = 2.100, aber **höchstens 90 % Netto** = 1.800. Also **1.800 Euro** (vor eigenen SV-Abzügen).'},
+    {k: 'num', lv: 3, q: 'Brutto 2.400 Euro, Netto 1.900 Euro. Krankengeld pro Monat?', a: 1680, tol: 0, u: 'Euro', e: '70 % von 2.400 = **1.680**; 90 % Netto = 1.710. Der kleinere Wert gilt: **1.680 Euro**.'},
+    {lv: 2, q: 'Wer zahlt ab der **7. Woche** Krankheit?', o: ['Die Krankenkasse (Krankengeld)', 'Der Arbeitgeber weiter', 'Die Rentenversicherung', 'Die Agentur für Arbeit'], a: 0, e: '**Krankengeld** der GKV, bis zu **78 Wochen** in 3 Jahren für dieselbe Krankheit.'},
+    {k: 'tf', lv: 2, q: 'Auch Auszubildende erhalten 6 Wochen Fortzahlung der Vergütung.', a: true, e: '**§ 19 BBiG** bzw. EntgFG gilt auch für Azubis.'},
+    {k: 'tf', lv: 3, q: 'Wer sich bei einer grob fahrlässigen Aktion (betrunken Motorrad gefahren) verletzt, hat trotzdem Anspruch auf Entgeltfortzahlung.', a: false, e: 'Voraussetzung: **unverschuldete** Arbeitsunfähigkeit. Grobes Selbstverschulden schließt den Anspruch aus.'},
+    {k: 'num', lv: 2, q: 'Bis zu wie vielen Wochen wird Krankengeld (dieselbe Krankheit, 3 Jahre) gezahlt?', a: 78, tol: 0, u: 'Wochen', e: '**78 Wochen** innerhalb von 3 Jahren (inkl. der 6 Wochen Fortzahlung).'},
+    {k: 'gap', lv: 2, q: 'Die Höhe der Entgeltfortzahlung richtet sich nach dem ___-prinzip: man bekommt, was man bei Arbeit verdient hätte.', a: ['Lohnausfall', 'Lohnausfallprinzip'], e: '**Lohnausfallprinzip**, 100 %.'},
+    {k: 'order', lv: 2, q: 'Bringe den Ablauf bei längerer Krankheit in die richtige Reihenfolge.', o: ['Krankmeldung beim Arbeitgeber am 1. Tag', 'AU spätestens ab dem 4. Kalendertag', 'Entgeltfortzahlung bis 6 Wochen', 'Krankengeld der Krankenkasse'], e: 'Danach ggf. Reha oder Erwerbsminderungsrente.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Der AG zahlt bei jeder neuen Erkrankung nur einmal im Jahr 6 Wochen.', 'Bei derselben Krankheit entsteht nach 6 Monaten ohne AU ein neuer Anspruch.', 'Der AG kann die AU schon ab dem 1. Tag verlangen.', 'Ein Urlaub im Ausland mit Krankheit: Anschrift mitteilen.'], a: 0, e: 'Für **jede neue Krankheit** entstehen neue 6 Wochen. Nur dieselbe Krankheit wird zusammengerechnet.'},
+    {lv: 2, q: 'Welches Gesetz regelt die Lohnfortzahlung?', o: ['Entgeltfortzahlungsgesetz (EntgFG)', 'BUrlG', 'ArbZG', 'KSchG'], a: 0, e: '**EntgFG**.'},
+  ]},
+  {id: 'wiso-arbeitsschutz', t: 'Arbeitsschutz', qs: [
+    {lv: 1, q: 'Rundes Schild mit rotem Rand und Querbalken bedeutet ...', o: ['Verbot', 'Gebot', 'Warnung', 'Rettung'], a: 0, e: '**Rund + rot = Verbot**, rund + blau = Gebot.'},
+    {k: 'match', lv: 1, q: 'Ordne Form/Farbe der Bedeutung zu.', o: [['Rund, blau', 'Gebot'], ['Dreieck, gelb', 'Warnung'], ['Quadrat, grün', 'Rettung / Erste Hilfe'], ['Quadrat, rot', 'Brandschutz']], e: 'Sicherheitszeichen nach ASR A1.3.'},
+    {k: 'order', lv: 2, q: 'Richtiges Verhalten im Brandfall:', o: ['Ruhe bewahren', 'Brand melden (112)', 'Menschen retten', 'Löschversuch unternehmen'], e: '**Melden vor Retten vor Löschen**. Eigene Sicherheit geht vor.'},
+    {lv: 2, q: 'Im Serverraum brennt ein Netzteil. Welches Löschmittel ist geeignet?', o: ['CO2-Löscher', 'Wasserlöscher', 'Schaumlöscher auf die Steckdose', 'Fettbrandlöscher'], a: 0, e: 'Bei **elektrischen Anlagen**: **CO2**, rückstandsfrei und nicht leitend; Abstand halten.'},
+    {k: 'match', lv: 2, q: 'Ordne die Brandklasse zu.', o: [['A', 'Feste Stoffe (Holz, Papier)'], ['B', 'Flüssigkeiten (Benzin)'], ['C', 'Gase'], ['F', 'Speisefette']], e: 'D = Metalle.'},
+    {lv: 2, q: 'Welches Gesetz verpflichtet zur **Gefährdungsbeurteilung**?', o: ['ArbSchG', 'BUrlG', 'BBiG', 'KSchG'], a: 0, e: 'Arbeitsschutzgesetz: Grundpflichten, **Gefährdungsbeurteilung**, **Unterweisung**.'},
+    {lv: 2, q: 'Wo sind Anforderungen an **Bildschirmarbeitsplätze** geregelt?', o: ['ArbStättV (Anhang 6)', 'BetrVG § 102', 'ASiG', 'JArbSchG'], a: 0, e: 'Arbeitsstättenverordnung, **Anhang 6**.'},
+    {lv: 2, q: 'Welches Gesetz regelt Betriebsarzt und Fachkraft für Arbeitssicherheit?', o: ['ASiG', 'ArbZG', 'TVG', 'NachwG'], a: 0, e: '**Arbeitssicherheitsgesetz**.'},
+    {k: 'multi', lv: 2, q: 'Wer **überwacht** den Arbeitsschutz? (mehrere)', o: ['Gewerbeaufsichtsamt', 'Berufsgenossenschaft', 'IHK', 'Betriebsrat (im Betrieb)', 'Finanzamt'], a: [0, 1, 3], e: 'Duales Aufsichtssystem: **staatlich** + **BG**; im Betrieb auch der Betriebsrat.'},
+    {k: 'num', lv: 2, q: 'Ab wie vielen Beschäftigten muss ein **Sicherheitsbeauftragter** bestellt werden?', a: 21, tol: 0, u: 'Beschäftigte', e: 'Ab **21 Beschäftigten** (laut Seite).'},
+    {k: 'num', lv: 2, q: 'Ab wie vielen Tagen Arbeitsunfähigkeit muss ein Arbeitsunfall der BG gemeldet werden? (mehr als ... Tage)', a: 3, tol: 0, u: 'Tage', e: '**Mehr als 3 Tage** AU: **Unfallanzeige** an die BG.'},
+    {k: 'tf', lv: 1, q: 'Kleine Verletzungen (Schnitt in den Finger) werden ins Verbandbuch eingetragen.', a: true, e: 'Das **Verbandbuch** dokumentiert Erste-Hilfe-Leistungen als Nachweis.'},
+    {k: 'tf', lv: 2, q: 'Mitarbeiter an Bildschirmarbeitsplätzen haben Anspruch auf ein Angebot zur Augenuntersuchung.', a: true, e: '**Angebotsvorsorge** Bildschirmarbeit (G37), ggf. Bildschirmbrille.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Die Kosten des Arbeitsschutzes darf der AG auf die Beschäftigten umlegen.', 'Beschäftigte müssen regelmäßig unterwiesen werden.', 'Die DGUV Vorschriften sind Unfallverhütungsvorschriften.', 'Für Schwangere gilt zusätzlich das MuSchG.'], a: 0, e: '§ 3 ArbSchG: Kosten trägt der **Arbeitgeber**.'},
+    {k: 'gap', lv: 2, q: 'Der Arzt, den man nach einem Arbeitsunfall aufsucht, heißt ___-Arzt.', a: ['D', 'Durchgangs', 'Durchgangsarzt', 'D-Arzt'], e: '**Durchgangsarzt (D-Arzt)**.'},
+  ]},
+  {id: 'wiso-tarif', t: 'Tarifvertrag', qs: [
+    {lv: 1, q: 'Wer sind die **Tarifvertragsparteien**?', o: ['Gewerkschaft und Arbeitgeberverband', 'Betriebsrat und Arbeitgeber', 'IHK und Gewerkschaft', 'Staat und Arbeitgeber'], a: 0, e: 'Betriebsrat und AG schließen **Betriebsvereinbarungen**, keine Tarifverträge.'},
+    {lv: 1, q: 'Was bedeutet **Tarifautonomie**?', o: ['Tarifparteien verhandeln ohne staatliche Einmischung', 'Der Staat legt Löhne fest', 'Jeder AN verhandelt allein', 'Der Betriebsrat legt Löhne fest'], a: 0, e: 'Grundlage **Art. 9 Abs. 3 GG** (Koalitionsfreiheit).'},
+    {lv: 2, q: 'Tarif: 38 Std/Woche, 30 Tage Urlaub. Arbeitsvertrag eines tarifgebundenen AN: 40 Std, 32 Tage Urlaub. Was gilt?', o: ['38 Std und 32 Tage', '40 Std und 32 Tage', '38 Std und 30 Tage', '40 Std und 30 Tage'], a: 0, e: '**Günstigkeitsprinzip** pro Regelung: Abweichungen nur zugunsten des AN.'},
+    {k: 'tf', lv: 2, q: 'Ein Tarifvertrag gilt automatisch für alle Arbeitnehmer einer Branche.', a: false, e: 'Nur für **Tarifgebundene** (Mitglieder beider Seiten), für alle nur bei **Allgemeinverbindlichkeit**.'},
+    {lv: 2, q: 'Wer erklärt einen Tarifvertrag für **allgemeinverbindlich**?', o: ['Das Bundesarbeitsministerium auf Antrag', 'Die Gewerkschaft allein', 'Die IHK', 'Das Bundesverfassungsgericht'], a: 0, e: 'Auf Antrag, durch das **Arbeitsministerium**.'},
+    {k: 'match', lv: 2, q: 'Ordne die Tarifvertragsart zu.', o: [['Manteltarifvertrag', 'Arbeitszeit, Urlaub, Kündigung'], ['Entgelttarifvertrag', 'Höhe der Vergütung'], ['Rahmentarifvertrag', 'Eingruppierung'], ['Haustarifvertrag', 'Mit einem einzelnen Unternehmen']], e: 'Manteltarif läuft meist lange, Entgelttarif kurz (1 bis 2 Jahre).'},
+    {lv: 2, q: 'Während der Laufzeit eines Entgelttarifvertrags ruft die Gewerkschaft zum Streik für mehr Geld auf. Das verstößt gegen ...', o: ['die Friedenspflicht', 'das Günstigkeitsprinzip', 'die Allgemeinverbindlichkeit', 'die Nachwirkung'], a: 0, e: '**Friedenspflicht**: kein Arbeitskampf über tariflich Geregeltes während der Laufzeit.'},
+    {k: 'multi', lv: 2, q: 'Welche sind **Funktionen** des Tarifvertrags? (mehrere)', o: ['Schutzfunktion', 'Ordnungsfunktion', 'Friedensfunktion', 'Gewinnmaximierungsfunktion'], a: [0, 1, 2], e: 'Plus **Verteilungsfunktion**.'},
+    {k: 'tf', lv: 2, q: 'Nach Ablauf eines Tarifvertrags gelten seine Regelungen weiter, bis eine neue Regelung gilt.', a: true, e: '**Nachwirkung** (§ 4 Abs. 5 TVG).'},
+    {k: 'gap', lv: 1, q: 'Ein Tarifvertrag für eine ganze Branche und Region heißt ___tarifvertrag.', a: ['Flächen', 'Flächentarifvertrag'], e: '**Flächentarifvertrag**, Gegenstück: Haus-/Firmentarifvertrag.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Ein Arbeitsvertrag darf unter dem Tarifgehalt liegen, wenn der AN zustimmt.', 'Tarifnormen wirken unmittelbar und zwingend.', 'Übertarifliche Zulagen sind erlaubt.', 'Die Koalitionsfreiheit steht im Grundgesetz.'], a: 0, e: 'Für Tarifgebundene ist der Tarif **Mindeststandard**, eine Unterschreitung ist auch mit Zustimmung unwirksam.'},
+    {k: 'order', lv: 3, q: 'Typischer Ablauf einer Tarifrunde:', o: ['Kündigung des alten Tarifvertrags', 'Verhandlungen', 'Warnstreiks nach Ende der Friedenspflicht', 'Scheitern, Urabstimmung, Streik', 'Einigung und neuer Tarifvertrag'], e: 'Schlichtung kann zwischen Scheitern und Streik stehen.'},
+    {k: 'tf', lv: 2, q: 'Ein Betriebsrat darf über Löhne einen Tarifvertrag abschließen.', a: false, e: 'Betriebsrat ist **keine Tarifpartei**; § 77 Abs. 3 BetrVG: Tarifvorrang.'},
+    {lv: 2, q: 'Welcher Grundgesetzartikel schützt die Koalitionsfreiheit?', o: ['Art. 9 Abs. 3 GG', 'Art. 1 GG', 'Art. 12 GG', 'Art. 20 GG'], a: 0, e: '**Art. 9 Abs. 3**.'},
+  ]},
+  {id: 'wiso-gewerkschaft', t: 'Gewerkschaften und Arbeitskampf', qs: [
+    {lv: 1, q: 'Wer darf zu einem rechtmäßigen Streik aufrufen?', o: ['Eine Gewerkschaft', 'Der Betriebsrat', 'Jede Belegschaft', 'Die IHK'], a: 0, e: 'Streiks ohne Gewerkschaft sind **wilde Streiks** und rechtswidrig. Betriebsrat hat **Friedenspflicht**.'},
+    {k: 'multi', lv: 2, q: 'Voraussetzungen eines **rechtmäßigen** Streiks? (mehrere)', o: ['Aufruf durch Gewerkschaft', 'Tariflich regelbares Ziel', 'Friedenspflicht beendet', 'Politisches Ziel gegen ein Gesetz', 'Letztes Mittel (Ultima Ratio)'], a: [0, 1, 2, 4], e: '**Politische Streiks** sind in Deutschland rechtswidrig.'},
+    {lv: 2, q: 'Was passiert mit dem Arbeitsverhältnis während eines Streiks?', o: ['Es ruht: kein Lohn, Streikgeld für Mitglieder', 'Es endet automatisch', 'Lohn läuft normal weiter', 'Der AG muss Krankengeld zahlen'], a: 0, e: 'Hauptpflichten **ruhen**; Gewerkschaftsmitglieder bekommen **Streikgeld**.'},
+    {lv: 2, q: 'Die Arbeitgeber schließen streikende und nicht streikende AN vom Betrieb aus. Das ist ...', o: ['Aussperrung', 'Schlichtung', 'Urabstimmung', 'Warnstreik'], a: 0, e: '**Aussperrung** = Kampfmittel der AG, nur **verhältnismäßig** zulässig.'},
+    {k: 'num', lv: 2, q: 'Welche Zustimmung (in %) ist bei der Urabstimmung für einen Erzwingungsstreik oft nötig?', a: 75, tol: 0, u: '%', e: 'Satzungen sehen oft **75 %** vor.'},
+    {k: 'num', lv: 2, q: 'Ca. welcher Prozentsatz des Bruttogehalts ist der typische Gewerkschaftsbeitrag?', a: 1, tol: 0, u: '%', e: 'Etwa **1 %** des Bruttos.'},
+    {k: 'match', lv: 2, q: 'Ordne die Gewerkschaft zu.', o: [['IG Metall', 'Metall- und Elektroindustrie'], ['ver.di', 'Dienstleistungen'], ['GEW', 'Erziehung und Wissenschaft'], ['GdP', 'Polizei']], e: 'Alle im **DGB** (8 Einzelgewerkschaften).'},
+    {lv: 1, q: 'Was ist ein **Warnstreik**?', o: ['Kurzer, befristeter Streik zur Unterstützung von Verhandlungen', 'Streik ohne Gewerkschaft', 'Unbefristeter Streik nach Urabstimmung', 'Ausschluss durch den Arbeitgeber'], a: 0, e: 'Erst **nach Ende der Friedenspflicht** zulässig.'},
+    {k: 'tf', lv: 1, q: 'Die Mitgliedschaft in einer Gewerkschaft ist Pflicht für alle Arbeitnehmer.', a: false, e: '**Freiwillig** (positive und negative Koalitionsfreiheit).'},
+    {k: 'gap', lv: 2, q: 'Wenn Verhandlungen scheitern, vermittelt ein neutraler Dritter in der ___.', a: ['Schlichtung'], e: '**Schlichtung**; der Schlichterspruch ist meist nicht bindend.'},
+    {lv: 2, q: 'Wie heißt der Dachverband der Arbeitgeberverbände?', o: ['BDA', 'DGB', 'IHK', 'BDI-Gewerkschaft'], a: 0, e: '**BDA** (Bundesvereinigung der Deutschen Arbeitgeberverbände). DGB = Dachverband der Gewerkschaften.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Nicht organisierte AN dürfen bei einem Gewerkschaftsstreik nicht mitstreiken.', 'Wilde Streiks sind rechtswidrig.', 'Streikende erhalten keinen Lohn vom AG.', 'Der Arbeitgeberverband kann OT-Mitgliedschaft anbieten.'], a: 0, e: 'Auch **Nichtmitglieder** dürfen sich am rechtmäßigen Streik beteiligen (bekommen aber kein Streikgeld).'},
+    {k: 'order', lv: 2, q: 'Eskalationsstufen eines Arbeitskampfes:', o: ['Tarifverhandlung', 'Warnstreik', 'Urabstimmung', 'Erzwingungsstreik'], e: 'Danach erneute Verhandlung / Einigung.'},
+    {k: 'tf', lv: 3, q: 'Ein Streik gegen eine geplante Rentenreform der Bundesregierung ist rechtmäßig.', a: false, e: 'Ziel ist **nicht tariflich regelbar**: **politischer Streik**, rechtswidrig.'},
+  ]},
+  {id: 'wiso-betriebsrat', t: 'Betriebsrat und JAV', qs: [
+    {k: 'num', lv: 1, q: 'Ab wie vielen ständig wahlberechtigten AN kann ein Betriebsrat gewählt werden?', a: 5, tol: 0, u: 'AN', e: 'Mindestens **5** wahlberechtigte AN, davon **3 wählbar**.'},
+    {k: 'num', lv: 1, q: 'Ab welchem Alter ist man bei der Betriebsratswahl **wahlberechtigt** (aktives Wahlrecht)?', a: 16, tol: 0, u: 'Jahre', e: 'Seit dem Betriebsrätemodernisierungsgesetz **2021**: ab **16** Jahren.'},
+    {lv: 2, q: 'Azubi Ali ist **17** und seit 4 Monaten im Betrieb. Was gilt bei der BR-Wahl?', o: ['Er darf wählen, aber nicht gewählt werden', 'Er darf wählen und gewählt werden', 'Er darf weder wählen noch gewählt werden', 'Er darf nur die JAV, nie den BR wählen'], a: 0, e: 'Aktiv ab **16**, passiv ab **18** und **6 Monaten** Betriebszugehörigkeit.'},
+    {lv: 2, q: 'Sara ist 25 und seit **3 Monaten** im Betrieb. Darf sie für den Betriebsrat kandidieren?', o: ['Nein, wählbar erst nach 6 Monaten', 'Ja, ab 18 immer', 'Ja, mit Zustimmung des AG', 'Nein, erst ab 1 Jahr'], a: 0, e: 'Passives Wahlrecht: **18 Jahre + 6 Monate** im Betrieb.'},
+    {k: 'num', lv: 2, q: 'Wie viele Mitglieder hat der Betriebsrat in einem Betrieb mit **45** wahlberechtigten AN?', a: 3, tol: 0, u: 'Mitglieder', e: '5-20: 1, **21-50: 3**, 51-100: 5, 101-200: 7.'},
+    {k: 'num', lv: 2, q: 'Betrieb mit **120** wahlberechtigten AN: Größe des Betriebsrats?', a: 7, tol: 0, u: 'Mitglieder', e: '101 bis 200 AN: **7** Mitglieder.'},
+    {k: 'num', lv: 1, q: 'Amtszeit des Betriebsrats in Jahren?', a: 4, tol: 0, u: 'Jahre', e: '**4 Jahre**; JAV: 2 Jahre.'},
+    {lv: 2, q: 'Der AG will eine Software einführen, die Tastatureingaben der Mitarbeiter auswertet. Recht des Betriebsrats?', o: ['Echte Mitbestimmung nach § 87 (technische Überwachung)', 'Nur Information', 'Kein Recht', 'Nur Anhörung wie bei Kündigung'], a: 0, e: '§ 87 Abs. 1 Nr. 6: **technische Einrichtungen zur Leistungs- und Verhaltenskontrolle**. Ohne Zustimmung keine Einführung.'},
+    {k: 'match', lv: 2, q: 'Ordne die Angelegenheit dem Recht zu.', o: [['Beginn der täglichen Arbeitszeit', 'Mitbestimmung § 87'], ['Einstellung eines neuen Mitarbeiters', 'Zustimmungsverweigerung § 99'], ['Kündigung', 'Anhörung § 102'], ['Betriebsschließung', 'Interessenausgleich, Sozialplan § 111']], e: 'Stufen: Information, Anhörung, Zustimmungsverweigerung, echte Mitbestimmung.'},
+    {k: 'tf', lv: 2, q: 'Eine Kündigung ohne Anhörung des Betriebsrats ist unwirksam.', a: true, e: '**§ 102 BetrVG**.'},
+    {k: 'tf', lv: 2, q: 'Der Betriebsrat ist ein Organ der Gewerkschaft.', a: false, e: 'Der BR ist ein **Organ der Belegschaft** nach BetrVG, unabhängig von der Gewerkschaft.'},
+    {k: 'num', lv: 2, q: 'Bis zu welchem Alter dürfen Azubis die **JAV** wählen (unter ... Jahren)?', a: 25, tol: 0, u: 'Jahre', e: 'JAV: Jugendliche unter 18 und Azubis **unter 25**, Wahl alle **2 Jahre**.'},
+    {k: 'num', lv: 3, q: 'Ab wie vielen AN wird ein **Wirtschaftsausschuss** gebildet (mehr als ...)?', a: 100, tol: 0, u: 'AN', e: '§ 106: in Unternehmen mit **mehr als 100** AN.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Der Betriebsrat darf zu einem Streik aufrufen.', 'Betriebsratsmitglieder haben besonderen Kündigungsschutz.', 'Der BR überwacht die Einhaltung von Gesetzen und Tarifverträgen.', 'Der BR kann Betriebsvereinbarungen schließen.'], a: 0, e: 'Der BR hat **Friedenspflicht** (§ 74 BetrVG), Streik nur über Gewerkschaften.'},
+    {k: 'gap', lv: 2, q: 'Bei einer Betriebsschließung wird zum Ausgleich wirtschaftlicher Nachteile ein ___ aufgestellt.', a: ['Sozialplan'], e: '**Sozialplan** (z. B. Abfindungen), daneben Interessenausgleich.'},
+    {k: 'multi', lv: 2, q: 'Wobei hat der Betriebsrat **echte Mitbestimmung** nach § 87? (mehrere)', o: ['Pausenregelung', 'Urlaubsplan', 'Höhe des Vorstandsgehalts', 'Einführung einer Zeiterfassung', 'Produktpreise'], a: [0, 1, 3], e: 'Soziale Angelegenheiten; Unternehmensentscheidungen wie Preise nicht.'},
+  ]},
+  {id: 'wiso-wahlen', t: 'Wahlen und Beteiligung', qs: [
+    {k: 'match', lv: 1, q: 'Ordne den Wahlrechtsgrundsatz zu.', o: [['allgemein', 'Alle Staatsbürger ab Mindestalter'], ['unmittelbar', 'Ohne Wahlmänner'], ['frei', 'Ohne Zwang und Druck'], ['geheim', 'Niemand sieht die Wahl']], e: 'Fünf Grundsätze: allgemein, unmittelbar, frei, gleich, geheim (Art. 38 GG).'},
+    {lv: 2, q: 'Ein Chef verlangt, dass alle ein Foto ihres Stimmzettels zeigen. Welcher Grundsatz ist verletzt?', o: ['geheim (und frei)', 'allgemein', 'unmittelbar', 'gleich'], a: 0, e: '**Geheim** und durch den Druck auch **frei**.'},
+    {lv: 2, q: 'Personen mit hohem Einkommen sollen zwei Stimmen bekommen. Welcher Grundsatz wäre verletzt?', o: ['gleich', 'geheim', 'unmittelbar', 'frei'], a: 0, e: '**Gleich**: jede Stimme hat dasselbe Gewicht.'},
+    {lv: 1, q: 'Was ist das **passive Wahlrecht**?', o: ['Das Recht, gewählt zu werden', 'Das Recht zu wählen', 'Die Pflicht zu wählen', 'Briefwahl'], a: 0, e: 'Aktiv = **wählen**, passiv = **gewählt werden**.'},
+    {lv: 1, q: 'Was wählt man mit der **Zweitstimme** bei der Bundestagswahl?', o: ['Eine Partei (Landesliste)', 'Einen Wahlkreiskandidaten', 'Den Bundeskanzler', 'Den Bundespräsidenten'], a: 0, e: 'Zweitstimme = Partei, **entscheidet über die Sitzverteilung**.'},
+    {k: 'tf', lv: 2, q: 'Die Erststimme entscheidet über die Sitzverteilung im Bundestag.', a: false, e: 'Das macht die **Zweitstimme**; Erststimme = Kandidat im Wahlkreis.'},
+    {k: 'num', lv: 1, q: 'Wie hoch ist die Sperrklausel bei der Bundestagswahl (in %)?', a: 5, tol: 0, u: '%', e: '**5-%-Hürde** (oder Grundmandatsklausel).'},
+    {k: 'num', lv: 2, q: 'Ab welchem Alter darf man bei der **Europawahl** wählen (seit 2024)?', a: 16, tol: 0, u: 'Jahre', e: 'Europawahl **16**, Bundestag 18.'},
+    {k: 'num', lv: 1, q: 'Ab welchem Alter darf man bei der **Bundestagswahl** wählen?', a: 18, tol: 0, u: 'Jahre', e: 'Bundestag: **18** aktiv und passiv.'},
+    {k: 'num', lv: 1, q: 'Alle wie viele Jahre wird der Bundestag gewählt?', a: 4, tol: 0, u: 'Jahre', e: 'Wahlperiode **4 Jahre**.'},
+    {k: 'multi', lv: 2, q: 'Welche sind Formen politischer Beteiligung? (mehrere)', o: ['Petition', 'Demonstration', 'Bürgerinitiative', 'Steuerhinterziehung', 'Jugendgemeinderat'], a: [0, 1, 2, 4], e: 'Legale Beteiligungsformen neben Wahlen.'},
+    {k: 'gap', lv: 2, q: 'Die fünf Wahlrechtsgrundsätze: allgemein, unmittelbar, frei, ___ und geheim.', a: ['gleich'], e: 'Merkhilfe **a-u-f-g-g**.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Bei der Bundestagswahl wählen Wahlmänner den Kanzler direkt für das Volk.', 'Die Kanzlerin wird vom Bundestag gewählt.', 'Briefwahl ist zulässig.', 'Eine Partei mit 3 direkt gewonnenen Wahlkreisen kann trotz unter 5 % einziehen.'], a: 0, e: 'Wahl ist **unmittelbar**; den Kanzler wählt der **Bundestag**.'},
+    {k: 'tf', lv: 2, q: 'In Baden-Württemberg darf man bei der Kommunalwahl ab 16 wählen.', a: true, e: 'Kommunalwahl BW: **16**.'},
+  ]},
+  {id: 'wiso-sv', t: 'Sozialversicherung', qs: [
+    {k: 'multi', lv: 1, q: 'Welche gehören zu den **fünf Zweigen** der gesetzlichen Sozialversicherung? (mehrere)', o: ['Krankenversicherung', 'Rentenversicherung', 'Haftpflichtversicherung', 'Pflegeversicherung', 'Unfallversicherung'], a: [0, 1, 3, 4], e: 'K-R-A-P-U, dazu **Arbeitslosenversicherung**. Haftpflicht ist privat.'},
+    {lv: 1, q: 'Welcher Zweig wird **allein vom Arbeitgeber** finanziert?', o: ['Unfallversicherung', 'Rentenversicherung', 'Pflegeversicherung', 'Arbeitslosenversicherung'], a: 0, e: '**UV**: nur AG, nach Lohnsumme und Gefahrklasse.'},
+    {k: 'match', lv: 2, q: 'Ordne den Beitragssatz (2026) zu.', o: [['Rentenversicherung', '18,6 %'], ['Arbeitslosenversicherung', '2,6 %'], ['Krankenversicherung (allgemein)', '14,6 %'], ['Pflegeversicherung', '3,6 %']], e: 'Jeweils grundsätzlich **zur Hälfte** AG und AN.'},
+    {lv: 2, q: 'Was besagt das **Solidarprinzip**?', o: ['Beitrag nach Einkommen, Leistung nach Bedarf', 'Beitrag nach Risiko', 'Jeder spart für sich selbst', 'Leistung nur für Beitragszahler mit hohem Einkommen'], a: 0, e: 'Starke tragen Schwache; Gegenstück: **Äquivalenzprinzip** (PKV).'},
+    {lv: 2, q: 'Was bedeutet **Umlageverfahren** in der Rentenversicherung?', o: ['Heutige Beiträge finanzieren heutige Renten', 'Jeder spart sein eigenes Kapital an', 'Der Staat zahlt alles aus Steuern', 'Die Arbeitgeber zahlen allein'], a: 0, e: '**Generationenvertrag**; Gegenstück: Kapitaldeckung.'},
+    {k: 'num', lv: 2, q: 'Brutto 4.000 Euro. Gesamtbeitrag (AG + AN) zur Rentenversicherung in Euro?', a: 744, tol: 0, u: 'Euro', e: '18,6 % von 4.000 = **744 Euro**, je 372 Euro.'},
+    {k: 'num', lv: 3, q: 'Brutto **9.000 Euro**. AN-Anteil Rentenversicherung (BBG RV 8.450 Euro)?', a: 785.85, tol: 0.01, u: 'Euro', e: 'Nur bis zur **BBG**: 8.450 mal 9,3 % = **785,85 Euro**.'},
+    {k: 'num', lv: 3, q: 'Brutto **7.000 Euro**. AN-Anteil KV nur allgemeiner Satz 7,3 % (BBG KV 5.812,50 Euro)?', a: 424.31, tol: 0.01, u: 'Euro', e: '5.812,50 mal 7,3 % = **424,31 Euro**. Über der BBG wird kein Beitrag erhoben.'},
+    {lv: 2, q: 'Was ist die **Beitragsbemessungsgrenze**?', o: ['Einkommen, bis zu dem Beiträge berechnet werden', 'Einkommen, ab dem man in die PKV muss', 'Mindestlohn', 'Grenze für Minijobs'], a: 0, e: 'Nicht verwechseln mit der **Versicherungspflichtgrenze** (KV-Wechsel in PKV möglich).'},
+    {k: 'num', lv: 2, q: 'Bis zu welchem Monatsverdienst (2026) liegt ein **Minijob** vor?', a: 603, tol: 0, u: 'Euro', e: 'Minijob bis **603 Euro**, Midijob 603,01 bis 2.000 Euro.'},
+    {k: 'tf', lv: 2, q: 'Der Kinderlosenzuschlag in der Pflegeversicherung wird je zur Hälfte von AG und AN getragen.', a: false, e: 'Den Zuschlag (**0,6 %**) zahlt der **AN allein**.'},
+    {k: 'match', lv: 2, q: 'Ordne das Sozialgesetzbuch zu.', o: [['SGB V', 'Krankenversicherung'], ['SGB VI', 'Rentenversicherung'], ['SGB III', 'Arbeitsförderung (ALV)'], ['SGB VII', 'Unfallversicherung']], e: 'SGB XI = Pflegeversicherung.'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['Der AN überweist seine SV-Beiträge selbst an die Kassen.', 'Der AG führt den Gesamtsozialversicherungsbeitrag an die Krankenkasse ab.', 'Die SV ist eine Pflichtversicherung.', 'Die Träger verwalten sich selbst.'], a: 0, e: 'Der **AG** behält den AN-Anteil ein und führt alles an die **Krankenkasse (Einzugsstelle)** ab.'},
+    {k: 'gap', lv: 1, q: 'AG und AN zahlen die meisten Beiträge je zur Hälfte. Das nennt man ___ Finanzierung.', a: ['paritätische', 'paritätisch'], e: '**Paritätisch** = zu gleichen Teilen.'},
+    {k: 'num', lv: 2, q: 'Monatliche Beitragsbemessungsgrenze RV/ALV 2026 in Euro?', a: 8450, tol: 0, u: 'Euro', e: '**8.450 Euro**; KV/PV: 5.812,50 Euro.'},
+  ]},
+  {id: 'wiso-kv', t: 'Krankenversicherung', qs: [
+    {lv: 1, q: 'Welches Prinzip gilt in der **PKV** für die Beitragshöhe?', o: ['Äquivalenzprinzip (nach Risiko)', 'Solidarprinzip', 'Umlageverfahren', 'Fürsorgeprinzip'], a: 0, e: 'PKV: Beitrag nach **Alter, Gesundheit, Leistungsumfang**.'},
+    {lv: 2, q: 'Familie: Vater (GKV, 3.500 Euro), Mutter ohne Einkommen, 2 Kinder. Wer zahlt Beiträge?', o: ['Nur der Vater; Mutter und Kinder sind familienversichert', 'Alle vier einzeln', 'Vater und Mutter', 'Die Kinder über die Schule'], a: 0, e: '**Familienversicherung** in der GKV: beitragsfrei für Ehepartner und Kinder ohne eigenes Einkommen.'},
+    {lv: 2, q: 'Patient der GKV geht zum Arzt. Wie wird abgerechnet?', o: ['Sachleistung: Arzt rechnet mit der Kasse ab', 'Patient zahlt und reicht die Rechnung ein', 'Patient zahlt immer selbst', 'Der Arbeitgeber zahlt'], a: 0, e: 'GKV: **Sachleistungsprinzip**; PKV: **Kostenerstattung**.'},
+    {k: 'num', lv: 2, q: 'Versicherungspflichtgrenze 2026 pro Jahr in Euro?', a: 77400, tol: 0, u: 'Euro', e: '**77.400 Euro** (6.450 pro Monat). Darüber Wechsel in die PKV möglich.'},
+    {k: 'num', lv: 2, q: 'Brutto 4.000 Euro, Zusatzbeitrag 2,9 %. AN-Anteil zur KV (7,3 % + 1,45 %) in Euro?', a: 350, tol: 0, u: 'Euro', e: '8,75 % von 4.000 = **350 Euro**.'},
+    {k: 'num', lv: 3, q: 'Zuzahlung für ein Medikament, das 30 Euro kostet (10 %, mind. 5, max. 10 Euro)?', a: 5, tol: 0, u: 'Euro', e: '10 % = 3 Euro, aber **mindestens 5 Euro**.'},
+    {k: 'num', lv: 3, q: 'Zuzahlung für ein Medikament für 160 Euro?', a: 10, tol: 0, u: 'Euro', e: '10 % = 16 Euro, aber **höchstens 10 Euro**.'},
+    {k: 'multi', lv: 2, q: 'Wer kann in die **PKV**? (mehrere)', o: ['Beamte', 'Selbstständige', 'AN über der Versicherungspflichtgrenze', 'Jeder Azubi nach Wunsch'], a: [0, 1, 2], e: 'Azubis sind **versicherungspflichtig** in der GKV.'},
+    {k: 'tf', lv: 2, q: 'Ein Wechsel von der PKV zurück in die GKV ist ab 55 Jahren praktisch kaum noch möglich.', a: true, e: 'Rückkehr ist **stark eingeschränkt**, um Rosinenpickerei zu verhindern.'},
+    {k: 'tf', lv: 1, q: 'In der GKV gibt es freie Kassenwahl.', a: true, e: 'Etwa 95 Kassen, Wechsel nach **12 Monaten** Bindung.'},
+    {k: 'match', lv: 2, q: 'GKV oder PKV?', o: [['Kapitaldeckung mit Altersrückstellungen', 'PKV'], ['Familienversicherung', 'GKV'], ['Kostenerstattung', 'PKV'], ['Beitrag nach Einkommen', 'GKV']], e: 'Kernunterschiede der Systeme.'},
+    {lv: 2, q: 'Ab wann zahlt die Krankenkasse **Krankengeld**?', o: ['Ab der 7. Woche', 'Ab dem 1. Tag', 'Ab dem 4. Tag', 'Ab der 12. Woche'], a: 0, e: 'Die ersten 6 Wochen zahlt der AG (EntgFG).'},
+    {lv: 3, q: 'Welche Aussage ist **FALSCH**?', o: ['In der PKV sind Kinder automatisch beitragsfrei mitversichert.', 'Zahnersatz bekommt in der GKV einen Festzuschuss.', 'Vorsorge und Impfungen sind GKV-Leistungen.', 'Der allgemeine Beitragssatz der GKV beträgt 14,6 %.'], a: 0, e: 'In der PKV braucht **jede Person einen eigenen Vertrag**.'},
+    {k: 'gap', lv: 2, q: 'Den kassenindividuellen Aufschlag auf 14,6 % nennt man ___.', a: ['Zusatzbeitrag'], e: 'Durchschnittlich **2,9 %** (2026), je Hälfte AG/AN.'},
+  ]},
+]);
+;
+// content/quest/wiso-2.js
+AP2.quest('wiso', [
+  {id: 'wiso-alv', t: 'Arbeitslosenversicherung', qs: [
+    {lv: 1, q: 'Welche Stelle zahlt das **Arbeitslosengeld I**?', o: ['Bundesagentur für Arbeit', 'Jobcenter', 'Krankenkasse', 'Rentenversicherung'], a: 0, e: 'ALG I zahlt die **Agentur für Arbeit**. Das Bürgergeld kommt vom Jobcenter.'},
+    {lv: 1, q: 'Der Beitrag zur Arbeitslosenversicherung wird **je zur Hälfte** von Arbeitgeber und Arbeitnehmer getragen.', k: 'tf', a: true, e: 'Paritätisch: je **50 %**.'},
+    {lv: 2, k: 'gap', q: 'Das Arbeitslosengeld I beträgt für Arbeitslose ohne Kind ___ % des pauschalierten Nettoentgelts.', a: ['60'], e: '**60 %** (mit Kind 67 %).'},
+    {lv: 2, k: 'multi', q: 'Welche Voraussetzungen gelten für **ALG I**?', o: ['Arbeitslos gemeldet', 'Anwartschaftszeit erfüllt', 'Verfügbar für die Vermittlung', 'Mindestens 50 Jahre alt'], a: [0, 1, 2], e: 'Alter spielt für den Anspruch nicht, nur für die Bezugsdauer.'},
+  ]},
+  {id: 'wiso-rv', t: 'Rentenversicherung', qs: [
+    {lv: 1, q: 'Welches Prinzip gilt in der gesetzlichen Rentenversicherung?', o: ['Umlageverfahren', 'Kapitaldeckung', 'Kostenerstattung', 'Äquivalenzprinzip nach Risiko'], a: 0, e: 'Die Beiträge der Erwerbstätigen finanzieren die **laufenden Renten** (Generationenvertrag).'},
+    {lv: 1, q: 'Die Rentenformel multipliziert Entgeltpunkte, Zugangsfaktor, Rentenartfaktor und aktuellen Rentenwert.', k: 'tf', a: true, e: 'Monatsrente = **EP × ZF × RAF × aRW**.'},
+    {lv: 2, k: 'num', q: 'Berechne die Monatsrente: 40 Entgeltpunkte, Zugangsfaktor 1,0, Rentenartfaktor 1,0, aktueller Rentenwert 40,00 €.', a: 1600, tol: 0.5, u: '€', e: '40 × 1,0 × 1,0 × 40,00 = **1.600 €**.'},
+    {lv: 2, q: 'Was passiert mit dem **Zugangsfaktor** bei vorzeitigem Rentenbeginn?', o: ['Er sinkt unter 1,0', 'Er steigt über 1,0', 'Er bleibt 1,0', 'Er wird 0'], a: 0, e: 'Abschlag von **0,3 % je Monat** früherem Beginn.'},
+  ]},
+  {id: 'wiso-pv', t: 'Pflegeversicherung', qs: [
+    {lv: 1, q: 'Die Pflegeversicherung ist eine ...', o: ['Pflichtversicherung, angegliedert an die Krankenversicherung', 'freiwillige Versicherung', 'rein private Versicherung', 'Teil der Unfallversicherung'], a: 0, e: 'Wer in der GKV ist, ist in der **sozialen Pflegeversicherung**; Privatversicherte in der privaten Pflegepflichtversicherung.'},
+    {lv: 1, q: 'Wie viele **Pflegegrade** gibt es?', o: ['5', '3', '4', '6'], a: 0, e: 'Pflegegrade **1 bis 5**.'},
+    {lv: 2, k: 'tf', q: 'Kinderlose Versicherte über 23 zahlen einen Beitragszuschlag.', a: true, e: 'Der **Kinderlosenzuschlag** gilt ab 23 Jahren.'},
+    {lv: 2, k: 'order', q: 'Ordne die Pflegegrade nach steigendem Pflegebedarf.', o: ['Pflegegrad 1', 'Pflegegrad 2', 'Pflegegrad 3', 'Pflegegrad 5'], e: 'Je höher der Grad, desto schwerer die Beeinträchtigung der Selbstständigkeit.'},
+  ]},
+  {id: 'wiso-uv', t: 'Unfallversicherung', qs: [
+    {lv: 1, q: 'Wer trägt die Beiträge zur gesetzlichen Unfallversicherung?', o: ['Allein der Arbeitgeber', 'Allein der Arbeitnehmer', 'Je zur Hälfte', 'Der Staat'], a: 0, e: 'Nur der **Arbeitgeber** zahlt an die Berufsgenossenschaft.'},
+    {lv: 1, k: 'multi', q: 'Was gilt als **Arbeitsunfall**?', o: ['Unfall im Betrieb', 'Unfall auf dem direkten Arbeitsweg', 'Unfall im Urlaub', 'Unfall in der Berufsschule'], a: [0, 1, 3], e: 'Auch Wegeunfälle und Schulwege sind versichert.'},
+    {lv: 2, q: 'Welche Leistung gilt als Grundsatz der UV?', o: ['Reha vor Rente', 'Rente vor Reha', 'Kosten nur bei Verschulden', 'Nur Geldleistung'], a: 0, e: '**Prävention, Reha, dann Entschädigung.**'},
+    {lv: 2, k: 'gap', q: 'Träger der gesetzlichen Unfallversicherung in der Wirtschaft sind die ___.', a: ['Berufsgenossenschaften', 'Berufsgenossenschaft'], e: 'Die BG (DGUV).'},
+  ]},
+  {id: 'wiso-steuern', t: 'Steuern', qs: [
+    {lv: 1, q: 'Welche Steuer ist eine **direkte Steuer**?', o: ['Einkommensteuer', 'Umsatzsteuer', 'Tabaksteuer', 'Mineralölsteuer'], a: 0, e: 'Steuerschuldner und -träger sind identisch.'},
+    {lv: 1, k: 'tf', q: 'Der normale Umsatzsteuersatz beträgt 19 %.', a: true, e: 'Ermäßigt: **7 %**.'},
+    {lv: 2, k: 'num', q: 'Nettopreis 500 €, Umsatzsteuer 19 %. Wie hoch ist der Bruttopreis?', a: 595, tol: 0.01, u: '€', e: '500 × 1,19 = **595 €**.'},
+    {lv: 2, q: 'Die Gewerbesteuer fließt an ...', o: ['die Gemeinde', 'den Bund', 'das Land', 'die EU'], a: 0, e: 'Sie ist eine **Gemeindesteuer**.'},
+  ]},
+  {id: 'wiso-markt', t: 'Markt und Preisbildung', qs: [
+    {lv: 1, q: 'Der Preis steigt, wenn ...', o: ['die Nachfrage das Angebot übersteigt', 'das Angebot die Nachfrage übersteigt', 'beide gleich sind', 'der Staat verkauft'], a: 0, e: 'Nachfrageüberhang → Preis steigt.'},
+    {lv: 1, q: 'Wie nennt man den Preis, bei dem Angebot und Nachfrage gleich sind?', o: ['Gleichgewichtspreis', 'Höchstpreis', 'Mindestpreis', 'Listenpreis'], a: 0, e: 'Der Markt ist dort **geräumt**.'},
+    {lv: 2, q: 'Ein Markt mit vielen Anbietern und vielen Nachfragern heißt ...', o: ['Polypol', 'Monopol', 'Oligopol', 'Monopson'], a: 0, e: 'Viele/viele = Polypol; ein Anbieter = Monopol; wenige = Oligopol.'},
+    {lv: 2, k: 'match', q: 'Ordne die Marktform zu.', o: [['Monopol', 'ein Anbieter'], ['Oligopol', 'wenige Anbieter'], ['Polypol', 'viele Anbieter']], e: 'Nach Zahl der Anbieter.'},
+  ]},
+  {id: 'wiso-kreislauf', t: 'Wirtschaftskreislauf', qs: [
+    {lv: 1, q: 'Im einfachen Wirtschaftskreislauf gibt es ...', o: ['Haushalte und Unternehmen', 'Haushalte, Unternehmen und Staat', 'nur den Staat', 'Unternehmen und Ausland'], a: 0, e: 'Erweitert: + Staat, Banken, Ausland.'},
+    {lv: 1, q: 'Was fließt von Haushalten an Unternehmen?', o: ['Arbeitskraft', 'Löhne', 'Güter', 'Steuern'], a: 0, e: 'Die Haushalte stellen Arbeitskraft bereit; dafür fließen Löhne zurück.'},
+    {lv: 2, k: 'tf', q: 'Löhne sind ein Geldstrom von den Unternehmen zu den Haushalten.', a: true, e: 'Entgelt für Arbeit.'},
+    {lv: 2, q: 'Was erhält der Staat von Haushalten und Unternehmen?', o: ['Steuern', 'Subventionen', 'Transfers', 'Kredite von Banken'], a: 0, e: 'Der Staat zahlt Subventionen und Transfers aus.'},
+  ]},
+  {id: 'wiso-konjunktur', t: 'Konjunktur und Inflation', qs: [
+    {lv: 1, q: 'Welche Reihenfolge hat der **Konjunkturzyklus**?', o: ['Aufschwung, Boom, Abschwung, Rezession', 'Boom, Aufschwung, Rezession, Abschwung', 'Rezession, Boom, Abschwung, Aufschwung', 'Abschwung, Aufschwung, Boom, Rezession'], a: 0, e: 'Dann Depression/Tiefpunkt, dann wieder Aufschwung.'},
+    {lv: 1, k: 'tf', q: 'Bei Inflation steigt die Kaufkraft des Geldes.', a: false, e: 'Sie **sinkt**.'},
+    {lv: 2, k: 'multi', q: 'Welche gehören zum **magischen Viereck**?', o: ['Preisstabilität', 'Hoher Beschäftigungsstand', 'Außenwirtschaftliches Gleichgewicht', 'Maximale Staatsschulden'], a: [0, 1, 2], e: 'Viertes Ziel: **stetiges, angemessenes Wirtschaftswachstum**.'},
+    {lv: 2, k: 'gap', q: 'Sinkendes Preisniveau über längere Zeit nennt man ___.', a: ['Deflation'], e: 'Gegenteil der Inflation.'},
+  ]},
+  {id: 'wiso-wirtschaftsordnung', t: 'Wirtschaftsordnungen', qs: [
+    {lv: 1, q: 'Deutschland hat die ...', o: ['Soziale Marktwirtschaft', 'Zentralverwaltungswirtschaft', 'freie Marktwirtschaft', 'Planwirtschaft'], a: 0, e: 'Markt plus **sozialer Ausgleich**.'},
+    {lv: 1, q: 'Wer plant in der Zentralverwaltungswirtschaft?', o: ['Der Staat', 'Die Unternehmen', 'Die Verbraucher', 'Die Märkte'], a: 0, e: 'Zentrale Planungsbehörde.'},
+    {lv: 2, k: 'multi', q: 'Welche gehören zu den **Prinzipien der sozialen Sicherung**?', o: ['Versicherungsprinzip', 'Versorgungsprinzip', 'Fürsorgeprinzip', 'Gewinnprinzip'], a: [0, 1, 2], e: 'Alle drei.'},
+    {lv: 2, k: 'match', q: 'Ordne zu.', o: [['Versicherungsprinzip', 'Beiträge begründen Anspruch'], ['Versorgungsprinzip', 'Staat zahlt aus Steuern'], ['Fürsorgeprinzip', 'Hilfe bei Bedürftigkeit']], e: 'Beispiele: GKV, Beamtenpension, Sozialhilfe.'},
+  ]},
+  {id: 'wiso-staat', t: 'Staatsaufbau und Sozialstaat', qs: [
+    {lv: 1, q: 'Welche Staatsgewalt macht die **Gesetze**?', o: ['Legislative', 'Exekutive', 'Judikative', 'Presse'], a: 0, e: 'Bundestag/Bundesrat.'},
+    {lv: 1, q: 'Die Judikative ...', o: ['spricht Recht', 'führt Gesetze aus', 'macht Gesetze', 'wählt den Kanzler'], a: 0, e: 'Gerichte.'},
+    {lv: 2, k: 'tf', q: 'Deutschland ist ein föderaler Staat.', a: true, e: 'Bund und **16 Länder**.'},
+    {lv: 2, k: 'gap', q: 'Art. 20 GG nennt Deutschland einen demokratischen und ___ Bundesstaat.', a: ['sozialen'], e: 'Sozialstaatsprinzip.'},
+  ]},
+  {id: 'wiso-unternehmen', t: 'Unternehmensformen', qs: [
+    {lv: 1, q: 'Welche Rechtsform haftet **nur mit dem Gesellschaftsvermögen**?', o: ['GmbH', 'Einzelunternehmen', 'OHG', 'GbR'], a: 0, e: 'Beschränkte Haftung.'},
+    {lv: 1, q: 'Das Mindeststammkapital der GmbH beträgt ...', o: ['25.000 €', '50.000 €', '1 €', '10.000 €'], a: 0, e: 'UG: ab 1 €.'},
+    {lv: 2, k: 'gap', q: 'Das Mindestgrundkapital einer AG beträgt ___ €.', a: ['50000', '50.000'], e: '50.000 €.'},
+    {lv: 2, k: 'tf', q: 'Bei der OHG haften alle Gesellschafter unbeschränkt und persönlich.', a: true, e: 'Auch gesamtschuldnerisch.'},
+  ]},
+  {id: 'wiso-organisation', t: 'Aufbauorganisation', qs: [
+    {lv: 1, q: 'Was stellt ein **Organigramm** dar?', o: ['Die Aufbauorganisation', 'Den Ablauf eines Prozesses', 'Die Bilanz', 'Den Marktanteil'], a: 0, e: 'Stellen, Abteilungen, Weisungswege.'},
+    {lv: 1, q: 'Beim **Einliniensystem** erhält jede Stelle Anweisungen von ...', o: ['genau einer übergeordneten Stelle', 'mehreren Vorgesetzten', 'keiner Stelle', 'dem Betriebsrat'], a: 0, e: 'Klare Befehlskette.'},
+    {lv: 2, q: 'Welches Leitungssystem kann zu **Kompetenzkonflikten** führen?', o: ['Mehrliniensystem', 'Einliniensystem', 'Stabliniensystem', 'keines'], a: 0, e: 'Mehrere Vorgesetzte.'},
+    {lv: 2, k: 'tf', q: 'Eine Stabsstelle hat Weisungsrecht gegenüber den Linienstellen.', a: false, e: 'Sie **berät** nur.'},
+  ]},
+  {id: 'wiso-kooperation', t: 'Unternehmenszusammenschlüsse', qs: [
+    {lv: 1, q: 'Bei einem **Kartell** ...', o: ['bleiben die Unternehmen rechtlich selbstständig', 'verschmelzen die Unternehmen', 'verlieren sie die Selbstständigkeit', 'werden sie verstaatlicht'], a: 0, e: 'Absprachen, meist verboten.'},
+    {lv: 1, q: 'Wie nennt man die Verschmelzung zweier Unternehmen?', o: ['Fusion', 'Kartell', 'Joint Venture', 'Franchise'], a: 0, e: 'Eines verliert die rechtliche Selbstständigkeit.'},
+    {lv: 2, k: 'tf', q: 'Bei einem Konzern bleiben die Unternehmen rechtlich selbstständig, stehen aber unter einheitlicher Leitung.', a: true, e: 'Wirtschaftlich unselbstständig.'},
+    {lv: 2, q: 'Welche Behörde überwacht den Wettbewerb in Deutschland?', o: ['Bundeskartellamt', 'IHK', 'Bundesbank', 'Finanzamt'], a: 0, e: 'GWB.'},
+  ]},
+  {id: 'wiso-kennzahlen', t: 'Kennzahlen', qs: [
+    {lv: 1, q: 'Das **Minimalprinzip** bedeutet ...', o: ['gegebenes Ziel mit minimalem Einsatz', 'gegebener Einsatz mit maximalem Ergebnis', 'minimale Preise', 'minimale Löhne'], a: 0, e: 'Maximalprinzip: gegebener Einsatz, maximaler Ertrag.'},
+    {lv: 1, k: 'num', q: 'Menge 1.200 Stück, Einsatz 40 Arbeitsstunden. Produktivität in Stück/Stunde?', a: 30, tol: 0.01, u: 'Stück/h', e: '1200 : 40 = **30**.'},
+    {lv: 2, k: 'num', q: 'Ertrag 150.000 €, Aufwand 120.000 €. Wirtschaftlichkeit?', a: 1.25, tol: 0.01, e: 'Ertrag : Aufwand = **1,25**.'},
+    {lv: 2, k: 'num', q: 'Gewinn 30.000 €, Eigenkapital 300.000 €. Eigenkapitalrentabilität in %?', a: 10, tol: 0.1, u: '%', e: '30.000 : 300.000 × 100 = **10 %**.'},
+  ]},
+  {id: 'wiso-fuehrung', t: 'Führungsstile und MbO', qs: [
+    {lv: 1, q: 'Beim **autoritären** Führungsstil ...', o: ['entscheidet der Vorgesetzte allein', 'entscheidet die Gruppe', 'gibt es keine Führung', 'wird delegiert'], a: 0, e: 'Befehl und Kontrolle.'},
+    {lv: 1, q: 'Welcher Stil überlässt den Mitarbeitern fast alle Entscheidungen?', o: ['Laissez-faire', 'Autoritär', 'Kooperativ', 'Patriarchalisch'], a: 0, e: 'Wenig Führung.'},
+    {lv: 2, q: 'Management by Objectives bedeutet Führen durch ...', o: ['Zielvereinbarung', 'Delegation', 'Ausnahmeprinzip', 'Kontrolle'], a: 0, e: 'MbD = Delegation, MbE = Ausnahme.'},
+    {lv: 2, k: 'match', q: 'Ordne zu.', o: [['MbO', 'Zielvereinbarung'], ['MbD', 'Delegation von Verantwortung'], ['MbE', 'Eingriff nur bei Abweichung']], e: 'Management-by-Techniken.'},
+  ]},
+  {id: 'wiso-methoden', t: 'Methoden', qs: [
+    {lv: 1, q: 'Wie beginnst du eine **Textanalyse** sinnvoll?', o: ['Mit Quelle, Autor, Thema zu nennen', 'Mit der eigenen Meinung', 'Mit dem Fazit', 'Mit einer Karikatur'], a: 0, e: 'Erst beschreiben, dann auswerten, dann Stellung nehmen.'},
+    {lv: 1, k: 'tf', q: 'Bei einer Stellungnahme gehören Pro und Kontra begründet in die Antwort.', a: true, e: 'Danach eigenes Urteil.'},
+    {lv: 2, k: 'order', q: 'Ordne die Schritte beim Auswerten eines Schaubilds.', o: ['Titel und Quelle nennen', 'Achsen und Einheiten beschreiben', 'Entwicklung beschreiben', 'Aussage bewerten'], e: 'Beschreiben vor bewerten.'},
+    {lv: 2, q: 'Was gehört NICHT zur Beschreibung einer Karikatur?', o: ['Eigene Wertung als Erstes', 'Dargestellte Personen', 'Symbole', 'Thema'], a: 0, e: 'Wertung am Ende.'},
+  ]},
+  {id: 'wiso-gehalt', t: 'Gehaltsabrechnung', qs: [
+    {lv: 1, k: 'num', q: 'Brutto 3.000 €, Abzüge gesamt 750 €. Wie hoch ist das Netto?', a: 2250, tol: 0.5, u: '€', e: '3000 − 750 = **2.250 €**.'},
+    {lv: 1, q: 'Welcher Abzug ist KEIN Sozialversicherungsbeitrag?', o: ['Lohnsteuer', 'Rentenversicherung', 'Krankenversicherung', 'Arbeitslosenversicherung'], a: 0, e: 'Lohnsteuer ist Steuer.'},
+    {lv: 2, q: 'Wovon hängt die **Lohnsteuer** ab?', o: ['Steuerklasse', 'Anzahl der Kollegen', 'Betriebsgröße', 'Branche'], a: 0, e: 'Dazu Bruttoentgelt und Freibeträge.'},
+    {lv: 2, k: 'tf', q: 'Die Unfallversicherung wird vom Gehalt des Arbeitnehmers abgezogen.', a: false, e: 'Zahlt der Arbeitgeber.'},
+  ]},
+  {id: 'wiso-weiterbildung', t: 'Prüfung, Bewerbung, Weiterbildung', qs: [
+    {lv: 1, q: 'Das Ausbildungsverhältnis endet mit ...', o: ['Bestehen der Abschlussprüfung', 'Ende der Probezeit', 'Zeugnisausgabe', 'Schuljahresende'], a: 0, e: 'Spätestens mit Ablauf der Ausbildungszeit; bei Nichtbestehen auf Verlangen bis zur Wiederholung, max. 1 Jahr.'},
+    {lv: 1, q: 'Das **AGG** schützt vor ...', o: ['Benachteiligung', 'Kündigung', 'Überstunden', 'Steuern'], a: 0, e: 'Z. B. wegen Alter, Geschlecht, Herkunft.'},
+    {lv: 2, k: 'tf', q: 'Ein Arbeitszeugnis muss wohlwollend formuliert sein.', a: true, e: 'Und wahr.'},
+    {lv: 2, k: 'gap', q: 'Das Gesetz, das Benachteiligung bei Bewerbung und Beschäftigung verbietet, heißt Allgemeines ___ (AGG).', a: ['Gleichbehandlungsgesetz'], e: 'AGG = Allgemeines Gleichbehandlungsgesetz.'},
+  ]},
+  {id: 'wiso-eu', t: 'Europäische Union', qs: [
+    {lv: 1, q: 'Welches EU-Organ ist die **Regierung der EU** und schlägt Gesetze vor?', o: ['Europäische Kommission', 'Europäisches Parlament', 'Europäischer Gerichtshof', 'Rat'], a: 0, e: 'Initiativrecht.'},
+    {lv: 1, q: 'Das Europäische Parlament wird ... gewählt.', o: ['direkt von den Bürgern', 'von den Regierungen', 'vom Rat', 'von der Kommission'], a: 0, e: 'Alle 5 Jahre.'},
+    {lv: 2, k: 'match', q: 'Ordne Rechtsakt zu.', o: [['Verordnung', 'gilt unmittelbar in allen Staaten'], ['Richtlinie', 'muss in nationales Recht umgesetzt werden']], e: 'Das ist die Klausurklassiker-Frage.'},
+    {lv: 2, k: 'tf', q: 'Eine EU-Verordnung muss erst vom Bundestag in nationales Recht umgesetzt werden.', a: false, e: 'Das gilt für Richtlinien.'},
+  ]},
+  {id: 'wiso-demografie', t: 'Demografischer Wandel', qs: [
+    {lv: 1, q: 'Was beschreibt der **demografische Wandel**?', o: ['Alterung und Schrumpfung der Bevölkerung', 'Wachstum der Wirtschaft', 'Zunahme der Geburten', 'Steigende Löhne'], a: 0, e: 'Niedrige Geburtenrate, höhere Lebenserwartung.'},
+    {lv: 1, k: 'multi', q: 'Folgen des demografischen Wandels?', o: ['Fachkräftemangel', 'Belastung der Rentenversicherung', 'Mehr Pflegebedarf', 'Sinkende Lebenserwartung'], a: [0, 1, 2], e: 'Lebenserwartung steigt.'},
+    {lv: 2, q: 'Gegen den Fachkräftemangel hilft ...', o: ['Weiterbildung und Zuwanderung', 'Entlassungen', 'Kürzung der Ausbildung', 'Abbau von Stellen'], a: 0, e: 'Auch Vereinbarkeit von Familie und Beruf.'},
+    {lv: 2, k: 'tf', q: 'Der Gender Pay Gap beschreibt den Lohnunterschied zwischen Frauen und Männern.', a: true, e: 'Bereinigt und unbereinigt.'},
+  ]},
+  {id: 'wiso-nachhaltigkeit', t: 'Nachhaltigkeit', qs: [
+    {lv: 1, k: 'multi', q: 'Welche sind die **drei Dimensionen** der Nachhaltigkeit?', o: ['Ökologie', 'Ökonomie', 'Soziales', 'Politik'], a: [0, 1, 2], e: 'Dreieck der Nachhaltigkeit.'},
+    {lv: 1, q: 'Wofür steht **SDG**?', o: ['Sustainable Development Goals', 'Social Digital Group', 'Safe Data Guide', 'Standard Delivery Goods'], a: 0, e: '17 Ziele der UN (Agenda 2030).'},
+    {lv: 2, k: 'match', q: 'Ordne die SWOT-Begriffe zu.', o: [['Strengths', 'interne Stärken'], ['Weaknesses', 'interne Schwächen'], ['Opportunities', 'externe Chancen'], ['Threats', 'externe Risiken']], e: 'Innen: S/W, außen: O/T.'},
+    {lv: 2, q: 'Was bedeutet **Green IT**?', o: ['Umweltschonender Einsatz von IT', 'Grüne Bildschirme', 'Open Source', 'Cloud-Nutzung'], a: 0, e: 'Energieeffizienz, Recycling.'},
+  ]},
+  {id: 'wiso-ki', t: 'Künstliche Intelligenz', qs: [
+    {lv: 1, q: 'Was ist ein Vorteil von KI in der Arbeitswelt?', o: ['Automatisierung von Routineaufgaben', 'Keine Datenschutzfragen', 'Fehlerfreiheit garantiert', 'Wegfall aller Berufe'], a: 0, e: 'Aber auch Risiken.'},
+    {lv: 1, k: 'tf', q: 'KI-Systeme können Vorurteile aus Trainingsdaten übernehmen (Bias).', a: true, e: 'Diskriminierungsrisiko.'},
+    {lv: 2, k: 'multi', q: 'Welche Risiken sind mit KI verbunden?', o: ['Datenschutz', 'Intransparente Entscheidungen', 'Arbeitsplatzverlust', 'Garantiert objektive Ergebnisse'], a: [0, 1, 2], e: 'Letzteres ist falsch.'},
+    {lv: 2, q: 'Ein Betriebsrat hat bei KI-Einführung ...', o: ['Mitbestimmungs- und Informationsrechte', 'keine Rechte', 'ein Vetorecht in allen Fällen', 'nur Kontrollpflichten'], a: 0, e: 'Z. B. § 87 BetrVG bei technischer Überwachung.'},
+  ]},
+  {id: 'wiso-vertrag', t: 'Ausbildungsvertrag', qs: [
+    {lv: 1, q: 'Die **Probezeit** beträgt mindestens ...', o: ['1 Monat', '3 Monate', '6 Monate', '2 Wochen'], a: 0, e: 'Höchstens **4 Monate**.'},
+    {lv: 1, k: 'tf', q: 'In der Probezeit kann ohne Frist und ohne Grund gekündigt werden.', a: true, e: 'Schriftlich.'},
+    {lv: 2, q: 'Nach der Probezeit kann der Azubi ...', o: ['mit 4 Wochen Frist und Grund aus Berufsaufgabe/-wechsel kündigen', 'jederzeit fristlos', 'gar nicht kündigen', 'nur mit Zustimmung der IHK'], a: 0, e: 'Der Betrieb nur aus wichtigem Grund.'},
+    {lv: 2, k: 'tf', q: 'Der Ausbildungsvertrag muss schriftlich dokumentiert werden.', a: true, e: 'Niederschrift vor Ausbildungsbeginn.'},
+  ]},
+  {id: 'wiso-vollmacht', t: 'Kaufmann und Vollmachten', qs: [
+    {lv: 1, q: 'Wo wird ein Kaufmann eingetragen?', o: ['Handelsregister', 'Grundbuch', 'Gewerberegister der IHK', 'Vereinsregister'], a: 0, e: 'Amtsgericht.'},
+    {lv: 1, q: 'Die **Prokura** berechtigt zu ...', o: ['allen gewöhnlichen Geschäften, aber nicht zum Verkauf von Grundstücken', 'nur zum Einkauf', 'nichts', 'allen Geschäften inkl. Grundstücksverkauf'], a: 0, e: 'Sie wird ins Handelsregister eingetragen.'},
+    {lv: 2, k: 'match', q: 'Ordne die Vollmacht zu.', o: [['Generalvollmacht', 'gesamter Geschäftsbetrieb'], ['Prokura', 'umfassend, eingetragen'], ['Handlungsvollmacht', 'beschränkt']], e: 'Je nach Umfang.'},
+    {lv: 2, k: 'tf', q: 'Der Prokurist unterschreibt mit dem Zusatz „ppa.“.', a: true, e: 'Handlungsbevollmächtigte: „i. V.“ oder „i. A.“.'},
+  ]},
+]);
 ;
 // core/app.js
 // Anwendungsgerüst: verbindet Topbar, Seitenleiste, Inhalt und Layout-Berechnung.
