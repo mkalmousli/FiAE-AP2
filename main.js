@@ -91,6 +91,27 @@ AP2.pages = (dir, spec) => Object.keys(spec).forEach((name) => {
   }); single(); };
   progress(0.3, 0, 1, 'bundle.js');
   document.head.appendChild(el);
-  // Offline-Nutzung und schneller Neustart; neue Versionen werden beim nächsten Laden aktiv.
-  if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  // Offline-Nutzung und schneller Neustart. Updates: main.js (enthält VERSION) wird am Cache vorbei geprüft;
+  // weicht die Version ab, aktualisiert sich die App selbst (Service Worker erneuern, Caches leeren, neu laden).
+  if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js', {updateViaCache: 'none'}).catch(() => {}));
+  let busy = false;
+  const check = () => {
+    if (busy || VERSION === 'dev' || dev || !navigator.onLine) return;
+    busy = true;
+    fetch('main.js?check=' + Date.now(), {cache: 'no-store'}).then((r) => r.ok ? r.text() : '').then((txt) => {
+      const m = /const VERSION = '([^']+)'/.exec(txt);
+      if (!m || m[1] === VERSION) return;
+      // Schleifenschutz: pro neuer Version nur ein automatischer Versuch je Sitzung.
+      if (sessionStorage.getItem('ap2-upd') === m[1]) return;
+      sessionStorage.setItem('ap2-upd', m[1]);
+      const reg = 'serviceWorker' in navigator ? navigator.serviceWorker.getRegistration() : Promise.resolve(null);
+      return reg.then((r) => r && r.update()).catch(() => {})
+        .then(() => window.caches ? caches.keys().then((ks) => Promise.all(ks.filter((k) => k.indexOf('ap2-') === 0).map((k) => caches.delete(k)))) : null)
+        .catch(() => {}).then(() => location.reload());
+    }).catch(() => {}).then(() => { busy = false; });
+  };
+  window.addEventListener('load', () => setTimeout(check, 3000));
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
+  window.addEventListener('online', check);
+  setInterval(check, 5 * 60 * 1000);
 })();
