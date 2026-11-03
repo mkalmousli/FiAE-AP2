@@ -1,11 +1,23 @@
 // Einstieg: im Betrieb eine gebündelte Datei (bundle.js, erzeugt von build.mjs), lokal alle Einzeldateien laut Manifest.
 // Lokal (localhost) oder mit ?dev lädt immer die Einzeldateien, damit Änderungen ohne Build sichtbar sind; ?bundle erzwingt das Bündel.
 const VERSION = '6105ecef9b';
-window.AP2 = {files: [], blocks: {}, tools: {}};
 // Seitenteile: pages('ps', {phasen: 3}) lädt content/ps/phasen-1.js bis phasen-3.js.
-AP2.pages = (dir, spec) => Object.keys(spec).forEach((name) => {
-  for (let i = 1; i <= spec[name]; i++) AP2.files.push('content/' + dir + '/' + name + '-' + i + '.js');
-});
+const freshAP2 = () => {
+  window.AP2 = {files: [], blocks: {}, tools: {}};
+  AP2.pages = (dir, spec) => Object.keys(spec).forEach((name) => {
+    for (let i = 1; i <= spec[name]; i++) AP2.files.push('content/' + dir + '/' + name + '-' + i + '.js');
+  });
+};
+freshAP2();
+// Für Updates ohne Neuladen: Listener auf window/document und Intervalle der App werden gemerkt und beim Austausch entfernt.
+const nativeAdd = EventTarget.prototype.addEventListener;
+const nativeInterval = window.setInterval;
+const tracked = {l: [], t: []};
+EventTarget.prototype.addEventListener = function (type, fn, opts) {
+  if (this === window || this === document) tracked.l.push([this, type, fn, opts]);
+  return nativeAdd.call(this, type, fn, opts);
+};
+window.setInterval = function () { const id = nativeInterval.apply(window, arguments); tracked.t.push(id); return id; };
 (function () {
   const names = ['core', 'ui', 'viz', 'tools', 'ps', 'infra', 'eua', 'wiso', 'de', 'exam', 'course', 'ref', 'last'];
   // Ladeanzeige: Fortschritt, geglättete Restzeit (ETA) und aktuelle Datei.
@@ -76,7 +88,7 @@ AP2.pages = (dir, spec) => Object.keys(spec).forEach((name) => {
   };
   const boot = () => { AP2.app.start(); finish(); };
   const ready = () => (document.readyState === 'loading'
-    ? document.addEventListener('DOMContentLoaded', boot) : boot());
+    ? nativeAdd.call(document, 'DOMContentLoaded', boot) : boot());
   const single = () => loadList(names.map((name) => 'manifest/' + name + '.js'), 0, 0.1, () => loadList(AP2.files, 0.1, 0.9, ready));
   const q = location.search;
   const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
@@ -86,52 +98,63 @@ AP2.pages = (dir, spec) => Object.keys(spec).forEach((name) => {
   const el = document.createElement('script');
   el.src = 'bundle.js?v=' + VERSION;
   el.onload = () => { progress(1, 1, 1, ''); ready(); };
-  el.onerror = () => { window.AP2 = {files: [], blocks: {}, tools: {}}; AP2.pages = (dir, spec) => Object.keys(spec).forEach((name) => {
-    for (let i = 1; i <= spec[name]; i++) AP2.files.push('content/' + dir + '/' + name + '-' + i + '.js');
-  }); single(); };
+  el.onerror = () => { freshAP2(); single(); };
   progress(0.3, 0, 1, 'bundle.js');
   document.head.appendChild(el);
   // Offline-Nutzung und schneller Neustart. Updates: main.js (enthält VERSION) wird am Cache vorbei geprüft.
-  // Eine neue Version unterbricht niemanden: es erscheint nur ein Hinweis; beim nächsten Neuladen ist sie automatisch aktiv
-  // (Service Worker und main.js laden netzwerkzuerst), oder per Knopf sofort.
-  if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js', {updateViaCache: 'none'}).catch(() => {}));
+  // Eine neue Version ersetzt die laufende App an Ort und Stelle (kein Neuladen): Bundle holen, alte App abbauen, neu starten.
+  // Zustand liegt in localStorage, die Route im Hash; getippt wird nie unterbrochen (dann beim nächsten Check).
+  if ('serviceWorker' in navigator) nativeAdd.call(window, 'load', () => navigator.serviceWorker.register('sw.js', {updateViaCache: 'none'}).catch(() => {}));
   let busy = false;
-  let announced = '';
-  const refresh = () => {
+  let cur = VERSION;
+  const hardReload = () => {
     const reg = 'serviceWorker' in navigator ? navigator.serviceWorker.getRegistration() : Promise.resolve(null);
     reg.then((r) => r && r.update()).catch(() => {})
       .then(() => window.caches ? caches.keys().then((ks) => Promise.all(ks.filter((k) => k.indexOf('ap2-') === 0).map((k) => caches.delete(k)))) : null)
       .catch(() => {}).then(() => location.reload());
   };
-  const notice = () => {
-    const bar = document.createElement('div');
-    bar.setAttribute('role', 'status');
-    bar.style.cssText = 'position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:99999;display:flex;gap:12px;align-items:center;max-width:calc(100vw - 24px);'
-      + 'padding:10px 14px;border-radius:10px;background:#1f2937;color:#fff;font:14px/1.3 system-ui,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.35)';
-    const txt = document.createElement('span');
-    txt.textContent = 'Neue Version verfügbar. Sie wird beim nächsten Neuladen automatisch geladen.';
-    const mk = (label, fn, solid) => {
-      const b = document.createElement('button');
-      b.textContent = label;
-      b.style.cssText = 'cursor:pointer;border-radius:8px;padding:6px 12px;font:inherit;font-weight:600;border:1px solid #6b7280;' + (solid ? 'background:#fff;color:#111' : 'background:transparent;color:#fff');
-      b.onclick = fn;
-      return b;
-    };
-    bar.append(txt, mk('Jetzt aktualisieren', refresh, true), mk('Später', () => bar.remove(), false));
-    document.body.appendChild(bar);
+  const toast = (text) => {
+    const t = document.createElement('div');
+    t.setAttribute('role', 'status');
+    t.setAttribute('data-keep', '1');
+    t.style.cssText = 'position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:99999;padding:8px 14px;border-radius:10px;background:#1f2937;color:#fff;font:14px/1.3 system-ui,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.35)';
+    t.textContent = text;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3500);
+  };
+  const typing = () => {
+    const a = document.activeElement;
+    return !!a && (/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || a.isContentEditable);
+  };
+  const swap = (ver) => {
+    if (typing()) return Promise.resolve(false); // später erneut
+    return fetch('bundle.js?v=' + ver).then((r) => { if (!r.ok) throw new Error('bundle'); return r.text(); }).then(() => {
+      if (typing()) return false;
+      tracked.l.forEach((x) => x[0].removeEventListener(x[1], x[2], x[3]));
+      tracked.t.forEach((id) => clearInterval(id));
+      tracked.l.length = 0; tracked.t.length = 0;
+      Array.from(document.body.children).forEach((n) => { if (!n.hasAttribute('data-keep')) n.remove(); });
+      freshAP2();
+      return new Promise((res, rej) => {
+        const s2 = document.createElement('script');
+        s2.src = 'bundle.js?v=' + ver;
+        s2.onload = () => { try { AP2.app.start(); cur = ver; res(true); } catch (e) { rej(e); } };
+        s2.onerror = rej;
+        document.head.appendChild(s2);
+      });
+    });
   };
   const check = () => {
     if (busy || VERSION === 'dev' || dev || !navigator.onLine) return;
     busy = true;
     fetch('main.js?check=' + Date.now(), {cache: 'no-store'}).then((r) => r.ok ? r.text() : '').then((txt) => {
       const m = /const VERSION = '([^']+)'/.exec(txt);
-      if (!m || m[1] === VERSION || announced === m[1]) return;
-      announced = m[1];
-      notice();
+      if (!m || m[1] === cur) return;
+      return swap(m[1]).then((ok) => { if (ok) toast('App aktualisiert'); }, () => hardReload());
     }).catch(() => {}).then(() => { busy = false; });
   };
-  window.addEventListener('load', () => setTimeout(check, 3000));
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
-  window.addEventListener('online', check);
-  setInterval(check, 5 * 60 * 1000);
+  nativeAdd.call(window, 'load', () => setTimeout(check, 3000));
+  nativeAdd.call(document, 'visibilitychange', () => { if (!document.hidden) check(); });
+  nativeAdd.call(window, 'online', check);
+  nativeInterval.call(window, check, 2 * 60 * 1000);
 })();
