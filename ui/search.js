@@ -35,6 +35,7 @@
   AP2.mkSearch = () => {
     const input = AP2.field(h('input', {attrs: {type: 'search', placeholder: 'Suchen: Begriff, Thema, Frage ...', 'aria-label': 'Suche', autocomplete: 'off', spellcheck: 'false'},
       style: {width: '100%', fontSize: S.f.lg, padding: '12px 14px 12px 42px', boxSizing: 'border-box'}}));
+    AP2.theme.bind(input, (n) => { n.style.paddingLeft = '42px'; });
     const lens = h('span', {style: {position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', display: 'flex', pointerEvents: 'none'}}, [AP2.icon('search', 18)]);
     AP2.theme.bind(lens, (n, c) => { n.style.color = c.text3; });
     const results = h('div', {attrs: {role: 'listbox'}, style: {flex: '1 1 auto', overflowY: 'auto', overscrollBehavior: 'contain', minHeight: 0}});
