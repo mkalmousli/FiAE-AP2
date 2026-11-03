@@ -31,6 +31,7 @@
     const sync = () => {
       AP2.dispose(mark);
       while (mark.firstChild) mark.removeChild(mark.firstChild);
+      if (AP2.hotLevel(p.id) === 'top') { const f = AP2.icon('flame', 14); f.style.marginRight = '4px'; mark.appendChild(f); mark.title = AP2.hotText(p.id); }
       if (AP2.state.get('done')[p.id]) mark.appendChild(AP2.icon('check', 14));
       const m = AP2.game.mastery(p.id);
       dot.style.visibility = m.total ? 'visible' : 'hidden';

@@ -1705,7 +1705,7 @@ AP2.pages = function () {};
       fn: () => AP2.router.go('trainer/seite/' + p.id)}) : null;
     const stars = m.total ? h('span', {attrs: {title: 'Beherrschung: ' + m.stars + ' von 5 Sternen, ' + m.seen + ' von ' + m.total + ' Fragen geübt'}, style: {display: 'inline-flex', alignItems: 'center', gap: S.sp[2]}},
       [AP2.gk.stars(m.stars, 16), AP2.tint(h('span', {text: m.seen + '/' + m.total + ' geübt', style: {fontSize: S.f.xs}}), 'text3')]) : null;
-    root.appendChild(h('div', {style: {margin: '0 0 ' + S.sp[5], display: 'flex', flexWrap: 'wrap', gap: S.sp[3], alignItems: 'center'}}, [doneButton(p.id), AP2.bookmarkButton(p.id), train, stars]));
+    root.appendChild(h('div', {style: {margin: '0 0 ' + S.sp[5], display: 'flex', flexWrap: 'wrap', gap: S.sp[3], alignItems: 'center'}}, [doneButton(p.id), AP2.bookmarkButton(p.id), train, stars, AP2.hotBadge(p.id)]));
     const wk = AP2.weakInfo(p.id);
     if (wk) root.appendChild(AP2.blocks.note('**Hier hast du noch Schwächen:** ' + wk + '. Lies die Seite genau und trainiere sie danach gezielt.'));
     if (p.d) root.appendChild(AP2.blocks.def(p.d));
@@ -3596,6 +3596,32 @@ AP2.pages = function () {};
   AP2.viewTitles.quest = 'Quest';
 })();
 ;
+// ui/hot.js
+// Prüfungsschwerpunkte, ausgewertet aus den alten Abschlussprüfungen (2022 bis 2026, AE: Planen, Algorithmen) und den
+// Prüfungssimulationen im Buch "Prüfungsvorbereitung aktuell". Je Seite: Stufe (top|wichtig), Zahl der Prüfungstermine mit Treffer, Treffer im Buch.
+// Die Auswertung zählt Stichwörter in den Aufgabentexten; WiSo-Altprüfungen lagen nicht vor, dort zählt das Buch.
+(function () {
+  AP2.hot = {"ps-scrum":["wichtig",0,9],"ps-vorgehen":["wichtig",1,9],"ps-klassen":["top",7,2],"ps-er":["wichtig",2,3],"ps-ermrm":["top",5,0],"ps-normalisierung":["wichtig",2,0],"ps-tom":["top",4,2],"ps-kostenarten":["top",2,0],"ps-tco":["wichtig",3,0],"ps-itsm":["top",4,2],"ps-ueberdeckung":["wichtig",0,3],"ps-netzplan":["wichtig",3,0],"ps-wireframe":["wichtig",0,9],"ps-architektur":["wichtig",0,3],"ps-struktogramm":["wichtig",4,0],"ps-kaufvertrag":["wichtig",3,0],"ps-lizenzen":["wichtig",2,0],"ps-angebot":["wichtig",4,0],"eua-oop":["top",7,54],"eua-saeulen":["wichtig",1,8],"eua-interface":["wichtig",1,6],"eua-konstruktor":["wichtig",2,1],"eua-sqlviews":["wichtig",0,8],"eua-sqler":["wichtig",3,0],"eua-listen":["wichtig",3,1],"eua-pseudocode":["wichtig",0,6],"eua-webapi":["wichtig",3,0],"eua-formate":["wichtig",4,0],"eua-datentypen":["top",2,17],"eua-kontroll":["wichtig",2,1],"eua-funktionen":["top",5,5],"eua-dateien":["wichtig",2,0],"eua-pruefziffer":["wichtig",0,6],"eua-html":["top",6,0],"eua-css":["wichtig",4,0],"eua-iot":["top",3,3],"eua-umlcode":["wichtig",2,5],"infra-ipv4":["top",7,0],"infra-vlsm":["top",6,0],"infra-ipv6sub":["wichtig",4,0],"infra-routing":["top",6,0],"infra-vlan":["wichtig",2,0],"infra-ethernet":["top",7,1],"infra-ipconfig":["wichtig",3,0],"infra-ports":["top",6,0],"infra-krypto":["top",3,15],"infra-tls":["wichtig",4,0],"infra-webauth":["wichtig",3,1],"infra-cia":["top",7,0],"infra-grundschutz":["top",5,0],"infra-raid":["wichtig",2,0],"infra-virtualisierung":["top",3,8],"infra-storage":["top",7,20],"infra-server":["top",7,1],"infra-wlan":["top",4,2],"infra-voip":["wichtig",2,1],"infra-verfuegbarkeit":["top",5,0],"infra-firewall":["top",5,0],"infra-vpn":["wichtig",2,1],"infra-angriffe":["wichtig",4,0],"infra-komponenten":["top",6,2],"wiso-jarbschg":["wichtig",4,1],"wiso-vertrag":["top",0,9],"wiso-kuendigung":["top",1,8],"wiso-urlaub":["wichtig",1,3],"wiso-tarif":["top",0,22],"wiso-gewerkschaft":["wichtig",0,5],"wiso-betriebsrat":["top",1,9],"wiso-kammern":["wichtig",0,3],"wiso-sv":["top",0,7],"wiso-rv":["top",1,10],"wiso-kv":["wichtig",0,4],"wiso-pv":["wichtig",0,3],"wiso-alv":["wichtig",0,3],"wiso-uv":["wichtig",0,6],"wiso-gehalt":["wichtig",2,6],"wiso-markt":["top",0,11],"wiso-wirtschaftsordnung":["wichtig",0,3],"wiso-unternehmen":["top",1,127],"wiso-kooperation":["wichtig",0,4],"wiso-organisation":["wichtig",0,3],"wiso-fuehrung":["wichtig",0,3],"wiso-kennzahlen":["wichtig",0,3],"wiso-vollmacht":["top",0,21],"wiso-arbeitsschutz":["wichtig",0,3],"wiso-demografie":["wichtig",3,0],"wiso-eu":["wichtig",1,6],"wiso-staat":["wichtig",2,2],"wiso-weiterbildung":["wichtig",2,3],"wiso-methoden":["wichtig",3,0],"eua-sqlexam":["top",0,0],"eua-algoexam":["top",0,0],"eua-sqlselect":["top",0,0],"eua-sqljoin":["top",0,0],"eua-sqlgroup":["top",0,0],"eua-pap":["top",0,0],"eua-sortieren":["top",0,0],"ps-sequenz":["top",0,0],"ps-usecase":["top",0,2]};
+  const {h} = AP2;
+  AP2.hotLevel = (id) => (AP2.hot[id] ? AP2.hot[id][0] : '');
+  AP2.hotText = (id) => {
+    const x = AP2.hot[id];
+    if (!x) return '';
+    const bits = [];
+    if (x[1]) bits.push('in ' + x[1] + ' Prüfungsterminen der alten Prüfungen');
+    if (x[2]) bits.push(x[2] + ' Treffer in den Prüfungssimulationen');
+    return (x[0] === 'top' ? 'Prüfungsschwerpunkt' : 'Wichtig für die Prüfung') + (bits.length ? ': ' + bits.join(', ') : '') + '.';
+  };
+  // Kleines Etikett für Seitenkopf und Listen.
+  AP2.hotBadge = (id) => {
+    const lv = AP2.hotLevel(id);
+    if (!lv) return null;
+    const el = h('span', {attrs: {title: AP2.hotText(id)}, style: {display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: AP2.S.fw.bold, textTransform: 'uppercase',
+      letterSpacing: '0.05em', padding: '3px 8px', borderRadius: AP2.S.r.pill, border: '1px solid'}}, [AP2.icon('flame', 13), lv === 'top' ? 'Prüfungsschwerpunkt' : 'Prüfungsrelevant']);
+    return AP2.theme.bind(el, (n, c) => { const col = lv === 'top' ? c.bad : c.accent; n.style.color = col; n.style.borderColor = col; n.style.backgroundColor = 'transparent'; });
+  };
+})();
+;
 // ui/merk.js
 // Merkliste (Lesezeichen und Notizen) und "Mein Plan": automatisch erkannte Schwachstellen mit Handlungsempfehlung.
 // State: marks {Seiten-ID: Zeitstempel}, notes {Seiten-ID: {t: Text, at: Zeitstempel}}. Routen: #/merkliste, #/plan.
@@ -3737,7 +3763,7 @@ AP2.pages = function () {};
     const weak = AP2.game.weak(AP2.bank.byPage(p.id)).length;
     if ((done && m.stars >= 3) || m.stars >= 4) return null;
     if (!m.total && done) return null;
-    return {p, min: cost(p), pri: weak * 3 + (m.seen ? 3 - m.stars : 1) + (m.seen ? 0 : 0.5), b, m, done};
+    return {p, min: cost(p), pri: weak * 3 + (m.seen ? 3 - m.stars : 1) + (m.seen ? 0 : 0.5) + (AP2.hotLevel(p.id) === 'top' ? 4 : AP2.hotLevel(p.id) ? 1.5 : 0), b, m, done};
   }).filter(Boolean).sort((x, y) => y.pri - x.pri);
 
   // Plan berechnen: Tage von heute bis zum letzten Prüfungstag.
@@ -3828,6 +3854,14 @@ AP2.pages = function () {};
     return AP2.press(el, {fn: () => AP2.router.go(go), label: text, base: (c) => ({backgroundColor: c.surface, borderColor: c.border}), hover: (c) => ({borderColor: c.accent})});
   };
 
+  // Prüfungsschwerpunkte, die noch nicht sicher sitzen.
+  AP2.planHot = (root) => {
+    const list = Object.keys(AP2.hot).filter((id) => AP2.hot[id][0] === 'top' && AP2.store.get(id)).map((id) => ({p: AP2.store.get(id), m: AP2.game.mastery(id)}))
+      .filter((x) => x.m.stars < 4).sort((a, b) => a.m.stars - b.m.stars);
+    if (!list.length) return;
+    root.appendChild(AP2.planUi.heading('Prüfungsschwerpunkte (' + list.length + ')', 'Diese Themen kamen in den alten Prüfungen und Simulationen am häufigsten dran und sitzen noch nicht sicher.'));
+    list.slice(0, 12).forEach((x) => root.appendChild(AP2.planUi.card(x.p, [AP2.hotText(x.p.id)], true, x.m)));
+  };
   AP2.views.plan = () => {
     AP2.ctx.id = 'plan';
     const title = (t) => AP2.tint(h('h1', {text: t, style: {fontSize: S.f.h1, fontWeight: S.fw.bold, letterSpacing: '-0.02em', margin: '0 0 ' + S.sp[2]}}), 'text');
@@ -3877,6 +3911,7 @@ AP2.pages = function () {};
     root.appendChild(h('div', {style: {display: 'flex', gap: S.sp[2], flexWrap: 'wrap', marginTop: S.sp[4]}}, [
       AP2.btn({text: 'Termine und Lernzeit ändern', icon: AP2.icon('clock', 16), small: true, fn: () => AP2.router.go('planung')}),
       AP2.btn({text: 'Fehler trainieren', icon: AP2.icon('target', 16), small: true, fn: () => AP2.router.go('trainer/fehler')})]));
+    AP2.planHot(root);
     AP2.planWeak(root);
     return root;
   };
@@ -4530,6 +4565,7 @@ AP2.pages = function () {};
     const sync = () => {
       AP2.dispose(mark);
       while (mark.firstChild) mark.removeChild(mark.firstChild);
+      if (AP2.hotLevel(p.id) === 'top') { const f = AP2.icon('flame', 14); f.style.marginRight = '4px'; mark.appendChild(f); mark.title = AP2.hotText(p.id); }
       if (AP2.state.get('done')[p.id]) mark.appendChild(AP2.icon('check', 14));
       const m = AP2.game.mastery(p.id);
       dot.style.visibility = m.total ? 'visible' : 'hidden';

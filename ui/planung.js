@@ -20,7 +20,7 @@
     const weak = AP2.game.weak(AP2.bank.byPage(p.id)).length;
     if ((done && m.stars >= 3) || m.stars >= 4) return null;
     if (!m.total && done) return null;
-    return {p, min: cost(p), pri: weak * 3 + (m.seen ? 3 - m.stars : 1) + (m.seen ? 0 : 0.5), b, m, done};
+    return {p, min: cost(p), pri: weak * 3 + (m.seen ? 3 - m.stars : 1) + (m.seen ? 0 : 0.5) + (AP2.hotLevel(p.id) === 'top' ? 4 : AP2.hotLevel(p.id) ? 1.5 : 0), b, m, done};
   }).filter(Boolean).sort((x, y) => y.pri - x.pri);
 
   // Plan berechnen: Tage von heute bis zum letzten Prüfungstag.
@@ -111,6 +111,14 @@
     return AP2.press(el, {fn: () => AP2.router.go(go), label: text, base: (c) => ({backgroundColor: c.surface, borderColor: c.border}), hover: (c) => ({borderColor: c.accent})});
   };
 
+  // Prüfungsschwerpunkte, die noch nicht sicher sitzen.
+  AP2.planHot = (root) => {
+    const list = Object.keys(AP2.hot).filter((id) => AP2.hot[id][0] === 'top' && AP2.store.get(id)).map((id) => ({p: AP2.store.get(id), m: AP2.game.mastery(id)}))
+      .filter((x) => x.m.stars < 4).sort((a, b) => a.m.stars - b.m.stars);
+    if (!list.length) return;
+    root.appendChild(AP2.planUi.heading('Prüfungsschwerpunkte (' + list.length + ')', 'Diese Themen kamen in den alten Prüfungen und Simulationen am häufigsten dran und sitzen noch nicht sicher.'));
+    list.slice(0, 12).forEach((x) => root.appendChild(AP2.planUi.card(x.p, [AP2.hotText(x.p.id)], true, x.m)));
+  };
   AP2.views.plan = () => {
     AP2.ctx.id = 'plan';
     const title = (t) => AP2.tint(h('h1', {text: t, style: {fontSize: S.f.h1, fontWeight: S.fw.bold, letterSpacing: '-0.02em', margin: '0 0 ' + S.sp[2]}}), 'text');
@@ -160,6 +168,7 @@
     root.appendChild(h('div', {style: {display: 'flex', gap: S.sp[2], flexWrap: 'wrap', marginTop: S.sp[4]}}, [
       AP2.btn({text: 'Termine und Lernzeit ändern', icon: AP2.icon('clock', 16), small: true, fn: () => AP2.router.go('planung')}),
       AP2.btn({text: 'Fehler trainieren', icon: AP2.icon('target', 16), small: true, fn: () => AP2.router.go('trainer/fehler')})]));
+    AP2.planHot(root);
     AP2.planWeak(root);
     return root;
   };

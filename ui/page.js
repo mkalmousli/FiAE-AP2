@@ -47,7 +47,7 @@
       fn: () => AP2.router.go('trainer/seite/' + p.id)}) : null;
     const stars = m.total ? h('span', {attrs: {title: 'Beherrschung: ' + m.stars + ' von 5 Sternen, ' + m.seen + ' von ' + m.total + ' Fragen geübt'}, style: {display: 'inline-flex', alignItems: 'center', gap: S.sp[2]}},
       [AP2.gk.stars(m.stars, 16), AP2.tint(h('span', {text: m.seen + '/' + m.total + ' geübt', style: {fontSize: S.f.xs}}), 'text3')]) : null;
-    root.appendChild(h('div', {style: {margin: '0 0 ' + S.sp[5], display: 'flex', flexWrap: 'wrap', gap: S.sp[3], alignItems: 'center'}}, [doneButton(p.id), AP2.bookmarkButton(p.id), train, stars]));
+    root.appendChild(h('div', {style: {margin: '0 0 ' + S.sp[5], display: 'flex', flexWrap: 'wrap', gap: S.sp[3], alignItems: 'center'}}, [doneButton(p.id), AP2.bookmarkButton(p.id), train, stars, AP2.hotBadge(p.id)]));
     const wk = AP2.weakInfo(p.id);
     if (wk) root.appendChild(AP2.blocks.note('**Hier hast du noch Schwächen:** ' + wk + '. Lies die Seite genau und trainiere sie danach gezielt.'));
     if (p.d) root.appendChild(AP2.blocks.def(p.d));
