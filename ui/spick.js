@@ -33,6 +33,7 @@
     {t: 'Planen eines Softwareproduktes', time: '90 Min', pts: '100 Punkte', ids: ['ps', 'infra'], d: 'Projektmanagement, Anforderungen, UML, Datenmodell, Qualität, Recht sowie Infrastruktur und IT-Sicherheit'},
     {t: 'Entwicklung und Umsetzung von Algorithmen', time: '90 Min', pts: '100 Punkte', ids: ['eua'], d: 'Pseudocode, Struktogramm, OOP, Datenstrukturen, Sortieren und Suchen, SQL, Testen'},
     {t: 'Wirtschafts- und Sozialkunde', time: '60 Min', pts: '100 Punkte', ids: ['wiso'], d: 'Ausbildung, Arbeitsrecht, Mitbestimmung, Sozialversicherung, Wirtschaft, Unternehmen'},
+    {t: 'Deutsch (Berufsschule)', time: 'Schulprüfung', pts: 'Zusatz', ids: ['de'], d: 'Geschäftsbrief nach DIN 5008, Bewerbung, Erörterung, Kommunikation, Präsentation, Sprachrichtigkeit'},
   ];
   AP2.spickExams = EXAMS;
 
@@ -188,6 +189,7 @@
     const meta = sheet.meta ? h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[2], marginBottom: S.sp[4]}}, sheet.meta.map(metaTile)) : null;
     const blk = sheet.block || sheet.id;
     const actions = h('div', {attrs: {class: 'spick-noprint'}, style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[2], marginBottom: S.sp[4]}}, [
+      AP2.questData && AP2.questData()[blk] ? AP2.btn({text: 'Quest starten', icon: AP2.icon('sword', 16), kind: 'primary', small: true, fn: () => AP2.router.go('quest/' + blk)}) : null,
       AP2.btn({text: 'Bereich trainieren', icon: AP2.icon('play', 16), kind: 'primary', small: true, fn: () => AP2.router.go('trainer/block/' + blk)}),
       AP2.btn({text: 'Drucken / PDF', icon: AP2.icon('copy', 16), small: true, fn: () => window.print()}),
       AP2.btn({text: 'Themenkarte', icon: AP2.icon('map', 16), small: true, fn: () => AP2.router.go('themen')}),

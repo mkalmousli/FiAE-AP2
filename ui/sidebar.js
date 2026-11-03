@@ -40,7 +40,7 @@
     const collapse = AP2.btn({text: 'Zuklappen', small: true, fn: () => { AP2.state.set('navOpen', {}); reveal(AP2.state.get('route')); }});
     const head = h('div', {style: {display: 'flex', gap: S.sp[2], padding: '12px 12px 8px', alignItems: 'center', flexShrink: 0}}, [input, collapse]);
     const home = AP2.navRow({level: 'block', label: 'Startseite', inner: [h('span', {text: 'Startseite'})], fn: () => AP2.router.go('home'), active: () => AP2.state.get('route') === 'home'});
-    const special = [['trainer', 'Trainer', 'play'], ['spick', 'Spickzettel', 'cards'], ['themen', 'Themenkarte', 'map'], ['erfolge', 'Erfolge', 'trophy']].map(([id, text, icon]) => AP2.navRow({level: 'block', label: text,
+    const special = [['trainer', 'Trainer', 'play'], ['quest', 'Quests', 'sword'], ['spick', 'Spickzettel', 'cards'], ['themen', 'Themenkarte', 'map'], ['erfolge', 'Erfolge', 'trophy']].map(([id, text, icon]) => AP2.navRow({level: 'block', label: text,
       inner: [AP2.icon(icon, 15), h('span', {text})], fn: () => AP2.router.go(id), active: () => AP2.state.get('route').split('/')[0] === id}));
     const sep = AP2.fill(h('div', {style: {height: '1px', margin: '6px 4px 8px'}}), 'border');
     const list = h('div', {style: {flex: '1 1 0', overflowY: 'auto', padding: '4px 10px 64px'}}, [home].concat(special, [sep, tree.el]));

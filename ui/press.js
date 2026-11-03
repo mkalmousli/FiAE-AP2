@@ -25,9 +25,13 @@
     on(el, 'pointercancel', () => { hovered = false; paint(); });
     on(el, 'focus', () => { focused = true; paint(); });
     on(el, 'blur', () => { focused = false; paint(); });
-    on(el, 'click', (ev) => cfg.fn(ev));
+    // Strg/Cmd/Umschalt + Klick oder Mittelklick: Navigation (AP2.router.go) öffnet einen neuen Tab.
+    const run = (ev, tab) => { AP2.router.tab = tab; try { cfg.fn(ev); } finally { AP2.router.tab = false; } };
+    on(el, 'click', (ev) => run(ev, ev.ctrlKey || ev.metaKey || ev.shiftKey));
+    on(el, 'auxclick', (ev) => { if (ev.button === 1) { ev.preventDefault(); run(ev, true); } });
+    on(el, 'mousedown', (ev) => { if (ev.button === 1) ev.preventDefault(); });
     on(el, 'keydown', (ev) => {
-      if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); cfg.fn(ev); }
+      if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); run(ev, ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)); }
     });
     el.repaint = paint;
     return el;

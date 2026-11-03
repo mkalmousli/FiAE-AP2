@@ -149,6 +149,7 @@
     ex.ids.forEach((id) => {
       if (!sheets.length || sheets.includes(id)) btns.push(AP2.btn({text: multi ? 'Spickzettel ' + shortOf(id) : 'Spickzettel', small: true, icon: AP2.icon('cards', 15), fn: () => AP2.router.go('spick/' + id)}));
     });
+    ex.ids.forEach((id) => { if (AP2.questData && AP2.questData()[id]) btns.push(AP2.btn({text: multi ? 'Quest ' + shortOf(id) : 'Quest', small: true, kind: 'primary', icon: AP2.icon('sword', 15), fn: () => AP2.router.go('quest/' + id)})); });
     ex.ids.forEach((id) => btns.push(AP2.btn({text: multi ? 'Trainieren ' + shortOf(id) : 'Trainieren', small: true, icon: AP2.icon('play', 15), fn: () => AP2.router.go('trainer/block/' + id)})));
     if (st.next) btns.push(AP2.btn({text: 'Themen', small: true, kind: 'ghost', icon: AP2.icon('book', 15), fn: () => AP2.router.go(st.next.id)}));
     return gk().panel([title, meta, desc, prog, gk().bar(st.list.length ? st.done / st.list.length : 0),
@@ -159,6 +160,7 @@
     return row(list.map(examCard));
   };
   const examLinks = () => row([
+    AP2.btn({text: 'Alle Quests', small: true, icon: AP2.icon('sword', 15), fn: () => AP2.router.go('quest')}),
     AP2.btn({text: 'Alle Spickzettel', small: true, icon: AP2.icon('cards', 15), fn: () => AP2.router.go('spick')}),
     AP2.views['exam-info'] || AP2.store.get('exam-info') ? AP2.btn({text: 'Probeprüfungen schreiben', small: true, icon: AP2.icon('trophy', 15), fn: () => AP2.router.go('exam-info')}) : null,
   ].filter(Boolean), S.sp[2]);
@@ -174,7 +176,7 @@
       return chip(p ? p.t : (AP2.viewTitles[id.split('/')[0]] || id), id);
     }));
   };
-  const quick = () => row([['cards', 'Spickzettel', 'spick'], ['map', 'Themenkarte', 'themen'], ['chart', 'Formelsammlung', 'ref-formeln'], ['clock', 'Prüfungsablauf und Notenrechner', 'ref-ablauf']]
+  const quick = () => row([['sword', 'Quests', 'quest'], ['cards', 'Spickzettel', 'spick'], ['map', 'Themenkarte', 'themen'], ['chart', 'Formelsammlung', 'ref-formeln'], ['clock', 'Prüfungsablauf und Notenrechner', 'ref-ablauf']]
     .filter(([, , id]) => AP2.views[id] || AP2.store.get(id)).map(([icon, text, id]) => AP2.btn({text, icon: AP2.icon(icon, 18), fn: () => AP2.router.go(id)})), S.sp[2]);
   AP2.views.home = () => {
     AP2.ctx.id = 'home';
