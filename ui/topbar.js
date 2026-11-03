@@ -45,7 +45,7 @@
     const gap = h('div', {style: {flex: '1 1 0'}});
     const menu = iconButton(AP2.icon('menu', 22), 'Menü öffnen', () => AP2.state.set('drawer', !AP2.state.get('drawer')));
     const search = AP2.mkSearch();
-    AP2.st(search.el, {flex: '0 1 440px', minWidth: '0'});
+    AP2.st(search.el, {flex: '0 1 320px', minWidth: '40px'});
     const bar = h('div', {style: {position: 'fixed', top: 0, left: 0, right: 0, display: 'flex', alignItems: 'center', gap: S.sp[3],
       borderBottom: '1px solid', zIndex: S.z.topbar, boxSizing: 'border-box'}}, [menu, brand(), gap, search.el, AP2.mkHud(),
       linkButton(AP2.icon('code', 20), 'Quellcode auf GitHub', 'Quellcode', 'https://github.com/mkalmousli/FiAE-AP2'),
