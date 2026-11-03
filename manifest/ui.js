@@ -1,3 +1,3 @@
 AP2.files.push('ui/icons.js', 'ui/press.js', 'ui/text.js', 'ui/callout.js', 'ui/table.js', 'ui/procon.js', 'ui/highlight.js',
   'ui/code.js', 'ui/codetabs.js', 'ui/result.js', 'ui/cheat.js', 'ui/qa.js', 'ui/see.js', 'ui/quizopt.js', 'ui/quizres.js', 'ui/quiz.js', 'ui/walk.js', 'ui/render.js', 'ui/page.js',
-  'ui/examdata.js', 'ui/examtask.js', 'ui/exambar.js', 'ui/exam.js', 'ui/home.js', 'ui/gamekit.js', 'ui/fx.js', 'ui/hud.js', 'ui/trainer.js', 'ui/themen.js', 'ui/spick.js', 'ui/quest.js', 'ui/erfolge.js', 'ui/search.js', 'ui/find.js', 'ui/topbar.js', 'ui/navrow.js', 'ui/navtree.js', 'ui/navgrip.js', 'ui/sidebar.js');
+  'ui/examdata.js', 'ui/examtask.js', 'ui/exambar.js', 'ui/exam.js', 'ui/home.js', 'ui/gamekit.js', 'ui/fx.js', 'ui/hud.js', 'ui/trainer.js', 'ui/themen.js', 'ui/spick.js', 'ui/quest.js', 'ui/merk.js', 'ui/erfolge.js', 'ui/search.js', 'ui/find.js', 'ui/topbar.js', 'ui/navrow.js', 'ui/navtree.js', 'ui/navgrip.js', 'ui/sidebar.js');

@@ -47,7 +47,9 @@
       fn: () => AP2.router.go('trainer/seite/' + p.id)}) : null;
     const stars = m.total ? h('span', {attrs: {title: 'Beherrschung: ' + m.stars + ' von 5 Sternen, ' + m.seen + ' von ' + m.total + ' Fragen geübt'}, style: {display: 'inline-flex', alignItems: 'center', gap: S.sp[2]}},
       [AP2.gk.stars(m.stars, 16), AP2.tint(h('span', {text: m.seen + '/' + m.total + ' geübt', style: {fontSize: S.f.xs}}), 'text3')]) : null;
-    root.appendChild(h('div', {style: {margin: '0 0 ' + S.sp[5], display: 'flex', flexWrap: 'wrap', gap: S.sp[3], alignItems: 'center'}}, [doneButton(p.id), train, stars]));
+    root.appendChild(h('div', {style: {margin: '0 0 ' + S.sp[5], display: 'flex', flexWrap: 'wrap', gap: S.sp[3], alignItems: 'center'}}, [doneButton(p.id), AP2.bookmarkButton(p.id), train, stars]));
+    const wk = AP2.weakInfo(p.id);
+    if (wk) root.appendChild(AP2.blocks.note('**Hier hast du noch Schwächen:** ' + wk + '. Lies die Seite genau und trainiere sie danach gezielt.'));
     if (p.d) root.appendChild(AP2.blocks.def(p.d));
     if (p.m) root.appendChild(AP2.blocks.merk(p.m));
     if (p.cheat) root.appendChild(AP2.blocks.cheat(p.cheat));
@@ -55,6 +57,7 @@
     root.appendChild(AP2.gk.panel([h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[3], alignItems: 'center', justifyContent: 'space-between'}}, [
       h('div', {}, [AP2.gk.kicker('Seite geschafft?', 'accent'), AP2.tint(h('div', {text: 'Markiere sie als erledigt (+' + AP2.game.XP.page + ' XP) und festige sie im Trainer.', style: {fontSize: S.f.sm, marginTop: '2px'}}), 'text2')]),
       h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[2]}}, [doneButton(p.id), m.total ? AP2.btn({text: 'Trainieren', icon: AP2.icon('play', 16), kind: 'primary', small: true, fn: () => AP2.router.go('trainer/seite/' + p.id)}) : null])])], {marginTop: S.sp[7]}));
+    root.appendChild(AP2.noteBox(p.id));
     root.appendChild(nav(p.id));
     return root;
   };
