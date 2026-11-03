@@ -49,7 +49,7 @@
         st(side, {top: S.w.topbar + 'px', height: (L.h - S.w.topbar) + 'px', width: L.sidebarW + 'px', transform: shown ? 'none' : 'translateX(-100%)'});
         veil.style.display = L.mobile && AP2.state.get('drawer') ? 'block' : 'none';
         st(main, {marginLeft: L.mobile ? '0' : L.sidebarW + 'px', paddingTop: S.w.topbar + 'px', width: L.mainW + 'px'});
-        content.style.width = L.contentW + 'px';
+        content.style.width = (AP2.ctx.wide ? L.wideW : L.contentW) + 'px';
       };
       AP2.layout.bind(place);
       AP2.state.sub('drawer', () => place(AP2.layout));
@@ -57,7 +57,9 @@
         AP2.dispose(content);
         AP2.theme.setTone(toneFor(id));
         remember(id);
+        AP2.ctx.wide = false;
         content.appendChild(viewFor(id));
+        place(AP2.layout);
         document.title = titleFor(id) + 'AP2 FiAE Lernportal';
         window.scrollTo(0, 0);
         AP2.find.apply(content);

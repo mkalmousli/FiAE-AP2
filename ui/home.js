@@ -1,4 +1,4 @@
-// Startseite: Countdown, Stufe, Lernserie, Tagesziel, fällige Wiederholungen, Aktivität, Blöcke und Abzeichen.
+// Startseite: Kopf mit Countdown und Kennzahlen, Heute, Prüfungen, Fortschritt, weitere Bereiche und Schnellzugriff.
 (function () {
   const {h} = AP2;
   const S = AP2.S;
@@ -19,38 +19,36 @@
     const date = gk().fmtDate(AP2.game.dateOf(AP2.game.dayOf(g.exam)));
     const count = left > 1 ? 'Noch ' + left + ' Tage bis zur AP2' : left === 1 ? 'Morgen ist Prüfung' : left === 0 ? 'Heute ist Prüfungstag. Viel Erfolg!' : 'Prüfung geschafft?';
     const kick = gk().kicker(greet() + '  ·  Prüfung am ' + date, 'accent');
-    const title = AP2.tint(h('h1', {text: count, style: {fontSize: S.f.h1, fontWeight: S.fw.bold, lineHeight: S.lh.tight, letterSpacing: '-0.02em', margin: S.sp[2] + ' 0 ' + S.sp[3]}}), 'text');
-    const sub = AP2.tint(h('p', {text: 'Lerne jeden Tag ein wenig: Tagesziel erreichen, fällige Wiederholungen abarbeiten, ein neues Thema lesen. So wächst deine Lernserie und mit ihr das sichere Wissen.',
-      style: {fontSize: S.f.lg, lineHeight: S.lh.body, margin: '0 0 ' + S.sp[5]}}), 'text2');
-    return h('div', {}, [kick, title, sub]);
+    const title = AP2.tint(h('h1', {text: count, style: {fontSize: S.f.h2, fontWeight: S.fw.bold, lineHeight: S.lh.tight, letterSpacing: '-0.02em', margin: S.sp[1] + ' 0 ' + S.sp[4]}}), 'text');
+    return h('div', {}, [kick, title, row([levelPanel(), streakPanel(), goalPanel()])]);
   };
   const levelPanel = () => {
     const l = AP2.game.level();
-    const ring = gk().ring(84, 8, 'gold', [big(String(l.lv), 'gold', S.f.h2), AP2.tint(h('div', {text: 'Stufe', style: {fontSize: '10px', fontWeight: S.fw.bold}}), 'text3')]);
+    const ring = gk().ring(64, 7, 'gold', [big(String(l.lv), 'gold', S.f.h2), AP2.tint(h('div', {text: 'Stufe', style: {fontSize: '10px', fontWeight: S.fw.bold}}), 'text3')]);
     ring.set(l.pct);
     return gk().panel([h('div', {style: {display: 'flex', gap: S.sp[4], alignItems: 'center'}}, [ring, h('div', {style: {flex: '1 1 0', minWidth: 0}}, [
-      gk().kicker('Deine Stufe'), big(l.title, 'text', S.f.xl), small(l.xp + ' XP gesamt  ·  noch ' + (l.to - l.xp) + ' XP bis Stufe ' + (l.lv + 1))])])], {flex: '2 1 300px'});
+      gk().kicker('Deine Stufe'), big(l.title, 'text', S.f.xl), small(l.xp + ' XP gesamt  ·  noch ' + (l.to - l.xp) + ' XP bis Stufe ' + (l.lv + 1))])])], {flex: '2 1 280px', padding: '14px 16px'});
   };
   const streakPanel = () => {
     const s = AP2.game.streak();
-    const ic = h('div', {style: {display: 'flex'}}, [AP2.icon('flame', 40)]);
+    const ic = h('div', {style: {display: 'flex'}}, [AP2.icon('flame', 34)]);
     AP2.theme.bind(ic, (n, c) => { n.style.color = s.today ? c.fire : c.text3; });
     const best = AP2.game.read().n.streak || 0;
     return gk().panel([h('div', {style: {display: 'flex', gap: S.sp[3], alignItems: 'center'}}, [ic, h('div', {}, [
       gk().kicker('Lernserie'), big(s.n + (s.n === 1 ? ' Tag' : ' Tage'), s.today ? 'fire' : 'text', S.f.xl),
-      small(s.today ? 'Heute erledigt. Rekord: ' + best : 'Heute noch ' + AP2.game.STREAK_MIN + ' XP sammeln!')])])], {flex: '1 1 200px'});
+      small(s.today ? 'Heute erledigt. Rekord: ' + best : 'Heute noch ' + AP2.game.STREAK_MIN + ' XP sammeln!')])])], {flex: '1 1 200px', padding: '14px 16px'});
   };
   const goalPanel = () => {
     const g = AP2.game.read();
     const xp = AP2.game.todayXp();
-    const ring = gk().ring(64, 7, (p) => (p >= 1 ? 'gold' : 'accent'), [AP2.tint(h('div', {text: Math.min(999, Math.round((xp / g.goal) * 100)) + '%', style: {fontSize: S.f.xs, fontWeight: S.fw.bold}}), 'text')]);
+    const ring = gk().ring(56, 6, (p) => (p >= 1 ? 'gold' : 'accent'), [AP2.tint(h('div', {text: Math.min(999, Math.round((xp / g.goal) * 100)) + '%', style: {fontSize: S.f.xs, fontWeight: S.fw.bold}}), 'text')]);
     ring.set(xp / g.goal);
     const opts = h('div', {style: {display: 'flex', gap: '4px', marginTop: S.sp[2], flexWrap: 'wrap'}}, [50, 100, 200, 300].map((val) => {
       const el = h('span', {text: String(val), style: {padding: '2px 8px', borderRadius: S.r.pill, fontSize: S.f.xs, fontWeight: S.fw.semi, border: '1px solid'}});
       return AP2.press(el, {label: 'Tagesziel ' + val + ' XP', fn: () => { AP2.game.set('goal', val); AP2.state.set('route', 'home'); },
         base: (c) => (g.goal === val ? {backgroundColor: c.accent, color: c.onAccent, borderColor: c.accent} : {backgroundColor: 'transparent', color: c.text2, borderColor: c.border}), hover: (c) => ({borderColor: c.accent})});
     }));
-    return gk().panel([h('div', {style: {display: 'flex', gap: S.sp[3], alignItems: 'center'}}, [ring, h('div', {}, [gk().kicker('Tagesziel'), big(xp + ' / ' + g.goal + ' XP', 'text', S.f.lg), opts])])], {flex: '1 1 240px'});
+    return gk().panel([h('div', {style: {display: 'flex', gap: S.sp[3], alignItems: 'center'}}, [ring, h('div', {}, [gk().kicker('Tagesziel'), big(xp + ' / ' + g.goal + ' XP', 'text', S.f.lg), opts])])], {flex: '1 1 240px', padding: '14px 16px'});
   };
   const actions = () => {
     const pool = AP2.bank.core();
@@ -96,7 +94,7 @@
     return gk().panel([h('div', {style: {display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: S.sp[2], marginBottom: S.sp[3]}}, [gk().kicker('Aktivität'),
       small(active + ' Lerntage, ' + total + ' XP in ' + weeks + ' Wochen', 'text3')]), scroller], {flex: '1 1 320px'});
   };
-  const blockCard = (blk) => {
+  const blockCard = (blk, compact) => {
     const list = AP2.store.byBlock(blk.id);
     const done = list.filter((p) => AP2.state.get('done')[p.id]).length;
     const ms = list.map((p) => AP2.game.mastery(p.id)).filter((m) => m.total);
@@ -106,9 +104,10 @@
     const desc = AP2.tint(h('div', {text: blk.s, style: {fontSize: S.f.sm, lineHeight: '1.5'}}), 'text2');
     const meta = h('div', {style: {display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: S.sp[2], marginTop: S.sp[3], flexWrap: 'wrap'}}, [
       AP2.tint(h('div', {text: done + ' von ' + list.length + ' Seiten erledigt', style: {fontSize: S.f.xs}}), 'text3'), ms.length ? gk().stars(starsN, 13) : null]);
-    const el = h('div', {style: {flex: '1 1 300px', padding: '18px 20px', borderRadius: S.r.lg, border: '1px solid'}}, [title, desc, meta, h('div', {style: {marginTop: S.sp[2]}}, [gk().bar(list.length ? done / list.length : 0)])]);
+    if (compact) { title.style.fontSize = S.f.md; desc.style.fontSize = S.f.xs; }
+    const el = h('div', {style: {flex: compact ? '1 1 200px' : '1 1 300px', padding: compact ? '12px 14px' : '18px 20px', borderRadius: S.r.lg, border: '1px solid'}}, [title, desc, meta, h('div', {style: {marginTop: S.sp[2]}}, [gk().bar(list.length ? done / list.length : 0)])]);
     const first = list.find((p) => !AP2.state.get('done')[p.id]) || list[0];
-    return AP2.press(el, {fn: () => AP2.router.go(first.id), label: blk.t, base: (c) => ({backgroundColor: c.surface, borderColor: c.border}), hover: (c) => ({borderColor: c.accent, backgroundColor: c.hover})});
+    return AP2.press(el, {fn: () => AP2.router.go(first ? first.id : 'home'), label: blk.t, base: (c) => ({backgroundColor: c.surface, borderColor: c.border}), hover: (c) => ({borderColor: c.accent, backgroundColor: c.hover})});
   };
   const badgeIcon = (b, have) => {
     const el = h('div', {attrs: {title: b.t + ': ' + b.d}, style: {width: '46px', height: '46px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid', flexShrink: 0}}, [AP2.icon(have ? b.icon : 'lock', 22)]);
@@ -127,15 +126,68 @@
     return gk().panel([h('div', {style: {display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: S.sp[3], gap: S.sp[2], flexWrap: 'wrap'}},
       [gk().kicker('Abzeichen: ' + got.length + ' von ' + AP2.game.BADGES.length), link]), strip], {flex: '1 1 320px'});
   };
-  const quick = () => row([['map', 'Themenkarte', 'themen'], ['trophy', 'Probeprüfungen', 'exam-info'], ['clock', 'Prüfungsablauf und Notenrechner', 'ref-ablauf'], ['chart', 'Formelsammlung', 'ref-formeln']]
+  // Kennzahlen über mehrere Blöcke: erledigte Seiten und mittlere Sterne der bewerteten Seiten.
+  const blockStats = (ids) => {
+    const done = AP2.state.get('done');
+    const list = [].concat(...ids.map((id) => AP2.store.byBlock(id)));
+    const ms = list.map((p) => AP2.game.mastery(p.id)).filter((m) => m.total);
+    return {list, done: list.filter((p) => done[p.id]).length, avg: ms.length ? ms.reduce((a, m) => a + m.pct, 0) / ms.length : 0, rated: ms.length,
+      next: list.find((p) => !done[p.id]) || list[0]};
+  };
+  const shortOf = (id) => { const b = AP2.store.block(id); return b ? b.short : id; };
+  const examCard = (ex) => {
+    const st = blockStats(ex.ids);
+    const multi = ex.ids.length > 1;
+    const sheets = AP2.spickSheets ? AP2.spickSheets().map((x) => x.id) : [];
+    const title = AP2.tint(h('div', {text: ex.t, style: {fontSize: S.f.lg, fontWeight: S.fw.bold, lineHeight: S.lh.tight}}), 'text');
+    const meta = AP2.tint(h('div', {text: ex.time + '  ·  ' + ex.pts, style: {fontSize: S.f.xs, fontWeight: S.fw.semi, margin: '4px 0 ' + S.sp[2]}}), 'accent');
+    const desc = small(ex.d);
+    const prog = h('div', {style: {display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: S.sp[2], margin: S.sp[3] + ' 0 ' + S.sp[1], flexWrap: 'wrap'}}, [
+      AP2.tint(h('div', {text: st.done + ' von ' + st.list.length + ' Seiten erledigt', style: {fontSize: S.f.xs}}), 'text3'),
+      st.rated ? gk().stars(Math.round(st.avg * 5), 13) : AP2.tint(h('div', {text: 'noch nicht geübt', style: {fontSize: S.f.xs}}), 'text3')]);
+    const btns = [];
+    ex.ids.forEach((id) => {
+      if (!sheets.length || sheets.includes(id)) btns.push(AP2.btn({text: multi ? 'Spickzettel ' + shortOf(id) : 'Spickzettel', small: true, icon: AP2.icon('cards', 15), fn: () => AP2.router.go('spick/' + id)}));
+    });
+    ex.ids.forEach((id) => btns.push(AP2.btn({text: multi ? 'Trainieren ' + shortOf(id) : 'Trainieren', small: true, icon: AP2.icon('play', 15), fn: () => AP2.router.go('trainer/block/' + id)})));
+    if (st.next) btns.push(AP2.btn({text: 'Themen', small: true, kind: 'ghost', icon: AP2.icon('book', 15), fn: () => AP2.router.go(st.next.id)}));
+    return gk().panel([title, meta, desc, prog, gk().bar(st.list.length ? st.done / st.list.length : 0),
+      h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[2], marginTop: S.sp[3]}}, btns)], {flex: '1 1 300px', display: 'flex', flexDirection: 'column'});
+  };
+  const exams = () => {
+    const list = AP2.spickExams || LEARN.map((id) => { const b = AP2.store.block(id); return {t: b.t, time: '', pts: '', ids: [id], d: b.s}; });
+    return row(list.map(examCard));
+  };
+  const examLinks = () => row([
+    AP2.btn({text: 'Alle Spickzettel', small: true, icon: AP2.icon('cards', 15), fn: () => AP2.router.go('spick')}),
+    AP2.views['exam-info'] || AP2.store.get('exam-info') ? AP2.btn({text: 'Probeprüfungen schreiben', small: true, icon: AP2.icon('trophy', 15), fn: () => AP2.router.go('exam-info')}) : null,
+  ].filter(Boolean), S.sp[2]);
+  const chip = (text, id) => {
+    const el = h('span', {text, style: {padding: '5px 12px', borderRadius: S.r.pill, fontSize: S.f.sm, border: '1px solid', maxWidth: '260px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}});
+    return AP2.press(el, {fn: () => AP2.router.go(id), label: text, base: (c) => ({backgroundColor: c.surface, color: c.text, borderColor: c.border}), hover: (c) => ({borderColor: c.accent, backgroundColor: c.hover})});
+  };
+  const recent = () => {
+    const ids = (AP2.state.get('recent') || []).filter((id) => id !== 'home' && (AP2.store.get(id) || AP2.views[id.split('/')[0]])).slice(0, 8);
+    if (!ids.length) return null;
+    return h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[2]}}, ids.map((id) => {
+      const p = AP2.store.get(id);
+      return chip(p ? p.t : (AP2.viewTitles[id.split('/')[0]] || id), id);
+    }));
+  };
+  const quick = () => row([['cards', 'Spickzettel', 'spick'], ['map', 'Themenkarte', 'themen'], ['chart', 'Formelsammlung', 'ref-formeln'], ['clock', 'Prüfungsablauf und Notenrechner', 'ref-ablauf']]
     .filter(([, , id]) => AP2.views[id] || AP2.store.get(id)).map(([icon, text, id]) => AP2.btn({text, icon: AP2.icon(icon, 18), fn: () => AP2.router.go(id)})), S.sp[2]);
   AP2.views.home = () => {
     AP2.ctx.id = 'home';
-    const sec = (title) => h('div', {style: {margin: S.sp[6] + ' 0 ' + S.sp[3]}}, [gk().kicker(title, 'text3')]);
-    return h('div', {}, [hero(), row([levelPanel(), streakPanel(), goalPanel()]), h('div', {style: {height: S.sp[3]}}), actions(),
-      h('div', {style: {height: S.sp[3]}}), row([heatmap(), badges()]),
-      sec('Prüfungsbereiche'), row(AP2.store.BLOCKS.filter((b) => LEARN.includes(b.id)).map(blockCard)),
-      sec('Weitere Bereiche'), row(AP2.store.BLOCKS.filter((b) => !LEARN.includes(b.id)).map(blockCard)),
+    const sec = (title, sub) => h('div', {style: {margin: S.sp[6] + ' 0 ' + S.sp[3]}}, [
+      AP2.tint(h('h2', {text: title, style: {fontSize: S.f.xl, fontWeight: S.fw.bold, lineHeight: S.lh.tight, margin: 0}}), 'text'), sub ? small(sub, 'text3') : null]);
+    const gap = () => h('div', {style: {height: S.sp[3]}});
+    const rec = recent();
+    return h('div', {}, [hero(),
+      sec('Heute', 'Tagesziel erreichen, fällige Wiederholungen abarbeiten, ein neues Thema lesen.'), actions(),
+      rec ? gap() : null, rec ? gk().kicker('Zuletzt besucht') : null, rec ? h('div', {style: {height: S.sp[2]}}) : null, rec,
+      sec('Prüfungen', 'Die schriftlichen AP2-Prüfungen mit deinem Stand je Prüfung.'), exams(), gap(), examLinks(),
+      sec('Fortschritt'), row([heatmap(), badges()]),
+      sec('Weitere Bereiche'), row(AP2.store.BLOCKS.filter((b) => !LEARN.includes(b.id)).map((b) => blockCard(b, true))),
       sec('Schnellzugriff'), quick()]);
   };
   AP2.viewTitles.home = 'Start';

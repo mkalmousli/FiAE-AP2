@@ -12,7 +12,7 @@
       mono: "ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace",
     },
     lh: {tight: '1.25', body: '1.72', code: '1.6'},
-    w: {sidebar: 316, sideMin: 240, sideMax: 560, grip: 8, topbar: 60, content: 880, pad: 24, padMobile: 16},
+    w: {sidebar: 316, sideMin: 240, sideMax: 560, grip: 8, topbar: 60, content: 880, wide: 1480, pad: 24, padMobile: 16},
     bp: {mobile: 760},
     t: {fast: 'background-color 120ms ease, border-color 120ms ease, color 120ms ease, box-shadow 120ms ease'},
     z: {topbar: 30, overlay: 35, drawer: 40, drop: 50},

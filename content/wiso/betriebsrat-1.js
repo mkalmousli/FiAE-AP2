@@ -1,9 +1,9 @@
 AP2.page('wiso-betriebsrat', {
   b: 'wiso', g: 'Tarifrecht und Mitbestimmung', t: 'Betriebsrat und Betriebsverfassungsgesetz (BetrVG)',
   d: 'Der **Betriebsrat** ist die **gewählte Interessenvertretung der Arbeitnehmer** im Betrieb. Er wird in Betrieben mit **mindestens 5 ständig wahlberechtigten Arbeitnehmern** (davon 3 wählbar) gewählt, **alle 4 Jahre**. Er hat **Mitbestimmungsrechte** (zum Beispiel bei Arbeitszeit, Überwachung durch Technik, Einstellungen), **Mitwirkungsrechte** und **Informationsrechte** nach dem **Betriebsverfassungsgesetz**. Die **Jugend- und Auszubildendenvertretung (JAV)** vertritt Beschäftigte **unter 18** und **Azubis unter 25**.',
-  m: '**BR: Wahl ab 5 AN, alle 4 Jahre. Wahlberechtigt ab 18, wählbar nach 6 Monaten Betriebszugehörigkeit. Mitbestimmung: sozial (§ 87), personell (§ 99), wirtschaftlich (§ 111).** Kündigung ohne Anhörung des Betriebsrats = **unwirksam** (§ 102). **JAV: bis 25, Wahl alle 2 Jahre.** Der Betriebsrat ist **kein** Teil der Gewerkschaft.',
+  m: '**BR: Wahl ab 5 AN, alle 4 Jahre. Wahlberechtigt ab 16, wählbar ab 18 und nach 6 Monaten Betriebszugehörigkeit. Mitbestimmung: sozial (§ 87), personell (§ 99), wirtschaftlich (§ 111).** Kündigung ohne Anhörung des Betriebsrats = **unwirksam** (§ 102). **JAV: bis 25, Wahl alle 2 Jahre.** Der Betriebsrat ist **kein** Teil der Gewerkschaft.',
   cheat: [
-    ['Wahl', ['Betrieb mit **mindestens 5 ständig wahlberechtigten AN**, davon **3 wählbar**', '**Wahlberechtigt:** ab **18 Jahre**', '**Wählbar:** 6 Monate im Betrieb', '**Amtszeit 4 Jahre**', '**Größe:** 5 bis 20 AN = 1 Mitglied, 21-50 = 3, 51-100 = 5, 101-200 = 7']],
+    ['Wahl', ['Betrieb mit **mindestens 5 ständig wahlberechtigten AN**, davon **3 wählbar**', '**Wahlberechtigt:** ab **16 Jahre** (seit 2021)', '**Wählbar:** ab 18 und 6 Monate im Betrieb', '**Amtszeit 4 Jahre**', '**Größe:** 5 bis 20 AN = 1 Mitglied, 21-50 = 3, 51-100 = 5, 101-200 = 7']],
     ['Mitbestimmung § 87 (soziale Angelegenheiten)', ['Beginn/Ende der **täglichen Arbeitszeit**, **Pausen**', '**Urlaubsgrundsätze**, Urlaubsplan', '**Technische Überwachung** (Zeiterfassung, Software zur Leistungskontrolle)', 'Ordnung im Betrieb, **Lohngestaltung**, Sozialeinrichtungen', '**Gesundheitsschutz**, Unfallverhütung']],
     ['Personelle Angelegenheiten', ['**§ 99:** Einstellung, Versetzung, Eingruppierung: **Zustimmungsverweigerungsrecht**', '**§ 102:** **Anhörungsrecht** vor jeder Kündigung (sonst unwirksam)', '**§ 98:** Berufsbildung', 'Stellenausschreibung']],
     ['Wirtschaftliche Angelegenheiten', ['**§ 106:** Wirtschaftsausschuss (ab 100 AN)', '**§ 111:** **Betriebsänderungen** (Schließung, Verlegung, Zusammenlegung): **Interessenausgleich** und **Sozialplan**', 'Betrieb mit **mehr als 20** wahlberechtigten AN']],
@@ -14,7 +14,7 @@ AP2.page('wiso-betriebsrat', {
     ['h', 'Wahl und Zusammensetzung'],
     ['table', ['Merkmal', 'Regelung'], [
       ['Voraussetzung', 'Betrieb mit **in der Regel mindestens 5 ständigen wahlberechtigten Arbeitnehmern**, von denen **3 wählbar** sind (§ 1 BetrVG)'],
-      ['Wahlberechtigt (aktives Wahlrecht)', 'Alle Arbeitnehmer ab **18 Jahren** (auch Auszubildende)'],
+      ['Wahlberechtigt (aktives Wahlrecht)', 'Alle Arbeitnehmer ab **16 Jahren** (auch Auszubildende, § 7 BetrVG seit 2021)'],
       ['Wählbar (passives Wahlrecht)', 'Wahlberechtigte, die **seit mindestens 6 Monaten** dem Betrieb angehören'],
       ['Amtszeit', '**4 Jahre**, regelmäßige Wahlen **alle 4 Jahre** (zuletzt im Zeitraum **1. März bis 31. Mai 2026**)'],
       ['Größe', '**5 bis 20** Arbeitnehmer: 1 Mitglied; **21 bis 50**: 3; **51 bis 100**: 5; **101 bis 200**: 7; **201 bis 400**: 9; **401 bis 700**: 11 ... (§ 9 BetrVG)'],

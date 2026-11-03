@@ -11,6 +11,8 @@
     L.mainW = L.mobile ? L.w : L.w - L.sidebarW;
     L.pad = L.mobile ? S.w.padMobile : S.w.pad;
     L.contentW = Math.min(S.w.content, L.mainW - L.pad * 2);
+    // Breite Ansichten (Spickzettel, Themenkarte) nutzen fast die volle Fläche.
+    L.wideW = Math.min(S.w.wide, L.mainW - L.pad * 2);
   };
   const run = () => { compute(); L.subs.forEach((fn) => fn(L)); };
   const bind = (fn) => {

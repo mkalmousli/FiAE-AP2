@@ -53,7 +53,7 @@ AP2.pages = function () {};
       mono: "ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace",
     },
     lh: {tight: '1.25', body: '1.72', code: '1.6'},
-    w: {sidebar: 316, sideMin: 240, sideMax: 560, grip: 8, topbar: 60, content: 880, pad: 24, padMobile: 16},
+    w: {sidebar: 316, sideMin: 240, sideMax: 560, grip: 8, topbar: 60, content: 880, wide: 1480, pad: 24, padMobile: 16},
     bp: {mobile: 760},
     t: {fast: 'background-color 120ms ease, border-color 120ms ease, color 120ms ease, box-shadow 120ms ease'},
     z: {topbar: 30, overlay: 35, drawer: 40, drop: 50},
@@ -228,6 +228,8 @@ AP2.pages = function () {};
     L.mainW = L.mobile ? L.w : L.w - L.sidebarW;
     L.pad = L.mobile ? S.w.padMobile : S.w.pad;
     L.contentW = Math.min(S.w.content, L.mainW - L.pad * 2);
+    // Breite Ansichten (Spickzettel, Themenkarte) nutzen fast die volle Fläche.
+    L.wideW = Math.min(S.w.wide, L.mainW - L.pad * 2);
   };
   const run = () => { compute(); L.subs.forEach((fn) => fn(L)); };
   const bind = (fn) => {
@@ -2041,7 +2043,7 @@ AP2.pages = function () {};
 })();
 ;
 // ui/home.js
-// Startseite: Countdown, Stufe, Lernserie, Tagesziel, fällige Wiederholungen, Aktivität, Blöcke und Abzeichen.
+// Startseite: Kopf mit Countdown und Kennzahlen, Heute, Prüfungen, Fortschritt, weitere Bereiche und Schnellzugriff.
 (function () {
   const {h} = AP2;
   const S = AP2.S;
@@ -2062,38 +2064,36 @@ AP2.pages = function () {};
     const date = gk().fmtDate(AP2.game.dateOf(AP2.game.dayOf(g.exam)));
     const count = left > 1 ? 'Noch ' + left + ' Tage bis zur AP2' : left === 1 ? 'Morgen ist Prüfung' : left === 0 ? 'Heute ist Prüfungstag. Viel Erfolg!' : 'Prüfung geschafft?';
     const kick = gk().kicker(greet() + '  ·  Prüfung am ' + date, 'accent');
-    const title = AP2.tint(h('h1', {text: count, style: {fontSize: S.f.h1, fontWeight: S.fw.bold, lineHeight: S.lh.tight, letterSpacing: '-0.02em', margin: S.sp[2] + ' 0 ' + S.sp[3]}}), 'text');
-    const sub = AP2.tint(h('p', {text: 'Lerne jeden Tag ein wenig: Tagesziel erreichen, fällige Wiederholungen abarbeiten, ein neues Thema lesen. So wächst deine Lernserie und mit ihr das sichere Wissen.',
-      style: {fontSize: S.f.lg, lineHeight: S.lh.body, margin: '0 0 ' + S.sp[5]}}), 'text2');
-    return h('div', {}, [kick, title, sub]);
+    const title = AP2.tint(h('h1', {text: count, style: {fontSize: S.f.h2, fontWeight: S.fw.bold, lineHeight: S.lh.tight, letterSpacing: '-0.02em', margin: S.sp[1] + ' 0 ' + S.sp[4]}}), 'text');
+    return h('div', {}, [kick, title, row([levelPanel(), streakPanel(), goalPanel()])]);
   };
   const levelPanel = () => {
     const l = AP2.game.level();
-    const ring = gk().ring(84, 8, 'gold', [big(String(l.lv), 'gold', S.f.h2), AP2.tint(h('div', {text: 'Stufe', style: {fontSize: '10px', fontWeight: S.fw.bold}}), 'text3')]);
+    const ring = gk().ring(64, 7, 'gold', [big(String(l.lv), 'gold', S.f.h2), AP2.tint(h('div', {text: 'Stufe', style: {fontSize: '10px', fontWeight: S.fw.bold}}), 'text3')]);
     ring.set(l.pct);
     return gk().panel([h('div', {style: {display: 'flex', gap: S.sp[4], alignItems: 'center'}}, [ring, h('div', {style: {flex: '1 1 0', minWidth: 0}}, [
-      gk().kicker('Deine Stufe'), big(l.title, 'text', S.f.xl), small(l.xp + ' XP gesamt  ·  noch ' + (l.to - l.xp) + ' XP bis Stufe ' + (l.lv + 1))])])], {flex: '2 1 300px'});
+      gk().kicker('Deine Stufe'), big(l.title, 'text', S.f.xl), small(l.xp + ' XP gesamt  ·  noch ' + (l.to - l.xp) + ' XP bis Stufe ' + (l.lv + 1))])])], {flex: '2 1 280px', padding: '14px 16px'});
   };
   const streakPanel = () => {
     const s = AP2.game.streak();
-    const ic = h('div', {style: {display: 'flex'}}, [AP2.icon('flame', 40)]);
+    const ic = h('div', {style: {display: 'flex'}}, [AP2.icon('flame', 34)]);
     AP2.theme.bind(ic, (n, c) => { n.style.color = s.today ? c.fire : c.text3; });
     const best = AP2.game.read().n.streak || 0;
     return gk().panel([h('div', {style: {display: 'flex', gap: S.sp[3], alignItems: 'center'}}, [ic, h('div', {}, [
       gk().kicker('Lernserie'), big(s.n + (s.n === 1 ? ' Tag' : ' Tage'), s.today ? 'fire' : 'text', S.f.xl),
-      small(s.today ? 'Heute erledigt. Rekord: ' + best : 'Heute noch ' + AP2.game.STREAK_MIN + ' XP sammeln!')])])], {flex: '1 1 200px'});
+      small(s.today ? 'Heute erledigt. Rekord: ' + best : 'Heute noch ' + AP2.game.STREAK_MIN + ' XP sammeln!')])])], {flex: '1 1 200px', padding: '14px 16px'});
   };
   const goalPanel = () => {
     const g = AP2.game.read();
     const xp = AP2.game.todayXp();
-    const ring = gk().ring(64, 7, (p) => (p >= 1 ? 'gold' : 'accent'), [AP2.tint(h('div', {text: Math.min(999, Math.round((xp / g.goal) * 100)) + '%', style: {fontSize: S.f.xs, fontWeight: S.fw.bold}}), 'text')]);
+    const ring = gk().ring(56, 6, (p) => (p >= 1 ? 'gold' : 'accent'), [AP2.tint(h('div', {text: Math.min(999, Math.round((xp / g.goal) * 100)) + '%', style: {fontSize: S.f.xs, fontWeight: S.fw.bold}}), 'text')]);
     ring.set(xp / g.goal);
     const opts = h('div', {style: {display: 'flex', gap: '4px', marginTop: S.sp[2], flexWrap: 'wrap'}}, [50, 100, 200, 300].map((val) => {
       const el = h('span', {text: String(val), style: {padding: '2px 8px', borderRadius: S.r.pill, fontSize: S.f.xs, fontWeight: S.fw.semi, border: '1px solid'}});
       return AP2.press(el, {label: 'Tagesziel ' + val + ' XP', fn: () => { AP2.game.set('goal', val); AP2.state.set('route', 'home'); },
         base: (c) => (g.goal === val ? {backgroundColor: c.accent, color: c.onAccent, borderColor: c.accent} : {backgroundColor: 'transparent', color: c.text2, borderColor: c.border}), hover: (c) => ({borderColor: c.accent})});
     }));
-    return gk().panel([h('div', {style: {display: 'flex', gap: S.sp[3], alignItems: 'center'}}, [ring, h('div', {}, [gk().kicker('Tagesziel'), big(xp + ' / ' + g.goal + ' XP', 'text', S.f.lg), opts])])], {flex: '1 1 240px'});
+    return gk().panel([h('div', {style: {display: 'flex', gap: S.sp[3], alignItems: 'center'}}, [ring, h('div', {}, [gk().kicker('Tagesziel'), big(xp + ' / ' + g.goal + ' XP', 'text', S.f.lg), opts])])], {flex: '1 1 240px', padding: '14px 16px'});
   };
   const actions = () => {
     const pool = AP2.bank.core();
@@ -2139,7 +2139,7 @@ AP2.pages = function () {};
     return gk().panel([h('div', {style: {display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: S.sp[2], marginBottom: S.sp[3]}}, [gk().kicker('Aktivität'),
       small(active + ' Lerntage, ' + total + ' XP in ' + weeks + ' Wochen', 'text3')]), scroller], {flex: '1 1 320px'});
   };
-  const blockCard = (blk) => {
+  const blockCard = (blk, compact) => {
     const list = AP2.store.byBlock(blk.id);
     const done = list.filter((p) => AP2.state.get('done')[p.id]).length;
     const ms = list.map((p) => AP2.game.mastery(p.id)).filter((m) => m.total);
@@ -2149,9 +2149,10 @@ AP2.pages = function () {};
     const desc = AP2.tint(h('div', {text: blk.s, style: {fontSize: S.f.sm, lineHeight: '1.5'}}), 'text2');
     const meta = h('div', {style: {display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: S.sp[2], marginTop: S.sp[3], flexWrap: 'wrap'}}, [
       AP2.tint(h('div', {text: done + ' von ' + list.length + ' Seiten erledigt', style: {fontSize: S.f.xs}}), 'text3'), ms.length ? gk().stars(starsN, 13) : null]);
-    const el = h('div', {style: {flex: '1 1 300px', padding: '18px 20px', borderRadius: S.r.lg, border: '1px solid'}}, [title, desc, meta, h('div', {style: {marginTop: S.sp[2]}}, [gk().bar(list.length ? done / list.length : 0)])]);
+    if (compact) { title.style.fontSize = S.f.md; desc.style.fontSize = S.f.xs; }
+    const el = h('div', {style: {flex: compact ? '1 1 200px' : '1 1 300px', padding: compact ? '12px 14px' : '18px 20px', borderRadius: S.r.lg, border: '1px solid'}}, [title, desc, meta, h('div', {style: {marginTop: S.sp[2]}}, [gk().bar(list.length ? done / list.length : 0)])]);
     const first = list.find((p) => !AP2.state.get('done')[p.id]) || list[0];
-    return AP2.press(el, {fn: () => AP2.router.go(first.id), label: blk.t, base: (c) => ({backgroundColor: c.surface, borderColor: c.border}), hover: (c) => ({borderColor: c.accent, backgroundColor: c.hover})});
+    return AP2.press(el, {fn: () => AP2.router.go(first ? first.id : 'home'), label: blk.t, base: (c) => ({backgroundColor: c.surface, borderColor: c.border}), hover: (c) => ({borderColor: c.accent, backgroundColor: c.hover})});
   };
   const badgeIcon = (b, have) => {
     const el = h('div', {attrs: {title: b.t + ': ' + b.d}, style: {width: '46px', height: '46px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid', flexShrink: 0}}, [AP2.icon(have ? b.icon : 'lock', 22)]);
@@ -2170,15 +2171,68 @@ AP2.pages = function () {};
     return gk().panel([h('div', {style: {display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: S.sp[3], gap: S.sp[2], flexWrap: 'wrap'}},
       [gk().kicker('Abzeichen: ' + got.length + ' von ' + AP2.game.BADGES.length), link]), strip], {flex: '1 1 320px'});
   };
-  const quick = () => row([['map', 'Themenkarte', 'themen'], ['trophy', 'Probeprüfungen', 'exam-info'], ['clock', 'Prüfungsablauf und Notenrechner', 'ref-ablauf'], ['chart', 'Formelsammlung', 'ref-formeln']]
+  // Kennzahlen über mehrere Blöcke: erledigte Seiten und mittlere Sterne der bewerteten Seiten.
+  const blockStats = (ids) => {
+    const done = AP2.state.get('done');
+    const list = [].concat(...ids.map((id) => AP2.store.byBlock(id)));
+    const ms = list.map((p) => AP2.game.mastery(p.id)).filter((m) => m.total);
+    return {list, done: list.filter((p) => done[p.id]).length, avg: ms.length ? ms.reduce((a, m) => a + m.pct, 0) / ms.length : 0, rated: ms.length,
+      next: list.find((p) => !done[p.id]) || list[0]};
+  };
+  const shortOf = (id) => { const b = AP2.store.block(id); return b ? b.short : id; };
+  const examCard = (ex) => {
+    const st = blockStats(ex.ids);
+    const multi = ex.ids.length > 1;
+    const sheets = AP2.spickSheets ? AP2.spickSheets().map((x) => x.id) : [];
+    const title = AP2.tint(h('div', {text: ex.t, style: {fontSize: S.f.lg, fontWeight: S.fw.bold, lineHeight: S.lh.tight}}), 'text');
+    const meta = AP2.tint(h('div', {text: ex.time + '  ·  ' + ex.pts, style: {fontSize: S.f.xs, fontWeight: S.fw.semi, margin: '4px 0 ' + S.sp[2]}}), 'accent');
+    const desc = small(ex.d);
+    const prog = h('div', {style: {display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: S.sp[2], margin: S.sp[3] + ' 0 ' + S.sp[1], flexWrap: 'wrap'}}, [
+      AP2.tint(h('div', {text: st.done + ' von ' + st.list.length + ' Seiten erledigt', style: {fontSize: S.f.xs}}), 'text3'),
+      st.rated ? gk().stars(Math.round(st.avg * 5), 13) : AP2.tint(h('div', {text: 'noch nicht geübt', style: {fontSize: S.f.xs}}), 'text3')]);
+    const btns = [];
+    ex.ids.forEach((id) => {
+      if (!sheets.length || sheets.includes(id)) btns.push(AP2.btn({text: multi ? 'Spickzettel ' + shortOf(id) : 'Spickzettel', small: true, icon: AP2.icon('cards', 15), fn: () => AP2.router.go('spick/' + id)}));
+    });
+    ex.ids.forEach((id) => btns.push(AP2.btn({text: multi ? 'Trainieren ' + shortOf(id) : 'Trainieren', small: true, icon: AP2.icon('play', 15), fn: () => AP2.router.go('trainer/block/' + id)})));
+    if (st.next) btns.push(AP2.btn({text: 'Themen', small: true, kind: 'ghost', icon: AP2.icon('book', 15), fn: () => AP2.router.go(st.next.id)}));
+    return gk().panel([title, meta, desc, prog, gk().bar(st.list.length ? st.done / st.list.length : 0),
+      h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[2], marginTop: S.sp[3]}}, btns)], {flex: '1 1 300px', display: 'flex', flexDirection: 'column'});
+  };
+  const exams = () => {
+    const list = AP2.spickExams || LEARN.map((id) => { const b = AP2.store.block(id); return {t: b.t, time: '', pts: '', ids: [id], d: b.s}; });
+    return row(list.map(examCard));
+  };
+  const examLinks = () => row([
+    AP2.btn({text: 'Alle Spickzettel', small: true, icon: AP2.icon('cards', 15), fn: () => AP2.router.go('spick')}),
+    AP2.views['exam-info'] || AP2.store.get('exam-info') ? AP2.btn({text: 'Probeprüfungen schreiben', small: true, icon: AP2.icon('trophy', 15), fn: () => AP2.router.go('exam-info')}) : null,
+  ].filter(Boolean), S.sp[2]);
+  const chip = (text, id) => {
+    const el = h('span', {text, style: {padding: '5px 12px', borderRadius: S.r.pill, fontSize: S.f.sm, border: '1px solid', maxWidth: '260px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}});
+    return AP2.press(el, {fn: () => AP2.router.go(id), label: text, base: (c) => ({backgroundColor: c.surface, color: c.text, borderColor: c.border}), hover: (c) => ({borderColor: c.accent, backgroundColor: c.hover})});
+  };
+  const recent = () => {
+    const ids = (AP2.state.get('recent') || []).filter((id) => id !== 'home' && (AP2.store.get(id) || AP2.views[id.split('/')[0]])).slice(0, 8);
+    if (!ids.length) return null;
+    return h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[2]}}, ids.map((id) => {
+      const p = AP2.store.get(id);
+      return chip(p ? p.t : (AP2.viewTitles[id.split('/')[0]] || id), id);
+    }));
+  };
+  const quick = () => row([['cards', 'Spickzettel', 'spick'], ['map', 'Themenkarte', 'themen'], ['chart', 'Formelsammlung', 'ref-formeln'], ['clock', 'Prüfungsablauf und Notenrechner', 'ref-ablauf']]
     .filter(([, , id]) => AP2.views[id] || AP2.store.get(id)).map(([icon, text, id]) => AP2.btn({text, icon: AP2.icon(icon, 18), fn: () => AP2.router.go(id)})), S.sp[2]);
   AP2.views.home = () => {
     AP2.ctx.id = 'home';
-    const sec = (title) => h('div', {style: {margin: S.sp[6] + ' 0 ' + S.sp[3]}}, [gk().kicker(title, 'text3')]);
-    return h('div', {}, [hero(), row([levelPanel(), streakPanel(), goalPanel()]), h('div', {style: {height: S.sp[3]}}), actions(),
-      h('div', {style: {height: S.sp[3]}}), row([heatmap(), badges()]),
-      sec('Prüfungsbereiche'), row(AP2.store.BLOCKS.filter((b) => LEARN.includes(b.id)).map(blockCard)),
-      sec('Weitere Bereiche'), row(AP2.store.BLOCKS.filter((b) => !LEARN.includes(b.id)).map(blockCard)),
+    const sec = (title, sub) => h('div', {style: {margin: S.sp[6] + ' 0 ' + S.sp[3]}}, [
+      AP2.tint(h('h2', {text: title, style: {fontSize: S.f.xl, fontWeight: S.fw.bold, lineHeight: S.lh.tight, margin: 0}}), 'text'), sub ? small(sub, 'text3') : null]);
+    const gap = () => h('div', {style: {height: S.sp[3]}});
+    const rec = recent();
+    return h('div', {}, [hero(),
+      sec('Heute', 'Tagesziel erreichen, fällige Wiederholungen abarbeiten, ein neues Thema lesen.'), actions(),
+      rec ? gap() : null, rec ? gk().kicker('Zuletzt besucht') : null, rec ? h('div', {style: {height: S.sp[2]}}) : null, rec,
+      sec('Prüfungen', 'Die schriftlichen AP2-Prüfungen mit deinem Stand je Prüfung.'), exams(), gap(), examLinks(),
+      sec('Fortschritt'), row([heatmap(), badges()]),
+      sec('Weitere Bereiche'), row(AP2.store.BLOCKS.filter((b) => !LEARN.includes(b.id)).map((b) => blockCard(b, true))),
       sec('Schnellzugriff'), quick()]);
   };
   AP2.viewTitles.home = 'Start';
@@ -2709,26 +2763,19 @@ AP2.pages = function () {};
 })();
 ;
 // ui/themen.js
-// Themenkarte: alle Themen als Kacheln mit Sternen, filterbar nach Block, Text, offen und schwach.
+// Themenkarte als Landkarte: Prüfungsbereiche sind Regionen, Gruppen sind Inseln, Themen sind Orte auf einem gepunkteten Lernpfad.
 (function () {
-  const {h, on} = AP2;
+  const {h, on, st} = AP2;
   const S = AP2.S;
   const gk = () => AP2.gk;
   const FILTERS = [['alle', 'Alle'], ['offen', 'Noch offen'], ['schwach', 'Schwach (bis 2 Sterne)'], ['faellig', 'Wiederholung fällig']];
+  const LEARN = ['ps', 'infra', 'eua', 'wiso'];
+  const COLS = 3, ROW = 86, TOP = 22;
   let mem = {blk: 'learn', f: 'alle', q: ''};
-  const tile = (p) => {
+  const short = (t) => t.replace('Wirtschafts- und Sozialkunde', 'WiSo');
+  const info = (p) => {
     const m = AP2.game.mastery(p.id);
-    const due = AP2.game.due(AP2.bank.byPage(p.id)).length;
-    const done = !!AP2.state.get('done')[p.id];
-    const title = AP2.tint(h('div', {text: p.t, style: {fontSize: S.f.sm, fontWeight: S.fw.semi, lineHeight: '1.35', flex: '1 1 0'}}), 'text');
-    const mark = done ? AP2.tint(h('span', {attrs: {title: 'Gelesen'}, style: {display: 'flex'}}, [AP2.icon('check', 16)]), 'ok') : null;
-    const facts = m.total ? m.seen + '/' + m.total + ' geübt' + (due ? '  ·  ' + due + ' fällig' : '') : 'ohne Fragen';
-    const foot = h('div', {style: {display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: S.sp[2], marginTop: S.sp[2]}}, [
-      m.total ? gk().stars(m.stars, 12) : h('span'), AP2.tint(h('span', {text: facts, style: {fontSize: '11px'}}), due ? 'fire' : 'text3')]);
-    const el = h('div', {style: {flex: '1 1 230px', padding: '12px 14px', borderRadius: S.r.md, border: '1px solid', borderLeftWidth: '4px', boxSizing: 'border-box'}},
-      [h('div', {style: {display: 'flex', gap: S.sp[2], alignItems: 'flex-start'}}, [title, mark]), foot]);
-    return AP2.press(el, {fn: () => AP2.router.go(p.id), label: p.t, hover: (c) => ({backgroundColor: c.hover}),
-      base: (c) => ({backgroundColor: c.surface, borderColor: c.border, borderLeftColor: gk().starColor(m.total ? m.stars : done ? 1 : 0, c)})});
+    return {m, due: AP2.game.due(AP2.bank.byPage(p.id)).length, done: !!AP2.state.get('done')[p.id]};
   };
   const keep = (p, f) => {
     if (f === 'offen') return !AP2.state.get('done')[p.id];
@@ -2736,58 +2783,433 @@ AP2.pages = function () {};
     if (f === 'faellig') return AP2.game.due(AP2.bank.byPage(p.id)).length > 0;
     return true;
   };
+  const hasSpick = (bid) => (AP2.spickSheets ? AP2.spickSheets().some((s) => s.id === bid) : false) || LEARN.includes(bid);
+  // Kennzahlen einer Region: Anteil gelesen und Durchschnitt der Sterne (nur Themen mit Fragen).
+  const stats = (bid) => {
+    const pages = AP2.store.byBlock(bid);
+    let done = 0, sum = 0, n = 0, due = 0;
+    pages.forEach((p) => { const x = info(p); if (x.done) done++; if (x.m.total) { sum += x.m.stars; n++; } due += x.due; });
+    return {count: pages.length, pct: pages.length ? Math.round(done / pages.length * 100) : 0, avg: n ? sum / n : 0, due};
+  };
   const chipRow = (list, cur, fn) => h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[2]}}, list.map(([id, text]) => {
     const el = h('span', {text, style: {padding: '6px 12px', borderRadius: S.r.pill, fontSize: S.f.sm, fontWeight: S.fw.med, border: '1px solid'}});
     return AP2.press(el, {fn: () => fn(id), label: text, base: (c) => (cur() === id ? {backgroundColor: c.accent, color: c.onAccent, borderColor: c.accent}
       : {backgroundColor: c.surface, color: c.text2, borderColor: c.border}), hover: (c) => ({borderColor: c.accent})});
   }));
-  const summary = (pages) => {
-    const count = [0, 0, 0, 0, 0, 0];
-    pages.forEach((p) => { const m = AP2.game.mastery(p.id); if (m.total) count[m.stars]++; });
-    return h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[2]}}, count.map((n, s) => {
-      const el = h('div', {style: {display: 'flex', alignItems: 'center', gap: S.sp[2], padding: '6px 12px', borderRadius: S.r.md, border: '1px solid'}}, [gk().stars(s, 12),
-        h('span', {text: String(n), style: {fontWeight: S.fw.bold, fontSize: S.f.sm}})]);
-      return AP2.theme.bind(el, (node, c) => { node.style.borderColor = c.border; node.style.backgroundColor = c.surface; node.style.color = c.text; });
-    }));
+  // Kompassrose für die Titelkartusche.
+  const compass = () => {
+    const pts = (r1, r2) => [0, 1, 2, 3, 4, 5, 6, 7].map((i) => { const a = i * Math.PI / 4 - Math.PI / 2, r = i % 2 ? r2 : r1; return (32 + r * Math.cos(a)).toFixed(1) + ',' + (32 + r * Math.sin(a)).toFixed(1); }).join(' ');
+    const ring = AP2.svg('circle', {cx: 32, cy: 32, r: 27, fill: 'none', 'stroke-width': 1.5, 'stroke-dasharray': '2 3'});
+    const star = AP2.svg('polygon', {points: pts(28, 7)});
+    const n = AP2.svg('text', {x: 32, y: 10, 'text-anchor': 'middle', 'font-size': 9, 'font-weight': 700}, ['N']);
+    const el = AP2.svg('svg', {viewBox: '0 0 64 64', width: 64, height: 64, 'aria-hidden': 'true'}, [ring, star, AP2.svg('circle', {cx: 32, cy: 32, r: 3}), n]);
+    return AP2.theme.bind(el, (e, c) => {
+      ring.setAttribute('stroke', c.text3); star.setAttribute('fill', c.accentSoft); star.setAttribute('stroke', c.accent);
+      e.children[2].setAttribute('fill', c.accent); n.setAttribute('fill', c.text2);
+    });
+  };
+  // Ortsmarke: Füllung nach Beherrschung, grüner Ring wenn gelesen, Feuerpunkt wenn Wiederholung fällig.
+  const dot = (x, size) => {
+    const d = h('span', {style: {position: 'relative', display: 'inline-block', width: size + 'px', height: size + 'px', borderRadius: '50%', border: '2px solid', boxSizing: 'border-box', flex: 'none'}});
+    const badge = h('span', {style: {position: 'absolute', top: '-4px', right: '-4px', width: '8px', height: '8px', borderRadius: '50%', display: x.due ? 'block' : 'none'}});
+    d.appendChild(badge);
+    return AP2.theme.bind(d, (n, c) => {
+      const col = x.m.total ? gk().starColor(x.m.stars, c) : x.done ? c.accentSoft : c.surface;
+      st(n, {backgroundColor: col, borderColor: x.done ? c.ok : c.line, boxShadow: '0 0 0 3px ' + c.surface});
+      st(badge, {backgroundColor: c.fire, boxShadow: '0 0 0 2px ' + c.surface});
+    });
+  };
+  const legend = () => {
+    const item = (mark, text) => AP2.tint(h('span', {style: {display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: S.f.xs}}, [mark, text]), 'text2');
+    const fake = (stars, total, done, due) => dot({m: {stars, total}, done, due}, 14);
+    const scale = h('span', {style: {display: 'inline-flex', gap: '3px'}}, [0, 1, 2, 3, 4, 5].map((s) => fake(s, 1, false, 0)));
+    return h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[2] + ' ' + S.sp[4], alignItems: 'center'}}, [
+      item(scale, '0 bis 5 Sterne'), item(fake(0, 0, false, 0), 'ohne Fragen'), item(fake(0, 0, true, 0), 'gelesen (grüner Ring)'),
+      item(fake(0, 0, false, 1), 'Wiederholung fällig'), item(h('span', {text: '· · ·', style: {letterSpacing: '1px', fontWeight: S.fw.bold}}), 'Lernreihenfolge')]);
   };
   AP2.views.themen = () => {
     AP2.ctx.id = 'themen';
-    const blocks = [['learn', 'Prüfungsfächer']].concat(AP2.store.BLOCKS.map((b) => [b.id, b.t.replace('Wirtschafts- und Sozialkunde', 'WiSo')]));
-    const learn = ['ps', 'infra', 'eua', 'wiso'];
+    AP2.ctx.wide = true;
+    const blocks = [['learn', 'Alle Prüfungsfächer']].concat(LEARN.map((id) => [id, short(AP2.store.block(id).t)]));
     const body = h('div');
-    const input = AP2.field(h('input', {attrs: {type: 'search', placeholder: 'Thema suchen, z. B. RAID, Kündigung, JOIN', 'aria-label': 'Themen filtern', value: mem.q}, style: {width: '100%', marginBottom: S.sp[3]}}));
+    // Ein gemeinsamer Tooltip, fixiert am Ort unter dem Zeiger.
+    const tip = h('div', {attrs: {role: 'tooltip'}, style: {position: 'fixed', zIndex: S.z.drop, display: 'none', pointerEvents: 'none', maxWidth: '260px',
+      padding: '10px 12px', borderRadius: S.r.md, border: '1px solid', fontSize: S.f.xs, lineHeight: '1.45', boxShadow: S.shadow}});
+    AP2.theme.bind(tip, (n, c) => st(n, {backgroundColor: c.surface, borderColor: c.border, color: c.text2}));
+    const showTip = (el, p, x) => {
+      AP2.dispose(tip);
+      tip.appendChild(AP2.tint(h('div', {text: p.t, style: {fontSize: S.f.sm, fontWeight: S.fw.semi, marginBottom: '4px'}}), 'text'));
+      if (p.g) tip.appendChild(h('div', {text: p.g}));
+      if (x.m.total) tip.appendChild(h('div', {style: {margin: '4px 0'}}, [gk().stars(x.m.stars, 12)]));
+      tip.appendChild(h('div', {text: (x.m.total ? x.m.seen + '/' + x.m.total + ' Fragen geübt' : 'ohne Fragen') + (x.done ? ' · gelesen' : ' · noch offen')}));
+      if (x.due) tip.appendChild(AP2.tint(h('div', {text: x.due + ' Wiederholung' + (x.due > 1 ? 'en' : '') + ' fällig'}), 'fire'));
+      tip.style.display = 'block';
+      const r = el.getBoundingClientRect(), w = tip.offsetWidth;
+      st(tip, {left: Math.max(8, Math.min(window.innerWidth - w - 8, r.left + r.width / 2 - w / 2)) + 'px', top: (r.bottom + 6) + 'px'});
+      if (r.bottom + 6 + tip.offsetHeight > window.innerHeight - 8) tip.style.top = Math.max(8, r.top - tip.offsetHeight - 6) + 'px';
+    };
+    const hideTip = () => { tip.style.display = 'none'; };
+    // Scroll-Listener am Fenster entfernt sich selbst, sobald die Ansicht verlassen wurde.
+    const onScroll = () => { if (!tip.isConnected) window.removeEventListener('scroll', onScroll); else hideTip(); };
+    window.addEventListener('scroll', onScroll, {passive: true});
+    // Ort: Marke plus Beschriftung, absolut auf dem Pfad platziert.
+    const place = (p, i) => {
+      const x = info(p);
+      const row = Math.floor(i / COLS), k = i % COLS, col = row % 2 ? COLS - 1 - k : k;
+      const label = AP2.tint(h('span', {text: p.t, style: {fontSize: '12px', lineHeight: '1.3', textAlign: 'center', fontWeight: x.done ? S.fw.semi : S.fw.reg,
+        display: '-webkit-box', webkitLineClamp: '2', webkitBoxOrient: 'vertical', overflow: 'hidden'}}), x.m.total || x.done ? 'text' : 'text2');
+      const el = h('div', {style: {position: 'absolute', left: ((col + 0.5) / COLS * 100) + '%', top: (TOP + row * ROW - 13) + 'px', width: (100 / COLS - 2) + '%',
+        transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', padding: '2px 2px 4px', borderRadius: S.r.sm, boxSizing: 'border-box'}},
+        [dot(x, 22), label]);
+      on(el, 'pointerenter', () => showTip(el, p, x)); on(el, 'focus', () => showTip(el, p, x));
+      on(el, 'pointerleave', hideTip); on(el, 'blur', hideTip);
+      return AP2.press(el, {fn: () => { hideTip(); AP2.router.go(p.id); }, label: p.t, base: () => ({backgroundColor: 'transparent'}), hover: (c) => ({backgroundColor: c.surface})});
+    };
+    // Insel: weich gefärbte Fläche mit gewundenem, gepunktetem Pfad durch alle Orte.
+    const island = (bid, g, n) => {
+      const rows = Math.ceil(g.pages.length / COLS), H = TOP + (rows - 1) * ROW + 52;
+      const pts = g.pages.map((p, i) => { const row = Math.floor(i / COLS), k = i % COLS, col = row % 2 ? COLS - 1 - k : k; return [(col + 0.5) / COLS * 100, TOP + row * ROW]; });
+      let d = pts.length ? 'M' + pts[0].join(' ') : '';
+      for (let i = 1; i < pts.length; i++) {
+        const [a, b] = [pts[i - 1], pts[i]];
+        d += a[1] === b[1] ? ' L' + b.join(' ') : ' C' + (a[0] + (a[0] > 50 ? 14 : -14)) + ' ' + a[1] + ' ' + (b[0] + (b[0] > 50 ? 14 : -14)) + ' ' + b[1] + ' ' + b.join(' ');
+      }
+      const path = AP2.svg('path', {d, fill: 'none', 'stroke-width': 2, 'stroke-dasharray': '1 6', 'stroke-linecap': 'round', 'vector-effect': 'non-scaling-stroke'});
+      const map = AP2.svg('svg', {viewBox: '0 0 100 ' + H, preserveAspectRatio: 'none', width: '100%', height: H, 'aria-hidden': 'true', style: 'position:absolute;left:0;top:0;overflow:visible'}, [path]);
+      AP2.theme.bind(map, (e, c) => path.setAttribute('stroke', c.block[bid]));
+      const field = h('div', {style: {position: 'relative', height: H + 'px'}}, [map].concat(g.pages.map(place)));
+      const doneN = g.pages.filter((p) => AP2.state.get('done')[p.id]).length;
+      const head = h('div', {style: {display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: S.sp[2], marginBottom: S.sp[2]}}, [
+        AP2.tint(h('div', {text: g.name || 'Allgemein', style: {fontSize: S.f.sm, fontWeight: S.fw.bold, letterSpacing: '0.01em'}}), 'text'),
+        AP2.tint(h('span', {text: doneN + '/' + g.pages.length, style: {fontSize: S.f.xs, fontWeight: S.fw.semi, flex: 'none'}}), 'text2')]);
+      const radii = ['22px 34px 26px 38px', '34px 22px 38px 26px', '28px 40px 22px 32px'][n % 3];
+      const el = h('div', {style: {padding: '14px 14px 6px', borderRadius: radii, border: '1.5px dashed', boxSizing: 'border-box', minWidth: 0}}, [head, field]);
+      return AP2.theme.bind(el, (e, c) => st(e, {backgroundColor: c.blockSoft[bid], borderColor: AP2.theme.mix(c.blockSoft[bid], c.block[bid], 0.45)}));
+    };
+    const regionEl = {};
+    const region = (bid, pages) => {
+      const blk = AP2.store.block(bid), s = stats(bid);
+      const groups = [];
+      pages.forEach((p) => { let g = groups.find((x) => x.name === p.g); if (!g) { g = {name: p.g, pages: []}; groups.push(g); } g.pages.push(p); });
+      const flag = AP2.theme.bind(h('span', {style: {display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '50%', flex: 'none'}}, [AP2.icon(blk.icon, 20)]),
+        (n, c) => st(n, {backgroundColor: c.block[bid], color: '#ffffff'}));
+      const links = h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[2]}}, [
+        hasSpick(bid) ? AP2.btn({text: 'Spickzettel', icon: AP2.icon('bookmark', 16), small: true, fn: () => AP2.router.go('spick/' + bid)}) : null,
+        AP2.btn({text: 'Region trainieren', icon: AP2.icon('play', 16), kind: 'primary', small: true, fn: () => AP2.router.go('trainer/block/' + bid)})]);
+      const head = h('div', {style: {display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: S.sp[3], marginBottom: S.sp[4]}}, [
+        h('div', {style: {display: 'flex', alignItems: 'center', gap: S.sp[3], minWidth: 0}}, [flag, h('div', {}, [
+          AP2.tint(h('h2', {text: blk.t, style: {fontSize: S.f.xl, fontWeight: S.fw.bold, margin: 0, letterSpacing: '-0.01em'}}), 'text'),
+          AP2.tint(h('div', {text: s.pct + ' % gelesen · Ø ' + s.avg.toFixed(1) + ' Sterne · ' + pages.length + ' von ' + s.count + ' Orten' + (s.due ? ' · ' + s.due + ' fällig' : ''), style: {fontSize: S.f.xs, marginTop: '2px'}}), 'text2')])]),
+        links]);
+      const grid = h('div', {style: {display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))', gap: S.sp[4], alignItems: 'start'}}, groups.map((g, n) => island(bid, g, n)));
+      const el = h('section', {attrs: {id: 'region-' + bid}, style: {padding: S.sp[5], borderRadius: S.r.lg, border: '1px solid', borderTopWidth: '5px', marginTop: S.sp[5]}}, [head, grid]);
+      regionEl[bid] = el;
+      return AP2.theme.bind(el, (e, c) => st(e, {backgroundColor: c.surface, borderColor: c.border, borderTopColor: c.block[bid]}));
+    };
+    const jump = (bid) => {
+      if (mem.blk !== 'learn' && mem.blk !== bid) { mem.blk = 'learn'; refresh(); }
+      const el = regionEl[bid];
+      if (el) window.scrollTo({top: el.getBoundingClientRect().top + window.scrollY - S.w.topbar - 12, behavior: 'smooth'});
+    };
+    // Übersichtskarte: eine Kachel je Region mit Fortschritt, Klick springt zur Region.
+    const overview = () => h('div', {style: {display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: S.sp[3]}}, LEARN.map((bid) => {
+      const blk = AP2.store.block(bid), s = stats(bid);
+      const fill = h('div', {style: {height: '100%', width: s.pct + '%', borderRadius: S.r.pill}});
+      const bar = h('div', {style: {height: '6px', borderRadius: S.r.pill, overflow: 'hidden', margin: '8px 0 6px'}}, [fill]);
+      AP2.theme.bind(bar, (n, c) => { n.style.backgroundColor = c.surface; fill.style.backgroundColor = c.block[bid]; });
+      const el = h('div', {style: {padding: '12px 14px', borderRadius: '18px 26px 20px 28px', border: '1.5px dashed'}}, [
+        AP2.tint(h('div', {text: blk.short, style: {fontSize: S.f.sm, fontWeight: S.fw.bold}}), 'text'), bar,
+        h('div', {style: {display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: S.sp[2]}}, [
+          AP2.tint(h('span', {text: s.pct + ' % gelesen', style: {fontSize: S.f.xs, fontWeight: S.fw.semi}}), 'text2'),
+          AP2.tint(h('span', {text: 'Ø ' + s.avg.toFixed(1) + ' ★', style: {fontSize: S.f.xs, fontWeight: S.fw.semi}}), s.avg >= 3 ? 'gold' : 'text2')])]);
+      return AP2.press(el, {fn: () => jump(bid), label: 'Zur Region ' + blk.t, base: (c) => ({backgroundColor: c.blockSoft[bid], borderColor: AP2.theme.mix(c.blockSoft[bid], c.block[bid], 0.45)}),
+        hover: (c) => ({borderColor: c.block[bid]})});
+    }));
     const draw = () => {
+      hideTip();
       AP2.dispose(body);
+      Object.keys(regionEl).forEach((k) => delete regionEl[k]);
       const words = mem.q.toLowerCase().split(/\s+/).filter(Boolean);
-      const ids = mem.blk === 'learn' ? learn : [mem.blk];
       let shown = 0;
-      ids.forEach((bid) => {
-        const blk = AP2.store.BLOCKS.find((b) => b.id === bid);
+      (mem.blk === 'learn' ? LEARN : [mem.blk]).forEach((bid) => {
         const pages = AP2.store.byBlock(bid).filter((p) => keep(p, mem.f) && words.every((w) => (p.t + ' ' + (p.g || '')).toLowerCase().includes(w)));
         if (!pages.length) return;
         shown += pages.length;
-        body.appendChild(AP2.blocks.h(blk.t));
-        const groups = [];
-        pages.forEach((p) => { let g = groups.find((x) => x.name === p.g); if (!g) { g = {name: p.g, pages: []}; groups.push(g); } g.pages.push(p); });
-        groups.forEach((g) => {
-          body.appendChild(AP2.tint(h('div', {text: g.name || 'Allgemein', style: {fontSize: S.f.sm, fontWeight: S.fw.bold, margin: S.sp[4] + ' 0 ' + S.sp[2]}}), 'text2'));
-          body.appendChild(h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[2]}}, g.pages.map(tile)));
-        });
+        body.appendChild(region(bid, pages));
       });
       if (!shown) body.appendChild(AP2.blocks.note('Keine Themen für diese Auswahl.'));
     };
+    const input = AP2.field(h('input', {attrs: {type: 'search', placeholder: 'Ort suchen, z. B. RAID, Kündigung, JOIN', 'aria-label': 'Themen filtern', value: mem.q}, style: {width: '100%'}}));
     on(input, 'input', () => { mem.q = input.value; draw(); });
-    const all = AP2.store.all().filter((p) => learn.includes(p.b));
-    const head = [AP2.tint(h('h1', {text: 'Themenkarte', style: {fontSize: S.f.h1, fontWeight: S.fw.bold, letterSpacing: '-0.02em', margin: '0 0 ' + S.sp[2]}}), 'text'),
-      AP2.tint(h('p', {text: 'Alle Themen auf einen Blick. Die Sterne zeigen, wie sicher du die Fragen eines Themas beherrschst; der farbige Rand macht Lücken sichtbar. Ziel: alles mindestens auf drei Sterne bringen.', style: {fontSize: S.f.md, lineHeight: S.lh.body, margin: '0 0 ' + S.sp[4]}}), 'text2'),
-      summary(all), h('div', {style: {height: S.sp[4]}}), input];
+    // Titelkartusche: Kompass, Titel, Erklärung und Legende.
+    const cartouche = h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[4], alignItems: 'center', padding: S.sp[4] + ' ' + S.sp[5], borderRadius: S.r.lg, border: '1px solid', marginBottom: S.sp[4]}}, [
+      compass(), h('div', {style: {flex: '1 1 320px', minWidth: 0}}, [
+        AP2.tint(h('h1', {text: 'Themenkarte', style: {fontSize: S.f.h1, fontWeight: S.fw.bold, letterSpacing: '-0.02em', margin: '0 0 ' + S.sp[1]}}), 'text'),
+        AP2.tint(h('p', {text: 'Jeder Prüfungsbereich ist eine Region, jede Gruppe eine Insel, jedes Thema ein Ort. Der gepunktete Pfad zeigt die Lernreihenfolge; die Farbe der Orte zeigt, wie sicher du die Fragen beherrschst. Ziel: jeden Ort auf mindestens drei Sterne bringen.', style: {fontSize: S.f.sm, lineHeight: S.lh.body, margin: '0 0 ' + S.sp[3]}}), 'text2'),
+        legend()])]);
+    AP2.theme.bind(cartouche, (e, c) => st(e, {backgroundColor: c.surface, borderColor: c.border, backgroundImage: 'radial-gradient(' + c.border + ' 1px, transparent 1px)', backgroundSize: '14px 14px'}));
     const blkRow = chipRow(blocks, () => mem.blk, (id) => { mem.blk = id; refresh(); });
     const fRow = chipRow(FILTERS, () => mem.f, (id) => { mem.f = id; refresh(); });
     const refresh = () => { [].forEach.call(blkRow.children, (c) => c.repaint()); [].forEach.call(fRow.children, (c) => c.repaint()); draw(); };
     draw();
-    return h('div', {}, head.concat([blkRow, h('div', {style: {height: S.sp[2]}}), fRow, body]));
+    const gap = (px) => h('div', {style: {height: px}});
+    return h('div', {}, [cartouche, overview(), gap(S.sp[4]), input, gap(S.sp[3]), blkRow, gap(S.sp[2]), fRow, body, tip]);
   };
   AP2.viewTitles.themen = 'Themenkarte';
+})();
+;
+// ui/spick.js
+// Prüfungs-Spickzettel: je Prüfungsbereich eine einzige, breite Seite mit allem Prüfungswissen auf einen Blick.
+// Daten: content/spick/<id>.js ruft AP2.spick(id, {...}) auf. Route: #/spick (Übersicht) und #/spick/<id>.
+//
+// Aufbau eines Spickzettels:
+//   AP2.spick('ps', {
+//     exam: 'Prüfung: Planen eines Softwareproduktes', t: 'Titel', s: 'Untertitel',
+//     meta: [['90 Min', 'Dauer'], ['100', 'Punkte']],      // Kennzahlen-Kacheln im Kopf
+//     top: [Blöcke],                                       // optional: Kompaktwissen über allen Abschnitten (volle Breite)
+//     sections: [{t: 'Projektmanagement', icon: 'clipboard', ids: ['ps-phasen', ...], wide: false, items: [Blöcke]}],
+//   });
+// Blöcke in items: alle normalen Seitenblöcke (diagram, table, code, chart, venn, seq, gear, signs, ...) und diese Kompaktblöcke:
+//   ['li', [Zeilen]]                 Stichpunkte; eine Zeile als [Text, [Unterpunkte]] ergibt eingerückte Unterpunkte
+//   ['pairs', [[Begriff, Erklärung]]] Begriff links, Erklärung rechts
+//   ['f', 'Formel', 'Erläuterung']    Formel hervorgehoben (Monospace)
+//   ['tbl', [Kopf], [[Zeile]]]        kompakte Tabelle
+//   ['cards', [[Titel, [Zeilen]]]]    kleine farbige Karten nebeneinander
+//   ['flow', ['A', 'B', 'C']]         Kette aus Etiketten mit Pfeilen (Ablauf, Phasen, Schichten)
+//   ['mnemo', 'Text']                 Eselsbrücke (Gold)
+//   ['tip', 'Text'] / ['warn', 'Text'] Prüfungstipp / Prüfungsfalle (kompakt)
+//   ['txt', 'Text']                   kurzer Absatz
+//   ['sub', 'Titel']                  Zwischenüberschrift im Abschnitt
+//   ['links', [Seiten-IDs]]           Chips zu Themenseiten
+//   ['ext', [[Text, URL]]]            externe Links (öffnen in neuem Tab)
+(function () {
+  const {h, on, rich} = AP2;
+  const S = AP2.S;
+  const sheets = {};
+  const order = [];
+  AP2.spick = (id, cfg) => { if (!sheets[id]) order.push(id); sheets[id] = Object.assign({id}, cfg); };
+  AP2.spickSheets = () => order.map((id) => sheets[id]);
+  // Prüfungen der AP2 und welche Spickzettel dazugehören.
+  const EXAMS = [
+    {t: 'Planen eines Softwareproduktes', time: '90 Min', pts: '100 Punkte', ids: ['ps', 'infra'], d: 'Projektmanagement, Anforderungen, UML, Datenmodell, Qualität, Recht sowie Infrastruktur und IT-Sicherheit'},
+    {t: 'Entwicklung und Umsetzung von Algorithmen', time: '90 Min', pts: '100 Punkte', ids: ['eua'], d: 'Pseudocode, Struktogramm, OOP, Datenstrukturen, Sortieren und Suchen, SQL, Testen'},
+    {t: 'Wirtschafts- und Sozialkunde', time: '60 Min', pts: '100 Punkte', ids: ['wiso'], d: 'Ausbildung, Arbeitsrecht, Mitbestimmung, Sozialversicherung, Wirtschaft, Unternehmen'},
+  ];
+  AP2.spickExams = EXAMS;
+
+  // ---------- Kompaktblöcke ----------
+  const txt = (str, size, tone) => AP2.tint(h('div', {style: {fontSize: size || S.f.sm, lineHeight: '1.55', overflowWrap: 'break-word'}}, rich(str)), tone || 'text');
+  const dotLine = (str, sub) => {
+    const dot = h('span', {style: {width: sub ? '4px' : '5px', height: sub ? '4px' : '5px', borderRadius: '50%', marginTop: '8px', flexShrink: 0}});
+    AP2.theme.bind(dot, (n, c) => { n.style.backgroundColor = sub ? c.text3 : c.accent; });
+    return h('div', {style: {display: 'flex', gap: '7px', padding: '1px 0', marginLeft: sub ? '14px' : '0'}}, [dot, txt(str, sub ? S.f.xs : S.f.sm, sub ? 'text2' : 'text')]);
+  };
+  const C = {};
+  C.li = (items) => h('div', {style: {margin: '0 0 10px'}}, [].concat(...items.map((it) => (Array.isArray(it) ? [dotLine(it[0])].concat(it[1].map((x) => dotLine(x, true))) : [dotLine(it)]))));
+  C.txt = (str) => h('div', {style: {margin: '0 0 10px'}}, [txt(str)]);
+  C.sub = (str) => AP2.tint(h('div', {text: str, style: {fontSize: S.f.xs, fontWeight: S.fw.bold, textTransform: 'uppercase', letterSpacing: '0.07em', margin: '14px 0 6px'}}), 'text2');
+  C.pairs = (rows) => {
+    const box = h('div', {style: {display: 'grid', gridTemplateColumns: 'minmax(90px, max-content) 1fr', border: '1px solid', borderRadius: S.r.sm, overflow: 'hidden', margin: '0 0 10px'}});
+    AP2.theme.bind(box, (n, c) => { n.style.borderColor = c.border; });
+    rows.forEach(([k, v], i) => {
+      const key = h('div', {style: {padding: '5px 9px', fontSize: S.f.xs, fontWeight: S.fw.bold, lineHeight: '1.5', borderTop: i ? '1px solid' : 'none'}}, rich(String(k).replace(/\*\*/g, '')));
+      AP2.theme.bind(key, (n, c) => { const j = i % c.cat.length; n.style.backgroundColor = c.catSoft[j]; n.style.color = c.cat[j]; n.style.borderColor = c.border; });
+      const val = h('div', {style: {padding: '5px 9px', fontSize: S.f.xs, lineHeight: '1.5', borderTop: i ? '1px solid' : 'none', overflowWrap: 'break-word', minWidth: 0}}, rich(v));
+      AP2.theme.bind(val, (n, c) => { n.style.color = c.text; n.style.borderColor = c.border; });
+      box.appendChild(key); box.appendChild(val);
+    });
+    return box;
+  };
+  C.f = (formula, note) => {
+    const f = h('div', {style: {fontFamily: S.font.mono, fontSize: S.f.sm, fontWeight: S.fw.semi, lineHeight: '1.5', overflowWrap: 'anywhere'}}, rich(formula));
+    const box = h('div', {style: {padding: '7px 11px', borderRadius: S.r.sm, borderLeft: '3px solid', margin: '0 0 8px'}}, [f, note ? txt(note, S.f.xs, 'text2') : null]);
+    return AP2.theme.bind(box, (n, c) => { n.style.backgroundColor = c.accentSoft; n.style.borderLeftColor = c.accent; n.style.color = c.text; });
+  };
+  C.tbl = (head, rows) => {
+    const cell = (tag, s, first, last) => {
+      const el = h(tag, {style: {padding: '4px 8px', textAlign: 'left', verticalAlign: 'top', fontWeight: tag === 'th' || first ? S.fw.semi : S.fw.reg}}, rich(String(s)));
+      return AP2.theme.bind(el, (n, c) => {
+        if (tag === 'th') { n.style.backgroundColor = c.accentSoft; n.style.color = c.accent; n.style.borderBottom = '2px solid ' + c.accent; } else { n.style.color = c.text; n.style.borderBottom = last ? 'none' : '1px solid ' + c.border; }
+      });
+    };
+    const table = h('table', {style: {width: '100%', borderCollapse: 'collapse', fontSize: S.f.xs, lineHeight: '1.45'}}, [
+      h('thead', {}, [h('tr', {}, head.map((x) => cell('th', x)))]),
+      h('tbody', {}, rows.map((r, ri) => h('tr', {}, r.map((x, ci) => cell('td', x, ci === 0, ri === rows.length - 1)))))]);
+    const wrap = h('div', {style: {overflowX: 'auto', border: '1px solid', borderRadius: S.r.sm, margin: '0 0 10px'}}, [table]);
+    return AP2.theme.bind(wrap, (n, c) => { n.style.borderColor = c.border; n.style.backgroundColor = c.surface; });
+  };
+  C.cards = (list) => h('div', {style: {display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '6px', margin: '0 0 10px'}}, list.map(([title, lines], i) => {
+    const head = h('div', {style: {fontSize: S.f.xs, fontWeight: S.fw.bold, marginBottom: '3px'}}, rich(String(title).replace(/\*\*/g, '')));
+    AP2.theme.bind(head, (n, c) => { n.style.color = c.cat[i % c.cat.length]; });
+    const box = h('div', {style: {padding: '7px 9px', borderRadius: S.r.sm, borderTop: '3px solid'}}, [head].concat([].concat(lines).map((l) => txt(l, S.f.xs))));
+    return AP2.theme.bind(box, (n, c) => { const j = i % c.cat.length; n.style.backgroundColor = c.catSoft[j]; n.style.borderTopColor = c.cat[j]; });
+  }));
+  C.flow = (items) => h('div', {style: {display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px', margin: '0 0 10px'}}, [].concat(...items.map((it, i) => {
+    const tag = h('span', {style: {padding: '3px 9px', borderRadius: S.r.pill, fontSize: S.f.xs, fontWeight: S.fw.semi, lineHeight: '1.45'}}, rich(String(it).replace(/\*\*/g, '')));
+    AP2.theme.bind(tag, (n, c) => { const j = i % c.cat.length; n.style.backgroundColor = c.catSoft[j]; n.style.color = c.cat[j]; });
+    const arrow = i < items.length - 1 ? AP2.tint(h('span', {text: '→', style: {fontSize: S.f.xs}}), 'text3') : null;
+    return [tag, arrow];
+  })));
+  const callout = (label, icon, tone, soft) => (str) => {
+    const head = h('span', {style: {display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '10px', fontWeight: S.fw.bold, textTransform: 'uppercase', letterSpacing: '0.07em', marginRight: '6px', verticalAlign: '1px'}}, [AP2.icon(icon, 11), label]);
+    AP2.theme.bind(head, (n, c) => { n.style.color = c[tone]; });
+    const box = h('div', {style: {padding: '6px 10px', borderRadius: S.r.sm, borderLeft: '3px solid', fontSize: S.f.xs, lineHeight: '1.55', margin: '0 0 8px'}}, [head, rich(str)]);
+    return AP2.theme.bind(box, (n, c) => { n.style.backgroundColor = c[soft]; n.style.borderLeftColor = c[tone]; n.style.color = c.text; });
+  };
+  C.tip = callout('Tipp', 'check', 'ok', 'okSoft');
+  C.warn = callout('Falle', 'alert', 'bad', 'badSoft');
+  C.mnemo = callout('Merke', 'bulb', 'gold', 'goldSoft');
+  C.links = (ids) => h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: '4px', margin: '0 0 8px'}}, ids.map(topicChip));
+  C.ext = (list) => h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: '4px', margin: '0 0 8px'}}, list.map(([text, url]) => {
+    const a = h('a', {text: text + ' ↗', attrs: {href: url, target: '_blank', rel: 'noopener'}, style: {fontSize: S.f.xs, padding: '2px 9px', borderRadius: S.r.pill, border: '1px solid', textDecoration: 'none'}});
+    return AP2.theme.bind(a, (n, c) => { n.style.color = c.accent; n.style.borderColor = c.border; });
+  }));
+  // Seitenblöcke kompakter darstellen: Außenabstand verkleinern.
+  const render = (block) => {
+    const fn = C[block[0]];
+    if (fn) return fn.apply(null, block.slice(1));
+    if (block[0] === 'row') return h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: '10px'}}, block[1].map((b) => h('div', {style: {flex: '1 1 220px', minWidth: 0}}, [render(b)])));
+    const wrap = h('div', {style: {margin: '0 0 10px'}}, [AP2.renderBlocks([block])]);
+    const first = wrap.firstChild;
+    if (first && first.style) first.style.marginBottom = '0';
+    return wrap;
+  };
+  AP2.spickBlocks = C;
+
+  // Themen-Chip mit Beherrschungspunkt; führt zur ausführlichen Seite.
+  function topicChip(id) {
+    const p = AP2.store.get(id);
+    if (!p) { console.warn('Spickzettel: Seite fehlt ' + id); return h('span'); }
+    const m = AP2.game.mastery(id);
+    const dot = h('span', {style: {width: '6px', height: '6px', borderRadius: '50%', flexShrink: 0}});
+    AP2.theme.bind(dot, (n, c) => { n.style.backgroundColor = m.seen ? AP2.gk.starColor(m.stars, c) : AP2.state.get('done')[id] ? c.ok : c.border; });
+    const short = p.t.length > 38 ? p.t.slice(0, 36).replace(/[\s,(]+\S*$/, '') + ' …' : p.t;
+    const el = h('span', {attrs: {title: p.t}, style: {display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '2px 8px', borderRadius: S.r.pill, border: '1px solid', fontSize: '11px', fontWeight: S.fw.med, lineHeight: '1.5'}}, [dot, short]);
+    return AP2.press(el, {fn: () => AP2.router.go(id), label: 'Thema öffnen: ' + p.t, role: 'link', base: (c) => ({backgroundColor: c.surface, color: c.text2, borderColor: c.border}), hover: (c) => ({borderColor: c.accent, color: c.accent})});
+  }
+
+  // ---------- Abschnitt ----------
+  const section = (sec, idx) => {
+    const num = h('span', {text: String(idx + 1), style: {width: '24px', height: '24px', borderRadius: '7px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: S.f.xs, fontWeight: S.fw.bold, flexShrink: 0}});
+    AP2.theme.bind(num, (n, c) => { const j = idx % c.cat.length; n.style.backgroundColor = c.cat[j]; n.style.color = c.surface; });
+    const ic = sec.icon ? AP2.tint(h('span', {style: {display: 'flex', marginLeft: 'auto'}}, [AP2.icon(sec.icon, 16)]), 'text3') : null;
+    const title = AP2.tint(h('h2', {text: sec.t, style: {margin: 0, fontSize: S.f.md, fontWeight: S.fw.bold, lineHeight: S.lh.tight}}), 'text');
+    const head = h('div', {style: {display: 'flex', alignItems: 'center', gap: S.sp[2], marginBottom: S.sp[2]}}, [num, title, ic]);
+    const chips = sec.ids && sec.ids.length ? h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: '4px', margin: '0 0 10px'}}, sec.ids.map(topicChip)) : null;
+    const body = h('div', {}, (sec.items || []).map(render));
+    const card = h('section', {attrs: {id: 'spick-' + idx}, style: {breakInside: 'avoid', pageBreakInside: 'avoid', display: 'inline-block', width: '100%', boxSizing: 'border-box',
+      padding: '14px 16px 6px', borderRadius: S.r.md, border: '1px solid', borderTop: '4px solid', margin: '0 0 14px', columnSpan: sec.wide ? 'all' : 'none'}}, [head, chips, body]);
+    AP2.theme.bind(card, (n, c) => { n.style.backgroundColor = c.surface; n.style.borderColor = c.border; n.style.borderTopColor = c.cat[idx % c.cat.length]; });
+    card.spickText = (sec.t + ' ' + card.textContent).toLowerCase();
+    return card;
+  };
+
+  // Druckansicht: nur der Spickzettel, Navigation ausgeblendet.
+  const printCss = () => {
+    if (document.getElementById('spick-print')) return;
+    const st = document.createElement('style');
+    st.id = 'spick-print';
+    st.textContent = '@media print{nav,header,.spick-noprint{display:none!important}main{margin:0!important;padding:0!important;width:auto!important}main>div{width:auto!important;padding:0!important}' +
+      '.spick-cols{column-width:300px!important}section{box-shadow:none!important}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}';
+    document.head.appendChild(st);
+  };
+
+  const metaTile = ([val, label]) => {
+    const el = h('div', {style: {padding: '8px 14px', borderRadius: S.r.md, border: '1px solid', minWidth: '90px'}}, [
+      AP2.tint(h('div', {text: val, style: {fontSize: S.f.lg, fontWeight: S.fw.bold, lineHeight: S.lh.tight}}), 'accent'),
+      AP2.tint(h('div', {text: label, style: {fontSize: '11px', marginTop: '2px'}}), 'text2')]);
+    return AP2.theme.bind(el, (n, c) => { n.style.backgroundColor = c.surface; n.style.borderColor = c.border; });
+  };
+
+  // Themen des Blocks, die kein Abschnitt verlinkt, erscheinen im Register unten trotzdem.
+  const index = (sheet) => {
+    const blk = sheet.block || sheet.id;
+    const pages = AP2.store.byBlock(blk);
+    if (!pages.length) return null;
+    const linked = new Set([].concat(...sheet.sections.map((s) => s.ids || [])));
+    const groups = [];
+    pages.forEach((p) => { let g = groups.find((x) => x.name === p.g); if (!g) { g = {name: p.g, pages: []}; groups.push(g); } g.pages.push(p); });
+    const miss = pages.filter((p) => !linked.has(p.id));
+    if (miss.length) console.info('Spickzettel ' + sheet.id + ': nicht verlinkt: ' + miss.map((p) => p.id).join(', '));
+    const box = h('div', {style: {padding: '16px 18px', borderRadius: S.r.md, border: '1px dashed', marginTop: S.sp[4]}}, [
+      AP2.gk.kicker('Register: alle ' + pages.length + ' Themenseiten dieses Bereichs', 'text3'),
+      h('div', {style: {columnWidth: '260px', columnGap: S.sp[5], marginTop: S.sp[3]}}, groups.map((g) => h('div', {style: {breakInside: 'avoid', marginBottom: S.sp[3]}}, [
+        AP2.tint(h('div', {text: g.name || 'Allgemein', style: {fontSize: S.f.xs, fontWeight: S.fw.bold, marginBottom: '4px'}}), 'text2'),
+        h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: '4px'}}, g.pages.map((p) => topicChip(p.id)))])))]);
+    return AP2.theme.bind(box, (n, c) => { n.style.borderColor = c.border; });
+  };
+
+  const sheetView = (sheet) => {
+    AP2.ctx.wide = true;
+    printCss();
+    const others = EXAMS.find((e) => e.ids.includes(sheet.id));
+    const kick = AP2.gk.kicker(sheet.exam || 'Spickzettel', 'accent');
+    const title = AP2.tint(h('h1', {text: sheet.t, style: {fontSize: S.f.h1, fontWeight: S.fw.bold, letterSpacing: '-0.02em', lineHeight: S.lh.tight, margin: S.sp[2] + ' 0 ' + S.sp[2]}}), 'text');
+    const sub = sheet.s ? AP2.tint(h('p', {text: sheet.s, style: {fontSize: S.f.md, lineHeight: S.lh.body, margin: '0 0 ' + S.sp[4]}}), 'text2') : null;
+    const meta = sheet.meta ? h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[2], marginBottom: S.sp[4]}}, sheet.meta.map(metaTile)) : null;
+    const blk = sheet.block || sheet.id;
+    const actions = h('div', {attrs: {class: 'spick-noprint'}, style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[2], marginBottom: S.sp[4]}}, [
+      AP2.btn({text: 'Bereich trainieren', icon: AP2.icon('play', 16), kind: 'primary', small: true, fn: () => AP2.router.go('trainer/block/' + blk)}),
+      AP2.btn({text: 'Drucken / PDF', icon: AP2.icon('copy', 16), small: true, fn: () => window.print()}),
+      AP2.btn({text: 'Themenkarte', icon: AP2.icon('map', 16), small: true, fn: () => AP2.router.go('themen')}),
+      AP2.btn({text: 'Alle Spickzettel', icon: AP2.icon('cards', 16), small: true, fn: () => AP2.router.go('spick')}),
+    ].concat(others ? others.ids.filter((x) => x !== sheet.id && sheets[x]).map((x) => AP2.btn({text: sheets[x].t, icon: AP2.icon('arrow', 16), small: true, fn: () => AP2.router.go('spick/' + x)})) : []));
+    const cards = sheet.sections.map(section);
+    const cols = h('div', {attrs: {class: 'spick-cols'}, style: {columnWidth: '340px', columnGap: '14px'}}, cards);
+    // Sprungleiste und Filter bleiben beim Scrollen oben.
+    const input = AP2.field(h('input', {attrs: {type: 'search', placeholder: 'Im Spickzettel filtern, z. B. RAID, Kündigung, JOIN', 'aria-label': 'Spickzettel filtern'}, style: {flex: '1 1 240px', minWidth: 0}}));
+    const empty = AP2.blocks.note('Kein Abschnitt passt zum Filter.');
+    empty.style.display = 'none';
+    on(input, 'input', () => {
+      const words = input.value.toLowerCase().split(/\s+/).filter(Boolean);
+      let n = 0;
+      cards.forEach((card) => { const ok = words.every((w) => card.spickText.includes(w)); card.style.display = ok ? 'inline-block' : 'none'; if (ok) n++; });
+      empty.style.display = n ? 'none' : 'block';
+    });
+    const jump = h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: '4px', flex: '100 1 400px'}}, sheet.sections.map((sec, i) => {
+      const el = h('span', {text: sec.t, style: {padding: '3px 9px', borderRadius: S.r.pill, fontSize: '11px', fontWeight: S.fw.semi, border: '1px solid', whiteSpace: 'nowrap'}});
+      return AP2.press(el, {fn: () => { input.value = ''; input.dispatchEvent(new Event('input')); const t = document.getElementById('spick-' + i); if (t) window.scrollTo({top: t.getBoundingClientRect().top + window.scrollY - S.w.topbar - 70, behavior: 'smooth'}); },
+        label: 'Zu Abschnitt ' + sec.t, base: (c) => { const j = i % c.cat.length; return {backgroundColor: c.catSoft[j], color: c.cat[j], borderColor: 'transparent'}; }, hover: (c) => ({borderColor: c.cat[i % c.cat.length]})});
+    }));
+    const bar = h('div', {attrs: {class: 'spick-noprint'}, style: {position: 'sticky', top: S.w.topbar + 'px', zIndex: 5, display: 'flex', flexWrap: 'wrap', gap: S.sp[2], alignItems: 'center', padding: '8px 0', marginBottom: S.sp[3], borderBottom: '1px solid'}}, [input, jump]);
+    AP2.theme.bind(bar, (n, c) => { n.style.backgroundColor = c.bg; n.style.borderBottomColor = c.border; });
+    const top = sheet.top ? h('div', {style: {marginBottom: S.sp[3]}}, sheet.top.map(render)) : null;
+    return h('div', {}, [kick, title, sub, meta, actions, bar, top, empty, cols, index(sheet)]);
+  };
+
+  // ---------- Übersicht ----------
+  const overview = () => {
+    const title = AP2.tint(h('h1', {text: 'Spickzettel', style: {fontSize: S.f.h1, fontWeight: S.fw.bold, letterSpacing: '-0.02em', margin: '0 0 ' + S.sp[2]}}), 'text');
+    const sub = AP2.tint(h('p', {text: 'Je Prüfung eine einzige Seite mit allem, was drankommen kann: Definitionen, Formeln, Diagramme, Tabellen, Fallen. Ideal für die letzte Wiederholung und zum Ausdrucken. Jeder Abschnitt verlinkt die ausführlichen Themenseiten.',
+      style: {fontSize: S.f.md, lineHeight: S.lh.body, margin: '0 0 ' + S.sp[5]}}), 'text2');
+    const examCard = (ex, k) => {
+      const list = ex.ids.filter((id) => sheets[id]).map((id) => {
+        const sh = sheets[id];
+        const tone = AP2.theme.BLOCK[id] ? id : 'ps';
+        const pages = AP2.store.byBlock(sh.block || id);
+        const done = pages.filter((p) => AP2.state.get('done')[p.id]).length;
+        const el = h('div', {style: {padding: '14px 16px', borderRadius: S.r.md, border: '1px solid', borderLeft: '5px solid', display: 'flex', alignItems: 'center', gap: S.sp[3]}}, [
+          h('div', {style: {flex: '1 1 0', minWidth: 0}}, [AP2.tint(h('div', {text: sh.t, style: {fontWeight: S.fw.bold, fontSize: S.f.md}}), 'text'),
+            AP2.tint(h('div', {text: sh.sections.length + ' Abschnitte  ·  ' + pages.length + ' Themen  ·  ' + done + ' erledigt', style: {fontSize: S.f.xs, marginTop: '2px'}}), 'text2')]),
+          AP2.tint(h('span', {style: {display: 'flex'}}, [AP2.icon('arrow', 18)]), 'text3')]);
+        return AP2.press(el, {fn: () => AP2.router.go('spick/' + id), label: sh.t, base: (c) => ({backgroundColor: c.surface2, borderColor: c.border, borderLeftColor: c.block[tone]}), hover: (c) => ({borderColor: c.block[tone], borderLeftColor: c.block[tone]})});
+      });
+      const head = h('div', {style: {display: 'flex', justifyContent: 'space-between', gap: S.sp[2], flexWrap: 'wrap', alignItems: 'baseline'}}, [
+        AP2.gk.kicker('Prüfung ' + (k + 1), 'accent'), AP2.tint(h('span', {text: ex.time + '  ·  ' + ex.pts, style: {fontSize: S.f.xs, fontWeight: S.fw.semi}}), 'text3')]);
+      return AP2.gk.panel([head, AP2.tint(h('div', {text: ex.t, style: {fontSize: S.f.xl, fontWeight: S.fw.bold, margin: '6px 0 4px'}}), 'text'),
+        AP2.tint(h('div', {text: ex.d, style: {fontSize: S.f.sm, lineHeight: '1.5', marginBottom: S.sp[3]}}), 'text2'), h('div', {style: {display: 'flex', flexDirection: 'column', gap: S.sp[2]}}, list)], {flex: '1 1 300px'});
+    };
+    return h('div', {}, [title, sub, h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[3], alignItems: 'stretch'}}, EXAMS.map(examCard))]);
+  };
+
+  AP2.views.spick = (arg) => {
+    AP2.ctx.id = 'spick';
+    const sheet = sheets[arg];
+    if (sheet) { AP2.theme.setTone(AP2.theme.BLOCK[sheet.block || sheet.id] ? (sheet.block || sheet.id) : 'ref'); return sheetView(sheet); }
+    AP2.theme.setTone('ref');
+    return overview();
+  };
+  AP2.viewTitles.spick = 'Spickzettel';
 })();
 ;
 // ui/erfolge.js
@@ -3452,7 +3874,7 @@ AP2.pages = function () {};
     const collapse = AP2.btn({text: 'Zuklappen', small: true, fn: () => { AP2.state.set('navOpen', {}); reveal(AP2.state.get('route')); }});
     const head = h('div', {style: {display: 'flex', gap: S.sp[2], padding: '12px 12px 8px', alignItems: 'center', flexShrink: 0}}, [input, collapse]);
     const home = AP2.navRow({level: 'block', label: 'Startseite', inner: [h('span', {text: 'Startseite'})], fn: () => AP2.router.go('home'), active: () => AP2.state.get('route') === 'home'});
-    const special = [['trainer', 'Trainer', 'play'], ['themen', 'Themenkarte', 'map'], ['erfolge', 'Erfolge', 'trophy']].map(([id, text, icon]) => AP2.navRow({level: 'block', label: text,
+    const special = [['trainer', 'Trainer', 'play'], ['spick', 'Spickzettel', 'cards'], ['themen', 'Themenkarte', 'map'], ['erfolge', 'Erfolge', 'trophy']].map(([id, text, icon]) => AP2.navRow({level: 'block', label: text,
       inner: [AP2.icon(icon, 15), h('span', {text})], fn: () => AP2.router.go(id), active: () => AP2.state.get('route').split('/')[0] === id}));
     const sep = AP2.fill(h('div', {style: {height: '1px', margin: '6px 4px 8px'}}), 'border');
     const list = h('div', {style: {flex: '1 1 0', overflowY: 'auto', padding: '4px 10px 64px'}}, [home].concat(special, [sep, tree.el]));
@@ -18589,9 +19011,9 @@ AP2.add('wiso-tarif', [
 AP2.page('wiso-betriebsrat', {
   b: 'wiso', g: 'Tarifrecht und Mitbestimmung', t: 'Betriebsrat und Betriebsverfassungsgesetz (BetrVG)',
   d: 'Der **Betriebsrat** ist die **gewählte Interessenvertretung der Arbeitnehmer** im Betrieb. Er wird in Betrieben mit **mindestens 5 ständig wahlberechtigten Arbeitnehmern** (davon 3 wählbar) gewählt, **alle 4 Jahre**. Er hat **Mitbestimmungsrechte** (zum Beispiel bei Arbeitszeit, Überwachung durch Technik, Einstellungen), **Mitwirkungsrechte** und **Informationsrechte** nach dem **Betriebsverfassungsgesetz**. Die **Jugend- und Auszubildendenvertretung (JAV)** vertritt Beschäftigte **unter 18** und **Azubis unter 25**.',
-  m: '**BR: Wahl ab 5 AN, alle 4 Jahre. Wahlberechtigt ab 18, wählbar nach 6 Monaten Betriebszugehörigkeit. Mitbestimmung: sozial (§ 87), personell (§ 99), wirtschaftlich (§ 111).** Kündigung ohne Anhörung des Betriebsrats = **unwirksam** (§ 102). **JAV: bis 25, Wahl alle 2 Jahre.** Der Betriebsrat ist **kein** Teil der Gewerkschaft.',
+  m: '**BR: Wahl ab 5 AN, alle 4 Jahre. Wahlberechtigt ab 16, wählbar ab 18 und nach 6 Monaten Betriebszugehörigkeit. Mitbestimmung: sozial (§ 87), personell (§ 99), wirtschaftlich (§ 111).** Kündigung ohne Anhörung des Betriebsrats = **unwirksam** (§ 102). **JAV: bis 25, Wahl alle 2 Jahre.** Der Betriebsrat ist **kein** Teil der Gewerkschaft.',
   cheat: [
-    ['Wahl', ['Betrieb mit **mindestens 5 ständig wahlberechtigten AN**, davon **3 wählbar**', '**Wahlberechtigt:** ab **18 Jahre**', '**Wählbar:** 6 Monate im Betrieb', '**Amtszeit 4 Jahre**', '**Größe:** 5 bis 20 AN = 1 Mitglied, 21-50 = 3, 51-100 = 5, 101-200 = 7']],
+    ['Wahl', ['Betrieb mit **mindestens 5 ständig wahlberechtigten AN**, davon **3 wählbar**', '**Wahlberechtigt:** ab **16 Jahre** (seit 2021)', '**Wählbar:** ab 18 und 6 Monate im Betrieb', '**Amtszeit 4 Jahre**', '**Größe:** 5 bis 20 AN = 1 Mitglied, 21-50 = 3, 51-100 = 5, 101-200 = 7']],
     ['Mitbestimmung § 87 (soziale Angelegenheiten)', ['Beginn/Ende der **täglichen Arbeitszeit**, **Pausen**', '**Urlaubsgrundsätze**, Urlaubsplan', '**Technische Überwachung** (Zeiterfassung, Software zur Leistungskontrolle)', 'Ordnung im Betrieb, **Lohngestaltung**, Sozialeinrichtungen', '**Gesundheitsschutz**, Unfallverhütung']],
     ['Personelle Angelegenheiten', ['**§ 99:** Einstellung, Versetzung, Eingruppierung: **Zustimmungsverweigerungsrecht**', '**§ 102:** **Anhörungsrecht** vor jeder Kündigung (sonst unwirksam)', '**§ 98:** Berufsbildung', 'Stellenausschreibung']],
     ['Wirtschaftliche Angelegenheiten', ['**§ 106:** Wirtschaftsausschuss (ab 100 AN)', '**§ 111:** **Betriebsänderungen** (Schließung, Verlegung, Zusammenlegung): **Interessenausgleich** und **Sozialplan**', 'Betrieb mit **mehr als 20** wahlberechtigten AN']],
@@ -18602,7 +19024,7 @@ AP2.page('wiso-betriebsrat', {
     ['h', 'Wahl und Zusammensetzung'],
     ['table', ['Merkmal', 'Regelung'], [
       ['Voraussetzung', 'Betrieb mit **in der Regel mindestens 5 ständigen wahlberechtigten Arbeitnehmern**, von denen **3 wählbar** sind (§ 1 BetrVG)'],
-      ['Wahlberechtigt (aktives Wahlrecht)', 'Alle Arbeitnehmer ab **18 Jahren** (auch Auszubildende)'],
+      ['Wahlberechtigt (aktives Wahlrecht)', 'Alle Arbeitnehmer ab **16 Jahren** (auch Auszubildende, § 7 BetrVG seit 2021)'],
       ['Wählbar (passives Wahlrecht)', 'Wahlberechtigte, die **seit mindestens 6 Monaten** dem Betrieb angehören'],
       ['Amtszeit', '**4 Jahre**, regelmäßige Wahlen **alle 4 Jahre** (zuletzt im Zeitraum **1. März bis 31. Mai 2026**)'],
       ['Größe', '**5 bis 20** Arbeitnehmer: 1 Mitglied; **21 bis 50**: 3; **51 bis 100**: 5; **101 bis 200**: 7; **201 bis 400**: 9; **401 bis 700**: 11 ... (§ 9 BetrVG)'],
@@ -18650,7 +19072,7 @@ AP2.add('wiso-betriebsrat', [
   ['qa', 'Nennen Sie vier Mitbestimmungsrechte des Betriebsrats in sozialen Angelegenheiten.', ['- Beginn und Ende der täglichen Arbeitszeit, Pausen, Überstunden', '- Aufstellung von Urlaubsgrundsätzen und Urlaubsplan', '- Einführung technischer Überwachungseinrichtungen', '- Fragen der Betriebsordnung, Unfallverhütung/Gesundheitsschutz, Entlohnungsgrundsätze'], 4],
   ['quiz', [
     {q: 'Wie lange beträgt die Amtszeit eines Betriebsrats?', o: ['4 Jahre', '2 Jahre', '5 Jahre', '6 Jahre'], a: 0, e: 'Der Betriebsrat wird für 4 Jahre gewählt.'},
-    {q: 'Ab welchem Alter darf man den Betriebsrat wählen?', o: ['18 Jahre', '16 Jahre', '21 Jahre', 'Beliebig'], a: 0, e: 'Aktives Wahlrecht ab 18 Jahren; die JAV vertritt die Jüngeren.'},
+    {q: 'Ab welchem Alter darf man den Betriebsrat wählen?', o: ['18 Jahre', '16 Jahre', '21 Jahre', 'Beliebig'], a: 1, e: 'Aktives Wahlrecht ab 16 Jahren (§ 7 BetrVG, seit 2021). Wählbar ist man ab 18 Jahren nach 6 Monaten Betriebszugehörigkeit.'},
     {q: 'Was gilt, wenn der Betriebsrat vor einer Kündigung nicht angehört wurde?', o: ['Die Kündigung ist unwirksam', 'Die Kündigung ist wirksam', 'Der Arbeitgeber zahlt eine Strafe', 'Der Betriebsrat kündigt selbst'], a: 0, e: '§ 102 BetrVG.'},
     {q: 'Wer vertritt Auszubildende unter 25 Jahren im Betrieb besonders?', o: ['Die Jugend- und Auszubildendenvertretung (JAV)', 'Die Gewerkschaft', 'Die IHK', 'Der Arbeitgeberverband'], a: 0, e: 'Die JAV arbeitet mit dem Betriebsrat zusammen.'},
     {q: 'Welches Recht hat der Betriebsrat bei der Einstellung eines neuen Mitarbeiters (§ 99 BetrVG)?', o: ['Zustimmungsverweigerungsrecht', 'Nur ein Informationsrecht', 'Anhörungsrecht', 'Kein Recht'], a: 0, e: 'Bei Einstellung, Versetzung und Eingruppierung braucht der Arbeitgeber die Zustimmung. Der BR kann sie aus gesetzlich genannten Gründen verweigern.'},
@@ -31000,6 +31422,1081 @@ AP2.add('ref-glossar', [
   ]],
 ]);
 ;
+// content/spick/ps.js
+AP2.spick('ps', {
+  exam: 'Prüfung: Planen eines Softwareproduktes (Teil A)', t: 'Spickzettel Planen',
+  s: 'Projektmanagement, Netzplan, Kosten, Vorgehensmodelle, Anforderungen, UML, Datenmodell, Ergonomie, Testen, Qualität, Recht und Betrieb auf einer Seite.',
+  meta: [['90 Min', 'Dauer'], ['100', 'Punkte'], ['4 × 25', 'Punkte je Aufgabe'], ['50 %', 'Bestehensgrenze']],
+  top: [
+    ['tip', '**Operatoren beachten:** "nennen" = Stichwort, "beschreiben" = ganzer Satz, "erläutern" = mit Begründung/Beispiel, "berechnen" = **Rechenweg + Einheit + Antwortsatz**. Immer auf das **Szenario** (Firma, Produkt) beziehen.'],
+    ['warn', 'Seit 2021 sind **alle vier Aufgaben Pflicht** (keine Abwahl). Bei Rechnungen Zwischenergebnisse angeben: Folgefehler geben Teilpunkte.'],
+  ],
+  sections: [
+    {t: 'Projekt, Phasen, Organisation', icon: 'clipboard', ids: ['ps-phasen', 'ps-orga', 'ps-stakeholder', 'ps-istsoll'], items: [
+      ['li', ['**Projekt** = einmalig, zeitlich begrenzt, klares Ziel, begrenzte Ressourcen, neuartig/komplex, eigene Organisation', '**Magisches Dreieck:** Zeit, Kosten, Qualität (Umfang); eine Ecke ändern verschiebt die anderen']],
+      ['flow', ['Initiierung', 'Planung', 'Durchführung', 'Abschluss']],
+      ['pairs', [['Initiierung', 'Projektauftrag, Ziele, Machbarkeit, Business Case'], ['Planung', 'PSP, Netzplan, Gantt, Kosten, Ressourcen, Risiken'], ['Durchführung', 'Umsetzung + **Controlling** (Soll-Ist), Statusberichte, Meilensteine'], ['Abschluss', 'Abnahme, Übergabe, Abschlussbericht, **Lessons Learned**']]],
+      ['mnemo', '**SMART:** Spezifisch, Messbar, Attraktiv (akzeptiert), Realistisch, Terminiert.'],
+      ['tbl', ['Projektorganisation', 'Macht PL', 'Merkmal'], [['Einfluss (Stab)', 'gering', 'PL berät nur, Linie entscheidet'], ['Matrix', 'geteilt', 'MA haben zwei Chefs (Linie + Projekt), Konfliktpotenzial'], ['Reine PO', 'voll', 'eigene Abteilung auf Zeit, Rückkehrproblem']]],
+      ['sub', 'Stakeholder und Risiko'],
+      ['tbl', ['Einfluss \\ Interesse', 'hoch', 'gering'], [['hoch', '**eng einbinden**', '**zufriedenstellen**'], ['gering', '**informieren**', '**beobachten**']]],
+      ['f', 'Risiko = Eintrittswahrscheinlichkeit · Schadenshöhe', 'Maßnahmen: vermeiden, vermindern, übertragen (Versicherung), akzeptieren'],
+      ['sub', 'Ist-Analyse / Soll-Konzept'],
+      ['flow', ['Ist-Analyse', 'Schwachstellen', 'Soll-Konzept', 'Soll-Ist-Vergleich', 'Maßnahmen']],
+      ['li', ['Ist-Erhebung: **Interview, Fragebogen, Beobachtung, Dokumentenanalyse, Workshop**', 'Lücke zwischen Ist und Soll = Projektauftrag']],
+    ]},
+    {t: 'Netzplan und Gantt', icon: 'network', ids: ['ps-netzplan', 'ps-gantt'], items: [
+      ['diagram', {w: 560, h: 170, cap: 'Vorgangsknoten: oben früheste, unten späteste Zeiten.', nodes: [
+        {id: 'n', k: 'np', x: 150, y: 80, w: 240, t: {nr: 'Nr.', name: 'Bezeichnung', d: 'D', faz: 'FAZ', fez: 'FEZ', saz: 'SAZ', sez: 'SEZ', gp: 'GP', fp: 'FP'}},
+        {id: 'l1', k: 'text', x: 420, y: 50, t: 'oben: vorwärts (max)', fs: 12},
+        {id: 'l2', k: 'text', x: 420, y: 90, t: 'unten: rückwärts (min)', fs: 12},
+        {id: 'l3', k: 'text', x: 420, y: 130, t: 'GP = 0: kritisch', fs: 12},
+      ], edges: []}],
+      ['f', 'FEZ = FAZ + D;  FAZ(Nachf.) = max FEZ(Vorg.)', 'Vorwärtsrechnung, Start FAZ = 0'],
+      ['f', 'SAZ = SEZ − D;  SEZ(Vorg.) = min SAZ(Nachf.)', 'Rückwärtsrechnung, Start: SEZ Ende = FEZ Ende'],
+      ['f', 'GP = SAZ − FAZ = SEZ − FEZ;  FP = min FAZ(Nachf.) − FEZ', 'Gesamtpuffer / freier Puffer'],
+      ['li', ['**Kritischer Pfad** = längster Weg, alle Vorgänge GP = 0, bestimmt Projektdauer', 'Verzögerung auf dem kritischen Pfad verschiebt das Projektende 1:1', 'Verkürzen: kritische Vorgänge parallelisieren, Ressourcen erhöhen']],
+      ['pairs', [['Gantt', '**Wann?** Balken auf Zeitachse, Meilenstein = Raute (Dauer 0), Abhängigkeiten als Pfeile'], ['Netzplan', '**Wovon abhängig?** Puffer, kritischer Pfad'], ['PSP', 'Projektstrukturplan: Teilprojekte → **Arbeitspakete** (hierarchisch, ohne Zeit)']]],
+      ['warn', 'Vorwärts bei Zusammenlauf das **Maximum**, rückwärts bei Verzweigung das **Minimum**. Nicht verwechseln!'],
+    ]},
+    {t: 'Aufwand, Kosten, ROI', icon: 'calc', ids: ['ps-aufwand', 'ps-kosten', 'ps-tco'], items: [
+      ['pairs', [['Expertenschätzung', 'schnell, subjektiv'], ['Analogie', 'Vergleich mit ähnlichem Altprojekt'], ['Function Point', 'Funktionsumfang: **EI, EO, EQ, ILF, EIF** gewichten, Einflussfaktor'], ['Delphi', 'mehrere Experten **anonym**, mehrere Runden'], ['Planning Poker', 'agil, Story Points, Fibonacci']]],
+      ['f', 'Aufwand = Function Points / Produktivität (FP je PT)'],
+      ['f', 'ROI (%) = (Nutzen − Kosten) / Investition · 100'],
+      ['f', 'Amortisationsdauer = Investition / jährliche Einsparung'],
+      ['f', 'TCO = Anschaffung + laufende Kosten/Jahr · Jahre (+ Entsorgung)', 'alle Beträge auf denselben Zeitraum bringen (Monat · 12)'],
+      ['f', 'Strom: kWh = W · h / 1000;  1 Jahr = 8.760 h', 'Kosten = kWh · €/kWh'],
+      ['li', ['**Einmalig:** Entwicklung, Hardware, Schulung, Migration; **laufend:** Lizenzen, Wartung, Hosting, Strom, Support', 'Nicht-monetärer Nutzen (Image, Zufriedenheit) → **Nutzwertanalyse**']],
+      ['mnemo', 'Schätz-Methoden **E-A-F-D**: Experten, Analogie, Function Point, Delphi.'],
+    ]},
+    {t: 'Kostenarten, Kalkulation, Angebot', icon: 'chart', ids: ['ps-kostenarten', 'ps-kalkulation', 'ps-angebot'], items: [
+      ['f', 'K = K_fix + k_v · x;  E = p · x', 'Gesamtkosten / Erlös'],
+      ['f', 'db = p − k_v;  Gewinn = db · x − K_fix', 'Deckungsbeitrag je Stück'],
+      ['f', 'Break-even x = K_fix / db  (immer AUFrunden)', 'Gewinnschwelle: Kosten = Erlös'],
+      ['sub', 'Zuschlagskalkulation'],
+      ['tbl', ['Schritt', 'Basis'], [['Fertigungsmaterial + **MGK**', 'MGK auf FM'], ['Fertigungslöhne + **FGK**', 'FGK auf FL'], ['**= Herstellkosten**', ''], ['+ VwGK + VtGK', 'auf HK'], ['**= Selbstkosten**', ''], ['+ Gewinn', 'vom Hundert auf SK'], ['= Barverkaufspreis + Skonto, + Rabatt', 'im Hundert'], ['= Listenverkaufspreis netto + 19 % USt', '']]],
+      ['sub', 'Bezugskalkulation (Angebotsvergleich)'],
+      ['flow', ['Listeneinkaufspreis', '− Rabatt', '= Zieleinkaufspreis', '− Skonto', '= Bareinkaufspreis', '+ Bezugskosten', '= Einstandspreis']],
+      ['li', ['**Nutzwertanalyse:** Kriterien, Gewichtung (Σ 100 %), Punkte, gewichtete Punkte = G · P, Summe → höchste gewinnt', 'Qualitativ: Garantie, Lieferzeit, Service, Zahlungsbedingungen']],
+      ['warn', 'Skonto vom **Zieleinkaufspreis** (nach Rabatt) rechnen. "frei Haus" = keine Bezugskosten. Netto vergleichen.'],
+    ]},
+    {t: 'Vorgehensmodelle und Scrum', icon: 'repeat', ids: ['ps-vorgehen', 'ps-scrum'], items: [
+      ['tbl', ['Modell', 'Merkmal', 'geeignet wenn'], [['**Wasserfall**', 'sequenziell, Phase abgeschlossen vor nächster, kaum Rückschritt', 'Anforderungen fest, stabil'], ['**V-Modell**', 'jeder Entwurfsstufe links gehört eine Teststufe rechts', 'sicherheitskritisch, Behörden (XT)'], ['**Spiralmodell**', 'iterativ, Risikoanalyse je Zyklus', 'große riskante Projekte'], ['**Agil (Scrum, Kanban)**', 'iterativ-inkrementell, kurze Zyklen, Feedback', 'Anforderungen unklar/ändern sich'], ['**Prototyping**', 'früh lauffähiges Muster', 'UI unklar']]],
+      ['flow', ['Anforderungen ↔ Abnahmetest', 'Systementwurf ↔ Systemtest', 'Architektur ↔ Integrationstest', 'Modulentwurf ↔ Modultest', 'Implementierung']],
+      ['diagram', AP2.dg.cycle(['Product Backlog', 'Sprint Planning', 'Sprint (Daily)', 'Inkrement', 'Review', 'Retro'], {w: 560, h: 300, rx: 200, ry: 105, styles: ['soft', 'accent', 'solid', 'ok', 'accent', 'accent'], cap: 'Scrum-Zyklus'})],
+      ['cards', [['3 Rollen', ['Product Owner (Backlog, Wert)', 'Scrum Master (Prozess, Hindernisse)', 'Developers']], ['5 Events', ['Sprint (1-4 Wo.)', 'Planning', 'Daily (15 Min)', 'Review', 'Retrospektive']], ['3 Artefakte', ['Product Backlog', 'Sprint Backlog', 'Inkrement (DoD)']]]],
+      ['li', ['**User Story:** "Als <Rolle> möchte ich <Ziel>, damit <Nutzen>" + Akzeptanzkriterien (INVEST)', '**Kanban:** Board, **WIP-Limit**, Pull-Prinzip, kein fester Sprint', 'Agiles Manifest: Individuen, funktionierende Software, Zusammenarbeit mit Kunden, Reagieren auf Veränderung']],
+    ]},
+    {t: 'Lastenheft und Pflichtenheft', icon: 'book', ids: ['ps-lastenheft'], items: [
+      ['pairs', [['Lastenheft', '**Auftraggeber**, WAS und WOFÜR, Anforderungen aus Kundensicht'], ['Pflichtenheft', '**Auftragnehmer**, WIE und WOMIT, Umsetzung, Vertragsgrundlage, Basis der Abnahme']]],
+      ['li', ['Inhalt: Ausgangslage/Ist, Zielbestimmung (Muss/Kann/Abgrenzung), Produkteinsatz, **funktionale** und **nichtfunktionale** Anforderungen, Daten, Rahmenbedingungen, Abnahmekriterien', 'Funktional = **was** das System tut; nichtfunktional = **wie gut** (Performance, Sicherheit, Usability)', 'Anforderungen: eindeutig, prüfbar, vollständig, widerspruchsfrei; **MoSCoW** (Must, Should, Could, Won\'t)']],
+      ['mnemo', 'Kunde "lädt **Last** ab", Entwickler übernimmt die **Pflicht**. Reihenfolge: erst Last, dann Pflicht.'],
+    ]},
+    {t: 'UML: Überblick, Use Case, Klassen', icon: 'grid', ids: ['ps-umlueberblick', 'ps-usecase', 'ps-klassen'], items: [
+      ['pairs', [['Strukturdiagramme', 'Klassen, Objekt (Name unterstrichen obj : Klasse), Komponenten, Paket, Verteilung'], ['Verhaltensdiagramme', 'Use Case, Aktivität, Zustand'], ['Interaktion', 'Sequenz, Kommunikation, Zeitverlauf']]],
+      ['sub', 'Use-Case-Diagramm'],
+      ['li', ['Akteur = Strichmännchen (außerhalb), Use Case = Oval, Systemgrenze = Rechteck', '**«include»** = immer enthalten, Pfeil zum enthaltenen UC', '**«extend»** = optional, Pfeil zum **erweiterten** (Basis-)UC, Extension Point', 'Generalisierung zwischen Akteuren/UCs: Pfeil mit leerem Dreieck']],
+      ['sub', 'Klassendiagramm'],
+      ['tbl', ['Element', 'Notation'], [['Sichtbarkeit', '**+** public, **−** private, **#** protected, **~** package'], ['Attribut / Methode', '− name : String / + getName() : String; statisch unterstrichen; abstrakt kursiv'], ['Assoziation', 'Linie, Multiplizität 1, 0..1, *, 1..*'], ['Aggregation', 'leere Raute (Teil kann allein existieren)'], ['Komposition', 'gefüllte Raute (Teil stirbt mit Ganzem)'], ['Vererbung', 'leeres Dreieck zur Oberklasse'], ['Realisierung', 'gestrichelt + leeres Dreieck zum Interface'], ['Abhängigkeit', 'gestrichelter Pfeil']]],
+      ['warn', 'Raute sitzt immer beim **Ganzen**, nicht beim Teil.'],
+      ['ext', [['UML-Spezifikation (OMG)', 'https://www.omg.org/spec/UML/']]],
+    ]},
+    {t: 'UML: Aktivität, Sequenz, Zustand', icon: 'route', ids: ['ps-aktivitaet', 'ps-sequenz', 'ps-zustand'], items: [
+      ['pairs', [['Aktivität', 'Start = Punkt, Ende = Kreis mit Punkt, Aktion = abgerundetes Rechteck, **Raute** = Entscheidung/Merge mit **[Bedingung]**, Balken = **Fork/Join** (parallel), Swimlanes = Zuständigkeit'], ['Sequenz', 'Lebenslinien senkrecht (Zeit nach unten), Aktivierungsbalken; synchron = gefüllte Spitze, asynchron = offene Spitze, Rückgabe = gestrichelt; Fragmente **alt, opt, loop, par**'], ['Zustand', 'Zustand = abgerundetes Rechteck; Übergang **Ereignis [Bedingung] / Aktion**; entry/do/exit; Objekt immer in genau einem Zustand']]],
+      ['tip', 'Jeder Ausgang einer Entscheidung braucht eine Bedingung, alle zusammen vollständig und disjunkt ([else]).'],
+    ]},
+    {t: 'Struktogramm und EPK', icon: 'puzzle', ids: ['ps-struktogramm', 'ps-epk'], items: [
+      ['li', ['Struktogramm (Nassi-Shneiderman, DIN 66261): **Folge** (untereinander), **Auswahl** (Dreieck, ja/nein; Mehrfachauswahl), **Wiederholung**', 'Kopfgesteuert: Bedingung oben, evtl. 0-mal; fußgesteuert: unten, mind. 1-mal; Zählschleife', 'Kein goto, ein Ein-/Ausgang je Block']],
+      ['sub', 'EPK / eEPK'],
+      ['li', ['**Ereignis** (Sechseck) und **Funktion** (abgerundetes Rechteck) wechseln sich ab', 'Start und Ende sind **Ereignisse**', 'Konnektoren: **∧ UND, ∨ ODER, XOR**; nach Ereignis kein XOR/ODER-Split', 'Split und Join mit **gleichem** Konnektor', 'eEPK: Organisationseinheit (Oval), Informationsobjekt (Rechteck), Prozesswegweiser']],
+      ['warn', 'Ereignisse entscheiden nicht: Verzweigung (XOR/ODER) nur nach einer Funktion.'],
+    ]},
+    {t: 'ERM, Relationenmodell, Normalisierung', icon: 'network', ids: ['ps-er', 'ps-ermrm', 'ps-relational', 'ps-normalisierung'], items: [
+      ['flow', ['Fachtext', 'ERM (konzeptionell)', 'Relationenmodell (logisch)', 'SQL CREATE TABLE (physisch)']],
+      ['li', ['ERM (Chen): Entität = Rechteck, Beziehung = Raute, Attribut = Oval, Schlüssel unterstrichen; Kardinalität **1:1, 1:n, n:m** (oder min-max)', 'Umwandlung: Entität → Tabelle, **1:n → Fremdschlüssel auf der n-Seite**, **n:m → Zwischentabelle** mit zusammengesetztem PK, 1:1 → FK auf einer Seite (UNIQUE)', 'RM-Notation: Kunde(**KundeID**, Name, ↑OrtID)']],
+      ['tbl', ['NF', 'Bedingung'], [['1NF', 'alle Werte **atomar**, keine Wiederholungsgruppen'], ['2NF', '1NF + jedes Nichtschlüsselattribut voll vom **ganzen** PK abhängig (nur bei zusammengesetztem PK relevant)'], ['3NF', '2NF + **keine transitiven** Abhängigkeiten (Nichtschlüssel → Nichtschlüssel)']]],
+      ['mnemo', '"Der Schlüssel (1NF), der ganze Schlüssel (2NF) und nichts als der Schlüssel (3NF)."'],
+      ['li', ['Anomalien ohne Normalisierung: **Einfüge-, Änderungs-, Löschanomalie**', 'Referenzielle Integrität: FK zeigt auf existierenden PK (ON DELETE CASCADE/RESTRICT)']],
+    ]},
+    {t: 'Ergonomie, UX, Wireframe', icon: 'eye', ids: ['ps-ergonomie', 'ps-ux', 'ps-wireframe'], items: [
+      ['sub', 'DIN EN ISO 9241-110: Interaktionsprinzipien'],
+      ['li', ['Aufgabenangemessenheit', 'Selbstbeschreibungsfähigkeit', 'Erwartungskonformität', 'Steuerbarkeit', 'Fehlertoleranz (Robustheit gegen Benutzerfehler)', 'Individualisierbarkeit', 'Lernförderlichkeit (Erlernbarkeit)']],
+      ['mnemo', '**A-S-E-S-F-I-L**. Barrierefreiheit (WCAG/BITV): **POUR** = wahrnehmbar, bedienbar, verständlich, robust.'],
+      ['pairs', [['Usability (ISO 9241-11)', '**Effektivität, Effizienz, Zufriedenheit** im Nutzungskontext'], ['UX', 'gesamtes Erleben vor, während und nach der Nutzung'], ['UCD (ISO 9241-210)', 'Kontext verstehen → Anforderungen → Gestalten → Evaluieren (iterativ)']]],
+      ['flow', ['Skizze', 'Wireframe (Struktur)', 'Mockup (Aussehen)', 'Prototyp (Verhalten, klickbar)', 'Entwicklung']],
+      ['li', ['Usability-Tests: Thinking Aloud, Eye-Tracking, A/B-Test, Heuristische Evaluation, Fragebogen (SUS)', 'Persona, Customer Journey, Low- vs. High-Fidelity']],
+      ['ext', [['BITV 2.0', 'https://www.gesetze-im-internet.de/bitv_2_0/'], ['WCAG 2.2 (W3C)', 'https://www.w3.org/TR/WCAG22/']]],
+    ]},
+    {t: 'Testen, Überdeckung, Verifikation', icon: 'flask', ids: ['ps-testarten', 'ps-ueberdeckung', 'ps-verifikation'], items: [
+      ['flow', ['Modultest (Unit)', 'Integrationstest', 'Systemtest', 'Abnahmetest']],
+      ['pairs', [['Black-Box', 'gegen Spezifikation: **Äquivalenzklassen**, **Grenzwerte**, Entscheidungstabelle'], ['White-Box', 'gegen Code: Anweisungs-/Zweig-/Pfadüberdeckung'], ['Regressionstest', 'nach Änderung: alte Funktionen noch ok?'], ['Last/Performance', 'Verhalten unter Last, Antwortzeit'], ['statisch', 'Review, Walkthrough, Inspektion, Code-Analyse (ohne Ausführung)']]],
+      ['tbl', ['Maß', 'jede/jeder ... mind. einmal'], [['C0 Anweisung', 'Anweisung (Knoten)'], ['C1 Zweig', 'Zweig wahr/falsch (Kante), auch leerer else-Zweig'], ['C2 Pfad', 'Weg Start → Ende; Schleife 0-, 1-, n-mal']]],
+      ['f', 'McCabe: M = E − N + 2  = Entscheidungen + 1', 'Kanten − Knoten + 2; Zahl der Basispfade, Richtwert < 10'],
+      ['pairs', [['Verifikation', '"Build the product **right**": entspricht der **Vorgabe** (Spezifikation)?'], ['Validierung', '"Build the **right** product": erfüllt den **Verwendungszweck** des Kunden?']]],
+      ['li', ['Testfall: ID, Vorbedingung, Eingabe, **erwartetes Ergebnis**, tatsächliches Ergebnis, Status', 'TDD: Red → Green → Refactor; Mock/Stub ersetzt Abhängigkeiten']],
+      ['warn', 'White-Box findet keine **fehlenden** Funktionen; Black-Box keinen toten Code. Kombinieren.'],
+    ]},
+    {t: 'Qualität und QM', icon: 'star', ids: ['ps-softwarequalitaet', 'ps-qm'], items: [
+      ['sub', 'ISO/IEC 25010 Produktqualität'],
+      ['cards', [['Funktional', ['Funktionale Eignung']], ['Effizienz', ['Leistungseffizienz']], ['Kompatibilität', ['Koexistenz, Interoperabilität']], ['Benutzbarkeit', ['Usability, Erlernbarkeit']], ['Zuverlässigkeit', ['Verfügbarkeit, Fehlertoleranz']], ['Sicherheit', ['Vertraulichkeit, Integrität']], ['Wartbarkeit', ['Modularität, Testbarkeit']], ['Übertragbarkeit', ['Portabilität, Installierbarkeit']]]],
+      ['li', ['Vorgänger: **ISO 9126** (Modell), **ISO 14598** (Bewertung)', 'QM: **ISO 9001** (zertifizierbar, Anforderungen an QMS), ISO 9000 (Grundlagen/Begriffe)', 'Grundsätze: Kundenorientierung, Führung, Einbeziehung, Prozessorientierung, Verbesserung, faktengestützte Entscheidung, Beziehungsmanagement']],
+      ['flow', ['Plan', 'Do', 'Check', 'Act']],
+      ['li', ['**PDCA** (Deming) = kontinuierliche Verbesserung (KVP/Kaizen)', '**Six Sigma**: DMAIC, 3,4 Fehler pro Million', 'Analytische QS (Tests, Reviews) vs. konstruktive QS (Richtlinien, Vorgehensmodell)']],
+    ]},
+    {t: 'Datenschutz: DSGVO und TOM', icon: 'lock', ids: ['ps-dsgvo', 'ps-tom'], items: [
+      ['li', ['Personenbezogen = auf identifizierbare natürliche Person beziehbar; **besondere Kategorien** (Art. 9): Gesundheit, Religion, Biometrie ...', '**Verbot mit Erlaubnisvorbehalt**']],
+      ['pairs', [['Art. 5 Grundsätze', 'Rechtmäßigkeit/Transparenz, Zweckbindung, Datenminimierung, Richtigkeit, Speicherbegrenzung, Integrität/Vertraulichkeit, Rechenschaftspflicht'], ['Art. 6 Rechtsgrundlagen', 'Einwilligung, Vertrag, rechtliche Pflicht, lebenswichtiges Interesse, öffentliche Aufgabe, berechtigtes Interesse'], ['Betroffenenrechte', 'Auskunft (15), Berichtigung (16), Löschung (17), Einschränkung (18), Datenübertragbarkeit (20), Widerspruch (21)'], ['Art. 28 AVV', 'Auftragsverarbeitung: Verantwortlicher entscheidet, Auftragsverarbeiter führt weisungsgebunden aus'], ['Art. 32 TOM', 'Sicherheit der Verarbeitung: Pseudonymisierung, Verschlüsselung, Verfügbarkeit, Wiederherstellbarkeit'], ['Art. 33', 'Datenpanne binnen **72 h** an Aufsichtsbehörde'], ['Bußgeld', 'bis **20 Mio. €** oder **4 %** des weltweiten Jahresumsatzes']]],
+      ['tbl', ['Kontrolle', 'Beispiel'], [['Zutritt (Raum)', 'Schließanlage, Chipkarte, Video'], ['Zugang (System)', 'Login, MFA, Passwortrichtlinie'], ['Zugriff (Daten)', 'Rollen/Rechte, Need-to-know'], ['Weitergabe', 'Verschlüsselung, VPN'], ['Eingabe', 'Protokollierung'], ['Verfügbarkeit', 'Backup, USV, RAID']]],
+      ['mnemo', '**Zutritt = Tür, Zugang = Login, Zugriff = Rechte.**'],
+      ['ext', [['DSGVO (EUR-Lex)', 'https://eur-lex.europa.eu/eli/reg/2016/679/oj'], ['BDSG', 'https://www.gesetze-im-internet.de/bdsg_2018/'], ['BSI IT-Grundschutz', 'https://www.bsi.bund.de/grundschutz']]],
+    ]},
+    {t: 'Recht: Lizenzen, Verträge, Kaufvertrag', icon: 'briefcase', ids: ['ps-lizenzen', 'ps-vertraege', 'ps-kaufvertrag'], items: [
+      ['li', ['Software = Sprachwerk (**UrhG §§ 69a ff.**), Schutz automatisch, bis 70 J. nach Tod; Angestellte: Nutzungsrechte beim **Arbeitgeber** (§ 69b)']],
+      ['tbl', ['Lizenz', 'Pflicht'], [['**MIT, BSD, Apache 2.0** (permissiv)', 'Lizenz-/Copyright-Hinweis; Code darf geschlossen bleiben'], ['**GPL** (starkes Copyleft)', 'abgeleitete Werke ebenfalls GPL, Quellcode offenlegen'], ['**LGPL, MPL** (schwach)', 'nur Änderungen an der Bibliothek'], ['**AGPL**', 'auch bei Netznutzung (SaaS)'], ['Proprietär / Freeware / Shareware', 'geschlossen / kostenlos, nicht frei / testen, dann zahlen']]],
+      ['tbl', ['Vertrag', 'geschuldet', 'Beispiel'], [['**Werkvertrag** § 631 BGB', '**Erfolg**, Abnahme, Gewährleistung', 'Individualsoftware nach Pflichtenheft'], ['**Dienstvertrag** § 611', '**Tätigkeit**, Bezahlung nach Zeit', 'Beratung, Support'], ['**Kaufvertrag** § 433', 'Übergabe + Eigentum, mangelfrei', 'Standardsoftware, Hardware'], ['**Mietvertrag** § 535', 'Gebrauch auf Zeit', 'SaaS, Lizenz-Abo'], ['Werklieferung § 650', 'herzustellende bewegliche Sache', '']]],
+      ['flow', ['Anfrage (unverbindlich)', 'Angebot = Antrag', 'Bestellung = Annahme', 'Kaufvertrag', 'Erfüllung']],
+      ['li', ['Werbung/Webshop = **Aufforderung zum Antrag**; abgeänderte Bestellung = Ablehnung + neuer Antrag', 'Mängel: zuerst **Nacherfüllung** (Nachbesserung/Ersatz), nach erfolgloser Frist **Rücktritt, Minderung, Schadensersatz**', 'Gewährleistung gesetzlich **2 Jahre**; Garantie freiwillig', 'Kaufmann: unverzügliche **Mängelrüge** (§ 377 HGB)']],
+      ['ext', [['BGB', 'https://www.gesetze-im-internet.de/bgb/'], ['UrhG', 'https://www.gesetze-im-internet.de/urhg/'], ['Lizenzen (OSI)', 'https://opensource.org/licenses']]],
+    ]},
+    {t: 'Beschaffung, ITSM, Cloud', icon: 'gear', ids: ['ps-beschaffung', 'ps-itsm'], items: [
+      ['f', 'Ø Lagerbestand = Bestellmenge / 2;  Lagerkosten = Ø Bestand · Preis · Lagerkostensatz'],
+      ['f', 'Meldebestand = Tagesverbrauch · Lieferzeit + Mindestbestand'],
+      ['f', 'Andler: x_opt = √(200 · M · K_B / (P · L%))', 'im Optimum Bestellkosten = Lagerkosten'],
+      ['li', ['Bestellpunkt- vs. Bestellrhythmusverfahren', 'Wareneingang: Lieferschein vs. Bestellung, Verpackung, Menge, Mängel sofort rügen', 'Make or Buy: Kosten (TCO), Know-how, Abhängigkeit, Zeit, Datenschutz']],
+      ['pairs', [['Event', 'Zustandsänderung, Meldung'], ['Incident', 'ungeplante Störung → schnell wiederherstellen'], ['Service Request', 'Standardanfrage (Passwort, Maus)'], ['Problem', 'Ursache hinter Incidents; Known Error mit Workaround'], ['Change', 'geplante Änderung, CAB']]],
+      ['li', ['**SLA:** Leistung, Servicezeiten, Verfügbarkeit %, Reaktions-/Wiederherstellungszeit, Eskalation, Vertragsstrafe', 'Service Desk = SPOC; 1st/2nd/3rd Level Support', '**IaaS** (VM) / **PaaS** (Laufzeit, DB) / **SaaS** (fertige App); Public, Private, Hybrid']],
+      ['f', 'Verfügbarkeit = (Betriebszeit − Ausfall) / Betriebszeit · 100 %', '99,9 % ≈ 8,76 h Ausfall/Jahr'],
+      ['ext', [['ITIL 4 (PeopleCert)', 'https://www.peoplecert.org/browse-certifications/it-governance-and-service-management/ITIL-1']]],
+    ]},
+    {t: 'Architektur, IDE, Git', icon: 'code', ids: ['ps-architektur', 'ps-ide', 'ps-git'], items: [
+      ['pairs', [['Schichten', 'Präsentation → Logik → Datenzugriff → Daten; jede Schicht nutzt nur die darunter'], ['MVC', '**Model** Daten/Logik, **View** Anzeige, **Controller** nimmt Eingaben an, steuert'], ['Client-Server', 'Thin vs. Fat Client'], ['Microservices', 'unabhängige Dienste, eigene DB, API-Gateway; vs. Monolith'], ['Entwurfsmuster', 'Singleton, Observer, Factory, Strategy, Adapter']]],
+      ['li', ['IDE: Editor, Compiler/Interpreter, **Debugger** (Breakpoint, Step), Versionsverwaltung, Refactoring, Autovervollständigung', '**Bibliothek: du rufst sie; Framework ruft dich** (Inversion of Control)', 'Umgebungen: DEV → Test/Staging → PROD; CI/CD']],
+      ['flow', ['Working Dir', 'add → Staging', 'commit → lokales Repo', 'push → Remote']],
+      ['li', ['clone, pull (= fetch + merge), branch, checkout/switch, merge, rebase, tag', 'Merge-Konflikt manuell lösen, dann add + commit', 'Git = Werkzeug (dezentral); GitHub/GitLab = Plattform (Pull/Merge Request)']],
+    ]},
+    {t: 'Marketing, Wettbewerb, Unternehmen', icon: 'target', ids: ['ps-marketing', 'ps-wettbewerb'], items: [
+      ['cards', [['Produkt', ['Qualität, Design, Sortiment, Service']], ['Preis', ['Preisstrategie, Rabatte, Konditionen']], ['Promotion', ['Werbung, PR, Social Media, Verkaufsförderung']], ['Place', ['Vertriebswege, direkt/indirekt, Online']]]],
+      ['li', ['Marktanalyse: **SWOT** (Stärken, Schwächen, Chancen, Risiken), Konkurrenzanalyse, Zielgruppe', 'Franchise: Geber wächst mit wenig Risiko; Nehmer erhält Marke + Konzept, bleibt selbstständig, zahlt Gebühren', '**CRM:** Kundenbindung, Kundendaten zentral', '**UWG:** keine irreführende/aggressive Werbung; **AGB** § 305 BGB: Hinweis + Kenntnisnahme + Einverständnis', '**Compliance** = Regeln einhalten, **Governance** = Führung und Kontrolle']],
+      ['ext', [['UWG', 'https://www.gesetze-im-internet.de/uwg_2004/'], ['IHK: Prüfungen FiAE', 'https://www.ihk.de/']]],
+    ]},
+  ],
+});
+;
+// content/spick/infra.js
+(function () {
+  // RAID-5-Skizze: Plattenspalten mit verteilter Parität.
+  const raid = (cells, title) => {
+    const nodes = [];
+    cells.forEach((col, d) => {
+      const x = 56 + d * 84;
+      nodes.push({id: 'd' + d, k: 'group', x, y: 24 + (col.length * 36 + 30) / 2, w: 74, h: col.length * 36 + 30, t: 'Platte ' + (d + 1), s: 'soft'});
+      col.forEach((cell, r) => nodes.push({id: 'c' + d + '_' + r, k: 'box', x, y: 62 + r * 36, w: 52, h: 28, t: cell[0], s: cell[1] || 'plain', fs: 12}));
+    });
+    return {w: cells.length * 84 + 28, h: cells[0].length * 36 + 50, nodes, edges: [], cap: title};
+  };
+  const P = 'accent';
+  const r5 = raid([[['A1'], ['B1'], ['C1'], ['Dp', P]], [['A2'], ['B2'], ['Cp', P], ['D1']], [['A3'], ['Bp', P], ['C2'], ['D2']], [['Ap', P], ['B3'], ['C3'], ['D3']]], 'RAID 5: Parität (p) rotiert über alle Platten, Nutzkapazität (n-1)·c');
+
+  AP2.spick('infra', {
+    exam: 'Prüfung: Planen eines Softwareproduktes (Teil B)',
+    t: 'Spickzettel Infrastruktur und IT-Sicherheit',
+    s: 'Netzwerk, Adressierung, Storage, Verfügbarkeit, Virtualisierung, Kryptografie und IT-Sicherheitsmanagement auf einer Seite',
+    meta: [['90 Min', 'Gesamtprüfung'], ['100', 'Punkte'], ['7', 'OSI-Schichten'], ['2^n − 2', 'Hosts je Subnetz'], ['CIA', 'Schutzziele']],
+    top: [
+      ['flow', ['**Netz** (OSI, IP, Subnetz)', '**Hardware** (Switch, Router, Medien)', '**Storage** (RAID, Backup)', '**Betrieb** (Verfügbarkeit, USV, VM)', '**Sicherheit** (CIA, Krypto, Firewall)', '**Management** (ISMS, Grundschutz)']],
+      ['tip', 'Rechenaufgaben bringen sichere Punkte: **Subnetting** (Netz-ID, Broadcast, Hosts), **RAID-Kapazität**, **Verfügbarkeit** in Stunden pro Jahr, **Übertragungszeit** und **USV-Leistung**. Immer **Rechenweg und Einheit** angeben.'],
+    ],
+    sections: [
+      {t: 'OSI- und TCP/IP-Modell', icon: 'network', ids: ['infra-osi', 'infra-tcpip'], wide: true, items: [
+        ['diagram', AP2.dg.layers([
+          ['7  Anwendung', 'HTTP(S), FTP, SMTP, IMAP, DNS, DHCP, SSH | PDU: Daten', 'solid'], ['6  Darstellung', 'Kodierung (Unicode), Kompression, Verschlüsselung'],
+          ['5  Sitzung', 'Sitzungsauf- und -abbau, Synchronisation'], ['4  Transport', 'TCP, UDP, **Ports** | PDU: Segment / Datagramm'],
+          ['3  Vermittlung', 'IP, ICMP, Routing, **IP-Adresse**, Router | PDU: Paket'], ['2  Sicherung', 'Ethernet, WLAN, **MAC**, ARP, VLAN, Switch | PDU: Frame'],
+          ['1  Bitübertragung', 'Kabel, Glasfaser, Funk, Hub, Repeater | PDU: Bit', 'solid'],
+        ], {w: 760, rh: 36, cap: 'OSI-Schichten mit Protokollen, Adressen, Geräten und PDU'})],
+        ['tbl', ['TCP/IP (4 Schichten)', 'entspricht OSI', 'Protokolle'], [
+          ['**Anwendung**', '5, 6, 7', 'HTTP, DNS, SMTP, FTP, SSH, DHCP'],
+          ['**Transport**', '4', 'TCP, UDP'],
+          ['**Internet**', '3', 'IPv4, IPv6, ICMP'],
+          ['**Netzzugang**', '1, 2', 'Ethernet, WLAN, ARP (Grenzfall 2/3)'],
+        ]],
+        ['mnemo', '**A**lle **D**eutschen **S**chüler **T**rinken **V**erschiedene **S**orten **B**ier (7 → 1). Englisch 1 → 7: **P**lease **D**o **N**ot **T**hrow **S**ausage **P**izza **A**way.'],
+        ['li', ['**Kapselung:** Senden = jede Schicht fügt Header hinzu (Schicht 2 zusätzlich Trailer mit **FCS/CRC**); Empfangen = Header werden entfernt.', 'Geräte: **Hub/Repeater = 1**, **Switch/Bridge = 2**, **Router/L3-Switch = 3**, **Firewall/Proxy/Gateway = bis 7**.']],
+      ]},
+      {t: 'TCP, UDP und Ports', icon: 'arrow', ids: ['infra-tcpudp', 'infra-ports'], items: [
+        ['tbl', ['', 'TCP', 'UDP'], [
+          ['Verbindung', '**verbindungsorientiert** (3-Way-Handshake)', '**verbindungslos**'],
+          ['Zuverlässig', 'ja: Sequenznummern, **ACK**, Neuübertragung, Flusskontrolle (Window)', 'nein, keine Bestätigung'],
+          ['Reihenfolge', 'garantiert', 'nicht garantiert'],
+          ['Overhead', 'Header 20 Byte, langsamer', 'Header 8 Byte, schnell'],
+          ['Einsatz', 'HTTP, Mail, FTP, SSH, Dateitransfer', 'DNS, DHCP, VoIP (RTP), Streaming, Gaming, SNMP'],
+        ]],
+        ['flow', ['SYN', 'SYN-ACK', 'ACK', 'Daten', 'FIN / ACK']],
+        ['tbl', ['Port', 'Dienst', 'Port', 'Dienst'], [
+          ['20/21', 'FTP (Daten/Steuerung)', '143 / 993', 'IMAP / IMAPS'],
+          ['22', '**SSH**, SFTP, SCP', '161/162', 'SNMP (UDP)'],
+          ['23', 'Telnet (unsicher)', '389 / 636', 'LDAP / LDAPS'],
+          ['25 / 587 / 465', 'SMTP / Submission / SMTPS', '443', '**HTTPS**'],
+          ['53', '**DNS** (UDP/TCP)', '1812/1813', 'RADIUS Auth/Accounting'],
+          ['67/68', '**DHCP** Server/Client (UDP)', '1883 / 8883', 'MQTT / MQTT über TLS'],
+          ['80', '**HTTP**', '3306 / 5432 / 1433', 'MySQL / PostgreSQL / MS-SQL'],
+          ['110 / 995', 'POP3 / POP3S', '3389', 'RDP'],
+          ['123', 'NTP (UDP)', '5060 / 5061', 'SIP / SIP über TLS'],
+        ]],
+        ['pairs', [['Well-known', '0 bis 1023'], ['Registered', '1024 bis 49151'], ['Dynamisch', '49152 bis 65535 (Client-Quellports)'], ['Socket', 'IP-Adresse + Port + Protokoll']]],
+      ]},
+      {t: 'IPv4 und Subnetting', icon: 'grid', ids: ['infra-ipv4', 'infra-subnetting', 'infra-vlsm', 'infra-ipconfig'], wide: true, items: [
+        ['f', 'Hosts = 2^(32 − Präfix) − 2', 'minus Netzadresse (alle Hostbits 0) und Broadcast (alle Hostbits 1). /24 = 254, /26 = 62, /27 = 30, /28 = 14, /30 = 2'],
+        ['f', 'Subnetze = 2^(geliehene Bits)', 'z. B. /24 in 6 Subnetze: 2^3 = 8 ≥ 6 → /27, Blockgröße 256 − 224 = 32'],
+        ['tbl', ['Präfix', 'Maske', 'Block', 'Hosts', 'Präfix', 'Maske', 'Block', 'Hosts'], [
+          ['/24', '255.255.255.0', '256', '254', '/28', '.240', '16', '14'],
+          ['/25', '.128', '128', '126', '/29', '.248', '8', '6'],
+          ['/26', '.192', '64', '62', '/30', '.252', '4', '2'],
+          ['/27', '.224', '32', '30', '/16', '255.255.0.0', '-', '65.534'],
+        ]],
+        ['cards', [
+          ['Privat (RFC 1918)', ['**10.0.0.0/8**', '**172.16.0.0/12** (bis 172.31)', '**192.168.0.0/16**']],
+          ['Spezial', ['127.0.0.0/8 Loopback', '169.254.0.0/16 **APIPA** (kein DHCP)', '0.0.0.0 Default', '255.255.255.255 Broadcast']],
+          ['Klassen (alt)', ['A 1-126 /8', 'B 128-191 /16', 'C 192-223 /24', 'D 224-239 Multicast', 'E 240-255']],
+          ['Dienste', ['**DHCP:** DORA (Discover, Offer, Request, Ack)', '**DNS:** Name → IP (A, AAAA, MX, CNAME, PTR)', '**NAT/PAT:** privat ↔ öffentlich', '**ARP:** IP → MAC']],
+        ]],
+        ['sub', 'Rechenweg Subnetz'],
+        ['li', ['Netz-ID = IP **AND** Maske; Broadcast = nächste Netz-ID − 1; erster Host = Netz-ID + 1; letzter Host = Broadcast − 1.', 'Beispiel 192.168.10.77/26: Block 64 → Netz **.64**, Hosts .65 bis .126, Broadcast **.127**.', '**VLSM:** Subnetze **absteigend nach Größe** vergeben (größtes zuerst), jeweils kleinstes passendes Präfix (Hosts + 2 ≤ 2^n). Transfernetze Router-Router: **/30** (2 Hosts).']],
+        ['warn', '**−2 nicht vergessen** und bei "mindestens 30 Hosts" passt /27 genau (30), bei 31 Hosts schon /26. Gateway belegt auch eine Hostadresse.'],
+        ['sub', 'Diagnose (Windows / Linux)'],
+        ['pairs', [['ipconfig /all', 'IP, Maske, Gateway, DNS, MAC, DHCP (Linux: **ip a**, ip r)'], ['ipconfig /release /renew', 'DHCP-Lease neu anfordern'], ['ipconfig /flushdns', 'DNS-Cache leeren'], ['ping', 'Erreichbarkeit per ICMP Echo'], ['tracert / traceroute', 'Weg über Router (TTL)'], ['nslookup / dig', 'DNS-Auflösung prüfen'], ['netstat -an / ss', 'offene Ports, Verbindungen'], ['arp -a', 'ARP-Cache (IP ↔ MAC)']]],
+        ['tip', 'Vorgehen bei Fehlern **von unten nach oben**: Kabel/Link → eigene IP (169.254 = DHCP-Problem) → ping Gateway → ping 8.8.8.8 → ping Name (DNS).'],
+      ]},
+      {t: 'IPv6', icon: 'map', ids: ['infra-ipv6', 'infra-ipv6sub'], items: [
+        ['li', ['**128 Bit**, 8 Blöcke à 16 Bit hexadezimal, z. B. 2001:0db8:0000:0000:0000:0000:0000:0001.', ['Kürzen', ['**führende Nullen** je Block weglassen', '**einmal** eine Folge von Nullblöcken durch **::** ersetzen → 2001:db8::1']], 'Typisch: **/48** Standort (Provider), **/64** pro Subnetz (64 Bit Interface-ID). /48 → /64 ergibt 2^16 = **65.536 Subnetze**.', 'Kein Broadcast, stattdessen **Multicast**; kein NAT nötig; **SLAAC** (Autokonfiguration) oder DHCPv6; **NDP** ersetzt ARP; IPsec integriert.']],
+        ['tbl', ['Präfix', 'Bedeutung'], [['**::1/128**', 'Loopback'], ['**fe80::/10**', 'Link-Local (immer vorhanden)'], ['**fc00::/7** (fd00::/8)', 'Unique Local (privat)'], ['**2000::/3**', 'Global Unicast (öffentlich)'], ['**ff00::/8**', 'Multicast'], ['2001:db8::/32', 'Dokumentation']]],
+        ['f', 'Subnetze = 2^(neues Präfix − altes Präfix)', 'Subnetz-ID hochzählen im 4. Block: 2001:db8:abcd:0000::/64, :0001::/64, ...'],
+        ['warn', '**::** darf nur **einmal** vorkommen, sonst ist die Adresse mehrdeutig.'],
+      ]},
+      {t: 'Routing, Switching, VLAN', icon: 'route', ids: ['infra-routing', 'infra-vlan', 'infra-komponenten'], items: [
+        ['pairs', [
+          ['Statisch', 'manuell eingetragen, klein und stabil'], ['Dynamisch', 'Protokolle: **RIP** (Hop-Count, Distanzvektor), **OSPF** (Link-State, Kosten), **BGP** (zwischen Providern/AS)'],
+          ['Default Route', '0.0.0.0/0 → Gateway für alle unbekannten Ziele'], ['Longest Prefix Match', 'spezifischste Route (längstes Präfix) gewinnt'],
+        ]],
+        ['li', ['**VLAN** (IEEE **802.1Q**): logische Trennung eines physischen Switches in Broadcast-Domänen. Vorteile: Sicherheit, weniger Broadcasts, flexible Zuordnung.', ['Arten', ['**Access-Port (untagged):** genau ein VLAN, Endgerät', '**Trunk-Port (tagged):** mehrere VLANs, 4-Byte-Tag mit **VLAN-ID** (12 Bit → 4094)', 'Kommunikation zwischen VLANs nur über **Router / L3-Switch** (Inter-VLAN-Routing)']]]],
+        ['tbl', ['Gerät', 'Schicht', 'Funktion'], [
+          ['Hub / Repeater', '1', 'verteilt an alle Ports, eine Kollisionsdomäne'],
+          ['**Switch**', '2', 'leitet per **MAC-Tabelle** gezielt weiter, je Port eigene Kollisionsdomäne'],
+          ['**Router**', '3', 'verbindet Netze, trennt Broadcast-Domänen, Routingtabelle'],
+          ['Access Point', '2', 'WLAN ↔ LAN'],
+          ['Firewall / Proxy', '3 bis 7', 'filtert bzw. vermittelt im Auftrag'],
+          ['Modem / Gateway', '1 / 7', 'Signalwandlung / Protokollumsetzung'],
+        ]],
+        ['tip', '**PoE** (802.3af/at/bt): Strom über Netzwerkkabel für AP, IP-Telefon, Kamera. **Managed Switch** = VLAN, QoS, SNMP, Port-Security.'],
+      ]},
+      {t: 'Ethernet, WLAN, Medien, Topologien', icon: 'volume', ids: ['infra-ethernet', 'infra-wlan', 'infra-medien', 'infra-topologien'], items: [
+        ['f', 't = Datenmenge / Datenrate', '1 Byte = 8 Bit; Datenrate in Bit/s (dezimal: 1 Gbit = 10^9 Bit). Beispiel 5 GB über 100 Mbit/s: 5·8·10^9 / 10^8 = **400 s**'],
+        ['pairs', [['MAC-Adresse', '48 Bit, 6 Byte hex, 24 Bit Hersteller (OUI)'], ['Frame', 'Präambel, Ziel-MAC, Quell-MAC, Typ/VLAN-Tag, Nutzdaten (MTU **1500 Byte**), **FCS**'], ['CSMA/CD', 'Kollisionserkennung (nur Halbduplex/Hub); WLAN: **CSMA/CA** (Vermeidung)']]],
+        ['tbl', ['Medium', 'Reichweite', 'Eigenschaft'], [
+          ['Twisted Pair Cat 5e / 6 / 6A / 7 / 8', '**100 m** (Cat 8: 30 m)', '1 / 1-10 / 10 / 10 / 25-40 Gbit/s; UTP, STP, S/FTP (Schirmung)'],
+          ['**Multimode-LWL** (OM3/OM4)', 'bis ca. 300-550 m', 'dicker Kern, LED/VCSEL, Gebäude'],
+          ['**Singlemode-LWL** (OS2)', 'km-Bereich', 'dünner Kern 9 µm, Laser, Campus/WAN'],
+          ['Glasfaser allgemein', '', 'abhörsicher, keine EMV-Störung, galvanische Trennung'],
+        ]],
+        ['tbl', ['WLAN (IEEE 802.11)', 'Name', 'Band', 'max. brutto'], [
+          ['802.11n', 'Wi-Fi 4', '2,4 / 5 GHz', '600 Mbit/s'], ['802.11ac', 'Wi-Fi 5', '5 GHz', '~6,9 Gbit/s'],
+          ['802.11ax', 'Wi-Fi 6/6E', '2,4 / 5 / 6 GHz', '~9,6 Gbit/s'], ['802.11be', 'Wi-Fi 7', '2,4 / 5 / 6 GHz', '~46 Gbit/s'],
+        ]],
+        ['li', ['Sicherheit: **WPA3** (SAE) bzw. WPA2-AES; **WEP/WPA unsicher**. **WPA2/3-Enterprise** = 802.1X mit RADIUS, je Benutzer eigene Anmeldung; Personal = PSK.', '2,4 GHz: größere Reichweite, nur 3 überlappungsfreie Kanäle (1, 6, 11); 5 GHz: mehr Kanäle, höhere Rate, weniger Reichweite.', 'Gäste-WLAN in eigenem **VLAN** mit Client-Isolation.']],
+        ['cards', [['Stern', ['zentraler Switch', 'Standard im LAN', 'Ausfall Zentrale = alles weg']], ['Bus', ['gemeinsame Leitung', 'Kabelbruch legt alles lahm']], ['Ring', ['Token, ggf. Doppelring', 'Glasfaser-Backbone']], ['Masche', ['redundante Wege', 'Internet/WAN, teuer']], ['Baum / erweit. Stern', ['hierarchisch: Core, Distribution, Access']]]],
+        ['warn', 'Datenrate in **Bit**, Dateigröße meist in **Byte**: Faktor 8! Bei Binärpräfix (GiB) mit 1024 rechnen, wenn verlangt.'],
+      ]},
+      {t: 'Storage, RAID, Backup', icon: 'cards', ids: ['infra-storage', 'infra-raid', 'infra-backup'], wide: true, items: [
+        ['diagram', r5],
+        ['tbl', ['Level', 'Prinzip', 'min. Platten', 'Nutzkapazität', 'Ausfälle'], [
+          ['RAID 0', 'Striping', '2', '**n · c**', '0'],
+          ['RAID 1', 'Spiegelung', '2', '**c** (50 %)', '1'],
+          ['RAID 5', 'Striping + 1 Parität (XOR)', '3', '**(n − 1) · c**', '1'],
+          ['RAID 6', 'Striping + 2 Paritäten', '4', '**(n − 2) · c**', '2'],
+          ['RAID 10', 'Spiegel, dann Striping', '4', '**n/2 · c**', '1 je Spiegelpaar'],
+        ]],
+        ['tip', 'Unterschiedlich große Platten: es zählt die **kleinste** Platte. Beispiel RAID 5 mit 4 × 4 TB = **12 TB** nutzbar. **Hot Spare** zählt nicht zur Kapazität.'],
+        ['cards', [
+          ['DAS', ['direkt am Server (SAS, USB)', 'günstig, nicht teilbar']],
+          ['NAS', ['Dateiserver im LAN', '**dateibasiert**: SMB, NFS']],
+          ['SAN', ['eigenes Speichernetz', '**blockbasiert**: Fibre Channel, iSCSI']],
+          ['Cloud / Objekt', ['S3-Objektspeicher', 'skalierbar, Kosten pro GB']],
+        ]],
+        ['tbl', ['Backup-Art', 'sichert', 'Wiederherstellung', 'Speicher'], [
+          ['**Voll**', 'alles', 'schnell: 1 Sicherung', 'hoch'],
+          ['**Differenziell**', 'Änderungen seit letzter **Vollsicherung**', 'Voll + **letzte** Diff.', 'mittel, wächst'],
+          ['**Inkrementell**', 'Änderungen seit letzter **Sicherung jeder Art**', 'Voll + **alle** Inkremente', 'gering'],
+        ]],
+        ['li', ['**3-2-1-Regel:** 3 Kopien, 2 verschiedene Medien, 1 extern/offsite (plus 1 offline/immutable gegen Ransomware).', 'Generationenprinzip **Großvater-Vater-Sohn** (Monat, Woche, Tag). Restore regelmäßig **testen**.', '**RPO** = max. tolerierter Datenverlust (Zeit seit letzter Sicherung); **RTO** = max. Wiederherstellungsdauer.']],
+        ['warn', '**RAID ist kein Backup**: schützt nicht vor Löschen, Ransomware, Brand oder Diebstahl.'],
+      ]},
+      {t: 'Verfügbarkeit und USV', icon: 'bolt', ids: ['infra-verfuegbarkeit', 'infra-usv', 'infra-elektro'], items: [
+        ['f', 'Verfügbarkeit = MTBF / (MTBF + MTTR)', 'MTBF = mittlere Betriebszeit zwischen Ausfällen, MTTR = mittlere Reparaturzeit'],
+        ['f', 'Ausfallzeit/Jahr = (1 − V) · 8760 h', '99 % = 87,6 h; 99,9 % = 8,76 h; 99,99 % = 52,6 min; 99,999 % = 5,26 min'],
+        ['f', 'seriell: V = V1 · V2   |   parallel: V = 1 − (1 − V1)(1 − V2)', 'Reihe: alle müssen laufen (schlechter); redundant: einer reicht (besser)'],
+        ['pairs', [['Offline (VFD)', 'schaltet bei Ausfall um, Umschaltzeit ms, günstig, Arbeitsplatz'], ['Line-Interactive (VI)', 'zusätzlich Spannungsregelung (AVR)'], ['Online (VFI)', 'Doppelwandler, **keine Umschaltzeit**, Server/Rechenzentrum']]],
+        ['f', 'S [VA] = P [W] / cos φ   |   t = Kapazität [Wh] / Last [W]', 'Leistungsfaktor z. B. 0,8 bis 1; Reserve 20 bis 30 % einplanen'],
+        ['f', 'P = U · I   |   U = R · I   |   W = P · t', 'Energiekosten = kW · h · Preis/kWh; Beispiel 400 W · 24 h · 365 = 3504 kWh'],
+        ['li', ['Hochverfügbarkeit: Redundanz (**N+1**), Cluster (Active/Active, Active/Passive), Failover, redundante Netzteile, zwei Stromkreise, Notstromaggregat.', 'Sicherheit am Arbeitsplatz: **VDE**-Prüfung (DGUV V3), Schutzklassen I (Schutzleiter), II (doppelt isoliert), III (Schutzkleinspannung).']],
+      ]},
+      {t: 'Virtualisierung und Server', icon: 'gear', ids: ['infra-virtualisierung', 'infra-server'], items: [
+        ['tbl', ['', 'Typ 1 (Bare Metal)', 'Typ 2 (Hosted)', 'Container'], [
+          ['läuft auf', 'direkt auf Hardware', 'auf Host-Betriebssystem', 'teilt Host-**Kernel**'],
+          ['Beispiele', 'VMware ESXi, Hyper-V, Proxmox/KVM', 'VirtualBox, VMware Workstation', 'Docker, Podman, Kubernetes'],
+          ['Einsatz', 'Rechenzentrum, Server', 'Test, Entwickler-PC', 'Microservices, CI/CD'],
+          ['Isolation / Start', 'hoch / Minuten', 'hoch / Minuten', 'geringer / Sekunden'],
+        ]],
+        ['li', ['Vorteile: bessere **Auslastung**, Konsolidierung, Snapshots, **Live-Migration**, schnelle Bereitstellung, weniger Strom/Platz. Nachteile: Single Point of Failure Host, Lizenzkosten, Overhead.', '**Cloud:** IaaS (VM), PaaS (Plattform), SaaS (Anwendung); Public, Private, Hybrid, Community.', 'Server-Bauformen: Tower, **Rack** (19 Zoll, Höheneinheit **HE/U** = 1,75 Zoll), Blade. Rollen: Datei, Druck, Web, DB, Mail, **Verzeichnisdienst** (AD/LDAP), DHCP, DNS.']],
+        ['tip', 'Snapshot ist **kein Backup** (liegt auf demselben Storage).'],
+      ]},
+      {t: 'Schutzziele und Kryptografie', icon: 'lock', ids: ['infra-cia', 'infra-krypto'], items: [
+        ['cards', [
+          ['Vertraulichkeit', ['nur Berechtigte lesen', 'Verschlüsselung, Zugriffsrechte']],
+          ['Integrität', ['unverändert, vollständig', 'Hash, Signatur, Prüfsumme']],
+          ['Verfügbarkeit', ['nutzbar, wenn gebraucht', 'RAID, USV, Backup, Cluster']],
+          ['Erweitert', ['**Authentizität**, Verbindlichkeit (Nichtabstreitbarkeit), Zurechenbarkeit']],
+        ]],
+        ['tbl', ['', 'Symmetrisch', 'Asymmetrisch'], [
+          ['Schlüssel', '**ein** gemeinsamer geheimer', '**Schlüsselpaar** öffentlich / privat'],
+          ['Tempo', 'schnell', 'langsam'],
+          ['Problem', 'sicherer **Schlüsselaustausch**, n(n−1)/2 Schlüssel', 'Echtheit des öffentlichen Schlüssels → **PKI**'],
+          ['Verfahren', '**AES** (128/256), ChaCha20; alt: DES, 3DES', '**RSA**, ECC, Diffie-Hellman (Austausch)'],
+        ]],
+        ['pairs', [['Hybrid', 'Sitzungsschlüssel asymmetrisch austauschen, Daten symmetrisch verschlüsseln (TLS, PGP)'], ['Verschlüsseln', 'mit **öffentlichem** Schlüssel des **Empfängers**'], ['Signieren', 'Hash mit eigenem **privaten** Schlüssel; prüfen mit öffentlichem Schlüssel des Absenders'], ['Hash', 'Einwegfunktion, feste Länge: **SHA-256**, SHA-3; unsicher: MD5, SHA-1'], ['Passwörter', 'mit **Salt** und langsamem Hash speichern: bcrypt, scrypt, Argon2']]],
+        ['mnemo', 'Verschlüsseln = **Empfänger** öffentlich. Signieren = **Absender** privat.'],
+      ]},
+      {t: 'PKI, TLS und VPN', icon: 'eye', ids: ['infra-pki', 'infra-tls', 'infra-vpn'], items: [
+        ['li', ['**PKI:** CA (Zertifizierungsstelle) signiert **X.509-Zertifikat** (Name, öffentl. Schlüssel, Gültigkeit, Aussteller, Signatur). RA prüft Identität. Vertrauenskette: **Root-CA → Intermediate → Server**.', 'Sperrung: **CRL** (Sperrliste) oder **OCSP** (Online-Abfrage). Let\'s Encrypt: kostenlos, automatisiert (ACME).']],
+        ['flow', ['ClientHello (Cipher Suites)', 'ServerHello + **Zertifikat**', 'Client prüft Zertifikat', 'Schlüsselaustausch (ECDHE)', 'symmetrisch verschlüsselte Daten (AES)']],
+        ['li', ['**TLS 1.2 / 1.3** verwenden, SSL und TLS 1.0/1.1 sind veraltet. HTTPS = HTTP über TLS (443). **HSTS** erzwingt HTTPS.', '**Perfect Forward Secrecy** (ECDHE): alte Sitzungen bleiben sicher, auch wenn der private Schlüssel später bekannt wird.']],
+        ['pairs', [['Site-to-Site', 'verbindet Standorte (Router/Firewall zu Router)'], ['End-to-Site', 'Remote Access: Client (Homeoffice) zu Firma'], ['IPsec', 'Schicht 3, ESP (verschlüsselt), AH (nur Integrität), IKE; Tunnel- und Transportmodus'], ['SSL/TLS-VPN', 'OpenVPN, oft über 443, firewallfreundlich'], ['WireGuard', 'schlank, modern, UDP']]],
+      ]},
+      {t: 'Firewall und Netzsicherheit', icon: 'sword', ids: ['infra-firewall', 'infra-radius'], items: [
+        ['pairs', [['Paketfilter', 'Schicht 3/4: IP, Port, Protokoll; zustandslos'], ['Stateful Inspection', 'merkt sich Verbindungen, Antwortpakete erlaubt'], ['Application Layer Gateway / Proxy', 'Schicht 7, inhaltsbasiert, z. B. Web-Proxy, **WAF**'], ['NGFW', 'plus Anwendungserkennung, IDS/IPS, TLS-Inspection'], ['IDS / IPS', 'erkennt / verhindert Angriffe (signatur- oder anomaliebasiert)']]],
+        ['li', ['Regelwerk: **Whitelist** "deny all, allow by exception", Regeln von oben nach unten, erste Übereinstimmung gilt, letzte Regel **Default Deny**.', '**DMZ:** eigene Zone zwischen zwei Firewalls (oder 3-Bein-FW) für öffentlich erreichbare Server (Web, Mail). Internes LAN nie direkt aus dem Internet erreichbar.']],
+        ['tbl', ['Nr.', 'Quelle', 'Ziel', 'Port', 'Aktion'], [['1', 'any', 'DMZ-Web', 'TCP 443', 'allow'], ['2', 'LAN', 'any', 'TCP 80, 443', 'allow'], ['3', 'any', 'any', 'any', '**deny**']]],
+        ['li', ['**RADIUS** (UDP 1812/1813): zentrale **AAA** = Authentication, Authorization, Accounting. Mit **IEEE 802.1X**: Supplicant (Client) → Authenticator (Switch/AP) → Authentication Server (RADIUS, z. B. gegen AD). Port bleibt bis zur Anmeldung gesperrt; dynamische VLAN-Zuweisung möglich.', 'Weitere: **NAC**, Port-Security (MAC-Filter), Netzsegmentierung, Zero Trust.']],
+      ]},
+      {t: 'Angriffe, Schwachstellen, Web-Sicherheit', icon: 'alert', ids: ['infra-angriffe', 'infra-schwachstellen', 'infra-websec', 'infra-webauth'], wide: true, items: [
+        ['tbl', ['Angriff', 'Beschreibung', 'Gegenmaßnahme'], [
+          ['**Phishing / Social Engineering**', 'Täuschung per Mail, Telefon, gefälschte Seite', 'Schulung, MFA, Mailfilter'],
+          ['**Ransomware / Malware**', 'Verschlüsselung, Erpressung; Virus, Wurm, Trojaner', 'Patches, Offline-Backup, Virenscanner, Least Privilege'],
+          ['**DoS / DDoS**', 'Überlastung (SYN-Flood, Botnetz)', 'Rate Limiting, CDN/Scrubbing, Redundanz'],
+          ['**Man-in-the-Middle**', 'Mitlesen/Manipulieren (ARP-Spoofing, rogue AP)', 'TLS, Zertifikatsprüfung, VPN, 802.1X'],
+          ['**SQL-Injection**', 'Eingabe wird als SQL ausgeführt: \' OR 1=1 --', '**Prepared Statements**, Eingabevalidierung, minimale DB-Rechte'],
+          ['**XSS**', 'eingeschleustes JavaScript im Browser anderer Nutzer', '**Ausgabe kodieren/escapen**, Content Security Policy, HttpOnly-Cookies'],
+          ['**CSRF**', 'fremde Seite löst Aktion mit Session des Opfers aus', 'CSRF-Token, SameSite-Cookies'],
+          ['**Brute Force / Credential Stuffing**', 'Passwörter durchprobieren / geleakte Daten', 'Sperre/Verzögerung, MFA, Captcha'],
+          ['Zero-Day / Buffer Overflow', 'unbekannte bzw. Speicherfehler-Lücke', 'Patchmanagement, ASLR, Segmentierung'],
+        ]],
+        ['li', ['Schwachstellen: ungepatchte Software, **Standardpasswörter**, offene Ports, Fehlkonfiguration, fehlende Verschlüsselung. Bewertung mit **CVSS** (0 bis 10), Kennung **CVE**. Referenz: **OWASP Top 10**.', 'Begriffe: **Schwachstelle** + **Bedrohung** → **Risiko** = Eintrittswahrscheinlichkeit × Schadenshöhe.', ['Web-Authentifizierung', ['**MFA/2FA**: Wissen + Besitz + Sein (Passwort, TOTP-App/Token, Fingerabdruck)', 'Session-Cookie (Secure, HttpOnly, SameSite) vs. **Token** (JWT, zustandslos, signiert)', '**OAuth 2.0** = Autorisierung (Zugriff delegieren), **OpenID Connect** = Authentifizierung darauf; **SSO** z. B. per SAML', 'Passkeys / FIDO2: Public-Key-Anmeldung ohne Passwort, phishingresistent']]]],
+        ['warn', 'Hashing ≠ Verschlüsselung (nicht umkehrbar). Authentifizierung = **wer bist du**, Autorisierung = **was darfst du**.'],
+      ]},
+      {t: 'ISMS, IT-Grundschutz, Datenschutz', icon: 'clipboard', ids: ['infra-isms', 'infra-grundschutz'], items: [
+        ['li', ['**ISMS** (Informationssicherheits-Managementsystem) nach **ISO/IEC 27001**: Regeln, Verantwortliche (ISB), Risikomanagement, kontinuierliche Verbesserung nach **PDCA**.', '**BSI IT-Grundschutz** (Standards 200-1 bis 200-4, **IT-Grundschutz-Kompendium** mit Bausteinen); Zertifizierung ISO 27001 auf Basis IT-Grundschutz möglich.']],
+        ['flow', ['Plan', 'Do', 'Check', 'Act']],
+        ['flow', ['Strukturanalyse', 'Schutzbedarfsfeststellung', 'Modellierung (Bausteine)', 'IT-Grundschutz-Check', 'Risikoanalyse', 'Umsetzung']],
+        ['pairs', [['Schutzbedarf', '**normal**, **hoch**, **sehr hoch** je Schutzziel'], ['Maximumprinzip', 'höchster Schutzbedarf der abhängigen Anwendungen bestimmt den des Systems'], ['Kumulationseffekt', 'viele kleine Schäden zusammen → höherer Bedarf'], ['Verteilungseffekt', 'Redundanz → Bedarf eines Einzelsystems sinkt'], ['Absicherung', 'Basis-, Standard-, Kern-Absicherung']]],
+        ['li', ['**TOM** nach DSGVO Art. 32: Zutritts-, Zugangs-, Zugriffs-, Weitergabe-, Eingabe-, Verfügbarkeitskontrolle, Trennungsgebot, Pseudonymisierung, Verschlüsselung.', 'Risikobehandlung: **vermeiden, vermindern, übertragen** (Versicherung), **akzeptieren**.', 'Weitere: **NIS2**, BCM (BSI 200-4), Notfallhandbuch, Least Privilege, Need-to-know.']],
+      ]},
+      {t: 'VoIP, MQTT, Industrie 4.0, Blockchain', icon: 'flask', ids: ['infra-voip', 'infra-mqtt', 'infra-industrie40', 'infra-blockchain'], items: [
+        ['pairs', [['VoIP', '**SIP** (Signalisierung, 5060/5061) + **RTP** (Sprache, UDP), sicher: SRTP/SIPS; Codecs G.711, G.722, Opus'], ['QoS', 'Sprache priorisieren (DSCP/802.1p), eigenes Voice-VLAN; Latenz < 150 ms, Jitter, Paketverlust gering'], ['Vorteile', 'eine Infrastruktur, günstig, CTI, Standortunabhängigkeit; Nachteil: Strom (PoE/USV), Notruf']]],
+        ['flow', ['Publisher (Sensor)', 'Broker', 'Subscriber (App)']],
+        ['li', ['**MQTT**: schlankes **Publish/Subscribe** über TCP (1883, TLS 8883), **Topics** hierarchisch (halle1/maschine3/temp, Wildcards **+** eine Ebene, **#** mehrere). **QoS 0** höchstens einmal, **1** mindestens einmal, **2** genau einmal. Retained Message, Last Will.', '**Industrie 4.0 / IoT / IIoT**: vernetzte Produktion, cyber-physische Systeme, **digitaler Zwilling**, Predictive Maintenance, Edge Computing, OPC UA. Risiko: alte, ungepatchte OT-Systeme → Netztrennung IT/OT.', '**Blockchain**: verteiltes Register; Blöcke enthalten **Hash des Vorgängers** → Manipulation fällt auf. Konsens: **Proof of Work** / Proof of Stake. Eigenschaften: dezentral, unveränderlich, transparent; Nachteil: Energie, Skalierung, DSGVO-Löschung. Smart Contracts.']],
+      ]},
+      {t: 'Quellen', icon: 'book', items: [
+        ['ext', [
+          ['BSI IT-Grundschutz-Kompendium', 'https://www.bsi.bund.de/DE/Themen/Unternehmen-und-Organisationen/Standards-und-Zertifizierung/IT-Grundschutz/IT-Grundschutz-Kompendium/it-grundschutz-kompendium_node.html'],
+          ['BSI-Standards 200-x', 'https://www.bsi.bund.de/DE/Themen/Unternehmen-und-Organisationen/Standards-und-Zertifizierung/IT-Grundschutz/BSI-Standards/bsi-standards_node.html'],
+          ['RFC 1918 (private IPv4)', 'https://www.rfc-editor.org/rfc/rfc1918'],
+          ['RFC 4291 (IPv6-Adressierung)', 'https://www.rfc-editor.org/rfc/rfc4291'],
+          ['RFC 8446 (TLS 1.3)', 'https://www.rfc-editor.org/rfc/rfc8446'],
+          ['IANA Portnummern', 'https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml'],
+          ['OWASP Top 10', 'https://owasp.org/www-project-top-ten/'],
+          ['MQTT-Spezifikation', 'https://mqtt.org/mqtt-specification/'],
+        ]],
+      ]},
+    ],
+  });
+})();
+;
+// content/spick/eua.js
+// Spickzettel für die Prüfung "Entwicklung und Umsetzung von Algorithmen" (AP2 FiAE).
+AP2.spick('eua', {
+  exam: 'Prüfung: Entwicklung und Umsetzung von Algorithmen',
+  t: 'Spickzettel Algorithmen und SQL',
+  s: 'Pseudocode, Struktogramm, OOP, Datenstrukturen, Sortieren/Suchen, Komplexität, Testen, Web und SQL auf einer Seite',
+  meta: [['90 Min', 'Dauer'], ['100', 'Punkte'], ['4 × 25', 'Punkte je Aufgabe'], ['50 %', 'zum Bestehen']],
+  top: [
+    ['flow', ['Aufgabe lesen', 'Ein-/Ausgabe klären', 'Randfälle (leer, 0, null)', 'Pseudocode/SQL', 'Schreibtischtest']],
+    ['tip', 'Die Sprache ist frei (Pseudocode, Java, Python, C#), aber **konsistent** bleiben. Bewertet wird die **Logik**, nicht die Syntax. Variablen sinnvoll benennen, Schleifengrenzen prüfen (**Off-by-one**!).'],
+  ],
+  sections: [
+    {t: 'Paradigmen und Datentypen', icon: 'puzzle', ids: ['eua-paradigmen', 'eua-datentypen'], items: [
+      ['pairs', [
+        ['Imperativ / prozedural', 'Folge von Anweisungen, Zustand ändert sich (C, Pascal)'],
+        ['Objektorientiert', 'Objekte = Daten + Verhalten (Java, C#)'],
+        ['Funktional', 'reine Funktionen, keine Seiteneffekte, Unveränderlichkeit (Haskell, `map/filter/reduce`)'],
+        ['Deklarativ', 'WAS statt WIE (SQL, HTML, Prolog)'],
+        ['Ereignisgesteuert', 'Reaktion auf Events/Handler (GUI, JS)'],
+      ]],
+      ['tbl', ['Typ', 'Größe', 'Wertebereich / Beispiel'], [
+        ['boolean', '1 Bit (log.)', 'true / false'],
+        ['byte', '8 Bit', '-128 … 127'],
+        ['short', '16 Bit', '-32 768 … 32 767'],
+        ['int', '32 Bit', 'ca. ±2,1 Mrd. (-2^31 … 2^31-1)'],
+        ['long', '64 Bit', '±9,2·10^18'],
+        ['float / double', '32 / 64 Bit', 'Gleitkomma, ca. 7 / 15 Stellen'],
+        ['char', '16 Bit (Java)', `'A' (Unicode)`],
+        ['String', 'Referenztyp', '"Hallo" (unveränderlich in Java)'],
+      ]],
+      ['li', ['**Primitive** Typen (Wert) vs. **Referenztypen** (Adresse auf Objekt)', '**Statische** Typisierung (Java, C#) vs. **dynamische** (Python, JS)', '**Casting**: implizit (int → double), explizit `(int) 3.9` = 3 (abschneiden)', '**Integer-Division**: `7 / 2 = 3`, Modulo `7 % 2 = 1`']],
+      ['warn', 'Gleitkomma ist ungenau (`0.1 + 0.2 ≠ 0.3`) – für **Geldbeträge** Decimal/BigDecimal oder Cent als int.'],
+    ]},
+    {t: 'Kontrollstrukturen und Funktionen', icon: 'route', ids: ['eua-kontroll', 'eua-funktionen'], items: [
+      ['cards', [
+        ['Sequenz', ['Anweisungen nacheinander']],
+        ['Verzweigung', ['if / else', 'switch / case']],
+        ['Kopfgesteuert', ['while, for', 'evtl. 0 Durchläufe']],
+        ['Fußgesteuert', ['do … while / repeat until', 'mind. 1 Durchlauf']],
+      ]],
+      ['code', 'pseudo', `FUNKTION max(a: Ganzzahl, b: Ganzzahl): Ganzzahl
+  WENN a > b DANN
+    RÜCKGABE a
+  SONST
+    RÜCKGABE b
+  ENDE WENN
+ENDE FUNKTION
+
+FÜR i VON 0 BIS n-1 SCHRITT 1
+  ...
+ENDE FÜR`],
+      ['pairs', [
+        ['Signatur', 'Name + Parameterliste (+ Rückgabetyp)'],
+        ['Call by Value', 'Kopie wird übergeben, Original bleibt'],
+        ['Call by Reference', 'Referenz wird übergeben, Änderungen wirken außen'],
+        ['Überladen', 'gleicher Name, andere Parameterliste'],
+        ['Gültigkeit', 'lokale vs. globale Variablen (Scope)'],
+        ['break / continue', 'Schleife verlassen / nächster Durchlauf'],
+      ]],
+    ]},
+    {t: 'Rekursion', icon: 'repeat', ids: ['eua-rekursion'], items: [
+      ['li', ['Funktion ruft **sich selbst** auf', 'Braucht **Abbruchbedingung** (Basisfall), sonst **StackOverflow**', 'Jeder Aufruf belegt einen **Stackframe** → Speicher O(n)', 'Jede Rekursion ist auch **iterativ** lösbar']],
+      ['code', 'pseudo', `FUNKTION fak(n)
+  WENN n <= 1 DANN RÜCKGABE 1      // Basisfall
+  RÜCKGABE n * fak(n - 1)           // Rekursionsschritt
+ENDE FUNKTION
+
+FUNKTION fib(n)
+  WENN n < 2 DANN RÜCKGABE n
+  RÜCKGABE fib(n-1) + fib(n-2)      // O(2^n) ohne Memoization`],
+      ['tip', 'Ablauf als **Aufrufbaum** bzw. Tabelle darstellen: fak(4) = 4·fak(3) = 4·3·fak(2) = 4·3·2·1 = 24.'],
+    ]},
+    {t: 'Pseudocode, PAP und Struktogramm', icon: 'pen', ids: ['eua-pseudocode', 'eua-pap', 'eua-algoexam'], items: [
+      ['tbl', ['Element', 'PAP (DIN 66001)', 'Struktogramm (Nassi-Shneiderman, DIN 66261)'], [
+        ['Start/Ende', 'Oval (Terminator)', 'Rahmen / Name oben'],
+        ['Anweisung', 'Rechteck', 'Rechteck'],
+        ['Ein-/Ausgabe', 'Parallelogramm', 'Rechteck mit „Eingabe/Ausgabe“'],
+        ['Verzweigung', 'Raute, Ausgänge ja/nein', 'Dreieck mit wahr | falsch'],
+        ['Schleife', 'Rücksprungpfeil', 'L-Form (kopf- oder fußgesteuert)'],
+        ['Unterprogramm', 'Rechteck mit Doppelrand', 'Rechteck mit Doppelrand'],
+      ]],
+      ['li', ['Struktogramm: **kein goto**, nur strukturierte Blöcke, von oben nach unten', 'PAP: Pfeile, Verbindungsstellen (Kreise) erlaubt', 'Pseudocode: Schlüsselwörter groß, Einrückung, **Datentypen** bei Parametern angeben']],
+      ['tip', 'Typische Aufgabe: gegebenen Algorithmus **ergänzen** oder **Schreibtischtest** (Trace-Tabelle mit allen Variablen pro Durchlauf).'],
+    ]},
+    {t: 'OOP: Klassen, Säulen, Interfaces', icon: 'cards', ids: ['eua-oop', 'eua-saeulen', 'eua-konstruktor', 'eua-interface'], items: [
+      ['cards', [
+        ['Kapselung', ['Attribute private', 'Zugriff via Getter/Setter']],
+        ['Vererbung', ['extends', '„ist ein“-Beziehung']],
+        ['Polymorphie', ['Überschreiben (@Override)', 'dyn. Bindung']],
+        ['Abstraktion', ['abstract class', 'Wesentliches zeigen']],
+      ]],
+      ['mnemo', '**A PIE**: Abstraction, Polymorphism, Inheritance, Encapsulation.'],
+      ['code', 'java', `public class Konto {
+    private double saldo;                 // Kapselung
+    public Konto(double start) { this.saldo = start; }   // Konstruktor
+    public double getSaldo() { return saldo; }
+    public void einzahlen(double b) {
+        if (b <= 0) throw new IllegalArgumentException("Betrag > 0");
+        saldo += b;
+    }
+}
+public class Sparkonto extends Konto implements Verzinsbar {
+    public Sparkonto(double s) { super(s); }
+    @Override public double zinsen() { return getSaldo() * 0.02; }
+}`],
+      ['pairs', [
+        ['Konstruktor', 'gleicher Name wie Klasse, kein Rückgabetyp; Standard-, parametrisierter, Kopierkonstruktor; `super(...)` als erste Anweisung'],
+        ['Interface', 'nur Methodensignaturen (Vertrag), Mehrfach-Implementierung möglich, keine Instanzen'],
+        ['Abstrakte Klasse', 'kann Attribute + implementierte Methoden haben, nur Einfachvererbung'],
+        ['static', 'gehört zur Klasse, nicht zum Objekt'],
+        ['Überschreiben vs. Überladen', 'gleiche Signatur in Unterklasse vs. anderer Parameterliste'],
+      ]],
+    ]},
+    {t: 'UML → Code', icon: 'grid', ids: ['eua-umlcode'], items: [
+      ['tbl', ['UML', 'Code'], [
+        ['- / + / # / ~', 'private / public / protected / package'],
+        ['unterstrichen', 'static'],
+        ['kursiv / «abstract»', 'abstract'],
+        ['Pfeil mit leerem Dreieck', 'extends (Vererbung)'],
+        ['gestrichelt + leeres Dreieck', 'implements (Interface)'],
+        ['Assoziation 1 → *', 'Attribut `List<B> bs`'],
+        ['Aggregation ◇', 'Teil existiert unabhängig (Referenz übergeben)'],
+        ['Komposition ◆', 'Teil wird im Ganzen erzeugt, stirbt mit'],
+      ]],
+      ['f', '+ berechne(menge: int): double', '→ public double berechne(int menge)'],
+      ['tip', 'Multiplizität `0..*` bzw. `1..*` → **Liste/Array**, `0..1` → Attribut darf **null** sein.'],
+    ]},
+    {t: 'Datenstrukturen', icon: 'network', ids: ['eua-listen', 'eua-stackqueue', 'eua-baeume', 'eua-hash'], wide: true, items: [
+      ['tbl', ['Struktur', 'Prinzip', 'Zugriff', 'Einfügen', 'Suchen'], [
+        ['Array', 'feste Größe, Index', 'O(1)', 'O(n)', 'O(n) / O(log n) sortiert'],
+        ['Verkettete Liste', 'Knoten mit next (doppelt: prev)', 'O(n)', 'O(1) am Kopf', 'O(n)'],
+        ['Stack (Stapel)', '**LIFO**: push, pop, peek', 'O(1) oben', 'O(1)', 'O(n)'],
+        ['Queue (Schlange)', '**FIFO**: enqueue, dequeue', 'O(1) vorn', 'O(1)', 'O(n)'],
+        ['Binärer Suchbaum', 'links < Knoten < rechts', '–', 'O(log n), entartet O(n)', 'O(log n), entartet O(n)'],
+        ['Hashtabelle', 'Schlüssel → hash(k) mod m', 'O(1) Ø', 'O(1) Ø', 'O(1) Ø, worst O(n)'],
+      ]],
+      ['row', [
+        ['diagram', AP2.dg.tree({t: '8', c: [{t: '3', c: [{t: '1'}, {t: '6'}]}, {t: '10', c: [{e: 1}, {t: '14'}]}]}, {gx: 50, gy: 56, w: 34, h: 34, k: 'circle', cap: 'BST: links kleiner, rechts größer'})],
+        ['pairs', [
+          ['Preorder', 'W-L-R: 8 3 1 6 10 14'],
+          ['Inorder', 'L-W-R: 1 3 6 8 10 14 (sortiert!)'],
+          ['Postorder', 'L-R-W: 1 6 3 14 10 8'],
+          ['Levelorder', 'ebenenweise (BFS mit Queue)'],
+        ]],
+      ]],
+      ['li', ['**Kollision** bei Hash: Verkettung (Liste pro Bucket) oder offene Adressierung (lineares Sondieren)', 'Stack: Rekursion, Undo, Klammerprüfung; Queue: Druckaufträge, BFS', 'Baumbegriffe: Wurzel, Blatt, Höhe, Grad, ausgeglichen (AVL)']],
+    ]},
+    {t: 'Sortieren', icon: 'chart', ids: ['eua-sortieren'], wide: true, items: [
+      ['tbl', ['Verfahren', 'Idee', 'Best', 'Average', 'Worst', 'Speicher', 'Stabil'], [
+        ['Bubble Sort', 'Nachbarn tauschen, Größtes „blubbert“ nach hinten', 'O(n)', 'O(n²)', 'O(n²)', 'O(1)', 'ja'],
+        ['Selection Sort', 'Minimum suchen, an Position i tauschen', 'O(n²)', 'O(n²)', 'O(n²)', 'O(1)', 'nein'],
+        ['Insertion Sort', 'Element in sortierten Teil einfügen', 'O(n)', 'O(n²)', 'O(n²)', 'O(1)', 'ja'],
+        ['Quick Sort', 'Pivot, partitionieren, rekursiv', 'O(n log n)', 'O(n log n)', 'O(n²)', 'O(log n)', 'nein'],
+        ['Merge Sort', 'halbieren, sortieren, mischen', 'O(n log n)', 'O(n log n)', 'O(n log n)', 'O(n)', 'ja'],
+      ]],
+      ['row', [
+        ['code', 'pseudo', `// Bubble Sort
+FÜR i VON 0 BIS n-2
+  getauscht = falsch
+  FÜR j VON 0 BIS n-2-i
+    WENN a[j] > a[j+1] DANN
+      tausche(a[j], a[j+1]); getauscht = wahr
+  WENN NICHT getauscht DANN ABBRUCH`],
+        ['code', 'pseudo', `// Selection Sort
+FÜR i VON 0 BIS n-2
+  min = i
+  FÜR j VON i+1 BIS n-1
+    WENN a[j] < a[min] DANN min = j
+  tausche(a[i], a[min])`],
+        ['code', 'pseudo', `// Insertion Sort
+FÜR i VON 1 BIS n-1
+  key = a[i]; j = i - 1
+  SOLANGE j >= 0 UND a[j] > key
+    a[j+1] = a[j]; j = j - 1
+  a[j+1] = key`],
+      ]],
+      ['li', ['**Stabil** = gleiche Schlüssel behalten ihre Reihenfolge', '**Quicksort** worst case bei schlechtem Pivot (bereits sortiert + erstes Element)', '**Merge Sort**: Teile-und-herrsche, garantiert n log n, braucht Hilfsarray']],
+    ]},
+    {t: 'Suchen und Prüfziffer', icon: 'search', ids: ['eua-suchen', 'eua-pruefziffer'], items: [
+      ['code', 'pseudo', `// Binäre Suche (Array MUSS sortiert sein)
+links = 0; rechts = n - 1
+SOLANGE links <= rechts
+  mitte = (links + rechts) DIV 2
+  WENN a[mitte] == x DANN RÜCKGABE mitte
+  SONST WENN a[mitte] < x DANN links = mitte + 1
+  SONST rechts = mitte - 1
+RÜCKGABE -1`],
+      ['pairs', [['Lineare Suche', 'O(n), unsortiert möglich'], ['Binäre Suche', 'O(log n), 1 000 000 Elemente → max. 20 Schritte'], ['Hash-Suche', 'O(1) im Mittel']]],
+      ['sub', 'Prüfziffer (z. B. EAN-13)'],
+      ['f', 'Summe = Σ Ziffer · Gewicht (1,3,1,3,…); PZ = (10 − Summe mod 10) mod 10', 'Erkennt Tippfehler und viele Zahlendreher. ISBN-10: Gewichte 10…1, mod 11 (X = 10). IBAN: mod 97.'],
+      ['tip', 'Ziffern einzeln holen: `z = zahl mod 10; zahl = zahl DIV 10` oder String Zeichen für Zeichen.'],
+    ]},
+    {t: 'Komplexität (O-Notation)', icon: 'clock', ids: ['eua-onotation'], items: [
+      ['tbl', ['Klasse', 'Name', 'Beispiel'], [
+        ['O(1)', 'konstant', 'Array-Zugriff, Hash'],
+        ['O(log n)', 'logarithmisch', 'Binäre Suche'],
+        ['O(n)', 'linear', 'Lineare Suche, eine Schleife'],
+        ['O(n log n)', 'linear-logarithmisch', 'Merge-, Quick Sort'],
+        ['O(n²)', 'quadratisch', 'zwei verschachtelte Schleifen, Bubble Sort'],
+        ['O(2^n)', 'exponentiell', 'naive Fibonacci-Rekursion'],
+      ]],
+      ['li', ['Nur **dominanter Term**, Konstanten weg: 3n² + 5n + 2 → O(n²)', 'Schleifen nacheinander → **addieren**, verschachtelt → **multiplizieren**', 'Best / Average / **Worst Case** unterscheiden; auch **Speicherkomplexität**']],
+    ]},
+    {t: 'Design Patterns', icon: 'bulb', ids: ['eua-patterns'], items: [
+      ['pairs', [
+        ['Singleton (Erzeugung)', 'genau eine Instanz: privater Konstruktor + `static getInstance()`'],
+        ['Factory (Erzeugung)', 'Objekterzeugung in eigene Methode/Klasse auslagern'],
+        ['Builder (Erzeugung)', 'komplexe Objekte schrittweise bauen'],
+        ['Adapter (Struktur)', 'inkompatible Schnittstelle anpassen'],
+        ['Decorator (Struktur)', 'Verhalten zur Laufzeit erweitern'],
+        ['Observer (Verhalten)', 'Subjekt benachrichtigt angemeldete Beobachter'],
+        ['Strategy (Verhalten)', 'austauschbare Algorithmen hinter Interface'],
+        ['MVC (Architektur)', 'Model (Daten), View (Anzeige), Controller (Steuerung)'],
+      ]],
+      ['code', 'java', `public class Logger {
+    private static Logger instanz;
+    private Logger() {}
+    public static Logger getInstance() {
+        if (instanz == null) instanz = new Logger();
+        return instanz;
+    }
+}`],
+    ]},
+    {t: 'Exceptions und Debugging', icon: 'alert', ids: ['eua-exceptions', 'eua-debugging'], items: [
+      ['code', 'java', `try {
+    int z = Integer.parseInt(eingabe);
+} catch (NumberFormatException e) {
+    System.out.println("Keine Zahl: " + e.getMessage());
+} finally {
+    datei.close();          // wird immer ausgeführt
+}`],
+      ['li', ['**Checked** (muss behandelt/deklariert werden, `throws IOException`) vs. **Unchecked** (RuntimeException, z. B. NullPointer, ArrayIndexOutOfBounds)', 'Eigene Exception: `class XyException extends Exception`', 'Spezifische catch-Blöcke **vor** allgemeinen']],
+      ['pairs', [
+        ['Syntaxfehler', 'Compiler meldet (fehlendes ;)'],
+        ['Laufzeitfehler', 'Absturz, z. B. Division durch 0'],
+        ['Logischer Fehler', 'falsches Ergebnis, schwer zu finden'],
+        ['Debugger', '**Breakpoint**, Step over / into / out, Watch, Call Stack'],
+        ['Weitere', 'Logging, Schreibtischtest, Rubber Duck, Assertions'],
+      ]],
+    ]},
+    {t: 'Testen', icon: 'flask', ids: ['eua-testfaelle', 'eua-unittest'], items: [
+      ['pairs', [
+        ['Black-Box', 'gegen Spezifikation, ohne Code: **Äquivalenzklassen**, **Grenzwerte**'],
+        ['White-Box', 'mit Code: Anweisungs- (C0), Zweig- (C1), Pfadüberdeckung'],
+        ['Teststufen', 'Unit → Integration → System → Abnahme'],
+        ['Regression', 'nach Änderung alte Tests erneut ausführen'],
+        ['TDD', 'Red → Green → Refactor'],
+      ]],
+      ['tbl', ['Eingabe Alter (gültig 18–65)', 'Klasse', 'Erwartet'], [['17', 'ungültig (Grenze)', 'Fehler'], ['18', 'gültig (Grenze)', 'OK'], ['40', 'gültig', 'OK'], ['65', 'gültig (Grenze)', 'OK'], ['66', 'ungültig (Grenze)', 'Fehler'], ['"abc"', 'ungültig (Typ)', 'Fehler']]],
+      ['code', 'java', `@Test
+void einzahlenErhoehtSaldo() {
+    Konto k = new Konto(100);          // Arrange
+    k.einzahlen(50);                   // Act
+    assertEquals(150, k.getSaldo(), 0.001);   // Assert
+}`],
+      ['mnemo', 'Unittest = **AAA**: Arrange, Act, Assert. Testfall = Vorbedingung + Eingabe + **erwartetes Ergebnis**.'],
+    ]},
+    {t: 'Dateien und Formate', icon: 'book', ids: ['eua-dateien', 'eua-formate'], items: [
+      ['row', [
+        ['code', 'json', `{"id": 1, "name": "Meier",
+ "aktiv": true,
+ "tags": ["kunde", "vip"]}`],
+        ['code', 'html', `<kunde id="1">
+  <name>Meier</name>
+</kunde>`],
+      ]],
+      ['pairs', [
+        ['JSON', 'Objekte {}, Arrays [], Strings in "…", leichtgewichtig, REST-Standard'],
+        ['XML', 'Tags, Attribute, wohlgeformt, prüfbar per **XSD/DTD**, XPath'],
+        ['CSV', 'Zeilen + Trennzeichen (; oder ,), erste Zeile Kopf, keine Hierarchie'],
+        ['YAML', 'Einrückung, Konfigurationsdateien'],
+      ]],
+      ['code', 'pseudo', `datei = ÖFFNE("kunden.csv", lesen)
+SOLANGE NICHT datei.EOF
+  zeile = datei.LIESZEILE()
+  felder = TEILE(zeile, ";")
+ENDE SOLANGE
+SCHLIESSE(datei)`],
+    ]},
+    {t: 'Web: HTML, CSS, JS, REST', icon: 'code', ids: ['eua-html', 'eua-css', 'eua-js', 'eua-webapi'], items: [
+      ['li', ['**HTML** = Struktur (semantisch: header, nav, main, form, input, table)', '**CSS** = Gestaltung: Selektoren `#id`, `.klasse`, `tag`; Box-Modell (content, padding, border, margin); Spezifität id > class > tag', '**JS** = Verhalten: DOM (`document.querySelector`), Events (`addEventListener`), `fetch` asynchron (Promise, async/await)']],
+      ['tbl', ['HTTP', 'CRUD', 'idempotent', 'Beispiel'], [['GET', 'Read', 'ja', 'GET /kunden/7'], ['POST', 'Create', 'nein', 'POST /kunden'], ['PUT', 'Update (ganz)', 'ja', 'PUT /kunden/7'], ['PATCH', 'Update (teilw.)', 'nein', 'PATCH /kunden/7'], ['DELETE', 'Delete', 'ja', 'DELETE /kunden/7']]],
+      ['pairs', [['2xx', '200 OK, 201 Created, 204 No Content'], ['4xx', '400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found'], ['5xx', '500 Internal Server Error, 503 Service Unavailable']]],
+      ['li', ['REST: **zustandslos**, Ressourcen per URI, einheitliche Schnittstelle, meist JSON', 'Auth über Token (API-Key, JWT, OAuth2); immer HTTPS']],
+      ['ext', [['MDN Web Docs', 'https://developer.mozilla.org/de/'], ['HTTP-Statuscodes (MDN)', 'https://developer.mozilla.org/de/docs/Web/HTTP/Status']]],
+    ]},
+    {t: 'SQL: DDL, DML, DCL', icon: 'grid', ids: ['eua-sqler', 'eua-sqldml', 'eua-sqlviews'], wide: true, items: [
+      ['row', [
+        ['code', 'sql', `CREATE TABLE kunde (
+  kunde_id INT PRIMARY KEY AUTO_INCREMENT,
+  name     VARCHAR(50) NOT NULL,
+  email    VARCHAR(100) UNIQUE,
+  ort_id   INT,
+  FOREIGN KEY (ort_id) REFERENCES ort(ort_id)
+);
+ALTER TABLE kunde ADD geburtstag DATE;
+DROP TABLE kunde;`],
+        ['code', 'sql', `INSERT INTO kunde (name, ort_id) VALUES ('Meier', 3);
+UPDATE kunde SET ort_id = 4 WHERE kunde_id = 7;
+DELETE FROM kunde WHERE kunde_id = 7;
+
+CREATE VIEW v_kunden_ort AS
+  SELECT k.name, o.ort FROM kunde k
+  JOIN ort o ON k.ort_id = o.ort_id;
+
+GRANT SELECT, INSERT ON kunde TO azubi;
+REVOKE INSERT ON kunde FROM azubi;`],
+      ]],
+      ['tbl', ['Gruppe', 'Befehle'], [['DDL (Definition)', 'CREATE, ALTER, DROP, TRUNCATE'], ['DML (Manipulation)', 'INSERT, UPDATE, DELETE (+ SELECT als DQL)'], ['DCL (Control)', 'GRANT, REVOKE'], ['TCL (Transaktion)', 'BEGIN/START TRANSACTION, COMMIT, ROLLBACK, SAVEPOINT']]],
+      ['li', ['ER → Tabellen: Entität = Tabelle, 1:n → **Fremdschlüssel** auf n-Seite, n:m → **Zwischentabelle** mit zusammengesetztem PK', '**Normalformen**: 1NF atomar, 2NF voll vom ganzen Schlüssel abhängig, 3NF keine transitiven Abhängigkeiten', '**View** = gespeicherte Abfrage (virtuelle Tabelle): Vereinfachung, Zugriffsschutz']],
+      ['warn', '**UPDATE/DELETE ohne WHERE** betrifft alle Zeilen! Referentielle Integrität: ON DELETE CASCADE / RESTRICT / SET NULL.'],
+    ]},
+    {t: 'SQL: SELECT, JOIN, GROUP BY', icon: 'search', ids: ['eua-sqlselect', 'eua-sqljoin', 'eua-sqlgroup', 'eua-sqlexam'], wide: true, items: [
+      ['row', [
+        ['code', 'sql', `SELECT   [DISTINCT] spalten, AGG(x) AS alias
+FROM     tabelle t
+[INNER|LEFT] JOIN t2 ON t.id = t2.t_id
+WHERE    bedingung          -- vor Gruppierung
+GROUP BY spalten
+HAVING   AGG(x) > wert      -- nach Gruppierung
+ORDER BY spalte [ASC|DESC]
+LIMIT    n;`],
+        ['code', 'sql', `-- Umsatz je Kunde über 1000 €, absteigend
+SELECT k.name, SUM(b.betrag) AS umsatz
+FROM kunde k
+JOIN bestellung b ON b.kunde_id = k.kunde_id
+WHERE b.datum >= '2025-01-01'
+GROUP BY k.kunde_id, k.name
+HAVING SUM(b.betrag) > 1000
+ORDER BY umsatz DESC;
+
+-- Kunden ohne Bestellung
+SELECT k.name FROM kunde k
+LEFT JOIN bestellung b ON b.kunde_id = k.kunde_id
+WHERE b.bestell_id IS NULL;`],
+      ]],
+      ['mnemo', 'Reihenfolge: **S**ELECT **F**ROM **W**HERE **G**ROUP **H**AVING **O**RDER – „**S**ie **F**ahren **W**ohl **G**erne **H**ohe **O**ldtimer“. Ausführung: FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY.'],
+      ['pairs', [
+        ['INNER JOIN', 'nur Datensätze mit Partner in beiden Tabellen'],
+        ['LEFT JOIN', 'alle links, rechts NULL wenn kein Partner'],
+        ['RIGHT / FULL', 'alle rechts / alle beidseitig'],
+        ['CROSS JOIN', 'kartesisches Produkt (n · m Zeilen)'],
+        ['Self Join', 'Tabelle mit sich selbst (Mitarbeiter → Vorgesetzter)'],
+        ['Aggregat', 'COUNT, SUM, AVG, MIN, MAX; `COUNT(*)` zählt auch NULL-Zeilen'],
+        ['Operatoren', 'LIKE \'M%\' / \'_\', IN (…), BETWEEN a AND b, IS NULL'],
+        ['Unterabfrage', '`WHERE preis > (SELECT AVG(preis) FROM artikel)`, EXISTS, IN'],
+      ]],
+      ['warn', 'Jede Spalte im SELECT ohne Aggregat muss im **GROUP BY** stehen. Auf NULL immer mit **IS NULL** prüfen, nie `= NULL`. Aggregat-Bedingungen gehören in **HAVING**, nicht WHERE.'],
+      ['ext', [['SQL-Tutorial (W3Schools)', 'https://www.w3schools.com/sql/'], ['PostgreSQL SELECT-Doku', 'https://www.postgresql.org/docs/current/sql-select.html']]],
+    ]},
+    {t: 'Transaktionen und ACID', icon: 'lock', ids: ['eua-transaktionen'], items: [
+      ['code', 'sql', `START TRANSACTION;
+UPDATE konto SET saldo = saldo - 100 WHERE id = 1;
+UPDATE konto SET saldo = saldo + 100 WHERE id = 2;
+COMMIT;   -- bei Fehler: ROLLBACK;`],
+      ['pairs', [
+        ['Atomicity', 'alles oder nichts'],
+        ['Consistency', 'von konsistentem zu konsistentem Zustand'],
+        ['Isolation', 'parallele Transaktionen beeinflussen sich nicht'],
+        ['Durability', 'nach COMMIT dauerhaft gespeichert'],
+      ]],
+      ['li', ['Probleme ohne Isolation: **Lost Update**, Dirty Read, Non-Repeatable Read, Phantom', 'Lösung: **Sperren** (Locks), Isolationslevel; Gefahr: **Deadlock**']],
+    ]},
+    {t: 'NoSQL', icon: 'network', ids: ['eua-nosql'], items: [
+      ['pairs', [
+        ['Dokument', 'JSON-Dokumente (MongoDB)'],
+        ['Key-Value', 'Schlüssel → Wert, Cache (Redis)'],
+        ['Spaltenorientiert', 'große Datenmengen (Cassandra)'],
+        ['Graph', 'Knoten + Kanten, Beziehungen (Neo4j)'],
+      ]],
+      ['li', ['**Schemafrei/flexibel**, horizontal skalierbar, oft **BASE** statt ACID (eventual consistency)', '**CAP-Theorem**: nur 2 von Consistency, Availability, Partition tolerance', 'Relational wählen bei festen Strukturen und Transaktionen (Buchhaltung)']],
+      ['code', 'json', `db.kunden.find({ "ort": "Köln", "alter": { "$gt": 30 } })`],
+    ]},
+    {t: 'Bits, KNN, IoT', icon: 'bolt', ids: ['eua-bits', 'eua-knn', 'eua-iot'], items: [
+      ['tbl', ['Operator', 'Wirkung', 'Beispiel (0b1100, 0b1010)'], [['AND &', 'beide 1', '1000 (Bit maskieren/prüfen)'], ['OR |', 'mind. eine 1', '1110 (Bit setzen)'], ['XOR ^', 'genau eine 1', '0110 (Bit umschalten)'], ['NOT ~', 'invertieren', '~1100 = 0011 (4 Bit)'], ['<< / >>', 'schieben = ·2 / DIV 2', '0011 << 1 = 0110']]],
+      ['f', 'Bit k prüfen: (x >> k) & 1   |   setzen: x | (1 << k)   |   löschen: x & ~(1 << k)', 'Zweierkomplement: invertieren + 1. Hex: 1 Ziffer = 4 Bit.'],
+      ['pairs', [
+        ['KNN / Neuron', 'Eingaben · Gewichte + Bias → **Aktivierungsfunktion** (Sigmoid, ReLU, Schwellwert) → Ausgabe'],
+        ['Lernen', 'Training mit Daten, Fehler per **Backpropagation** → Gewichte anpassen; überwacht / unüberwacht / bestärkend'],
+        ['Probleme', 'Overfitting, Bias in Daten, Black Box'],
+        ['IoT', 'Sensoren/Aktoren, Mikrocontroller, Protokolle **MQTT** (Publish/Subscribe über Broker), CoAP, HTTP'],
+        ['IoT-Risiken', 'Standardpasswörter, fehlende Updates, unverschlüsselte Übertragung'],
+      ]],
+      ['f', 'y = f( Σ wᵢ · xᵢ + b )', 'Perzeptron: f = Schwellwertfunktion (1 wenn Summe ≥ 0, sonst 0)'],
+    ]},
+  ],
+});
+;
+// content/spick/wiso.js
+AP2.spick('wiso', {
+  exam: 'Prüfung: Wirtschafts- und Sozialkunde', t: 'Spickzettel WiSo',
+  s: 'Ausbildung, Arbeitsrecht, Mitbestimmung, Sozialversicherung, Steuern, Unternehmen, Markt und Wirtschaftspolitik auf einer Seite (Werte Stand 2026, jährlich prüfen)',
+  meta: [['60 Min', 'Dauer'], ['100', 'Punkte'], ['10 %', 'Anteil Gesamtergebnis']],
+  top: [
+    ['tip', 'Erst **Gesetz und Paragraf** nennen, dann **Zahl/Frist**, dann **Begründung**. Fristen immer mit Bezugspunkt (**zum 15. / Monatsende**, **ab Zugang**, **ab Kenntnis**).'],
+    ['mnemo', 'Wer jünger als 18 ist: **JArbSchG**, sonst **ArbZG**. Azubi: **BBiG**. Kündigung: **§ 622 BGB** + **KSchG**. Mitbestimmung: **BetrVG**. Sozialversicherung: **K-R-A-P-U** (SGB V, VI, III, XI, VII).'],
+  ],
+  sections: [
+    {t: 'Ausbildung (BBiG) und Kammern', icon: 'book', ids: ['wiso-bbig', 'wiso-vertrag', 'wiso-kammern'], items: [
+      ['flow', ['Betrieb (Ausbildungsordnung, Bund)', 'Berufsschule (Rahmenlehrplan, Länder)', 'Prüfung (IHK)']],
+      ['cards', [
+        ['Pflichten Azubi (§ 13)', ['**Lern**-, **Sorgfalts**-, **Teilnahme**-, **Gehorsams**-, **Ordnungs**-, **Pflege**-, **Schweige**-, **Nachweis**pflicht (Berichtsheft)']],
+        ['Pflichten Ausbildender (§§ 14-17)', ['**Ausbildungs**-, **Bereitstellungs**- (Mittel kostenlos), **Freistellungs**- (§ 15), **Fürsorge**pflicht', 'Nur ausbildungsgemäße Aufgaben, Berichtsheft kontrollieren', '**Vergütung** (§ 17), **Zeugnis** (§ 16)']],
+      ]],
+      ['pairs', [
+        ['Vertrag (§ 11)', 'Schriftlich **vor Beginn**: Berufsbild, Beginn/Dauer, Arbeitszeit, Probezeit, Vergütung, Urlaub, Kündigung; Eintragung bei der **IHK**'],
+        ['Probezeit (§ 20)', '**1 bis 4 Monate**; Kündigung jederzeit **ohne Frist und ohne Grund**, aber **schriftlich**'],
+        ['Kündigung danach (§ 22)', 'Betrieb: nur **fristlos aus wichtigem Grund** (binnen **2 Wochen** ab Kenntnis); Azubi zusätzlich mit **4 Wochen** bei Aufgabe/Berufswechsel; immer schriftlich mit Gründen'],
+        ['Ende (§ 21)', 'Mit **Bekanntgabe des Prüfungsergebnisses** (bei Bestehen); Weiterarbeit ohne Absprache = **unbefristetes Arbeitsverhältnis** (§ 24)'],
+        ['Vergütung', '**Mindestausbildungsvergütung** 1. Jahr 2026: **724 Euro/Monat**; Krankheit: 6 Wochen Fortzahlung (§ 19)'],
+        ['Übernahme', 'Kein Anspruch (Ausnahme **JAV**-Mitglieder, § 78a BetrVG, oder Tarifvertrag)'],
+      ]],
+      ['sub', 'Kammern'],
+      ['li', ['**Körperschaft des öffentlichen Rechts**, **Pflichtmitgliedschaft**, Beiträge, Selbstverwaltung, Rechtsaufsicht des Staates', 'IHK (Industrie, Handel, IT), HWK (Handwerk), freie Berufe (Ärzte-, Anwaltskammer)', 'Ausbildung: **beraten** (Ausbildungsberater), **überwachen** (Eignung), **Verträge eintragen**, **Prüfungen abnehmen**, **schlichten**']],
+      ['ext', [['BBiG', 'https://www.gesetze-im-internet.de/bbig_2005/'], ['IHKG', 'https://www.gesetze-im-internet.de/ihkg/']]],
+    ]},
+    {t: 'Jugendarbeitsschutz und Arbeitszeit', icon: 'clock', ids: ['wiso-jarbschg'], items: [
+      ['tbl', ['Regel', 'JArbSchG (15 bis unter 18)', 'ArbZG (ab 18)'], [
+        ['Arbeitszeit', '**8 Std/Tag, 40 Std/Woche**, 5-Tage-Woche (bis 8,5 Std mit Ausgleich)', '**8 Std/Werktag**, bis **10 Std** bei Ausgleich (6 Monate/24 Wochen), Ø **48 Std/Woche**'],
+        ['Pausen', '**30 Min** bei 4,5-6 Std, **60 Min** bei mehr als 6 Std; Blöcke min. **15 Min**', '**30 Min** bei mehr als 6 Std, **45 Min** bei mehr als 9 Std; Blöcke min. **15 Min**'],
+        ['Ruhezeit', '**12 Std** Freizeit, Nachtruhe **20 bis 6 Uhr**', '**11 Std**'],
+        ['Urlaub', '**30** WT (unter 16), **27** (unter 17), **25** (unter 18)', '**24 Werktage** (BUrlG)'],
+      ]],
+      ['li', ['**Kind** unter 15: Beschäftigung grundsätzlich verboten', '**Erstuntersuchung** vor Beginn, **Nachuntersuchung** nach 12 Monaten', 'Berufsschulzeit wird **angerechnet**']],
+      ['warn', 'Die Pausen-Grenzen unterscheiden sich: Jugendliche schon ab **4,5 Std** Pause, Erwachsene erst **ab mehr als 6 Std**.'],
+      ['ext', [['JArbSchG', 'https://www.gesetze-im-internet.de/jarbschg/'], ['ArbZG', 'https://www.gesetze-im-internet.de/arbzg/']]],
+    ]},
+    {t: 'Arbeitsvertrag, Urlaub, Krankheit', icon: 'clipboard', ids: ['wiso-arbeitsvertrag', 'wiso-urlaub', 'wiso-krank'], items: [
+      ['pairs', [
+        ['Form', '**Formfrei**; wesentliche Bedingungen schriftlich nachweisen (**NachwG**); Befristung immer **schriftlich**'],
+        ['AN-Pflichten', 'Haupt: **Arbeitspflicht**; Neben: Gehorsam, Treue, Verschwiegenheit, **Wettbewerbsverbot**'],
+        ['AG-Pflichten', 'Haupt: **Vergütungspflicht**; Neben: Beschäftigung, **Fürsorge**, Gleichbehandlung, **Zeugnis**'],
+        ['Direktionsrecht', '§ 106 GewO: AG bestimmt **Ort, Zeit, Art** der Arbeit im Rahmen von Vertrag und Gesetz'],
+        ['Befristung (TzBfG)', 'Ohne Sachgrund max. **2 Jahre**, höchstens **3 Verlängerungen**; mit Sachgrund (Vertretung) unbegrenzt'],
+        ['Mindestlohn', '2026: **13,90 Euro/Stunde**'],
+      ]],
+      ['sub', 'Urlaub (BUrlG)'],
+      ['li', ['**24 Werktage** (Mo-Sa) = 4 Wochen = **20 Arbeitstage** bei 5-Tage-Woche; Schwerbehinderte **+5** Arbeitstage', 'Voller Anspruch nach **6 Monaten Wartezeit**; vorher **1/12 je vollem Monat**, ab **0,5 aufrunden**', 'Zusammenhängend, min. **12 Werktage** am Stück; Übertragung bis **31.03.**', 'Krank im Urlaub **mit Attest**: Tage zählen nicht; Abgeltung in Geld **nur bei Ende** des Arbeitsverhältnisses']],
+      ['sub', 'Krankheit (EntgFG)'],
+      ['flow', ['Krank melden (unverzüglich)', 'AU ab **4. Kalendertag** (AG darf ab Tag 1 verlangen)', '**6 Wochen 100 %** vom AG', 'ab 7. Woche **Krankengeld** 70 % Brutto, max. 90 % Netto', 'max. **78 Wochen** in 3 Jahren']],
+      ['tip', 'Anspruch auf Entgeltfortzahlung erst nach **4 Wochen** Beschäftigung und nur bei **unverschuldeter** Krankheit.'],
+      ['ext', [['BUrlG', 'https://www.gesetze-im-internet.de/burlg/'], ['EntgFG', 'https://www.gesetze-im-internet.de/entgfg/'], ['TzBfG', 'https://www.gesetze-im-internet.de/tzbfg/'], ['NachwG', 'https://www.gesetze-im-internet.de/nachwg/']]],
+    ]},
+    {t: 'Kündigung und Kündigungsschutz', icon: 'alert', ids: ['wiso-kuendigung'], items: [
+      ['tbl', ['Betriebszugehörigkeit', 'Frist für den Arbeitgeber (§ 622 Abs. 2 BGB)'], [
+        ['Probezeit (max. 6 Monate)', '**2 Wochen** (zu jedem Tag)'],
+        ['unter 2 Jahre', '**4 Wochen** zum **15.** oder zum **Monatsende** (Grundfrist, gilt auch für AN)'],
+        ['ab 2 Jahre', '1 Monat zum Monatsende'],
+        ['ab 5 Jahre', '2 Monate'], ['ab 8 Jahre', '3 Monate'], ['ab 10 Jahre', '4 Monate'],
+        ['ab 12 Jahre', '5 Monate'], ['ab 15 Jahre', '6 Monate'], ['ab 20 Jahre', '**7 Monate** zum Monatsende'],
+      ]],
+      ['cards', [
+        ['Ordentlich', ['mit Frist']],
+        ['Außerordentlich', ['fristlos, **wichtiger Grund**, binnen **2 Wochen** ab Kenntnis (§ 626)']],
+        ['Änderungskündigung', ['Kündigung + Angebot neuer Bedingungen']],
+        ['Aufhebungsvertrag', ['einvernehmlich; Risiko **Sperrzeit** ALG']],
+      ]],
+      ['pairs', [
+        ['KSchG gilt', 'Betrieb mit **mehr als 10 AN** (ohne Azubis) und Arbeitsverhältnis **länger als 6 Monate**'],
+        ['Sozial gerechtfertigt', '**personen-**, **verhaltens-** (meist nach Abmahnung) oder **betriebsbedingt** (Sozialauswahl)'],
+        ['Verfahren', '**Schriftform** (§ 623 BGB, keine E-Mail), **Betriebsrat anhören** (§ 102 BetrVG, sonst unwirksam)'],
+        ['Klage', 'Arbeitsgericht innerhalb **3 Wochen nach Zugang**'],
+        ['Agentur für Arbeit', 'Arbeitsuchend melden **3 Monate** vorher bzw. **3 Tage** nach Kenntnis'],
+      ]],
+      ['warn', 'Der **Arbeitnehmer** kündigt immer mit **4 Wochen** zum 15./Monatsende; die verlängerten Fristen gelten nur für den Arbeitgeber (wenn nicht vertraglich anders).'],
+      ['ext', [['§ 622 BGB', 'https://www.gesetze-im-internet.de/bgb/__622.html'], ['KSchG', 'https://www.gesetze-im-internet.de/kschg/']]],
+    ]},
+    {t: 'Tarif, Gewerkschaft, Arbeitskampf', icon: 'user', ids: ['wiso-tarif', 'wiso-gewerkschaft'], items: [
+      ['pairs', [
+        ['Tarifautonomie', 'Gewerkschaft und Arbeitgeber(verband) verhandeln **ohne Staat** (Art. 9 Abs. 3 GG, **Koalitionsfreiheit**)'],
+        ['Manteltarif', 'allgemeine Bedingungen: Arbeitszeit, Urlaub, Kündigung (lange Laufzeit)'],
+        ['Entgelttarif', 'Höhe von Lohn/Gehalt (kurze Laufzeit)'],
+        ['Rahmentarif', 'Eingruppierung in Lohngruppen'],
+        ['Flächen/Haus', 'Branche und Region bzw. ein Unternehmen'],
+        ['Wirkung', 'unmittelbar und zwingend für **Tarifgebundene**, **Günstigkeitsprinzip**, **Nachwirkung**, **Allgemeinverbindlichkeit** durch Arbeitsministerium'],
+        ['Friedenspflicht', 'Während der Laufzeit **kein Arbeitskampf** über Geregeltes'],
+      ]],
+      ['flow', ['Kündigung Tarifvertrag', 'Verhandlung', 'Warnstreik', 'Scheitern / Schlichtung', 'Urabstimmung (oft **75 %**)', 'Streik / Aussperrung', 'neue Verhandlung', 'zweite Urabstimmung (**25 %**)', 'neuer Tarifvertrag']],
+      ['li', ['**DGB** mit 8 Gewerkschaften (IG Metall, ver.di, IG BCE ...), Beitrag ca. **1 %** Brutto, freiwillig', 'Streik: Arbeitsverhältnis **ruht**, **Streikgeld** statt Lohn; rechtswidrig: **wilder**, **politischer** Streik, Streik in Friedenspflicht', 'Funktionen: **Schutz**, **Ordnung**, **Frieden**, **Verteilung**']],
+      ['ext', [['TVG', 'https://www.gesetze-im-internet.de/tvg/']]],
+    ]},
+    {t: 'Betriebsrat und Mitbestimmung (BetrVG)', icon: 'lock', ids: ['wiso-betriebsrat'], items: [
+      ['pairs', [
+        ['Voraussetzung', 'mind. **5** ständige wahlberechtigte AN, davon **3 wählbar**'],
+        ['Wahl', 'wahlberechtigt ab **16** (BetrVG 2021), wählbar ab 18 nach **6 Monaten** Betriebszugehörigkeit; Amtszeit **4 Jahre**'],
+        ['Größe', '5-20 AN: 1, 21-50: 3, 51-100: 5, 101-200: 7 Mitglieder'],
+        ['JAV', 'ab 5 AN unter 18 oder Azubis unter 25; Amtszeit **2 Jahre**'],
+      ]],
+      ['tbl', ['Stufe', 'Bedeutung', 'Beispiele'], [
+        ['**Mitbestimmung** (echt, § 87)', 'nur mit Zustimmung, sonst **Einigungsstelle**', 'Arbeitszeit Beginn/Ende, Pausen, Urlaubsplan, **technische Überwachung**, Ordnung, Lohngestaltung, Gesundheitsschutz'],
+        ['**Zustimmungsverweigerung** (§ 99)', 'BR kann widersprechen (ab mehr als 20 AN)', 'Einstellung, Versetzung, Ein-/Umgruppierung'],
+        ['**Anhörung** (§ 102)', 'muss gehört werden, sonst Kündigung **unwirksam**', 'jede Kündigung'],
+        ['**Beratung**', 'Vorschläge, Erörterung', 'Personalplanung, Arbeitsplatzgestaltung, Betriebsänderung (§ 111: Sozialplan)'],
+        ['**Information**', 'rechtzeitig unterrichten', 'wirtschaftliche Lage (Wirtschaftsausschuss ab **100 AN**)'],
+      ]],
+      ['mnemo', 'Stärke abnehmend: **Mitbestimmung → Widerspruch → Anhörung → Beratung → Information**. Neue Software mit Leistungskontrolle = **§ 87 Abs. 1 Nr. 6**, echte Mitbestimmung.'],
+      ['ext', [['BetrVG', 'https://www.gesetze-im-internet.de/betrvg/']]],
+    ]},
+    {t: 'Sozialversicherung', icon: 'heart', wide: true, ids: ['wiso-sv', 'wiso-kv', 'wiso-rv', 'wiso-alv', 'wiso-pv', 'wiso-uv'], items: [
+      ['tbl', ['Zweig', 'Gesetz', 'Beitrag 2026', 'Wer zahlt', 'Träger', 'Leistungen'], [
+        ['**KV**', 'SGB V', '**14,6 %** + Zusatzbeitrag Ø **2,9 %**', 'je Hälfte (AN 7,3 % + 1,45 %)', 'Krankenkassen (AOK, TK, Barmer ...)', 'Behandlung, Arznei, Krankengeld ab 7. Woche'],
+        ['**RV**', 'SGB VI', '**18,6 %**', 'je **9,3 %**', 'Deutsche Rentenversicherung', 'Altersrente, Erwerbsminderung, Hinterbliebene, Reha'],
+        ['**ALV**', 'SGB III', '**2,6 %**', 'je **1,3 %**', 'Bundesagentur für Arbeit', 'ALG I, Kurzarbeitergeld, Insolvenzgeld, Weiterbildung'],
+        ['**PV**', 'SGB XI', '**3,6 %**', 'je **1,8 %**; Kinderlose AN **+0,6 %** (= 2,4 %)', 'Pflegekassen (bei der KK)', 'Pflegegeld, Sachleistung, Heim; Pflegegrade 1-5'],
+        ['**UV**', 'SGB VII', 'nach Lohnsumme und **Gefahrklasse**', '**nur Arbeitgeber**', '**Berufsgenossenschaften** (VBG für IT), Unfallkassen', 'Arbeits-, **Wegeunfall**, Berufskrankheit, Reha, Verletztengeld 80 %'],
+      ]],
+      ['pairs', [
+        ['BBG RV/ALV', '**8.450 Euro/Monat**'],
+        ['BBG KV/PV', '**5.812,50 Euro/Monat**'],
+        ['Versicherungspflichtgrenze KV', '**6.450 Euro/Monat** (77.400 Euro/Jahr); darüber PKV möglich'],
+        ['Minijob / Midijob', 'bis **603 Euro** / **603,01 bis 2.000 Euro**'],
+        ['ALG I', '**60 %** (mit Kind **67 %**) des pauschalierten Netto; Anwartschaft **12 Monate in 30 Monaten**; Sperrzeit bis **12 Wochen**'],
+        ['Rente', 'Umlageverfahren; Regelalter **67**; Wartezeit **5 Jahre**; Formel **EP × ZF × aktueller Rentenwert × RAF**, ARW **40,79 Euro** (ab 1.7.2025)'],
+        ['UV-Meldung', 'Unfallanzeige bei mehr als **3 Tagen** Arbeitsunfähigkeit; **D-Arzt**; Verbandbuch'],
+      ]],
+      ['mnemo', '**K-R-A-P-U**. **Solidarprinzip**: Beitrag nach Einkommen, Leistung nach Bedarf. Alles **paritätisch**, außer **UV = nur AG** und **Kinderlosenzuschlag = nur AN**.'],
+      ['ext', [['SGB V', 'https://www.gesetze-im-internet.de/sgb_5/'], ['SGB VI', 'https://www.gesetze-im-internet.de/sgb_6/'], ['SGB III', 'https://www.gesetze-im-internet.de/sgb_3/'], ['SGB XI', 'https://www.gesetze-im-internet.de/sgb_11/'], ['SGB VII', 'https://www.gesetze-im-internet.de/sgb_7/']]],
+    ]},
+    {t: 'Gehaltsabrechnung und Steuern', icon: 'calc', ids: ['wiso-gehalt', 'wiso-steuern'], items: [
+      ['f', 'Netto = Brutto − Lohnsteuer − Soli − KiSt − (RV 9,3 % + ALV 1,3 % + KV 7,3 % + ½ Zusatz + PV 1,8 %/2,4 %)', 'Auszahlung = Netto − Vorschuss/VL; AG-Kosten = Brutto + AG-Anteile (+ UV)'],
+      ['f', 'SV-Anteil AN ≈ 9,3 + 1,3 + 7,3 + 1,45 + 1,8 = 21,15 % (kinderlos 21,75 %)', 'mit Ø-Zusatzbeitrag 2,9 %'],
+      ['pairs', [
+        ['ESt', 'progressiv **14 % bis 42 %**, Reichensteuer **45 %**; **Grundfreibetrag 12.348 Euro** (2026)'],
+        ['Lohnsteuer', 'Vorauszahlung auf ESt, **Steuerklassen I-VI** (I ledig, III/V Ehe, IV/IV, VI Zweitjob)'],
+        ['Zuschläge', '**Soli** nur Besserverdiener; **Kirchensteuer 8 %** (BW) der Lohnsteuer'],
+        ['USt', '**19 %** / ermäßigt **7 %**; indirekt, Endverbraucher trägt; Vorsteuerabzug, Zahllast; Kleinunternehmer bis **25.000 Euro**'],
+        ['Gewerbesteuer', 'Gemeinde; Messzahl **3,5 %** × Hebesatz; Freibetrag **24.500 Euro**'],
+        ['KSt', '**15 %** (GmbH, AG)'],
+      ]],
+      ['tip', 'Direkt (Steuerzahler = Steuerträger: ESt) vs. **indirekt** (USt, Verbrauchsteuern). Lohnsteuer behält der **AG** ein und führt sie ab.'],
+      ['ext', [['EStG', 'https://www.gesetze-im-internet.de/estg/'], ['UStG', 'https://www.gesetze-im-internet.de/ustg_1980/']]],
+    ]},
+    {t: 'Arbeitsschutz', icon: 'lock', ids: ['wiso-arbeitsschutz'], items: [
+      ['li', ['**Duales System**: staatlich (ArbSchG, ArbStättV, **Gewerbeaufsicht**) + berufsgenossenschaftlich (**DGUV**-Vorschriften, **BG**)', 'AG muss **Gefährdungsbeurteilung** erstellen und dokumentieren', 'Bildschirmarbeit: Pausen/Tätigkeitswechsel, ergonomischer Platz, **Angebotsvorsorge** Augen']],
+      ['tbl', ['Form + Farbe', 'Bedeutung'], [['rund, **rot**', 'Verbot'], ['rund, **blau**', 'Gebot'], ['Dreieck, **gelb**', 'Warnung'], ['Quadrat, **grün**', 'Rettung/Erste Hilfe'], ['Quadrat, **rot**', 'Brandschutz']]],
+      ['flow', ['Ruhe bewahren', 'Melden (112)', 'Retten', 'Löschen']],
+      ['ext', [['ArbSchG', 'https://www.gesetze-im-internet.de/arbschg/'], ['ArbStättV', 'https://www.gesetze-im-internet.de/arbst_ttv_2004/']]],
+    ]},
+    {t: 'Rechtsformen, Kaufmann, Vollmacht', icon: 'briefcase', wide: true, ids: ['wiso-unternehmen', 'wiso-vollmacht'], items: [
+      ['tbl', ['Form', 'Gründer', 'Mindestkapital', 'Haftung', 'Leitung / Organe', 'HR'], [
+        ['**e. K.**', '1', 'keins', 'voll, privat', 'Inhaber', 'A'],
+        ['**GbR**', '2+', 'keins', 'alle voll, gesamtschuldnerisch', 'alle gemeinsam', '(eGbR möglich)'],
+        ['**OHG**', '2+', 'keins', 'alle **unbeschränkt, unmittelbar, solidarisch**', 'alle Gesellschafter', 'A'],
+        ['**KG**', '2+', 'keins', '**Komplementär** voll, **Kommanditist** nur Einlage', 'Komplementär', 'A'],
+        ['**GmbH**', '1+', '**25.000 Euro** (12.500 bei Gründung)', 'nur Gesellschaftsvermögen', 'Geschäftsführer, Gesellschafterversammlung', 'B'],
+        ['**UG (hb)**', '1+', 'ab **1 Euro**, **25 %** Gewinn in Rücklage', 'Gesellschaftsvermögen', 'Geschäftsführer', 'B'],
+        ['**AG**', '1+', '**50.000 Euro**', 'Gesellschaftsvermögen', '**Vorstand**, **Aufsichtsrat**, **Hauptversammlung**', 'B'],
+        ['**GmbH & Co. KG**', '2+', 'GmbH-Kapital', 'GmbH als Komplementär: beschränkt', 'GF der GmbH', 'A'],
+        ['**eG**', '3+', 'keins', 'Genossenschaftsvermögen', 'Vorstand, Aufsichtsrat, GV (1 Mitglied = 1 Stimme)', 'Genossenschaftsreg.'],
+      ]],
+      ['pairs', [
+        ['Kaufmann', '**Ist**kaufmann (Handelsgewerbe, muss eintragen), **Kann**kaufmann (Kleingewerbe, darf), **Form**kaufmann (GmbH, AG)'],
+        ['Handelsregister', 'Amtsgericht, elektronisch; **Abt. A** Einzel/Personengesellschaften, **Abt. B** Kapitalgesellschaften'],
+        ['Prokura (ppa.)', 'fast alle Geschäfte, **Eintrag ins HR**; **nicht**: Grundstücke verkaufen/belasten, Bilanz/Steuererklärung unterschreiben, Prokura erteilen, Insolvenz anmelden'],
+        ['Handlungsvollmacht (i. V.)', '**gewöhnliche** Geschäfte des Betriebs; Art-, Einzel- oder allgemeine Vollmacht; **kein** HR-Eintrag'],
+      ]],
+      ['ext', [['HGB', 'https://www.gesetze-im-internet.de/hgb/'], ['GmbHG', 'https://www.gesetze-im-internet.de/gmbhg/'], ['AktG', 'https://www.gesetze-im-internet.de/aktg/']]],
+    ]},
+    {t: 'Kooperation, Führung, Organisation', icon: 'network', ids: ['wiso-kooperation', 'wiso-fuehrung', 'wiso-organisation'], items: [
+      ['pairs', [
+        ['ARGE / IG', 'Zusammenarbeit auf Zeit bzw. gemeinsamer Einkauf/Werbung; alle **selbstständig**'],
+        ['Kartell', 'Absprache über Preise, Gebiete, Quoten; meist **verboten** (§ 1 GWB)'],
+        ['Konzern', '**einheitliche Leitung**, rechtlich selbstständig (Mutter/Tochter)'],
+        ['Fusion', 'Verschmelzung (Aufnahme oder Neubildung); **Fusionskontrolle** Bundeskartellamt'],
+        ['Richtung', '**horizontal** (gleiche Stufe), **vertikal** (vor-/nachgelagert), **diagonal** (branchenfremd)'],
+        ['Sektoren', 'primär (Urproduktion), sekundär (Industrie), tertiär (Dienstleistung, IT)'],
+      ]],
+      ['cards', [
+        ['Autoritär', ['schnell, wenig Motivation']],
+        ['Kooperativ', ['Beteiligung, Akzeptanz; langsamer']],
+        ['Laissez-faire', ['Freiheit, Orientierungslosigkeit']],
+        ['Patriarchalisch', ['autoritär, fürsorglich']],
+      ]],
+      ['li', ['**MbO** Zielvereinbarung, **MbE** Eingriff nur bei Ausnahmen, **MbD** Delegation von Aufgabe + Kompetenz + Verantwortung', 'Ziele **SMART**; ökonomisch, ökologisch, sozial (Ziel**harmonie**, -**konflikt**, -**neutralität**)', 'Organisation: **Stelle**, **Instanz** (Weisungsbefugnis), **Stab** (berät ohne Weisung)', 'Leitungssysteme: **Einlinien** (klar, lange Wege), **Mehrlinien** (Fachleute, Kompetenzkonflikte), **Stablinien**, **Sparten**, **Matrix**', 'Aufbau = **wer** (Struktur), Ablauf = **wie/wann** (Prozess)']],
+      ['ext', [['GWB', 'https://www.gesetze-im-internet.de/gwb/']]],
+    ]},
+    {t: 'Kennzahlen und ökonomisches Prinzip', icon: 'chart', ids: ['wiso-kennzahlen'], items: [
+      ['f', 'Produktivität = Ausbringungsmenge / Einsatzmenge', 'Mengengröße, z. B. Stück pro Stunde; sagt nichts über Kosten'],
+      ['f', 'Wirtschaftlichkeit = Ertrag / Aufwand', '> 1 Gewinn, < 1 Verlust'],
+      ['f', 'EK-Rentabilität = Gewinn × 100 / Eigenkapital', 'in %, mit Kapitalmarktzins vergleichen'],
+      ['f', 'GK-Rentabilität = (Gewinn + FK-Zinsen) × 100 / Gesamtkapital'],
+      ['f', 'Umsatzrentabilität = Gewinn × 100 / Umsatzerlöse'],
+      ['pairs', [
+        ['Maximalprinzip', 'gegebener Einsatz, **größter Erfolg**'],
+        ['Minimalprinzip', 'gegebenes Ziel, **geringster Einsatz**'],
+        ['Produktionsfaktoren', 'VWL: Arbeit, Boden, Kapital (+ Wissen); BWL: ausführende + dispositive Arbeit, Betriebsmittel, Werkstoffe'],
+      ]],
+      ['warn', '"Mit minimalem Einsatz maximalen Erfolg" ist **kein** ökonomisches Prinzip (unsinnig).'],
+    ]},
+    {t: 'Markt, Kreislauf, Konjunktur', icon: 'chart', wide: true, ids: ['wiso-markt', 'wiso-kreislauf', 'wiso-konjunktur'], items: [
+      ['pairs', [
+        ['Gleichgewichtspreis', 'Schnittpunkt Angebot (steigt) und Nachfrage (fällt), Markt geräumt'],
+        ['Preis zu niedrig', '**Nachfrageüberhang** (Höchstpreis, Mietpreisbremse)'],
+        ['Preis zu hoch', '**Angebotsüberhang** (Mindestpreis, Mindestlohn)'],
+        ['Verschiebung', 'Nachfrage steigt: Preis und Menge steigen; Angebot steigt: Preis sinkt, Menge steigt'],
+        ['Marktformen', '**Monopol** (1, Preissetzer), **Oligopol** (wenige: Mobilfunk), **Polypol** (viele, Preisnehmer)'],
+      ]],
+      ['sub', 'Wirtschaftskreislauf'],
+      ['li', ['Einfach: **Haushalte ⇄ Unternehmen**; Güterstrom (Arbeit, Güter) gegen Geldstrom (Einkommen, Konsum)', 'Erweitert: + **Staat** (Steuern, Transfers, Subventionen), + **Banken** (Sparen, Kredite), + **Ausland** (Ex/Im)', '**BIP** = C + I + G + (Ex − Im); nominal vs. **real** (preisbereinigt)']],
+      ['sub', 'Konjunktur'],
+      ['flow', ['Aufschwung', 'Boom (Hochkonjunktur)', 'Abschwung (Rezession)', 'Tiefstand (Depression)']],
+      ['tbl', ['Indikator', 'Beispiele'], [['**Früh**', 'Auftragseingang, **ifo-Geschäftsklima**, Baugenehmigungen, Aktien'], ['**Gegenwart**', 'BIP, Produktion, Kapazitätsauslastung'], ['**Spät**', '**Arbeitslosenquote**, Verbraucherpreise, Insolvenzen']]],
+      ['li', ['**Inflation**: Preisniveau steigt, Kaufkraft sinkt; Messung **VPI** (Warenkorb); **EZB-Ziel 2 %**', 'Ursachen: Nachfragesog, Kostendruck, importiert, Geldmenge', '**Fiskalpolitik** (Staat) und **Geldpolitik** (EZB: Leitzins), **antizyklisch**', '**Magisches Viereck** (StabG 1967): Preisniveaustabilität, hoher Beschäftigungsstand, außenwirtschaftliches Gleichgewicht, stetiges Wachstum (+ Umwelt, gerechte Verteilung = Sechseck)']],
+    ]},
+    {t: 'Wirtschaftsordnung und Sozialstaat', icon: 'target', ids: ['wiso-wirtschaftsordnung', 'wiso-staat'], items: [
+      ['tbl', ['', 'Freie Marktwirtschaft', 'Zentralverwaltungswirtschaft', 'Soziale Marktwirtschaft'], [
+        ['Eigentum', 'privat', 'kollektiv', 'privat, sozialpflichtig'],
+        ['Preise', 'frei am Markt', 'zentraler Plan', 'Markt + Eingriffe (Mindestlohn, Kartellamt)'],
+        ['Staat', 'Nachtwächter', 'plant alles', 'sichert Wettbewerb und sozialen Ausgleich'],
+      ]],
+      ['pairs', [
+        ['Solidarität', 'Beitrag nach Einkommen, Leistung nach Bedarf (GKV)'],
+        ['Subsidiarität', 'Eigenverantwortung vor staatlicher Hilfe'],
+        ['Versicherung', 'Leistung aus Beiträgen (SV)'],
+        ['Versorgung', 'steuerfinanziert ohne Beitrag (Beamtenpension, Kindergeld)'],
+        ['Fürsorge', 'nach Bedürftigkeit (Bürgergeld, Sozialhilfe)'],
+      ]],
+      ['li', ['Gewaltenteilung: **Legislative** (Bundestag, Bundesrat), **Exekutive** (Regierung, Behörden), **Judikative** (Gerichte, BVerfG)', 'Bundespräsident = Staatsoberhaupt; Kanzler = **Richtlinienkompetenz**, vom Bundestag gewählt']],
+      ['ext', [['Grundgesetz', 'https://www.gesetze-im-internet.de/gg/']]],
+    ]},
+    {t: 'Demokratie, Wahlen, EU', icon: 'map', ids: ['wiso-wahlen', 'wiso-eu'], items: [
+      ['mnemo', 'Wahlgrundsätze (Art. 38 GG): **allgemein, unmittelbar, frei, gleich, geheim**.'],
+      ['pairs', [
+        ['Bundestag', 'alle **4 Jahre**, ab **18**; **Erststimme** Wahlkreiskandidat, **Zweitstimme** Landesliste (Sitzverteilung), **5-%-Hürde**'],
+        ['Wahlalter 16', 'Europawahl (seit 2024), Kommunal- und Landtagswahl BW (Landtag seit 2026)'],
+        ['Beteiligung', 'Partei, Bürgerinitiative, Petition, Demonstration, Volksbegehren, Jugendgemeinderat'],
+      ]],
+      ['sub', 'Europäische Union'],
+      ['flow', ['Kommission schlägt vor', 'Parlament + Rat der EU beschließen', 'EuGH kontrolliert']],
+      ['li', ['**27** Staaten, **21** mit Euro (seit 2026 Bulgarien); Binnenmarkt: freier Verkehr von **Waren, Dienstleistungen, Personen, Kapital**', '**Europäischer Rat** (Staats- und Regierungschefs) gibt Richtung, macht **keine** Gesetze', 'EU-Parlament alle **5 Jahre** direkt gewählt', '**Verordnung** gilt unmittelbar (DSGVO, AI Act); **Richtlinie** muss umgesetzt werden (NIS-2)']],
+    ]},
+    {t: 'Verträge und Geschäftsfähigkeit', icon: 'clipboard', ids: [], items: [
+      ['flow', ['Antrag (Angebot)', 'Annahme', 'Kaufvertrag (Verpflichtungsgeschäft)', 'Übergabe + Zahlung (Erfüllungsgeschäft)']],
+      ['tbl', ['Alter', 'Geschäftsfähigkeit (BGB)', 'Folge'], [
+        ['unter 7', '**geschäftsunfähig** (§ 104)', 'Willenserklärung **nichtig**'],
+        ['7 bis 17', '**beschränkt** geschäftsfähig (§ 106)', '**schwebend unwirksam** bis Zustimmung der Eltern; wirksam bei nur rechtlichem Vorteil oder **Taschengeld** (§ 110)'],
+        ['ab 18', '**voll** geschäftsfähig', 'wirksam'],
+      ]],
+      ['li', ['Verkäufer: Ware **mangelfrei übergeben**, Eigentum verschaffen; Käufer: **zahlen**, **abnehmen** (§ 433 BGB)', 'Störungen: Lieferverzug, Annahmeverzug, Zahlungsverzug, **mangelhafte Lieferung** (Nacherfüllung zuerst)', 'Azubi unter 18: Ausbildungsvertrag unterschreiben die **Eltern** mit (§ 113 BGB Arbeitsmündigkeit nach Ermächtigung)']],
+      ['ext', [['BGB', 'https://www.gesetze-im-internet.de/bgb/']]],
+    ]},
+    {t: 'Nachhaltigkeit, Demografie, KI', icon: 'bulb', ids: ['wiso-nachhaltigkeit', 'wiso-demografie', 'wiso-ki'], items: [
+      ['cards', [
+        ['Ökologisch', ['Ressourcen, Emissionen, Abfall senken']],
+        ['Ökonomisch', ['dauerhaft wirtschaftlich, langlebig']],
+        ['Sozial', ['faire Arbeit, Lieferkette (LkSG)']],
+      ]],
+      ['li', ['**SWOT**: Stärken/Schwächen (**intern**), Chancen/Risiken (**extern**)', 'Gesetze: **KrWG** (vermeiden vor verwerten), BImSchG, VerpackG, **LkSG**, ElektroG', '**Green IT**: länger nutzen, refurbished, virtualisieren, Ökostrom, Abwärme, Daten sicher löschen']],
+      ['sub', 'Demografischer Wandel'],
+      ['li', ['Ursachen: Geburtenrate ca. **1,4**, steigende Lebenserwartung, **Babyboomer** in Rente', 'Folgen: weniger Beitragszahler (RV), teurere KV/PV, **Fachkräftemangel**', 'Maßnahmen: Fachkräfteeinwanderungsgesetz, Rente mit 67, Kita, Frauen in MINT, Automatisierung']],
+      ['sub', 'KI (AI Act)'],
+      ['tbl', ['Risikoklasse', 'Beispiel'], [['**unannehmbar**', 'verboten: Social Scoring'], ['**hoch**', 'Bewerberauswahl, Kredit, Medizin'], ['**begrenzt**', 'Chatbots, Deepfakes: Kennzeichnung'], ['**minimal**', 'Spamfilter, Spiele']]],
+      ['li', ['Chancen: Routine entlasten, gegen Fachkräftemangel; Risiken: **Halluzinationen**, Diskriminierung, Datenschutz, Jobverlust']],
+    ]},
+    {t: 'Weiterbildung und Prüfung', icon: 'trophy', ids: ['wiso-weiterbildung'], items: [
+      ['pairs', [
+        ['Zulassung (§ 43 BBiG)', '**Zeit** zurückgelegt, **Teil 1** absolviert, **Ausbildungsnachweise** geführt, Vertrag **eingetragen**'],
+        ['Ende', 'Tag der **Bekanntgabe des Ergebnisses**'],
+        ['AGG', 'Schutz vor Benachteiligung: ethnische Herkunft, Geschlecht, Religion, Behinderung, Alter, sexuelle Identität'],
+        ['Fortbildung', 'höher (Aufstieg) oder auf Stand bleiben (Anpassung); z. B. **Bachelor Professional in IT** (DQR 6)'],
+        ['Umschulung', 'anderer Beruf'],
+        ['Bildungsurlaub', 'in den meisten Ländern (auch BW) **5 Tage/Jahr**'],
+      ]],
+      ['ext', [['AGG', 'https://www.gesetze-im-internet.de/agg/'], ['AFBG', 'https://www.gesetze-im-internet.de/afbg/']]],
+    ]},
+    {t: 'Methoden und Operatoren', icon: 'pen', ids: ['wiso-methoden'], items: [
+      ['tbl', ['AFB', 'Operatoren', 'Was tun?'], [
+        ['I', 'nennen, beschreiben, darstellen, herausarbeiten', 'wiedergeben, Material entnehmen'],
+        ['II', 'erklären, **erläutern** (+ Beispiel), begründen, vergleichen', 'Zusammenhänge herstellen'],
+        ['III', '**beurteilen** (Sachurteil), **bewerten**/Stellung nehmen (Werturteil), entwickeln', 'eigenes Urteil mit Kriterien'],
+      ]],
+      ['li', ['Schaubild: Titel, Quelle, Jahr, Einheit (absolut/%), Kernaussage, Entwicklung', 'Immer **ganze Sätze**, Bezug zum Material (Anlage, Zeile), eigene Worte']],
+      ['tip', 'Bei gebundenen Aufgaben auf **Anzahl** der richtigen Antworten achten; bei Rechenaufgaben **Rechenweg** und **Einheit** angeben.'],
+    ]},
+  ],
+});
+;
 // core/app.js
 // Anwendungsgerüst: verbindet Topbar, Seitenleiste, Inhalt und Layout-Berechnung.
 (function () {
@@ -31052,7 +32549,7 @@ AP2.add('ref-glossar', [
         st(side, {top: S.w.topbar + 'px', height: (L.h - S.w.topbar) + 'px', width: L.sidebarW + 'px', transform: shown ? 'none' : 'translateX(-100%)'});
         veil.style.display = L.mobile && AP2.state.get('drawer') ? 'block' : 'none';
         st(main, {marginLeft: L.mobile ? '0' : L.sidebarW + 'px', paddingTop: S.w.topbar + 'px', width: L.mainW + 'px'});
-        content.style.width = L.contentW + 'px';
+        content.style.width = (AP2.ctx.wide ? L.wideW : L.contentW) + 'px';
       };
       AP2.layout.bind(place);
       AP2.state.sub('drawer', () => place(AP2.layout));
@@ -31060,7 +32557,9 @@ AP2.add('ref-glossar', [
         AP2.dispose(content);
         AP2.theme.setTone(toneFor(id));
         remember(id);
+        AP2.ctx.wide = false;
         content.appendChild(viewFor(id));
+        place(AP2.layout);
         document.title = titleFor(id) + 'AP2 FiAE Lernportal';
         window.scrollTo(0, 0);
         AP2.find.apply(content);
