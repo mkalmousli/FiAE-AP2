@@ -4,7 +4,7 @@ AP2.pages = function () {};
 // Einzige Quelle der Wahrheit für Theme, Fortschritt und Navigation.
 (function () {
   const PREFIX = 'ap2.';
-  const saved = ['theme', 'done', 'scores', 'sideW', 'navOpen', 'exams', 'game', 'srs', 'badges', 'recent', 'sideBlock', 'quest', 'questRun', 'marks', 'notes'];
+  const saved = ['theme', 'done', 'scores', 'sideW', 'navOpen', 'exams', 'game', 'srs', 'badges', 'recent', 'sideBlock', 'quest', 'questRun', 'marks', 'notes', 'plan'];
   const dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
   const data = {theme: dark ? 'dark' : 'light', done: {}, scores: {}, drawer: false, route: '', sideW: 0, navOpen: {}, exams: {}, game: {}, srs: {}, badges: {}, recent: [], sideBlock: ''};
   const subs = {};
@@ -2242,7 +2242,7 @@ AP2.pages = function () {};
     const rec = recent();
     return h('div', {}, [hero(),
       sec('Heute', 'Tagesziel erreichen, fällige Wiederholungen abarbeiten, ein neues Thema lesen.'), actions(),
-      AP2.planSummary() ? sec('Hier solltest du ansetzen', 'Deine schwächsten Themen, automatisch erkannt.') : null, AP2.planSummary(),
+      AP2.planSummary() ? sec('Heute dran', 'Aus deinem Lernplan.') : null, AP2.planSummary(),
       rec ? gap() : null, rec ? gk().kicker('Zuletzt besucht') : null, rec ? h('div', {style: {height: S.sp[2]}}) : null, rec,
       sec('Prüfungen', 'Die schriftlichen AP2-Prüfungen mit deinem Stand je Prüfung.'), exams(), gap(), examLinks(),
       sec('Fortschritt'), row([heatmap(), badges()]),
@@ -3677,41 +3677,18 @@ AP2.pages = function () {};
       AP2.tint(h('div', {text: crumb(p), style: {fontSize: S.f.xs}}), 'text3')].concat(lines.map((t) => AP2.tint(h('div', {text: t, style: {fontSize: S.f.sm, marginTop: '2px'}}), 'text2')))),
     m ? gk().stars(m.stars, 14) : null, actions(p, hasQs)])], {marginBottom: S.sp[2], padding: '12px 16px'});
 
-  // Kurzfassung für die Startseite: die drei dringendsten Themen.
-  AP2.planSummary = () => {
-    const w = weakPages().slice(0, 3);
-    if (!w.length) return null;
-    const box = h('div');
-    w.forEach((x) => box.appendChild(card(x.p, [reason(x)], true, x.m)));
-    box.appendChild(AP2.btn({text: 'Ganzen Plan ansehen', icon: AP2.icon('target', 16), small: true, kind: 'ghost', fn: () => AP2.router.go('plan')}));
-    return box;
-  };
   AP2.weakInfo = (id) => { const x = weakPages().find((w) => w.p.id === id); return x ? reason(x) : null; };
 
-  AP2.views.plan = () => {
-    AP2.ctx.id = 'plan';
+  // Abschnitte "Schwache Themen" und "Noch nicht geübt" für Mein Plan (ui/planung.js).
+  AP2.planWeak = (root) => {
     const weak = weakPages();
-    const due = AP2.game.due(AP2.bank.core()).length;
-    const root = h('div', {}, [gk().kicker('Mein Plan', 'accent'),
-      AP2.tint(h('h1', {text: 'Hier solltest du ansetzen', style: {fontSize: S.f.h1, fontWeight: S.fw.bold, letterSpacing: '-0.02em', margin: '0 0 ' + S.sp[2]}}), 'text'),
-      AP2.tint(h('p', {text: 'Automatisch aus deinen Antworten berechnet: Themen mit vielen Fehlern oder wenig Sternen stehen oben.', style: {fontSize: S.f.md, margin: '0 0 ' + S.sp[4]}}), 'text2')]);
-    const steps = [];
-    if (due) steps.push(AP2.btn({text: due + ' fällige Wiederholungen', icon: AP2.icon('clock', 16), kind: 'primary', fn: () => AP2.router.go('trainer/mix')}));
-    if (weak.length) steps.push(AP2.btn({text: 'Fehler trainieren', icon: AP2.icon('play', 16), fn: () => AP2.router.go('trainer/fehler')}));
-    if (steps.length) root.appendChild(h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[2], marginBottom: S.sp[3]}}, steps));
     if (!weak.length) root.appendChild(AP2.blocks.note('Noch keine Schwachstellen erkannt. Beantworte Fragen im Trainer oder in einer Quest, dann erscheinen hier die Themen, die mehr Aufmerksamkeit brauchen.'));
     else {
-      root.appendChild(heading('Schwache Themen (' + weak.length + ')', 'Lies zuerst die Seite, übe danach gezielt.'));
+      root.appendChild(heading('Schwache Themen (' + weak.length + ')', 'Aus deinen Antworten erkannt: viele Fehler oder wenig Sterne.'));
       weak.forEach((x) => root.appendChild(card(x.p, [reason(x)], true, x.m)));
     }
-    const fresh = untouched().slice(0, 8);
-    if (fresh.length) {
-      root.appendChild(heading('Noch nicht geübt', 'Themen in den Prüfungsbereichen ohne eine einzige beantwortete Frage.'));
-      fresh.forEach((p) => root.appendChild(card(p, ['Noch keine Frage beantwortet'], true, null)));
-    }
-    return root;
   };
-  AP2.viewTitles.plan = 'Mein Plan';
+  AP2.planUi = {heading, card, actions};
 
   // ---------- Merkliste ----------
   AP2.views.merkliste = () => {
@@ -3735,6 +3712,200 @@ AP2.pages = function () {};
     return root;
   };
   AP2.viewTitles.merkliste = 'Merkliste';
+})();
+;
+// ui/planung.js
+// Lernplan: fragt beim ersten Start die Prüfungstermine ab und verteilt die Themen bis dahin auf die Tage.
+// State plan: {dates: {Bereich: 'JJJJ-MM-TT'}, min: Minuten pro Tag, weekend: Wochenende lernen, skipped: true}. Routen: #/planung (Einrichtung), #/plan (Plan).
+(function () {
+  const {h, on} = AP2;
+  const S = AP2.S;
+  const AREAS = ['ps', 'infra', 'eua', 'wiso'];
+  const gk = () => AP2.gk;
+  const plan = () => AP2.state.get('plan') || null;
+  const blk = (b) => AP2.store.BLOCKS.find((x) => x.id === b);
+  const fmt = (day) => gk().fmtDate(AP2.game.dateOf(day));
+  const dayName = (day) => AP2.game.dateOf(day).toLocaleDateString('de-DE', {weekday: 'short', day: '2-digit', month: '2-digit'});
+  AP2.planNeeded = () => !plan();
+
+  // Aufwand eines Themas in Minuten: Lesen plus Fragen üben.
+  const cost = (p) => Math.round(10 + Math.min(AP2.bank.byPage(p.id).length, 40) * 0.5);
+  // Offene Themen eines Bereichs, dringendste zuerst: schwache, dann ungeübte, dann halb sichere.
+  const open = (b) => AP2.store.byBlock(b).filter((p) => !p.hidden).map((p) => {
+    const m = AP2.game.mastery(p.id);
+    const done = !!AP2.state.get('done')[p.id];
+    const weak = AP2.game.weak(AP2.bank.byPage(p.id)).length;
+    if ((done && m.stars >= 3) || m.stars >= 4) return null;
+    if (!m.total && done) return null;
+    return {p, min: cost(p), pri: weak * 3 + (m.seen ? 3 - m.stars : 1) + (m.seen ? 0 : 0.5), b, m, done};
+  }).filter(Boolean).sort((x, y) => y.pri - x.pri);
+
+  // Plan berechnen: Tage von heute bis zum letzten Prüfungstag.
+  const build = () => {
+    const pl = plan();
+    if (!pl || !pl.dates) return null;
+    const t0 = AP2.game.today();
+    const exams = AREAS.filter((b) => pl.dates[b] && AP2.game.dayOf(pl.dates[b]) >= t0).map((b) => ({b, day: AP2.game.dayOf(pl.dates[b])}));
+    if (!exams.length) return {exams: [], days: [], over: true};
+    const last = Math.max(...exams.map((e) => e.day));
+    const cap = (pl.min || 60);
+    exams.forEach((e) => {
+      const span = e.day - t0;
+      e.review = Math.min(Math.max(2, Math.round(span * 0.2)), Math.max(0, span - 1)); // Wiederholungstage direkt vor der Prüfung
+      e.cut = e.day - e.review;                                                        // ab hier nur noch wiederholen
+      e.queue = open(e.b);
+      e.total = AP2.store.byBlock(e.b).length;
+    });
+    const days = [];
+    const isOff = (d) => { if (pl.weekend) return false; const w = AP2.game.dateOf(d).getDay(); return w === 0 || w === 6; };
+    for (let d = t0; d <= last; d++) {
+      const entry = {day: d, tasks: [], used: 0};
+      days.push(entry);
+      exams.filter((e) => e.day === d).forEach((e) => entry.tasks.push({kind: 'exam', b: e.b, text: 'Prüfung: ' + blk(e.b).t, min: 0}));
+      if (isOff(d) && !exams.some((e) => e.day - d <= 3 && e.day >= d)) { entry.off = true; continue; }
+      // Lernen: Bereich mit dem größten Rückstand (offene Minuten pro verbleibendem Lerntag bis zum Stichtag) zuerst.
+      let guard = 60;
+      while (entry.used < cap && guard--) {
+        const live = exams.filter((e) => d < e.cut && e.queue.length);
+        if (!live.length) break;
+        const need = (e) => e.queue.reduce((a, q) => a + q.min, 0) / Math.max(1, (e.cut - d));
+        live.sort((x, y) => need(y) - need(x));
+        const e = live[0];
+        const q = e.queue.shift();
+        entry.tasks.push({kind: 'learn', b: e.b, p: q.p, min: q.min, weak: q.m.seen && q.m.stars <= 2});
+        entry.used += q.min;
+      }
+      // Wiederholen: in den letzten Tagen vor einer Prüfung (cut <= d < Prüfungstag).
+      exams.filter((e) => d >= e.cut && d < e.day).forEach((e) => {
+        const left = e.day - d;
+        if (left === 1) entry.tasks.push({kind: 'link', b: e.b, text: 'Spickzettel und Formeln durchgehen: ' + blk(e.b).short, to: 'spick/' + e.b, min: 20});
+        else if (left === Math.min(3, e.review + 1) && e.review >= 2) entry.tasks.push({kind: 'link', b: e.b, text: 'Probeprüfung unter Zeitdruck: ' + blk(e.b).short, to: 'exam-info', min: 60});
+        else entry.tasks.push({kind: 'review', b: e.b, text: 'Wiederholen: Fehlertraining und fällige Fragen (' + blk(e.b).short + ')', to: 'trainer/fehler', min: 25});
+      });
+    }
+    // Was nicht mehr in die Lernzeit passt, bleibt übrig (zu knapp).
+    const rest = exams.map((e) => ({b: e.b, min: e.queue.reduce((a, q) => a + q.min, 0), n: e.queue.length})).filter((r) => r.n);
+    return {exams, days, rest, t0, cap};
+  };
+  AP2.studyPlan = build;
+
+  const taskRow = (t) => {
+    const label = t.kind === 'learn' ? (t.weak ? 'Wiederholen' : 'Lernen') : t.kind === 'exam' ? 'Prüfung' : t.kind === 'review' ? 'Üben' : 'Plan';
+    const text = t.kind === 'learn' ? t.p.t : t.text;
+    const el = h('div', {style: {display: 'flex', gap: S.sp[2], alignItems: 'center', padding: '8px 12px', borderRadius: S.r.md, border: '1px solid'}}, [
+      AP2.tint(h('span', {text: label, style: {fontSize: '10.5px', fontWeight: S.fw.bold, textTransform: 'uppercase', letterSpacing: '0.06em', width: '72px', flexShrink: 0}}), t.weak || t.kind === 'exam' ? 'bad' : 'accent'),
+      h('div', {style: {minWidth: 0, flex: '1 1 0'}}, [AP2.tint(h('div', {text, style: {fontSize: S.f.sm, fontWeight: S.fw.semi}}), 'text'),
+        AP2.tint(h('div', {text: blk(t.b).short + (t.min ? '  ·  ca. ' + t.min + ' Min' : ''), style: {fontSize: S.f.xs}}), 'text3')])]);
+    const go = t.kind === 'learn' ? t.p.id : t.to;
+    if (!go) return AP2.theme.bind(el, (n, c) => { n.style.borderColor = c.border; n.style.backgroundColor = c.surface; });
+    return AP2.press(el, {fn: () => AP2.router.go(go), label: text, base: (c) => ({backgroundColor: c.surface, borderColor: c.border}), hover: (c) => ({borderColor: c.accent})});
+  };
+
+  AP2.views.plan = () => {
+    AP2.ctx.id = 'plan';
+    const title = (t) => AP2.tint(h('h1', {text: t, style: {fontSize: S.f.h1, fontWeight: S.fw.bold, letterSpacing: '-0.02em', margin: '0 0 ' + S.sp[2]}}), 'text');
+    const root = h('div', {}, [gk().kicker('Mein Plan', 'accent'), title('Dein Lernplan')]);
+    const pl = build();
+    if (!pl || !pl.exams.length) {
+      root.appendChild(AP2.blocks.note(pl ? 'Alle eingetragenen Prüfungstermine liegen in der Vergangenheit. Trage neue Termine ein, dann berechne ich den Plan neu.' : 'Du hast noch keine Prüfungstermine eingetragen. Mit den Terminen verteile ich die Themen auf die Tage bis zur Prüfung.'));
+      root.appendChild(AP2.btn({text: 'Prüfungstermine eintragen', icon: AP2.icon('clock', 16), kind: 'primary', fn: () => AP2.router.go('planung')}));
+      AP2.planWeak(root);
+      return root;
+    }
+    root.appendChild(AP2.tint(h('p', {text: 'Berechnet aus deinen Prüfungsterminen, deinem Wissensstand und ' + pl.cap + ' Minuten pro Tag. Erledigte und sichere Themen fallen automatisch weg, der Plan passt sich jeden Tag an.', style: {fontSize: S.f.md, margin: '0 0 ' + S.sp[4]}}), 'text2'));
+    // Prüfungen mit Fortschritt
+    const cards = h('div', {style: {display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 220px), 1fr))', gap: S.sp[3], marginBottom: S.sp[4]}});
+    pl.exams.sort((x, y) => x.day - y.day).forEach((e) => {
+      const openN = open(e.b).length;
+      const frac = e.total ? 1 - openN / e.total : 0;
+      cards.appendChild(gk().panel([AP2.tint(h('div', {text: blk(e.b).short, style: {fontWeight: S.fw.bold, fontSize: S.f.md}}), 'text'),
+        AP2.tint(h('div', {text: fmt(e.day) + '  ·  noch ' + (e.day - pl.t0) + (e.day - pl.t0 === 1 ? ' Tag' : ' Tage'), style: {fontSize: S.f.sm, margin: '2px 0 ' + S.sp[2]}}), 'text2'),
+        gk().bar(frac), AP2.tint(h('div', {text: openN + ' von ' + e.total + ' Themen offen', style: {fontSize: S.f.xs, marginTop: '4px'}}), 'text3')], {padding: '12px 14px', marginBottom: 0}));
+    });
+    root.appendChild(cards);
+    if (pl.rest.length) {
+      const need = pl.rest.reduce((a, r) => a + r.min, 0);
+      root.appendChild(AP2.blocks.note('**Achtung:** Der Plan ist zu knapp: **' + pl.rest.reduce((a, r) => a + r.n, 0) + ' Themen** (' + Math.round(need / 60) + ' Std.) passen nicht mehr in die Lernzeit. Erhöhe die Zeit pro Tag, lerne am Wochenende oder konzentriere dich auf die markierten schwachen Themen.'));
+    }
+    const today = pl.days[0];
+    root.appendChild(AP2.planUi.heading('Heute' + (today.tasks.length ? '  ·  ca. ' + today.tasks.reduce((a, t) => a + t.min, 0) + ' Min' : ''), fmt(today.day)));
+    const list = (d) => h('div', {style: {display: 'flex', flexDirection: 'column', gap: S.sp[2]}}, d.tasks.map(taskRow));
+    if (today.tasks.length) root.appendChild(list(today));
+    else root.appendChild(AP2.blocks.note(today.off ? 'Heute ist lernfrei (Wochenende). Wenn du magst, wiederhole im Trainer.' : 'Heute steht nichts an. Wiederhole im Trainer, was fällig ist.'));
+    const upcoming = pl.days.slice(1, 15).filter((d) => d.tasks.length || d.off);
+    if (upcoming.length) {
+      root.appendChild(AP2.planUi.heading('Die nächsten Tage', 'Reihenfolge nach Dringlichkeit; Themen, die du früher schaffst, rücken nach vorn.'));
+      upcoming.forEach((d) => {
+        const box = h('details', {style: {marginBottom: S.sp[2]}}, [
+          h('summary', {style: {cursor: 'pointer', padding: '6px 2px', fontSize: S.f.sm, fontWeight: S.fw.semi}}, [dayName(d.day) + (d.off ? '  ·  frei' : '  ·  ' + d.tasks.length + (d.tasks.length === 1 ? ' Aufgabe' : ' Aufgaben') + (d.used ? ', ca. ' + d.used + ' Min' : ''))])]);
+        if (d.tasks.length) box.appendChild(list(d));
+        root.appendChild(AP2.theme.bind(box, (n, c) => { n.style.color = c.text; }));
+      });
+    }
+    root.appendChild(h('div', {style: {display: 'flex', gap: S.sp[2], flexWrap: 'wrap', marginTop: S.sp[4]}}, [
+      AP2.btn({text: 'Termine und Lernzeit ändern', icon: AP2.icon('clock', 16), small: true, fn: () => AP2.router.go('planung')}),
+      AP2.btn({text: 'Fehler trainieren', icon: AP2.icon('target', 16), small: true, fn: () => AP2.router.go('trainer/fehler')})]));
+    AP2.planWeak(root);
+    return root;
+  };
+  AP2.viewTitles.plan = 'Mein Plan';
+
+  // Kurzfassung für die Startseite: heutige Aufgaben.
+  AP2.planSummary = () => {
+    const pl = build();
+    if (!pl || !pl.exams.length) return null;
+    const t = pl.days[0].tasks.slice(0, 4);
+    const box = h('div', {style: {display: 'flex', flexDirection: 'column', gap: S.sp[2]}}, t.map(taskRow));
+    box.appendChild(h('div', {}, [AP2.btn({text: 'Ganzen Plan ansehen', icon: AP2.icon('target', 16), small: true, kind: 'ghost', fn: () => AP2.router.go('plan')})]));
+    return box;
+  };
+
+  // ---------- Einrichtung ----------
+  AP2.views.planung = () => {
+    AP2.ctx.id = 'planung';
+    const cur = plan() || {};
+    const def = AP2.game.read().exam;
+    const inputs = {};
+    const mk = (b) => {
+      const inp = AP2.field(h('input', {attrs: {type: 'date', 'aria-label': 'Prüfungstermin ' + blk(b).short}, style: {width: '170px'}}));
+      inp.value = (cur.dates || {})[b] || def;
+      inputs[b] = inp;
+      return h('div', {style: {display: 'flex', alignItems: 'center', gap: S.sp[3], flexWrap: 'wrap', padding: '6px 0'}}, [
+        h('div', {style: {flex: '1 1 220px'}}, [AP2.tint(h('div', {text: blk(b).t, style: {fontWeight: S.fw.semi}}), 'text'), AP2.tint(h('div', {text: blk(b).s, style: {fontSize: S.f.xs}}), 'text3')]), inp]);
+    };
+    const minSel = AP2.field(h('select', {attrs: {'aria-label': 'Lernzeit pro Tag'}}, [30, 45, 60, 90, 120, 180].map((m) => h('option', {text: m + ' Minuten pro Tag', attrs: {value: String(m)}}))));
+    minSel.value = String(cur.min || 60);
+    const wk = h('input', {attrs: {type: 'checkbox', id: 'plan-wk'}});
+    wk.checked = cur.weekend !== false;
+    const err = AP2.tint(h('div', {style: {fontSize: S.f.sm, minHeight: '20px', marginTop: S.sp[2]}}), 'bad');
+    const save = () => {
+      const dates = {};
+      for (const b of AREAS) {
+        const v = inputs[b].value;
+        if (!v) continue;
+        if (isNaN(AP2.game.dayOf(v))) { err.textContent = 'Bitte ein gültiges Datum eingeben.'; return; }
+        dates[b] = v;
+      }
+      if (!Object.keys(dates).length) { err.textContent = 'Trage mindestens einen Prüfungstermin ein, oder wähle „Später“.'; return; }
+      AP2.state.set('plan', {dates, min: Number(minSel.value), weekend: wk.checked});
+      const first = Math.min(...Object.values(dates).map((v) => AP2.game.dayOf(v)));
+      AP2.game.set('exam', new Date(first * 86400000).toISOString().slice(0, 10)); // Countdown auf den nächsten Termin
+      AP2.router.go('plan');
+    };
+    const root = h('div', {}, [gk().kicker(plan() && plan().dates ? 'Lernplan ändern' : 'Willkommen', 'accent'),
+      AP2.tint(h('h1', {text: 'Wann sind deine Prüfungen?', style: {fontSize: S.f.h1, fontWeight: S.fw.bold, letterSpacing: '-0.02em', margin: '0 0 ' + S.sp[2]}}), 'text'),
+      AP2.tint(h('p', {text: 'Mit den Terminen erstelle ich einen Lernplan: welche Themen du an welchem Tag lernst, zuerst die schwachen, am Ende Wiederholung und Probeprüfung. Alles bleibt auf diesem Gerät.', style: {fontSize: S.f.md, margin: '0 0 ' + S.sp[4]}}), 'text2')]);
+    root.appendChild(gk().panel([].concat(AREAS.map(mk), [
+      h('div', {style: {borderTop: '1px solid', marginTop: S.sp[3], paddingTop: S.sp[3], display: 'flex', flexDirection: 'column', gap: S.sp[3]}}, [
+        h('div', {}, [minSel]),
+        h('label', {style: {display: 'flex', gap: S.sp[2], alignItems: 'center', fontSize: S.f.sm}}, [wk, 'Auch am Wochenende lernen'])]),
+      err,
+      h('div', {style: {display: 'flex', gap: S.sp[2], flexWrap: 'wrap', marginTop: S.sp[3]}}, [
+        AP2.btn({text: 'Plan erstellen', icon: AP2.icon('check', 16), kind: 'primary', fn: save}),
+        AP2.btn({text: plan() && plan().dates ? 'Abbrechen' : 'Später', kind: 'ghost', fn: () => { if (!plan()) AP2.state.set('plan', {skipped: true}); AP2.router.go(plan() && plan().dates ? 'plan' : 'home'); }})])])));
+    return root;
+  };
+  AP2.viewTitles.planung = 'Prüfungstermine';
 })();
 ;
 // ui/erfolge.js
@@ -35173,6 +35344,8 @@ AP2.quest('wiso', [
         AP2.find.apply(content);
         AP2.state.set('drawer', false);
       });
+      // Erster Start: Prüfungstermine abfragen (ui/planung.js), danach läuft Mein Plan.
+      if (AP2.planNeeded && AP2.planNeeded() && AP2.router.current() === 'home') location.hash = '/planung';
       AP2.state.set('route', AP2.router.current());
     },
   };

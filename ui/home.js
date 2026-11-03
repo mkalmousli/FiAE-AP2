@@ -186,7 +186,7 @@
     const rec = recent();
     return h('div', {}, [hero(),
       sec('Heute', 'Tagesziel erreichen, fällige Wiederholungen abarbeiten, ein neues Thema lesen.'), actions(),
-      AP2.planSummary() ? sec('Hier solltest du ansetzen', 'Deine schwächsten Themen, automatisch erkannt.') : null, AP2.planSummary(),
+      AP2.planSummary() ? sec('Heute dran', 'Aus deinem Lernplan.') : null, AP2.planSummary(),
       rec ? gap() : null, rec ? gk().kicker('Zuletzt besucht') : null, rec ? h('div', {style: {height: S.sp[2]}}) : null, rec,
       sec('Prüfungen', 'Die schriftlichen AP2-Prüfungen mit deinem Stand je Prüfung.'), exams(), gap(), examLinks(),
       sec('Fortschritt'), row([heatmap(), badges()]),

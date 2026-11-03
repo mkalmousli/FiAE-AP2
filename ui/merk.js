@@ -78,41 +78,18 @@
       AP2.tint(h('div', {text: crumb(p), style: {fontSize: S.f.xs}}), 'text3')].concat(lines.map((t) => AP2.tint(h('div', {text: t, style: {fontSize: S.f.sm, marginTop: '2px'}}), 'text2')))),
     m ? gk().stars(m.stars, 14) : null, actions(p, hasQs)])], {marginBottom: S.sp[2], padding: '12px 16px'});
 
-  // Kurzfassung für die Startseite: die drei dringendsten Themen.
-  AP2.planSummary = () => {
-    const w = weakPages().slice(0, 3);
-    if (!w.length) return null;
-    const box = h('div');
-    w.forEach((x) => box.appendChild(card(x.p, [reason(x)], true, x.m)));
-    box.appendChild(AP2.btn({text: 'Ganzen Plan ansehen', icon: AP2.icon('target', 16), small: true, kind: 'ghost', fn: () => AP2.router.go('plan')}));
-    return box;
-  };
   AP2.weakInfo = (id) => { const x = weakPages().find((w) => w.p.id === id); return x ? reason(x) : null; };
 
-  AP2.views.plan = () => {
-    AP2.ctx.id = 'plan';
+  // Abschnitte "Schwache Themen" und "Noch nicht geübt" für Mein Plan (ui/planung.js).
+  AP2.planWeak = (root) => {
     const weak = weakPages();
-    const due = AP2.game.due(AP2.bank.core()).length;
-    const root = h('div', {}, [gk().kicker('Mein Plan', 'accent'),
-      AP2.tint(h('h1', {text: 'Hier solltest du ansetzen', style: {fontSize: S.f.h1, fontWeight: S.fw.bold, letterSpacing: '-0.02em', margin: '0 0 ' + S.sp[2]}}), 'text'),
-      AP2.tint(h('p', {text: 'Automatisch aus deinen Antworten berechnet: Themen mit vielen Fehlern oder wenig Sternen stehen oben.', style: {fontSize: S.f.md, margin: '0 0 ' + S.sp[4]}}), 'text2')]);
-    const steps = [];
-    if (due) steps.push(AP2.btn({text: due + ' fällige Wiederholungen', icon: AP2.icon('clock', 16), kind: 'primary', fn: () => AP2.router.go('trainer/mix')}));
-    if (weak.length) steps.push(AP2.btn({text: 'Fehler trainieren', icon: AP2.icon('play', 16), fn: () => AP2.router.go('trainer/fehler')}));
-    if (steps.length) root.appendChild(h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[2], marginBottom: S.sp[3]}}, steps));
     if (!weak.length) root.appendChild(AP2.blocks.note('Noch keine Schwachstellen erkannt. Beantworte Fragen im Trainer oder in einer Quest, dann erscheinen hier die Themen, die mehr Aufmerksamkeit brauchen.'));
     else {
-      root.appendChild(heading('Schwache Themen (' + weak.length + ')', 'Lies zuerst die Seite, übe danach gezielt.'));
+      root.appendChild(heading('Schwache Themen (' + weak.length + ')', 'Aus deinen Antworten erkannt: viele Fehler oder wenig Sterne.'));
       weak.forEach((x) => root.appendChild(card(x.p, [reason(x)], true, x.m)));
     }
-    const fresh = untouched().slice(0, 8);
-    if (fresh.length) {
-      root.appendChild(heading('Noch nicht geübt', 'Themen in den Prüfungsbereichen ohne eine einzige beantwortete Frage.'));
-      fresh.forEach((p) => root.appendChild(card(p, ['Noch keine Frage beantwortet'], true, null)));
-    }
-    return root;
   };
-  AP2.viewTitles.plan = 'Mein Plan';
+  AP2.planUi = {heading, card, actions};
 
   // ---------- Merkliste ----------
   AP2.views.merkliste = () => {

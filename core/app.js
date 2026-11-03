@@ -65,6 +65,8 @@
         AP2.find.apply(content);
         AP2.state.set('drawer', false);
       });
+      // Erster Start: Prüfungstermine abfragen (ui/planung.js), danach läuft Mein Plan.
+      if (AP2.planNeeded && AP2.planNeeded() && AP2.router.current() === 'home') location.hash = '/planung';
       AP2.state.set('route', AP2.router.current());
     },
   };
