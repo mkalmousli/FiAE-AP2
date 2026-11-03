@@ -91,23 +91,43 @@ AP2.pages = (dir, spec) => Object.keys(spec).forEach((name) => {
   }); single(); };
   progress(0.3, 0, 1, 'bundle.js');
   document.head.appendChild(el);
-  // Offline-Nutzung und schneller Neustart. Updates: main.js (enthält VERSION) wird am Cache vorbei geprüft;
-  // weicht die Version ab, aktualisiert sich die App selbst (Service Worker erneuern, Caches leeren, neu laden).
+  // Offline-Nutzung und schneller Neustart. Updates: main.js (enthält VERSION) wird am Cache vorbei geprüft.
+  // Eine neue Version unterbricht niemanden: es erscheint nur ein Hinweis; beim nächsten Neuladen ist sie automatisch aktiv
+  // (Service Worker und main.js laden netzwerkzuerst), oder per Knopf sofort.
   if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js', {updateViaCache: 'none'}).catch(() => {}));
   let busy = false;
+  let announced = '';
+  const refresh = () => {
+    const reg = 'serviceWorker' in navigator ? navigator.serviceWorker.getRegistration() : Promise.resolve(null);
+    reg.then((r) => r && r.update()).catch(() => {})
+      .then(() => window.caches ? caches.keys().then((ks) => Promise.all(ks.filter((k) => k.indexOf('ap2-') === 0).map((k) => caches.delete(k)))) : null)
+      .catch(() => {}).then(() => location.reload());
+  };
+  const notice = () => {
+    const bar = document.createElement('div');
+    bar.setAttribute('role', 'status');
+    bar.style.cssText = 'position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:99999;display:flex;gap:12px;align-items:center;max-width:calc(100vw - 24px);'
+      + 'padding:10px 14px;border-radius:10px;background:#1f2937;color:#fff;font:14px/1.3 system-ui,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.35)';
+    const txt = document.createElement('span');
+    txt.textContent = 'Neue Version verfügbar. Sie wird beim nächsten Neuladen automatisch geladen.';
+    const mk = (label, fn, solid) => {
+      const b = document.createElement('button');
+      b.textContent = label;
+      b.style.cssText = 'cursor:pointer;border-radius:8px;padding:6px 12px;font:inherit;font-weight:600;border:1px solid #6b7280;' + (solid ? 'background:#fff;color:#111' : 'background:transparent;color:#fff');
+      b.onclick = fn;
+      return b;
+    };
+    bar.append(txt, mk('Jetzt aktualisieren', refresh, true), mk('Später', () => bar.remove(), false));
+    document.body.appendChild(bar);
+  };
   const check = () => {
     if (busy || VERSION === 'dev' || dev || !navigator.onLine) return;
     busy = true;
     fetch('main.js?check=' + Date.now(), {cache: 'no-store'}).then((r) => r.ok ? r.text() : '').then((txt) => {
       const m = /const VERSION = '([^']+)'/.exec(txt);
-      if (!m || m[1] === VERSION) return;
-      // Schleifenschutz: pro neuer Version nur ein automatischer Versuch je Sitzung.
-      if (sessionStorage.getItem('ap2-upd') === m[1]) return;
-      sessionStorage.setItem('ap2-upd', m[1]);
-      const reg = 'serviceWorker' in navigator ? navigator.serviceWorker.getRegistration() : Promise.resolve(null);
-      return reg.then((r) => r && r.update()).catch(() => {})
-        .then(() => window.caches ? caches.keys().then((ks) => Promise.all(ks.filter((k) => k.indexOf('ap2-') === 0).map((k) => caches.delete(k)))) : null)
-        .catch(() => {}).then(() => location.reload());
+      if (!m || m[1] === VERSION || announced === m[1]) return;
+      announced = m[1];
+      notice();
     }).catch(() => {}).then(() => { busy = false; });
   };
   window.addEventListener('load', () => setTimeout(check, 3000));
