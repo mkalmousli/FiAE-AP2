@@ -16,6 +16,9 @@
     all[key] = {best: Math.max(old.best, pct), runs: old.runs + 1, last: pct};
     AP2.state.set('quest', all);
   };
+  // Laufende Runde je Quest-Modus (b/mode), damit man nach Schließen oder Neuladen genau dort weitermacht.
+  const runs = () => AP2.state.get('questRun') || {};
+  const saveRun = (key, run) => { const all = Object.assign({}, runs()); if (run) all[key] = run; else delete all[key]; AP2.state.set('questRun', all); };
   const starsOf = (pct) => (pct >= 0.9 ? 3 : pct >= 0.7 ? 2 : pct >= 0.5 ? 1 : 0);
   const shuffle = (list) => { const a = list.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
   const nameOf = (st) => st.t || (AP2.store.get(st.id) || {}).t || st.id;
@@ -65,8 +68,12 @@
     const n = list.reduce((a, st) => a + st.qs.length, 0);
     const root = h('div', {}, [AP2.gk.kicker('Quest  ·  ' + list.length + ' Stationen  ·  ' + n + ' Fragen', 'accent'), title(blockName(b)),
       para('Arbeite dich Station für Station durch alle Themen. Ab **50 %** gibt es einen Stern, ab **70 %** zwei, ab **90 %** drei. Die markierte Station ist dein nächstes Ziel.')]);
+    const open = runs();
+    const running = Object.keys(open).filter((k) => k.indexOf(b + '/') === 0).map((k) => k.slice(b.length + 1));
+    const runName = (m) => (m === 'boss' ? 'Endboss' : m === 'marathon' ? 'Marathon' : nameOf(list.find((x) => x.id === m) || {id: m}));
     const modes = h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[2], marginBottom: S.sp[5]}}, [
-      AP2.btn({text: 'Weiter: ' + nameOf(list[nextIdx]), icon: AP2.icon('play', 16), kind: 'primary', fn: () => AP2.router.go('quest/' + b + '/' + list[nextIdx].id)}),
+      ...running.map((m) => AP2.btn({text: 'Fortsetzen: ' + runName(m) + ' (' + open[b + '/' + m].i + '/' + open[b + '/' + m].order.length + ')', icon: AP2.icon('play', 16), kind: 'primary', fn: () => AP2.router.go('quest/' + b + '/' + m)})),
+      AP2.btn({text: 'Weiter: ' + nameOf(list[nextIdx]), icon: AP2.icon('play', 16), kind: running.length ? 'soft' : 'primary', fn: () => AP2.router.go('quest/' + b + '/' + list[nextIdx].id)}),
       AP2.btn({text: 'Endboss (30 Fragen, 3 Leben)', icon: AP2.icon('sword', 16), fn: () => AP2.router.go('quest/' + b + '/boss')}),
       AP2.btn({text: 'Marathon: alle ' + n + ' Fragen', icon: AP2.icon('route', 16), fn: () => AP2.router.go('quest/' + b + '/marathon')}),
       AP2.spickSheets && AP2.spickSheets().some((s) => s.id === b) ? AP2.btn({text: 'Spickzettel', icon: AP2.icon('cards', 16), fn: () => AP2.router.go('spick/' + b)}) : null]);
@@ -220,8 +227,23 @@
       qs = shuffle([].concat(...list.map((st) => st.qs.filter((q) => (q.lv || 2) >= 2).map((q) => ({q, st}))))).slice(0, 30); label = 'Endboss'; lives = 3;
     } else { qs = shuffle([].concat(...list.map((st) => st.qs.map((q) => ({q, st}))))); label = 'Marathon'; }
     const key = b + '/' + mode;
-    const total = qs.length;
+    const ref = (it) => [list.indexOf(it.st), it.st.qs.indexOf(it.q)];
     const st = {i: 0, right: 0, combo: 0, best: 0, xp: 0, wrong: []};
+    let resumed = false;
+    const saved = runs()[key];
+    if (saved && Array.isArray(saved.order)) {
+      const back = saved.order.map(([si, qi]) => (list[si] && list[si].qs[qi] ? {q: list[si].qs[qi], st: list[si]} : null));
+      if (back.length && back.every(Boolean) && saved.i > 0 && saved.i < back.length) {
+        qs = back;
+        Object.assign(st, {i: saved.i, right: saved.right, combo: saved.combo, best: saved.best, xp: saved.xp,
+          wrong: (saved.wrong || []).map(([si, qi]) => (list[si] && list[si].qs[qi] ? {q: list[si].qs[qi], sol: null} : null)).filter(Boolean)});
+        if (saved.lives != null) lives = saved.lives;
+        resumed = true;
+      }
+    }
+    const total = qs.length;
+    const persist = () => saveRun(key, {order: qs.map(ref), i: st.i, right: st.right, combo: st.combo, best: st.best, xp: st.xp,
+      lives: lives === Infinity ? null : lives, wrong: st.wrong.map((w) => ref({q: w.q, st: qs.find((x) => x.q === w.q).st}))});
     const root = h('div');
     const head = h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[3], alignItems: 'center', marginBottom: S.sp[3]}});
     const barWrap = h('div', {style: {marginBottom: S.sp[5]}});
@@ -236,6 +258,7 @@
     const hud = () => {
       AP2.dispose(head); AP2.dispose(barWrap);
       head.appendChild(AP2.btn({text: 'Karte', icon: AP2.icon('map', 16), small: true, kind: 'ghost', fn: () => AP2.router.go('quest/' + b)}));
+      if (st.i > 0 && st.i < total) head.appendChild(AP2.btn({text: 'Neu beginnen', icon: AP2.icon('repeat', 14), small: true, kind: 'ghost', fn: () => { saveRun(key, null); AP2.state.set('route', AP2.state.get('route')); }}));
       head.appendChild(AP2.tint(h('div', {text: label, style: {fontWeight: S.fw.bold, fontSize: S.f.lg, flex: '1 1 200px'}}), 'text'));
       const flame = h('span', {style: {display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: S.fw.bold}}, [AP2.icon('flame', 18), 'x' + st.combo]);
       AP2.theme.bind(flame, (n, c) => { n.style.color = st.combo >= 3 ? c.fire : c.text3; n.style.transform = st.combo >= 5 ? 'scale(1.15)' : 'none'; });
@@ -247,6 +270,7 @@
     };
     const finish = () => {
       handler = null;
+      saveRun(key, null);
       hud();
       AP2.dispose(stage);
       const done = st.i || 1;
@@ -297,6 +321,7 @@
         if (ok) { st.right++; st.combo++; st.best = Math.max(st.best, st.combo); } else { st.combo = 0; st.wrong.push({q, sol}); if (lives !== Infinity) lives--; }
         const gained = AP2.game.answer(qid(from.id, q), ok, {combo: st.combo}) || 0;
         st.xp += gained;
+        st.i++; if (st.i < total) persist(); else saveRun(key, null); st.i--; // gespeichert wird schon beim Beantworten: Fortsetzen springt zur nächsten Frage
         if (gained && ok) AP2.fx.pop(gained);
         AP2.fx.sound(ok ? 'right' : 'wrong');
         if (ok && [5, 10, 20, 30].includes(st.combo)) AP2.fx.toast('Combo x' + st.combo + '!', 'Du bist on fire.', 'fire', 'flame');
@@ -325,6 +350,7 @@
       stage.appendChild(card);
     };
     if (!total) { stage.appendChild(AP2.blocks.note('Für diese Auswahl gibt es noch keine Fragen.')); return root; }
+    if (resumed) AP2.fx.toast('Fortgesetzt', 'Weiter bei Frage ' + (st.i + 1) + ' von ' + total + '.', 'accent', 'play');
     ask();
     return root;
   };
