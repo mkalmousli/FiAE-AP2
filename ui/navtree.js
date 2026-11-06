@@ -42,10 +42,15 @@
     sync();
     return {el: row, page: p, sync};
   };
-  const folder = (key, title, level, inner, kids, extra) => {
+  const folder = (key, title, level, inner, kids, extra, siblings) => {
     const arrow = chevron(key);
     const body = h('div', {}, kids.map((k) => k.el));
-    const head = AP2.navRow({level, role: 'button', label: title, inner: [arrow].concat(inner), active: () => false, fn: () => { setOpen(key, !isOpen(key)); }});
+    const head = AP2.navRow({level, role: 'button', label: title, inner: [arrow].concat(inner), active: () => false, fn: () => {
+      const next = !isOpen(key);
+      const patch = {[key]: next};
+      if (next && siblings) siblings().forEach((k) => { patch[k] = false; });
+      AP2.state.set('navOpen', Object.assign({}, AP2.state.get('navOpen'), patch));
+    }});
     const show = (force) => { body.style.display = force || isOpen(key) ? 'block' : 'none'; head.setAttribute('aria-expanded', String(force || isOpen(key))); arrow.sync(); };
     return {el: h('div', {}, [head].concat(extra || [], [body])), show, head, key};
   };
@@ -61,10 +66,12 @@
         if (!g) { g = {name: p.g, pages: []}; groups.push(g); }
         g.pages.push(p);
       });
+      const sibKeys = () => groups.map((x) => blk.id + '/' + x.name).filter((k) => k !== undefined);
       const gFolders = groups.map((g) => {
         const rows = g.pages.map(pageItem);
         items.push(...rows);
-        const f = folder(blk.id + '/' + g.name, g.name || 'Allgemein', 'group', [h('span', {text: g.name || 'Allgemein', style: {flex: '1 1 0'}})], rows);
+        const f = folder(blk.id + '/' + g.name, g.name || 'Allgemein', 'group', [h('span', {text: g.name || 'Allgemein', style: {flex: '1 1 0'}}), AP2.tint(h('span', {text: String(rows.length), style: {fontSize: S.f.xs}}), 'text3')], rows, null,
+          () => sibKeys().filter((k) => k !== blk.id + '/' + g.name));
         f.rows = rows;
         return f;
       });
