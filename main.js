@@ -1,6 +1,6 @@
 // Einstieg: im Betrieb eine gebündelte Datei (bundle.js, erzeugt von build.mjs), lokal alle Einzeldateien laut Manifest.
 // Lokal (localhost) oder mit ?dev lädt immer die Einzeldateien, damit Änderungen ohne Build sichtbar sind; ?bundle erzwingt das Bündel.
-const VERSION = '9842b9d3c1';
+const VERSION = '1c0621463c';
 // Seitenteile: pages('ps', {phasen: 3}) lädt content/ps/phasen-1.js bis phasen-3.js.
 const freshAP2 = () => {
   window.AP2 = {files: [], blocks: {}, tools: {}};
