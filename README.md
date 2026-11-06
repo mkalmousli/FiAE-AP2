@@ -1,6 +1,6 @@
 # FiAE-AP2
 
-Study site for the IHK AP2 exam (Fachinformatiker Anwendungsentwicklung): Planen eines Softwareproduktes (incl. infrastructure and IT security), Entwicklung und Umsetzung von Algorithmen, WiSo, five complete mock exam sets, calculators, crash courses, and a gamified trainer.
+Study site for the IHK AP2 exam (Fachinformatiker Anwendungsentwicklung): Planen eines Softwareproduktes (incl. infrastructure and IT security), Entwicklung und Umsetzung von Algorithmen, WiSo, eight complete mock exam sets (each in four parts incl. Deutsch + GK), calculators, crash courses, and a gamified trainer.
 
 Live: https://al-mo.de/apps/fiae-ap2/
 
@@ -15,7 +15,7 @@ Plain JavaScript, no dependencies. Serve the folder with any static server, e.g.
 - **Quests** (`#/quest`, `#/quest/ps|infra|eua|wiso`): one question adventure per exam area that walks through every topic, one station per topic page, with single and multiple choice, true/false, calculations, gap texts, ordering, matching and code tracing. Stars per station (50/70/90 %), combos, XP, a 30-question boss round with 3 lives and a marathon over all questions. Data in `content/quest/*.js`, engine `ui/quest.js`.
 - **Spickzettel** (`#/spick`, `#/spick/ps|infra|eua|wiso`): one wide single-page cheat sheet per exam area with formulas, tables, diagrams, traps, external links and mastery-colored links to every topic page; sticky section jump bar, filter, print/PDF. Data in `content/spick/*.js`, format documented in `ui/spick.js`.
 - **Themenkarte** (`#/themen`): all topics drawn as a map (regions per exam area, territories per group, topics as places colored by mastery), filterable by block, text, open/weak/due.
-- **Mock exams** (`exam1-*` to `exam5-*`): timed, graded with the IHK grading key. Sets 3 to 5 follow the AP2 format since 2021 (cover sheet, company scenario, attachments, 4 x 25 points) with auto-graded WiSo tasks (multiple choice, matching, ordering, numeric), step-by-step solution walkthroughs (`['walk', ...]`), diagram solutions, grading keys and a per-topic evaluation that links to the pages where points were lost.
+- **Mock exams** (`exam1-*` to `exam8-*`, hub `#/exam-info`): eight sets, each split into four timed parts: Softwareprodukt, Algorithmen (4 x 25 points, 90 min), WiSo (60 min, 100 points) and Deutsch + GK (Berufsschul format: Deutsch 50 + GK 30 points). Cover sheet, company scenario, attachments, graded with the IHK key, step-by-step solutions (`['walk', ...]`), diagrams, per-topic evaluation linking to the pages where points were lost. Every task has an optional "Hilfe auf Deutsch" box (signal word, approach, word list), part navigation chips and a hub with percent/grade per part. Topic pages for Deutsch (`de-*`) and Gemeinschaftskunde (`gk-*`) prepare for the extra parts.
 - **Calculators** (`tools/`): subnetting, VLSM, IPv6 subnets, routing decisions, RAID, availability, network plan, ROI, DPMO, energy cost, transfer time, RSA, toy blockchain, neuron, check digits, pass/grade rules incl. Ergänzungsprüfung, and more.
 
 ## Development and build

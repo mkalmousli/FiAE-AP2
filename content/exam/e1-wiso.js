@@ -184,12 +184,12 @@
         match: {keys: ['Produktpolitik', 'Preispolitik', 'Distributionspolitik', 'Kommunikationspolitik'], items: [
           ['Ein neuer Kurs „Rückenfit“ wird entwickelt.', 0], ['Der erste Monat kostet nur 9 Euro.', 1], ['Mitglieder buchen Kurse in einer App und können in allen 6 Studios trainieren.', 2], ['Das Studio wirbt mit Videos auf Social Media.', 3], ['Firmenkunden erhalten ab 20 Verträgen einen Rabatt.', 1], ['Die Geräte werden gegen modernere ausgetauscht.', 0],
         ]},
-        a: ['**Produkt**: Leistung, Qualität, Sortiment. **Preis**: Preise, Rabatte, Konditionen. **Distribution**: Vertriebswege, Standorte, Online-Buchung. **Kommunikation**: Werbung, Verkaufsförderung, Öffentlichkeitsarbeit. Der Einführungspreis und der Mengenrabatt sind Preispolitik, nicht Werbung.']},
+        a: ['**Produkt**: Leistung, Qualität, Sortiment. **Preis**: Preise, Rabatte, Konditionen. **Distribution**: Vertriebswege, Standorte, Online-Buchung. **Kommunikation**: Werbung, Verkaufsförderung, Öffentlichkeitsarbeit. Der Einführungspreis und der Mengenrabatt sind Preispolitik, nicht Werbung.'], see: ['ps-marketing']},
       {pts: 3, topic: 'Widerruf', q: 'Frau Roth schließt am **Dienstag, 3. März 2026** online einen Vertrag über 12 Monate Mitgliedschaft. Sie hat eine korrekte Widerrufsbelehrung erhalten. Bis wann kann sie den Vertrag **widerrufen**?',
         op: '**Bis wann** fragt nach einem Datum. Zähle 14 Tage.', hint: 'Fernabsatz (online): 14 Tage Widerruf. Bei Dienstleistungen beginnt die Frist am Tag des Vertragsschlusses.',
         words: [['Fernabsatz', 'Vertrag ohne persönlichen Kontakt, zum Beispiel online.'], ['Widerrufsbelehrung', 'Pflichtinformation über das Recht zum Widerruf.'], ['Verbraucher', 'Privatperson, die für sich einkauft.']],
         mc: {o: ['bis 17. März 2026', 'bis 3. April 2026', 'bis 10. März 2026', 'Ein Widerruf ist nicht möglich, weil es eine Dienstleistung ist.'], c: [0]},
-        a: ['§ 355 BGB: **14 Tage**. 3. März plus 14 Tage = **17. März 2026**. Der Widerruf ist **formlos** möglich und braucht keinen Grund.', '**Falsch:** 3. April wären rund 30 Tage. 10. März wären nur 7 Tage. Auch Dienstleistungsverträge im Fernabsatz sind widerrufbar. Fehlt die Belehrung, endet die Frist erst **12 Monate und 14 Tage** nach Vertragsschluss.']},
+        a: ['§ 355 BGB: **14 Tage**. 3. März plus 14 Tage = **17. März 2026**. Der Widerruf ist **formlos** möglich und braucht keinen Grund.', '**Falsch:** 3. April wären rund 30 Tage. 10. März wären nur 7 Tage. Auch Dienstleistungsverträge im Fernabsatz sind widerrufbar. Fehlt die Belehrung, endet die Frist erst **12 Monate und 14 Tage** nach Vertragsschluss.'], see: ['ps-kaufvertrag']},
       {pts: 3, topic: 'Gewährleistung', q: 'Herr Lang (Privatperson) kauft am 5. Februar 2026 im Fachgeschäft ein Laufband. Am **20. September 2026** fällt der Motor aus. Welche Aussage ist richtig?',
         op: '**Welche Aussage ist richtig**: Genau eine Antwort stimmt.', hint: 'Seit 2022 gilt für Verbrauchsgüter: 12 Monate Beweislastumkehr. Zuerst Nacherfüllung.',
         words: [['Mangel', 'Fehler an der Ware.'], ['Nacherfüllung', 'Der Verkäufer repariert oder liefert neu.'], ['Beweislast', 'Wer muss etwas beweisen?']],
@@ -199,7 +199,7 @@
         op: '**Welche Aussage ist richtig**: Genau eine Antwort stimmt.', hint: 'Bei der Lastschrift „holt“ sich der Empfänger das Geld. Der Zahler muss vorher zustimmen.',
         words: [['Mandat', 'Erlaubnis des Kunden zum Einzug von seinem Konto.'], ['Rückbuchung', 'Das Geld wird dem Kunden zurückgegeben.']],
         mc: {o: ['FitPunkt braucht ein SEPA-Mandat. Der Kunde kann innerhalb von 8 Wochen ohne Begründung widersprechen.', 'FitPunkt darf ohne Zustimmung abbuchen. Der Kunde kann nie widersprechen.', 'Der Kunde veranlasst die Zahlung selbst bei seiner Bank.', 'Die Lastschrift ist nur für Beträge über 1.000 Euro erlaubt.'], c: [0]},
-        a: ['Bei der **Lastschrift** löst der **Zahlungsempfänger** die Zahlung aus, aber nur mit **SEPA-Mandat**. Bei autorisierten Zahlungen kann der Zahler **8 Wochen** ohne Begründung zurückbuchen lassen. Selbst veranlassen ist die **Überweisung**.']},
+        a: ['Bei der **Lastschrift** löst der **Zahlungsempfänger** die Zahlung aus, aber nur mit **SEPA-Mandat**. Bei autorisierten Zahlungen kann der Zahler **8 Wochen** ohne Begründung zurückbuchen lassen. Selbst veranlassen ist die **Überweisung**.'], see: ['ps-kaufvertrag']},
     ],
   });
 
