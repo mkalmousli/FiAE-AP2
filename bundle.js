@@ -4782,14 +4782,24 @@ AP2.pages = function () {};
     const input = AP2.field(h('input', {attrs: {type: 'search', placeholder: 'Themen filtern', 'aria-label': 'Navigation filtern'}, style: {flex: '1 1 0', width: '100%'}}));
     on(input, 'input', () => { words = norm(input.value).split(/\s+/).filter(Boolean); refresh(tree, words); });
     const head = h('div', {style: {display: 'flex', padding: '12px 12px 8px', alignItems: 'center', flexShrink: 0}}, [input]);
-    const quick = [['home', 'Startseite', 'home'], ['trainer', 'Trainer', 'play'], ['plan', 'Mein Plan', 'target'], ['merkliste', 'Merkliste', 'bookmark'], ['quest', 'Quests', 'sword'], ['spick', 'Spickzettel', 'cards'], ['themen', 'Themenkarte', 'map'], ['erfolge', 'Erfolge', 'trophy']].map(([id, text, icon]) => {
-      const el = h('div', {attrs: {title: text}, style: {flex: '1 1 0', minWidth: 0, display: 'flex', justifyContent: 'center', padding: '8px 0', borderRadius: S.r.sm}}, [AP2.icon(icon, 18)]);
-      const on = () => (id === 'home' ? AP2.state.get('route') === 'home' : AP2.state.get('route').split('/')[0] === id);
-      return AP2.press(el, {fn: () => AP2.router.go(id), label: text, role: 'link', hover: (c) => ({backgroundColor: c.hover}),
-        base: (c) => (on() ? {backgroundColor: c.accentSoft, color: c.accent} : {backgroundColor: 'transparent', color: c.text2})});
-    });
-    const quickRow = h('div', {style: {display: 'flex', gap: '2px', padding: '0 10px 6px', flexShrink: 0}}, quick);
-    const tabs = AP2.store.BLOCKS.map((blk) => {
+    const routeIs = (id) => (id === 'home' ? AP2.state.get('route') === 'home' : AP2.state.get('route').split('/')[0] === id);
+    const TOOLS = [['plan', 'Mein Plan', 'target'], ['trainer', 'Trainer', 'play'], ['quest', 'Quests', 'sword'], ['merkliste', 'Merkliste', 'bookmark'], ['spick', 'Spickzettel', 'cards'], ['themen', 'Themenkarte', 'map'], ['erfolge', 'Erfolge', 'trophy']];
+    const label = (txt) => AP2.tint(h('div', {text: txt, style: {fontSize: S.f.xs, fontWeight: S.fw.semi, letterSpacing: '0.04em', textTransform: 'uppercase', padding: '6px 14px 3px'}}), 'text3');
+    const chip = (icon, text, fn, on, grow) => {
+      const el = h('div', {attrs: {title: text}, style: {flex: grow ? '1 1 0' : '0 0 auto', minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: S.sp[2], padding: '7px 10px', borderRadius: S.r.sm, fontSize: '13px'}},
+        [AP2.icon(icon, 16), h('span', {text, style: {overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}})]);
+      return AP2.press(el, {fn, label: text, role: 'link', hover: (c) => ({backgroundColor: c.hover}),
+        base: (c) => (on() ? {backgroundColor: c.accentSoft, color: c.accent, fontWeight: S.fw.semi} : {backgroundColor: 'transparent', color: c.text, fontWeight: S.fw.reg})});
+    };
+    const homeChip = chip('home', 'Start', () => AP2.router.go('home'), () => routeIs('home'), true);
+    let toolsOpen = TOOLS.some((t) => routeIs(t[0]));
+    const toolRows = TOOLS.map(([id, text, icon]) => chip(icon, text, () => AP2.router.go(id), () => routeIs(id), true));
+    const toolPanel = h('div', {style: {display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '2px', padding: '0 10px 6px', flexShrink: 0}}, toolRows);
+    const toolsChip = chip('grid', 'Werkzeuge', () => { toolsOpen = !toolsOpen; paintTools(); }, () => toolsOpen, true);
+    const paintTools = () => { toolPanel.style.display = toolsOpen ? 'grid' : 'none'; toolsChip.repaint(); };
+    const top = h('div', {style: {display: 'flex', gap: '2px', padding: '0 10px 4px', flexShrink: 0}}, [homeChip, toolsChip]);
+    const quick = [homeChip].concat(toolRows);
+    const mkTab = (blk) => {
       const list = AP2.store.byBlock(blk.id);
       const bar = AP2.fill(h('div', {style: {height: '100%', borderRadius: S.r.pill}}), 'accent');
       const track = AP2.fill(h('div', {style: {height: '3px', width: '70%', borderRadius: S.r.pill, overflow: 'hidden'}}, [bar]), 'border');
@@ -4801,12 +4811,17 @@ AP2.pages = function () {};
       row.sync = () => { const done = list.filter((p) => AP2.state.get('done')[p.id]).length; bar.style.width = (list.length ? (done / list.length) * 100 : 0) + '%'; row.repaint(); };
       row.sync();
       return row;
-    });
-    const tabGrid = h('div', {attrs: {role: 'tablist'}, style: {display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '2px', padding: '0 10px 6px', flexShrink: 0}}, tabs);
+    };
+    const MAIN = ['ps', 'infra', 'eua', 'wiso', 'de', 'gk'];
+    const mainTabs = AP2.store.BLOCKS.filter((b) => MAIN.indexOf(b.id) >= 0).map(mkTab);
+    const moreTabs = AP2.store.BLOCKS.filter((b) => MAIN.indexOf(b.id) < 0).map(mkTab);
+    const tabs = mainTabs.concat(moreTabs);
+    const grid = (n, kids) => h('div', {attrs: {role: 'tablist'}, style: {display: 'grid', gridTemplateColumns: 'repeat(' + n + ', minmax(0, 1fr))', gap: '2px', padding: '0 10px 4px', flexShrink: 0}}, kids);
+    const tabGrid = h('div', {style: {flexShrink: 0}}, [label('Fächer'), grid(3, mainTabs), label('Prüfen und üben'), grid(moreTabs.length, moreTabs)]);
     const sep = AP2.fill(h('div', {style: {height: '1px', margin: '2px 10px 6px', flexShrink: 0}}), 'border');
     const list = h('div', {style: {flex: '1 1 0', overflowY: 'auto', padding: '4px 10px 64px'}}, [tree.el]);
     const root = h('nav', {attrs: {'aria-label': 'Themen'}, style: {position: 'fixed', left: 0, display: 'flex', flexDirection: 'column', boxSizing: 'border-box',
-      borderRight: '1px solid', zIndex: S.z.drawer, transition: 'transform 220ms ease'}}, [head, quickRow, tabGrid, sep, list, AP2.navGrip()]);
+      borderRight: '1px solid', zIndex: S.z.drawer, transition: 'transform 220ms ease'}}, [head, top, toolPanel, tabGrid, sep, list, AP2.navGrip()]);
     AP2.theme.bind(root, (n, c) => { n.style.backgroundColor = c.surface; n.style.borderRightColor = c.border; });
     AP2.state.sub('navOpen', () => refresh(tree, words));
     AP2.state.sub('sideBlock', () => { refresh(tree, words); tabs.forEach((t) => t.repaint()); });
@@ -4814,11 +4829,12 @@ AP2.pages = function () {};
     // Die Lernkartei ändert sich bei jeder Antwort; die Punkte werden gebündelt nachgezogen.
     let pending = null;
     AP2.state.sub('srs', () => { clearTimeout(pending); pending = setTimeout(() => refresh(tree, words), 700); });
-    AP2.state.sub('route', (route) => { reveal(route); refresh(tree, words); quick.forEach((row) => row.repaint()); toTop(list, tree, route); });
+    AP2.state.sub('route', (route) => { reveal(route); refresh(tree, words); quick.forEach((row) => row.repaint()); if (TOOLS.some((t) => routeIs(t[0])) && !toolsOpen) { toolsOpen = true; } paintTools(); toTop(list, tree, route); });
     if (!AP2.state.get('sideBlock')) AP2.state.set('sideBlock', 'ps');
     reveal(AP2.state.get('route'));
     refresh(tree, words);
     tabs.forEach((t) => t.repaint());
+    paintTools();
     return root;
   };
 })();
