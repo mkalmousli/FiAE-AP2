@@ -38,3 +38,84 @@ AP2.page('ps-istsoll', {
     ]],
   ],
 });
+
+AP2.add('ps-istsoll', [
+  [
+    "h",
+    "Nutzen aus dem Prozess ableiten"
+  ],
+  [
+    "p",
+    "Die Werkstatt bearbeitet monatlich 800 Aufträge. Die mittlere Erfassungszeit sinkt von zwölf auf drei Minuten. Eine Arbeitsstunde wird mit 36 Euro bewertet. Das System verursacht monatlich 900 Euro Zusatzkosten."
+  ],
+  [
+    "table",
+    [
+      "Schritt",
+      "Rechnung",
+      "Ergebnis"
+    ],
+    [
+      [
+        "Ersparnis pro Auftrag",
+        "12 − 3",
+        "9 Minuten"
+      ],
+      [
+        "Ersparnis im Monat",
+        "800 × 9 / 60",
+        "120 Stunden"
+      ],
+      [
+        "Bewertete Zeitersparnis",
+        "120 × 36",
+        "4.320 Euro"
+      ],
+      [
+        "Monatlicher Nettoeffekt",
+        "4.320 − 900",
+        "3.420 Euro"
+      ]
+    ]
+  ],
+  [
+    "note",
+    "Das ist ein bewerteter Kapazitätsnutzen. Ob tatsächlich Geld abfließt oder gespart wird, hängt von der Nutzung freier Zeit ab."
+  ],
+  [
+    "h",
+    "Erfolgskontrolle fair planen"
+  ],
+  [
+    "steps",
+    [
+      "Vorher und nachher denselben Prozessabschnitt messen.",
+      "Gleiche Auftragsarten und vergleichbare Auslastung wählen.",
+      "Messzeitraum und Stichprobe festlegen.",
+      "Fehlerquote und Bearbeitungszeit gemeinsam prüfen.",
+      "Abweichungen erklären und Maßnahmen dokumentieren."
+    ]
+  ],
+  [
+    "qa",
+    "Die Fehlerquote sinkt von sechs auf ein Prozent. **Berechnen** Sie absolute und relative Senkung. Unterscheiden heißt: beide Bezugsgrößen klar nennen.",
+    [
+      "Absolute Senkung: 6 − 1 = **5 Prozentpunkte**. 1 Punkt.",
+      "Relative Senkung: (6 − 1) / 6 × 100 ≈ **83,33 Prozent**. 1 Punkt.",
+      "Die relative Senkung bezieht sich auf die ursprünglichen sechs Prozent. 1 Punkt."
+    ],
+    3
+  ],
+  [
+    "warn",
+    "Prozentpunkte sind eine Differenz zweier Prozentwerte. Prozent ist hier eine relative Änderung. Beide Zahlen dürfen nicht vertauscht werden."
+  ],
+  [
+    "see",
+    [
+      "ps-anforderungen",
+      "ps-kosten",
+      "ps-abnahme"
+    ]
+  ]
+]);

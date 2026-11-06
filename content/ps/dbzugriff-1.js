@@ -1,69 +1,300 @@
 AP2.page('ps-dbzugriff', {
-  b: 'ps', g: 'Datenbanken', t: 'Datenbankzugriff aus dem Programm: Verbindung, ERM aus Script, REST',
-  d: 'Ein Programm spricht mit einer Datenbank über eine **Verbindung**. Dafür braucht es einen **Connection-String** (Verbindungszeichenfolge) mit den **Angaben**: wo läuft die Datenbank, wie heißt sie, wer darf zugreifen. Aus einem **SQL-Script** (CREATE TABLE) kann man das **ERM** ablesen: Jeder **FOREIGN KEY** ist eine Beziehung. Ein **REST-Service** gibt Daten über **HTTP(S)** meist im Format **JSON** weiter.',
-  m: '**Connection-String = Server, Port, Datenbankname, Benutzer, Passwort** (und evtl. Treiber/SSL). **FOREIGN KEY in Tabelle B auf A = Beziehung A 1 : n B.** **REST = HTTP(S) + JSON.**',
-  cheat: [
-    ['Connection-String', ['**Server/Host** (Name oder IP)', '**Port** (MySQL 3306)', '**Datenbankname**', '**Benutzer** und **Passwort**', 'Treiber, Zeichensatz, SSL (optional)']],
-    ['ERM aus Script', ['Jede **CREATE TABLE** = ein Entitätstyp', '**PRIMARY KEY** = Identifikator', '**FOREIGN KEY** = Beziehung (n-Seite hat den Fremdschlüssel)', 'Tabelle mit **zwei** Fremdschlüsseln im Schlüssel = Auflösung einer **n:m**-Beziehung']],
-    ['REST', ['Protokoll: **HTTP/HTTPS**', 'Format meist **JSON**', 'GET lesen, POST anlegen, PUT ändern, DELETE löschen']],
+  "b": "ps",
+  "g": "Datenbanken",
+  "t": "Datenbankzugriff: Verbindung, sichere Abfragen, Transaktionen und Beziehungen",
+  "d": "Eine Anwendung verwendet einen Datenbanktreiber. Die Verbindung enthält Angaben zu Server, Datenbank und Anmeldung. Schlüsselregeln im Schema bestimmen gültige Daten und Beziehungen.",
+  "m": "**Treiber verbindet. Parameter binden Werte. Transaktionen bündeln Änderungen.** Kardinalitäten aus FOREIGN KEY, UNIQUE und NOT NULL gemeinsam ableiten.",
+  "cheat": [
+    [
+      "Verbindung",
+      [
+        "Host, Port und Datenbank",
+        "Authentifizierung und minimale Rechte",
+        "Verschlüsselung mit Zertifikatsprüfung",
+        "Timeout, Pool und kontrollierte Freigabe"
+      ]
+    ],
+    [
+      "Schema lesen",
+      [
+        "FOREIGN KEY: Bezug zu einer anderen Zeile",
+        "NOT NULL: Wert muss vorhanden sein",
+        "UNIQUE: Wertkombination darf nicht mehrfach vorkommen",
+        "PRIMARY KEY: eindeutiger, nicht leerer Identifikator"
+      ]
+    ],
+    [
+      "Transaktion",
+      [
+        "BEGIN: Einheit starten",
+        "COMMIT: erfolgreich abschließen",
+        "ROLLBACK: nicht abgeschlossene Änderungen zurücknehmen"
+      ]
+    ]
   ],
-  blocks: [
-    ['h', 'Wie kommt ein Programm an die Daten?'],
-    ['p', 'Ein Java- oder C#-Programm liest Tabellen nicht direkt von der Festplatte. Es baut eine **Verbindung** zum Datenbankserver auf. Dann sendet es SQL-Befehle und bekommt die Ergebnisse zurück.'],
-    ['table', ['Wort', 'Einfach erklärt'], [
-      ['Connection-String', 'Text mit allen Angaben für die Verbindung'],
-      ['Port', 'Nummer des „Eingangs“ am Server (MySQL: 3306)'],
-      ['Treiber', 'Programmteil, der die Sprache der Datenbank spricht'],
-      ['Fremdschlüssel', 'Spalte, die auf den Schlüssel einer anderen Tabelle zeigt'],
-      ['Anomalie', 'Fehler durch doppelte Daten (Einfüge-, Änderungs-, Löschanomalie)'],
-    ]],
-    ['h', 'Connection-String: Parameter nennen'],
-    ['code', 'text', `Server=192.168.10.20;Port=3306;Database=angebote;Uid=appuser;Pwd=geheim;`],
-    ['table', ['Parameter', 'Bedeutung', 'Beispiel'], [
-      ['Server / Host', 'Wo läuft die Datenbank?', '192.168.10.20 oder db.firma.de'],
-      ['Port', 'Welcher Dienst-Eingang?', '3306'],
-      ['Database', 'Welche Datenbank auf dem Server?', 'angebote'],
-      ['Uid / User', 'Benutzername', 'appuser'],
-      ['Pwd / Password', 'Passwort', '(nie im Quelltext speichern!)'],
-    ]],
-    ['warn', 'Passwörter gehören **nicht** in den Quelltext. Besser: Konfigurationsdatei oder Umgebungsvariable. Der Benutzer bekommt nur die **nötigen Rechte** (Prinzip der minimalen Rechte).'],
-    ['h', 'ERM aus einem SQL-Script ablesen'],
-    ['p', 'Aufgabe: „Erstellen Sie das ERM ohne Attribute.“ Gehe so vor:'],
-    ['steps', [
-      'Zeichne für **jede Tabelle** ein Rechteck (Entitätstyp).',
-      'Suche alle **FOREIGN KEY**-Zeilen. Die Tabelle **mit** dem Fremdschlüssel ist die **n-Seite**.',
-      'Zeichne eine Linie zur Tabelle, auf die der Schlüssel zeigt. Das ist die **1-Seite**.',
-      'Hat eine Tabelle **zwei** Fremdschlüssel und besteht nur daraus, ist sie die **Verbindungstabelle** einer **n:m**-Beziehung. Zeichne sie als n:m zwischen den beiden Tabellen.',
-      'Schreibe an jede Linie die Kardinalität (1, n) und ein Verb (z. B. „erhält“).',
-    ]],
-    ['code', 'sql', `CREATE TABLE patient (pid INT PRIMARY KEY, name VARCHAR(40));
-CREATE TABLE befund  (bid INT PRIMARY KEY, pid INT,
-  FOREIGN KEY (pid) REFERENCES patient(pid));`],
-    ['p', '`befund` hat den Fremdschlüssel `pid`. Also: **patient 1 : n befund**. Ein Patient hat viele Befunde, ein Befund gehört zu einem Patienten.'],
-    ['diagram', {w: 520, h: 140, keep: 400, cap: 'ERM zum Script: patient 1 : n befund.', nodes: [
-      {id: 'p', x: 60, y: 40, k: 'box', t: 'Patient', w: 140, h: 50},
-      {id: 'b', x: 320, y: 40, k: 'box', t: 'Befund', w: 140, h: 50},
-    ], edges: [{a: 'p', b: 'b', ta: '1', tb: 'n', t: 'erhält'}]}],
-    ['h', 'REST-Service für Sensordaten'],
-    ['p', 'Ein **REST-Service** stellt Daten für andere Programme bereit. Ein Client schickt eine **HTTP-Anfrage**, der Server antwortet mit **JSON**.'],
-    ['table', ['Anfrage', 'Bedeutung'], [
-      ['GET /sensoren/7', 'Sensor 7 lesen'],
-      ['POST /sensoren', 'neuen Sensor anlegen'],
-      ['PUT /sensoren/7', 'Sensor 7 ändern'],
-      ['DELETE /sensoren/7', 'Sensor 7 löschen'],
-    ]],
-    ['code', 'json', `{ "id": 7, "typ": "Temperatur", "wert": 71.5, "einheit": "Grad C" }`],
-    ['tip', 'Prüfungsantwort kurz: Protokoll **HTTP(S)**. Datenformat **JSON** (JavaScript Object Notation). HTTPS, weil die Daten **verschlüsselt** übertragen werden.'],
-    ['h', 'Aufgaben im Prüfungsstil'],
-    ['qa', '**Nennen** Sie vier Parameter eines Connection-Strings.', ['Server/Host', 'Port', 'Datenbankname', 'Benutzername und Passwort'], 4],
-    ['qa', '**Erläutern** Sie, woran man im SQL-Script eine 1:n-Beziehung erkennt.', ['Eine Tabelle enthält einen **FOREIGN KEY**.', 'Diese Tabelle ist die **n-Seite**, die referenzierte Tabelle die **1-Seite**.'], 2],
-    ['qa', '**Benennen** Sie Protokoll und Datenformat einer REST-Schnittstelle.', ['HTTP bzw. HTTPS', 'JSON (seltener XML)'], 2],
-    ['see', ['ps-er', 'ps-relational', 'ps-normalisierung', 'eua-sqler', 'eua-webapi']],
-    ['quiz', [
-      {q: 'Welche Angabe gehört NICHT in einen Connection-String?', o: ['Farbe der Oberfläche', 'Server', 'Datenbankname', 'Benutzername'], a: 0, e: 'Der String enthält nur Angaben für die Verbindung.'},
-      {q: 'Tabelle B hat einen FOREIGN KEY auf Tabelle A. Welche Beziehung?', o: ['A 1 : n B', 'A n : 1 A', 'B 1 : n A', 'keine'], a: 0, e: 'Die Tabelle mit dem Fremdschlüssel ist die n-Seite.'},
-      {q: 'Welches Protokoll nutzt REST meist?', o: ['HTTP/HTTPS', 'SMTP', 'DHCP', 'ARP'], a: 0, e: 'REST nutzt die HTTP-Methoden GET, POST, PUT, DELETE.'},
-      {q: 'Welches Format liefert ein REST-Service meist?', o: ['JSON', 'EXE', 'MP3', 'BMP'], a: 0, e: 'JSON ist leicht lesbar und kompakt.'},
-    ]],
-  ],
+  "blocks": [
+    [
+      "h",
+      "Verbindung und Zuständigkeit"
+    ],
+    [
+      "p",
+      "Eine Weboberfläche spricht normalerweise mit einer Anwendungs-API. Diese greift auf die Datenbank zu. Datenbankzugangsdaten gehören nicht in ausgeliefertes Browser-JavaScript. Der Anwendungsserver prüft Rechte und Fachregeln."
+    ],
+    [
+      "code",
+      "text",
+      "Host=db.intern;Port=5432;Database=lager;Username=app;SSLMode=verify-full;\n# Format und Optionsnamen sind treiberabhängig.\n# Passwort oder technische Identität getrennt und geschützt bereitstellen."
+    ],
+    [
+      "table",
+      [
+        "Angabe",
+        "Zweck"
+      ],
+      [
+        [
+          "Host und Port",
+          "Datenbankdienst finden"
+        ],
+        [
+          "Datenbankname",
+          "Passenden Datenbestand auswählen"
+        ],
+        [
+          "Anmeldung",
+          "Technisches Konto oder unterstützte alternative Authentifizierung"
+        ],
+        [
+          "TLS mit Zertifikatsprüfung",
+          "Transport und Identität des Zielservers absichern"
+        ],
+        [
+          "Verbindungs- und Abfragetimeout",
+          "Wartezeiten begrenzen"
+        ],
+        [
+          "Connection Pool",
+          "Verbindungen wiederverwenden und Anzahl begrenzen"
+        ]
+      ]
+    ],
+    [
+      "warn",
+      "Ein Pool ist kein unbegrenzter Vorrat. Verbindungen nach Nutzung kontrolliert zurückgeben. Zu viele Verbindungen können die Datenbank überlasten. Secrets gehören nicht ins Repository oder in Logs."
+    ],
+    [
+      "h",
+      "Parametrisierte Abfrage"
+    ],
+    [
+      "code",
+      "java",
+      "String sql = \"SELECT artikel_id, preis FROM artikel WHERE artikel_id = ?\";\ntry (PreparedStatement stmt = con.prepareStatement(sql)) {\n    stmt.setInt(1, artikelId);\n    try (ResultSet rs = stmt.executeQuery()) {\n        while (rs.next()) {\n            // Ergebnis fachlich verarbeiten\n        }\n    }\n}"
+    ],
+    [
+      "p",
+      "Parameter werden als Daten gebunden. Sie werden nicht zu zusätzlichem SQL-Code. Tabellen- und Spaltennamen können meist nicht als normale Wertparameter gebunden werden. Dynamische Sortierspalten deshalb aus einer festen erlaubten Liste wählen."
+    ],
+    [
+      "h",
+      "Kardinalitäten aus SQL ableiten"
+    ],
+    [
+      "code",
+      "sql",
+      "CREATE TABLE kunde (\n  kunde_id INTEGER PRIMARY KEY,\n  name VARCHAR(80) NOT NULL\n);\nCREATE TABLE auftrag (\n  auftrag_id INTEGER PRIMARY KEY,\n  kunde_id INTEGER NOT NULL,\n  FOREIGN KEY (kunde_id) REFERENCES kunde(kunde_id)\n);\nCREATE TABLE kundenprofil (\n  kunde_id INTEGER PRIMARY KEY,\n  anzeige VARCHAR(80),\n  FOREIGN KEY (kunde_id) REFERENCES kunde(kunde_id)\n);"
+    ],
+    [
+      "table",
+      [
+        "Beziehung",
+        "Ableitung",
+        "Ergebnis"
+      ],
+      [
+        [
+          "Kunde → Auftrag",
+          "kunde_id im Auftrag ist nicht eindeutig",
+          "Ein Kunde kann null bis viele Aufträge haben"
+        ],
+        [
+          "Auftrag → Kunde",
+          "NOT NULL und gültiger FOREIGN KEY",
+          "Jeder Auftrag gehört genau einem vorhandenen Kunden"
+        ],
+        [
+          "Kunde → Kundenprofil",
+          "kunde_id ist im Profil PRIMARY KEY",
+          "Ein Kunde hat höchstens ein Profil"
+        ],
+        [
+          "Kundenprofil → Kunde",
+          "Schlüssel ist zugleich nicht leerer Fremdschlüssel",
+          "Jedes Profil gehört genau einem Kunden"
+        ]
+      ]
+    ],
+    [
+      "note",
+      "Ein Fremdschlüssel erzwingt allein keine Pflichtzeile auf der anderen Seite. Kunde ohne Auftrag bleibt hier erlaubt. Ohne NOT NULL kann ein Fremdschlüsselfeld leer bleiben. Mit UNIQUE wird seine maximale Häufigkeit begrenzt."
+    ],
+    [
+      "h",
+      "n:m mit fachlichen Zusatzdaten"
+    ],
+    [
+      "code",
+      "sql",
+      "CREATE TABLE auftragsposition (\n  auftrag_id INTEGER NOT NULL REFERENCES auftrag(auftrag_id),\n  artikel_id INTEGER NOT NULL REFERENCES artikel(artikel_id),\n  menge INTEGER NOT NULL CHECK (menge > 0),\n  PRIMARY KEY (auftrag_id, artikel_id)\n);"
+    ],
+    [
+      "p",
+      "Ein Auftrag enthält mehrere Artikel. Ein Artikel kann in mehreren Aufträgen vorkommen. Die Verbindungstabelle enthält hier zusätzlich die Menge. Ihr Schlüssel verbietet denselben Artikel zweimal im gleichen Auftrag. Andere Fachregeln können einen Positionsschlüssel erfordern."
+    ],
+    [
+      "h",
+      "Mehrere Änderungen zusammen sichern"
+    ],
+    [
+      "p",
+      "Eine Reservierung schreibt einen Auftrag und verändert den verfügbaren Bestand. Beide Änderungen müssen zusammen erfolgreich sein. Eine Transaktion schützt vor einem halben Ergebnis. Gegen konkurrierende Anfragen benötigt die Umsetzung zusätzlich passende Sperren oder atomare Bedingungen."
+    ],
+    [
+      "code",
+      "sql",
+      "BEGIN;\nUPDATE artikel\nSET bestand = bestand - 3\nWHERE artikel_id = 42 AND bestand >= 3;\n-- Anwendung prüft: genau eine Zeile geändert?\n-- Nur dann Reservierung anlegen, sonst ROLLBACK.\nINSERT INTO reservierung (reservierung_id, artikel_id, menge)\nVALUES (731, 42, 3);\nCOMMIT;\n-- Bei jedem Fehler vor COMMIT: ROLLBACK."
+    ],
+    [
+      "warn",
+      "Der Kommentar ist eine nötige Kontrollentscheidung der Anwendung. Das Script darf nicht blind weiterlaufen. Ein Timeout nach COMMIT kann ein bereits gespeichertes Ergebnis betreffen. Eine fachlich eindeutige ID erleichtert die sichere Wiederholung."
+    ],
+    [
+      "h",
+      "Aufgaben im Prüfungsstil"
+    ],
+    [
+      "tip",
+      "**Ableiten** heißt: eine Aussage aus konkreten Schlüsselregeln begründen. **Erläutern** heißt: Begriff und Zweck verbinden."
+    ],
+    [
+      "qa",
+      "**Leiten** Sie die Beziehung zwischen Kunde und Kundenprofil ab. Geben Sie beide Richtungen an.",
+      [
+        "Ein Kunde hat **null oder ein Profil**, weil kundenprofil.kunde_id eindeutig ist. 1 Punkt.",
+        "Ein Profil gehört **genau einem Kunden**, weil der Primärschlüssel nicht leer sein darf und zugleich Fremdschlüssel ist. 1 Punkt.",
+        "Das Schema erzwingt kein Profil für jeden Kunden. 1 Punkt."
+      ],
+      3
+    ],
+    [
+      "qa",
+      "**Erläutern** Sie Prepared Statement, Connection Pool und Transaktion mit je einem Zweck.",
+      [
+        "Prepared Statement bindet Werte getrennt vom SQL-Code und verhindert darüber SQL-Injection. 1 Punkt.",
+        "Connection Pool verwendet begrenzte vorhandene Verbindungen erneut und reduziert Verbindungsaufwand. 1 Punkt.",
+        "Eine Transaktion fasst zusammengehörige Änderungen zu einem erfolgreichen oder zurückgenommenen Ergebnis zusammen. 1 Punkt."
+      ],
+      3
+    ],
+    [
+      "qa",
+      "**Beurteilen** Sie die Aussage: „Zwei Fremdschlüssel beweisen immer eine reine n:m-Verbindungstabelle.“",
+      [
+        "Die Aussage ist falsch. Eine Tabelle kann mehrere unabhängige Beziehungen enthalten. 1 Punkt.",
+        "Schlüssel, Eindeutigkeitsregeln und fachliche Bedeutung müssen gemeinsam geprüft werden. 1 Punkt.",
+        "Eine n:m-Verbindungstabelle darf zusätzliche Attribute wie Menge oder Buchungsdatum enthalten. 1 Punkt."
+      ],
+      3
+    ],
+    [
+      "quiz",
+      [
+        {
+          "q": "Welche Regel macht die Zuordnung maximal eins zu eins?",
+          "o": [
+            "Ein eindeutiger Fremdschlüssel",
+            "Nur der Spaltenname id",
+            "Ein längerer Tabellenname",
+            "Eine zusätzliche Textspalte"
+          ],
+          "a": 0,
+          "e": "UNIQUE oder PRIMARY KEY auf dem Fremdschlüssel begrenzt die maximale Zuordnung."
+        },
+        {
+          "q": "Was sagt NOT NULL beim Fremdschlüssel aus?",
+          "o": [
+            "Die referenzierende Zeile muss einen Wert haben",
+            "Jeder Kunde muss einen Auftrag haben",
+            "Alle Tabellen sind unveränderlich",
+            "Es gibt keine 1:n-Beziehung"
+          ],
+          "a": 0,
+          "e": "Die Pflicht gilt für das Feld der referenzierenden Zeile."
+        },
+        {
+          "q": "Was ist bei dynamischen Sortierspalten sinnvoll?",
+          "o": [
+            "Aus einer festen erlaubten Liste auswählen",
+            "Beliebige Benutzereingabe in SQL einbauen",
+            "Die ganze Datenbank ohne Passwort öffnen",
+            "Nur Anführungszeichen entfernen"
+          ],
+          "a": 0,
+          "e": "Wertparameter ersetzen normalerweise keine SQL-Bezeichner."
+        }
+      ]
+    ],
+    [
+      "see",
+      [
+        "ps-er",
+        "ps-relational",
+        "ps-normalisierung",
+        "ps-schnittstellen",
+        "infra-http",
+        "ps-testentwurf"
+      ]
+    ]
+  ]
 });
+
+AP2.add("ps-dbzugriff", [
+  [
+    "h",
+    "Fachwörter einfach erklärt"
+  ],
+  [
+    "table",
+    [
+      "Wort",
+      "Einfach erklärt"
+    ],
+    [
+      [
+        "Atomar",
+        "Die zusammengehörige Änderung geschieht vollständig oder gar nicht."
+      ],
+      [
+        "Konsistent",
+        "Die festgelegten Datenregeln sind eingehalten."
+      ],
+      [
+        "Pool",
+        "Begrenzter Vorrat wiederverwendbarer Verbindungen."
+      ],
+      [
+        "Rollback",
+        "Nicht abgeschlossene Änderungen einer Transaktion zurücknehmen."
+      ],
+      [
+        "Timeout",
+        "Eine festgelegte Wartezeit ist überschritten."
+      ],
+      [
+        "Constraint",
+        "Regel, welche die Datenbank für gespeicherte Daten erzwingt."
+      ]
+    ]
+  ]
+]);

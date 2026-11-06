@@ -40,8 +40,8 @@ AP2.page('infra-routing', {
     ['procon', 'Dynamisches Routing', ['Passt sich automatisch an Ausfälle und neue Netze an', 'Skaliert für große Netze', 'Kann alternative Wege und Lastverteilung nutzen'], ['Protokoll-Overhead (CPU, Bandbreite)', 'Komplexere Konfiguration und Fehlersuche', 'Muss gegen gefälschte Routen abgesichert werden']],
     ['h', 'RIPv2 und OSPF im Vergleich'],
     ['table', ['Eigenschaft', 'RIPv2', 'OSPF'], [
-      ['Klasse', '**Distance-Vector** ("Routing nach Gerücht": Nachbarn erzählen Entfernungen)', '**Link-State** (jeder Router kennt die ganze Topologie)'],
-      ['Metrik', 'Nur **Hop-Anzahl**', '**Kosten** aus der Bandbreite, auch weitere Kriterien'],
+      ['Klasse', '**Distance-Vector** ("Routing nach Gerücht": Nachbarn erzählen Entfernungen)', '**Link-State** (Router kennen die Topologie ihrer Area)'],
+      ['Metrik', 'Nur **Hop-Anzahl**', 'Summe konfigurierter **Link-Kosten**; oft aus der Bandbreite abgeleitet'],
       ['Grenze', 'Ziel mehr als **15** Hops entfernt gilt als unerreichbar', 'Keine Hop-Grenze, Gliederung in **Areas**'],
       ['Konvergenz', 'Langsam (Updates alle 30 s)', '**Schnell** (Änderungen sofort gemeldet)'],
       ['Lastverteilung', 'eingeschränkt', 'Mehrere gleich teure Routen (**Load Balancing**)'],
@@ -49,7 +49,7 @@ AP2.page('infra-routing', {
     ], {first: true}],
     ['h', 'Aufgaben im Prüfungsstil'],
     ['qa', 'Vervollständigen Sie die Routing-Tabelle von Router Vertrieb (Interfaces I_0 10.10.9.3/28 und I_1 10.10.1.129/25) so, dass alle Abteilungen sich erreichen und eine Default-Route ins Internet besteht.', ['- 10.10.1.128/25, lokal, I_1', '- 10.10.9.0/28, lokal, I_0', '- 10.10.0.0/24, Next Hop 10.10.9.1, I_0', '- 10.10.1.0/25, Next Hop 10.10.9.2, I_0', '- 10.10.2.0/27, Next Hop 10.10.9.4, I_0', '- 0.0.0.0/0, Next Hop 10.10.9.14, I_0'], 6],
-    ['qa', 'Ordnen Sie zu, ob die Aussage für RIPv2 oder OSPF gilt: Distance-Vector, Ziel über 15 Router entfernt gilt als unerreichbar, schnelle Konvergenz, Link-State, Metrik zählt nur Hops, Metrik kann Geschwindigkeit berücksichtigen, unterstützt Load Balancing.', ['- **RIPv2:** Distance-Vector; über 15 Hops unerreichbar; Metrik zählt nur Hops.', '- **OSPF:** schnelle Konvergenz; Link-State; Metrik kann Geschwindigkeit und Zuverlässigkeit berücksichtigen; mehrere Routen zum Ziel (Load Balancing).'], 7],
+    ['qa', 'Ordnen Sie zu, ob die Aussage für RIPv2 oder OSPF gilt: Distance-Vector, Ziel über 15 Router entfernt gilt als unerreichbar, schnelle Konvergenz, Link-State, Metrik zählt nur Hops, Metrik kann Geschwindigkeit berücksichtigen, unterstützt Load Balancing.', ['- **RIPv2:** Distance-Vector; über 15 Hops unerreichbar; Metrik zählt nur Hops.', '- **OSPF:** schnelle Konvergenz; Link-State; Metrik nutzt konfigurierte Link-Kosten, häufig aus Referenzbandbreite und Bandbreite; mehrere Routen zum Ziel (Load Balancing).'], 7],
     ['qa', 'Ein Router hat die Einträge 10.0.0.0/8 über A, 10.10.0.0/16 über B und 10.10.4.0/22 über C. Über welchen Weg geht ein Paket an 10.10.5.9? Begründen Sie.', 'Alle drei Netze enthalten 10.10.5.9 (10.10.4.0/22 reicht von 10.10.4.0 bis 10.10.7.255). Es gewinnt der **längste Präfix-Treffer /22**, also der Weg **über C**.', 3],
     ['see', ['infra-subnetting', 'infra-vlsm', 'infra-komponenten', 'infra-vlan']],
     ['quiz', [
@@ -63,3 +63,63 @@ AP2.page('infra-routing', {
     ]],
   ],
 });
+
+AP2.add('infra-routing', [
+  [
+    "h",
+    "Hinweg und Rückweg prüfen"
+  ],
+  [
+    "p",
+    "Eine passende Hinroute reicht nicht. Auch das Ziel benötigt einen Rückweg. Firewalls können Anfragen oder Antworten filtern. NAT kann Adressen verändern. Prüfe die beteiligten Netze in beiden Richtungen."
+  ],
+  [
+    "table",
+    [
+      "Ziel",
+      "Passende Einträge",
+      "Auswahl"
+    ],
+    [
+      [
+        "10.40.8.20",
+        "10.0.0.0/8; 10.40.0.0/16; 10.40.8.0/24; 0.0.0.0/0",
+        "10.40.8.0/24"
+      ],
+      [
+        "10.40.9.20",
+        "10.0.0.0/8; 10.40.0.0/16; 0.0.0.0/0",
+        "10.40.0.0/16"
+      ],
+      [
+        "192.0.2.20",
+        "0.0.0.0/0",
+        "Default-Route"
+      ]
+    ]
+  ],
+  [
+    "note",
+    "Longest Prefix Match betrifft die Weiterleitung mit vorhandenen Routen. Welche Route installiert wird, hängt zusätzlich von Quelle und Präferenz ab. Metriken verschiedener Routingprotokolle sind nicht direkt vergleichbar."
+  ],
+  [
+    "qa",
+    "Ein Client erreicht ein anderes Subnetz nicht. Die Hinroute ist korrekt. **Nennen** Sie vier weitere Prüfungen.",
+    [
+      "- Rückroute am Ziel beziehungsweise dessen Gateway prüfen.",
+      "- Netzmaske und Gateway des Zielgeräts prüfen.",
+      "- Firewall-Regeln in beiden Richtungen prüfen.",
+      "- Erreichbarkeit des nächsten Hops und Schnittstellenzustand prüfen.",
+      "Je sinnvoller Prüfung 1 Punkt."
+    ],
+    4
+  ],
+  [
+    "see",
+    [
+      "infra-dhcp",
+      "infra-dns",
+      "infra-monitoring"
+    ]
+  ]
+]);

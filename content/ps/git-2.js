@@ -32,7 +32,7 @@ dann: git add rechnung.py  und  git commit`],
   ['steps', ['Neuen **Feature-Branch** aus main anlegen.', 'Änderungen committen und den Branch **pushen**.', 'Auf der Plattform (GitHub, GitLab) einen **Pull Request** (GitLab: Merge Request) eröffnen.', 'Kollegen führen ein **Code-Review** durch, automatische Tests laufen (**CI**, Continuous Integration).', 'Nach Freigabe wird in **main gemergt**, der Branch gelöscht.']],
   ['h', 'Wichtige Dateien und Befehle'],
   ['table', ['Befehl / Datei', 'Bedeutung'], [
-    ['`.gitignore`', 'Liste von Dateien und Ordnern, die Git ignorieren soll (Build-Ergebnisse, Passwörter, `node_modules`). **Geheimnisse wie Passwörter nie committen!**'],
+    ['`.gitignore`', 'Muster für unversionierte Dateien wie Build-Ergebnisse und `node_modules`. Bereits versionierte Dateien bleiben erfasst. **Geheimnisse nie committen!**'],
     ['`git log --oneline`', 'Kurze Historie anzeigen'],
     ['`git diff`', 'Unterschiede anzeigen'],
     ['`git stash`', 'Änderungen vorübergehend zwischenspeichern'],

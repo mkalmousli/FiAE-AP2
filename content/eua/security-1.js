@@ -1,0 +1,97 @@
+AP2.page('eua-security', {
+  b: 'eua', g: 'Web und Schnittstellen', t: 'Web Application Security: OWASP Top 10, SQL-Injection und XSS',
+  d: 'Sicherheit (**Security**) muss von Beginn an in Software eingeplant werden (**Security by Design**). Das **OWASP-Projekt (Open Worldwide Application Security Project)** listet die gefährlichsten Schwachstellen von Webanwendungen (OWASP Top 10). Die häufigsten Angriffsvektoren für Fachinformatiker Anwendungsentwicklung sind **SQL-Injection (SQLi)**, **Cross-Site Scripting (XSS)** und **Cross-Site Request Forgery (CSRF)**. Passwörter dürfen **niemals im Klartext** oder mit veralteten Verfahren (MD5/SHA-1) gespeichert werden, sondern erfordern **kryptografische adaptive Hashverfahren (bcrypt, Argon2)** mit **individuellem Salt**.',
+  m: '**SQL-Injection Abwehr: IMMER Prepared Statements (parametrisierte Abfragen) verwenden!** **XSS Abwehr: HTML-Escaping (Output Encoding), Content Security Policy (CSP), Cookies mit `HttpOnly`.** **CSRF Abwehr: Anti-CSRF-Tokens und Cookies mit `SameSite=Strict`.** **Passwörter: Niemals im Klartext! Hashverfahren mit Salt: bcrypt oder Argon2 (kein MD5/SHA-1).** **Authentifizierung = Wer bist du? Autorisierung = Was darfst du?**',
+  cheat: [
+    ['SQL-Injection (SQLi)', [
+      '**Angriff:** Bösartiger SQL-Code wird über Eingabefelder eingeschleust (z. B. `\' OR \'1\'=\'1`)',
+      '**Folge:** Unbefugter Lesezugriff auf fremde Daten, Löschen von Tabellen (`DROP TABLE`), Login-Bypass',
+      '**Gegenmaßnahme #1:** **Prepared Statements (Parametrisierte Queries)**; Eingabedaten werden niemals als Code interpretiert',
+      '**Gegenmaßnahme #2:** ORM-Frameworks, Least-Privilege-Prinzip bei DB-Benutzerrechten',
+    ]],
+    ['Cross-Site Scripting (XSS)', [
+      '**Stored XSS (Persistent):** Bösartiges JavaScript wird in der Datenbank gespeichert (z. B. Gästebucheintrag) und bei jedem Seitenaufruf ausgeführt',
+      '**Reflected XSS:** Skript steckt in der URL und wird vom Server direkt in die Antwortseite eingebettet',
+      '**Schaden:** Diebstahl von Session-Cookies (Session Hijacking), Identitätsdiebstahl, Keylogging',
+      '**Gegenmaßnahmen:** **Output Encoding / HTML-Escaping** (`&lt;`, `&gt;`), **`HttpOnly`-Flag** bei Cookies, **Content Security Policy (CSP)**',
+    ]],
+    ['Passwort-Sicherheit & Hashing', [
+      '**Veraltet & unsicher:** Klartext, MD5, SHA-1, SHA-256 ohne Salt (anfällig für **Rainbow-Tables** und GPU-Brute-Force)',
+      '**Sicherer Standard:** **bcrypt**, **Argon2** oder **PBKDF2**',
+      '**Salt (Zufallswert):** Eindeutiger Zufallsstring pro Nutzer; verhindert Rainbow-Table-Angriffe',
+      '**Work-Factor (Cost):** Künstliche Verlangsamung des Hashvorgangs gegen Brute-Force-Angriffe',
+    ]],
+    ['CSRF (Cross-Site Request Forgery)', [
+      '**Angriff:** Ein manipulierter Link auf einer fremden Webseite löst im Browser des Opfers eine unerwünschte Aktion auf einer Zielseite aus (z. B. Geldüberweisung)',
+      '**Abwehr:** Zufälliges, geheimes **Anti-CSRF-Token** in Formularen; **SameSite-Attribut** für Session-Cookies',
+    ]],
+  ],
+  blocks: [
+    ['h', '1. SQL-Injection: Gefahr und Gegenmaßnahmen'],
+    ['p', 'Eine SQL-Injection entsteht, wenn Benutzereingaben ungesichert per String-Verkettung direkt in eine SQL-Abfrage eingefügt werden.'],
+    ['table', ['Code-Beispiel', 'Sicherheit', 'Erklärung'], [
+      ['`query = "SELECT * FROM user WHERE name = \'" + input + "\'";`', '**EXTREM UNSICHER!**', 'Gibt der Angreifer `admin\' --` ein, wird die Passwortprüfung komplett auskommentiert!'],
+      ['`stmt = db.prepare("SELECT * FROM user WHERE name = ?");`<br>`stmt.execute([input]);`', '**100 % SICHER (Prepared Statement)**', 'Datenbank trennt SQL-Befehl und Daten strikt. Die Eingabe wird rein als String-Inhalt behandelt.'],
+    ]],
+    ['h', '2. Cross-Site Scripting (XSS): Angriffsarten und Schutz'],
+    ['p', 'Bei XSS schleust der Angreifer bösartigen HTML- oder JavaScript-Code in eine Webanwendung ein, der im Browser anderer Nutzer ausgeführt wird.'],
+    ['table', ['XSS-Art', 'Ablauf des Angriffs', 'Beispiel aus der Praxis'], [
+      ['**Stored / Persistent XSS**', 'Der Angreifer speichert `<script>stealCookies()</script>` in der Datenbank (z. B. als Forenbeitrag, Kundenrezension). Jeder Besucher der Seite führt den Code aus.', 'Besucher verlieren ihre Session-Cookies; der Angreifer kann sich ohne Passwort einloggen.'],
+      ['**Reflected XSS**', 'Der Schadcode steckt in einem Link (z. B. in einem Suchparameter: `shop.de/search?q=<script>...`). Klickt ein Opfer auf den Phishing-Link, reflektiert der Server den Code in die Seite.', 'Phishing-Mails verleiten Nutzer zum Klick auf manipulierte Links legitimer Webseiten.'],
+      ['**DOM-based XSS**', 'Die Schwachstelle liegt rein im clientseitigen JavaScript, das unsichere Methoden wie `innerHTML` oder `eval()` auf ungeprüfte Daten anwendet.', 'Client-Skript liest URL-Fragment `location.hash` aus und schreibt es direkt in `document.write()`.']]],
+    ['kv', [
+      ['HTML-Escaping (Output Encoding)', 'Alle Sonderzeichen in Benutzereingaben werden vor der HTML-Ausgabe in harmlose HTML-Entities umgewandelt: `<` wird zu `&lt;`, `>` wird zu `&gt;`, `"` wird zu `&quot;`, `&` wird zu `&amp;`.'],
+      ['Cookie-Flag `HttpOnly`', 'Verhindert, dass JavaScript (über `document.cookie`) auf das Session-Cookie zugreifen kann. Selbst bei erfolgreichem XSS kann der Angreifer das Session-Cookie nicht stehlen.'],
+      ['Content Security Policy (CSP)', 'Ein HTTP-Header, der dem Browser genau vorschreibt, von welchen Servern JavaScript und andere Ressourcen geladen und ausgeführt werden dürfen (verbietet z. B. Inline-Skripte).'],
+    ]],
+    ['h', '3. Sichere Passwort-Speicherung'],
+    ['p', 'Passwörter dürfen niemals reversibel (z. B. symmetrisch verschlüsselt) gespeichert werden, sondern müssen durch Einweg-Hashfunktionen geschützt werden.'],
+    ['steps', [
+      '**Niemals Klartext:** Wer Passwörter im Klartext speichert, haftet bei jedem Datenleck massiv nach DSGVO.',
+      '**Keine schnellen Hashes (MD5, SHA-1, SHA-256):** Schnelle Algorithmen wurden für Prüfsummen entwickelt. Moderne Grafikkarten (GPUs) können Milliarden MD5-Hashes pro Sekunde testen und vorberechnete **Rainbow Tables** (Wörterbücher mit fertigen Hashes) knacken.',
+      '**Verwendung von Salt:** Vor dem Hashen wird jedem Passwort ein **kryptografisch zufälliger String (Salt)** angehängt. Dadurch ist der Hashwert für dasselbe Passwort bei zwei Nutzern völlig unterschiedlich. Rainbow Tables werden dadurch nutzlos.',
+      '**Adaptive Algorithmen (bcrypt / Argon2):** Diese Algorithmen besitzen einen konfigurierbaren Rechenaufwand (**Cost Factor / Iterationen**). Eine Passwortprüfung dauert absichtlich z. B. 100 Millisekunden. Für einen echten Nutzer unbemerkt, für einen Hacker-Brute-Force-Angriff jedoch unüberwindbar langsam.',
+    ]],
+    ['h', 'Authentifizierung versus Autorisierung'],
+    ['table', ['Begriff', 'Fragestellung', 'Verfahren / Beispiele'], [
+      ['**Authentifizierung (Authentication - AuthN)**', '„Wer bist du?“ (Identitätsprüfung)', 'Passwort + Benutzername, Zwei-Faktor-Authentifizierung (2FA mit TOTP/SMS), Fingerabdruck/FaceID, Client-Zertifikat'],
+      ['**Autorisierung (Authorization - AuthZ)**', '„Was darfst du?“ (Rechteprüfung)', 'Rollenbasierte Zugriffskontrolle (RBAC): Darf der angemeldete Nutzer Rechnungen löschen oder nur ansehen?'],
+    ]],
+    ['tip', 'Prüfungsfrage JSON Web Token (JWT): Ein JWT besteht aus drei Base64-codierten Teilen, getrennt durch Punkte: **Header** (Algorithmus), **Payload** (Daten wie Benutzer-ID und Ablaufzeit) und **Signature** (digitale Signatur mit dem geheimen Server-Schlüssel). Der Server kann ohne Datenbankabfrage prüfen, ob das Token manipuliert wurde.'],
+    ['h', 'Wörter, die in der Prüfung vorkommen'],
+    ['table', ['Wort', 'Einfach erklärt'], [
+      ['OWASP Top 10', 'Liste der zehn kritischsten Sicherheitsrisiken für Webanwendungen weltweit'],
+      ['SQL-Injection', 'Einschleusen bösartiger SQL-Befehle über Formulare oder Parameter in eine Datenbank'],
+      ['Prepared Statement', 'Vorkompilierte parametrisierte SQL-Abfrage, die SQL-Injections technisch unmöglich macht'],
+      ['Cross-Site Scripting (XSS)', 'Einschleusen von Schadcode (meist JavaScript), der im Browser des Opfers läuft'],
+      ['Session Hijacking', 'Übernahme einer aktiven Benutzersitzung durch gestohlene Session-IDs/Cookies'],
+      ['Salt', 'Zufällige Zeichenfolge, die vor dem Hashen an ein Passwort gehängt wird'],
+      ['Rainbow Table', 'Vorberechnete Tabelle zum blitzschnellen Knacken unsicherer Passwort-Hashes'],
+      ['CSRF', 'Ausnutzung einer bestehenden Authentifizierung des Opfers für ungewollte Aktionen auf einer fremden Website'],
+    ]],
+    ['see', ['eua-webapi', 'eua-sqldml', 'wiso-datenschutz']],
+    ['h', 'Aufgaben im Prüfungsstil'],
+    ['qa', 'Gegeben ist folgender PHP-Code: `$sql = "SELECT * FROM kunden WHERE email = \'" . $_POST["email"] . "\'";`. Erläutern Sie, welche Sicherheitslücke vorliegt, welcher Schaden entstehen kann und wie der Code sicher umgeschrieben werden muss.', [
+      '- **Sicherheitslücke:** Es liegt eine **SQL-Injection (SQLi)** vor, da die Benutzereingabe `$_POST["email"]` ungefiltert per String-Verkettung in den SQL-Befehl eingefügt wird.',
+      '- **Möglicher Schaden:** Ein Angreifer kann durch Eingabe von z. B. `\' OR \'1\'=\'1` alle Kundendaten auslesen, Passwörter abgreifen oder über gestapelte Befehle Tabellen löschen.',
+      '- **Sichere Lösung:** Verwendung von **Prepared Statements (Parametrisierten Queries)** mit Platzhaltern (`?` oder `:email`). Dadurch wird die Eingabe strikt als Datenwert interpretiert und nicht als SQL-Syntax ausgeführt.',
+      'Zusammen 5 Punkte.',
+    ], 5],
+    ['qa', 'Erklären Sie den Unterschied zwischen Reflected XSS und Stored (Persistent) XSS. Welche Variante ist gefährlicher und warum?', [
+      '- **Reflected XSS:** Der bösartige Code wird nicht auf dem Server gespeichert, sondern steckt in einem manipulierten Link (z. B. URL-Parameter). Er wirkt nur bei Nutzern, die diesen Link anklicken.',
+      '- **Stored XSS:** Der Angreifer speichert den Schadcode dauerhaft in der Datenbank der Webanwendung (z. B. in einem Blogkommentar).',
+      '- **Gefährlichkeit:** **Stored XSS ist wesentlich gefährlicher**, da jeder reguläre Besucher der Webseite automatisch und ohne Klick auf dubiose Links infiziert wird.',
+    ], 5],
+    ['qa', 'Warum reicht es nicht aus, Passwörter einfach mit dem Algorithmus SHA-256 zu hashen? Nennen Sie zwei Anforderungen an ein sicheres Passwort-Speicherverfahren.', [
+      '- SHA-256 ist extrem schnell berechenbar. Angreifer können mit modernen GPUs Milliarden Hashes pro Sekunde durchprobieren oder vorgefertigte **Rainbow Tables** nutzen.',
+      '- **Anforderung 1:** Verwendung eines kryptografischen **Salts** (individuelle Zufallszeichenkette pro Benutzer), um Rainbow Tables wirkungslos zu machen.',
+      '- **Anforderung 2:** Verwendung eines **langsamen, adaptiven Algorithmus** wie **bcrypt**, **Argon2** oder **PBKDF2**, dessen Rechenaufwand (Work Factor) gegen Brute-Force-Angriffe skaliert werden kann.',
+    ], 4],
+    ['quiz', [
+      {q: 'Welche Maßnahme verhindert SQL-Injections am effektivsten?', o: ['Verwendung von Prepared Statements (parametrisierte Abfragen)', 'Eingaben mit base64 verschlüsseln', 'Verwendung von JavaScript im Frontend', 'Erhöhung des Arbeitsspeichers der Datenbank'], a: 0, e: 'Prepared Statements trennen SQL-Logik und Daten strikt voneinander.'},
+      {q: 'Welches Cookie-Attribut verhindert, dass JavaScript das Session-Cookie auslesen kann?', o: ['HttpOnly', 'Secure', 'SameSite=Lax', 'Domain'], a: 0, e: 'Das `HttpOnly`-Flag schützt Cookies vor Diebstahl durch Cross-Site Scripting (XSS).'},
+      {q: 'Wozu dient ein Salt beim Hashen von Passwörtern?', o: ['Es verhindert den Einsatz vorberechneter Rainbow Tables gegen gleiche Passwörter', 'Es macht das Passwort kürzer', 'Es verschlüsselt das Passwort symmetrisch', 'Es ersetzt das Passwort durch eine Zufallszahl'], a: 0, e: 'Das Salt sorgt dafür, dass gleiche Passwörter völlig unterschiedliche Hashwerte erzeugen.'},
+      {q: 'Was ist der Unterschied zwischen Authentifizierung und Autorisierung?', o: ['Authentifizierung prüft die Identität („Wer?“), Autorisierung prüft die Zugriffsrechte („Was darf er?“)', 'Beide Begriffe bedeuten genau dasselbe', 'Autorisierung erfolgt immer vor der Authentifizierung', 'Authentifizierung wird nur bei Hardware verwendet'], a: 0, e: 'Zuerst meldet man sich an (Authentifizierung), dann werden die Rechte geprüft (Autorisierung).'},
+    ]],
+  ],
+});

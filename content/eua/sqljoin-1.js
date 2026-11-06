@@ -1,37 +1,87 @@
 AP2.page('eua-sqljoin', {
   b: 'eua', g: 'Datenbanken und SQL', t: 'SQL: JOIN (Tabellen verknüpfen)',
-  d: 'Ein **JOIN** verknüpft Zeilen aus **mehreren Tabellen** anhand einer **Bedingung** (meist **Fremdschlüssel = Primärschlüssel**). **INNER JOIN** liefert nur Zeilen mit **Treffer in beiden** Tabellen. **LEFT JOIN** liefert **alle Zeilen der linken Tabelle** und passende der rechten (sonst NULL). **RIGHT JOIN** entsprechend umgekehrt. **FULL JOIN** liefert alle Zeilen beider Seiten.',
-  m: '**INNER = nur Paare. LEFT = alle von links, rechts oder NULL. RIGHT = alle von rechts. FULL = alle von beiden.** Immer eine **ON-Bedingung** schreiben (sonst entsteht das Kreuzprodukt!). Bei Alias: `k.kunden_id = b.kunden_id`.',
+  d: 'Ein **JOIN** verknüpft Datensätze aus **zwei oder mehr Tabellen** anhand einer logischen Verknüpfungsbedingung (**ON-Klausel**), meist über **Fremdschlüssel = Primärschlüssel**. **INNER JOIN** liefert nur Zeilen, die in **beiden** Tabellen eine Übereinstimmung haben. **LEFT (OUTER) JOIN** liefert **ausnahmslos alle Zeilen der linken Tabelle**; gibt es rechts keinen Partner, werden die rechten Spalten mit **NULL** aufgefüllt. **RIGHT JOIN** verhält sich spiegelverkehrt. **FULL OUTER JOIN** liefert alle Datensätze beider Tabellen.',
+  m: '**INNER JOIN = nur Paare mit Treffer auf beiden Seiten.** **LEFT JOIN = alle Datensätze links, passende rechts (sonst NULL).** **Anti-Join (Fehlende finden):** `LEFT JOIN ... WHERE rechts.pk IS NULL`. **ON-Bedingung niemals vergessen**, sonst entsteht das **kartesische Produkt (CROSS JOIN)**, das alle Zeilen mit allen Zeilen multipliziert!',
   cheat: [
-    ['Syntax', ['`SELECT ... FROM a`', '`INNER JOIN b ON a.fk = b.pk`', '`LEFT JOIN c ON ...`', '`WHERE ...`', 'Spalten mit **Alias.spalte** eindeutig machen']],
-    ['JOIN-Arten', ['**INNER JOIN:** nur Treffer beidseitig', '**LEFT (OUTER) JOIN:** alle links + Treffer rechts', '**RIGHT (OUTER) JOIN:** alle rechts + Treffer links', '**FULL (OUTER) JOIN:** alle beider Seiten', '**CROSS JOIN:** jede Zeile mit jeder (Kreuzprodukt)']],
-    ['Typische Aufgaben', ['Kunde mit seinen Bestellungen: **INNER**', 'Kunden **ohne** Bestellung: **LEFT JOIN ... WHERE rechts.pk IS NULL**', 'Bestellpositionen mit Artikelnamen: **mehrere JOINs**', 'Alle Artikel, auch unverkaufte: **LEFT JOIN**']],
-    ['Fehlerquellen', ['**ON vergessen:** Kreuzprodukt (n mal m Zeilen)', 'Mehrdeutige Spalte ohne Alias', 'LEFT vs RIGHT verwechselt', 'Filter in **WHERE** statt in **ON** bei LEFT JOIN (verliert Nullzeilen)']],
+    ['Syntax-Grundgerüst', [
+      '`SELECT k.name, b.datum, a.bezeichnung`',
+      '`FROM kunde k`',
+      '`INNER JOIN bestellung b ON k.kunden_id = b.kunden_id`',
+      '`INNER JOIN position p ON b.bestell_id = p.bestell_id`',
+      '`INNER JOIN artikel a ON p.artikel_id = a.artikel_id`',
+      '`WHERE k.ort = \'Ulm\';`',
+      'Tabellen-Aliase (`k`, `b`, `p`, `a`) machen Spaltennamen eindeutig',
+    ]],
+    ['Die 4 JOIN-Arten im Überblick', [
+      '**INNER JOIN:** Schnittmenge beider Tabellen (nur vollständige Paare)',
+      '**LEFT (OUTER) JOIN:** 100 % der linken Tabelle + passende rechte Spalten (oder NULL)',
+      '**RIGHT (OUTER) JOIN:** 100 % der rechten Tabelle + passende linke Spalten (oder NULL)',
+      '**FULL (OUTER) JOIN:** Vollständige Vereinigung beider Tabellen inklusive aller NULL-Zeilen',
+      '**CROSS JOIN (Kreuzprodukt):** Jede Zeile links mit jeder Zeile rechts (n * m Zeilen)',
+    ]],
+    ['Häufige Aufgabenmuster der IHK', [
+      'Alle Kunden mit ihren getätigten Bestellungen: **INNER JOIN**',
+      'Alle Kunden anzeigen, auch solche, die noch nie bestellt haben: **LEFT JOIN**',
+      'Kunden finden, die noch KEINE Bestellung getätigt haben: **LEFT JOIN ... WHERE b.bestell_id IS NULL**',
+      'Umsatz pro Kunde ermitteln: **LEFT JOIN + GROUP BY + SUM(menge * preis)**',
+    ]],
   ],
   blocks: [
-    ['h', 'Warum JOIN?'],
-    ['p', 'Durch die **Normalisierung** stehen zusammengehörige Daten in **verschiedenen Tabellen** (Kunde, Bestellung, Position, Artikel). Um sie gemeinsam anzuzeigen ("Welche Bestellungen hat Meier?"), **verknüpft** man die Tabellen über die Schlüssel. Genau das macht der **JOIN**.'],
+    ['h', 'Warum werden Tabellen verknüpft?'],
+    ['p', 'Aufgrund der **Normalisierung relationaler Datenbanken** werden redundante Daten auf getrennte Tabellen aufgeteilt (z. B. Kunde, Bestellung, Artikel). Ein **JOIN** führt diese getrennten Daten zur Laufzeit einer Abfrage wieder zusammen. Die Verknüpfung erfolgt über die Beziehung zwischen dem **Fremdschlüssel (FK)** der einen Tabelle und dem **Primärschlüssel (PK)** der anderen Tabelle.'],
     ...AP2.sqlBlocks.schema,
     ['h', 'Die JOIN-Arten als Mengenbild'],
-    ['p', 'Stell dir zwei Tabellen als **Mengen A (links) und B (rechts)** vor. Der überlappende Bereich enthält Zeilen mit **Treffer in beiden** Tabellen. Die Farbe zeigt, welche Zeilen im Ergebnis stehen:'],
-    ['venn', [['inner', 'INNER JOIN', 'nur Zeilen mit Treffer in A und B'], ['left', 'LEFT JOIN', 'alle aus A, dazu passende aus B (sonst NULL)'], ['right', 'RIGHT JOIN', 'alle aus B, dazu passende aus A (sonst NULL)'], ['full', 'FULL OUTER JOIN', 'alle aus A und B'], ['leftOnly', 'LEFT JOIN ... WHERE B.key IS NULL', 'nur A ohne Treffer in B'], ['outer', 'FULL JOIN ... WHERE A.key IS NULL OR B.key IS NULL', 'alle ohne Treffer auf der anderen Seite']]],
-    ['h', 'INNER JOIN'],
-    ['code', 'sql', `SELECT k.name, b.bestell_id, b.datum
+    ['p', 'Stell dir zwei Tabellen als **Mengen A (links) und B (rechts)** vor. Die Schnittmenge enthält Zeilen mit **Treffern in beiden** Tabellen:'],
+    ['venn', [
+      ['inner', 'INNER JOIN', 'nur Zeilen mit Treffer in A und B'],
+      ['left', 'LEFT JOIN', 'alle aus A, dazu passende aus B (sonst NULL)'],
+      ['right', 'RIGHT JOIN', 'alle aus B, dazu passende aus A (sonst NULL)'],
+      ['full', 'FULL OUTER JOIN', 'alle aus A und B'],
+      ['leftOnly', 'LEFT JOIN ... WHERE B.key IS NULL', 'nur A ohne Treffer in B (Anti-Join)'],
+      ['outer', 'FULL JOIN ... WHERE A.key IS NULL OR B.key IS NULL', 'alle ohne Treffer auf der Gegenseite'],
+    ]],
+    ['h', 'INNER JOIN: Nur vollständige Datensatzpaare'],
+    ['p', 'Der `INNER JOIN` (oder einfach `JOIN`) filtert alle Datensätze heraus, die auf der Gegenseite keinen Partner haben:'],
+    ['code', 'sql', `SELECT k.name, k.ort, b.bestell_id, b.datum
 FROM kunde k
 INNER JOIN bestellung b ON k.kunden_id = b.kunden_id;`],
-    ['table', ['name', 'bestell_id', 'datum'], [['Meier', '101', '2026-03-02'], ['Meier', '102', '2026-03-05'], ['Schulz', '103', '2026-03-06'], ['Yilmaz', '104', '2026-03-09']], {first: false}],
-    ['p', 'Brandt hat **keine** Bestellung und taucht daher im INNER JOIN **nicht** auf. Meier erscheint **zweimal**, weil er zwei Bestellungen hat: Pro passendem Paar entsteht eine Zeile.'],
-    ['h', 'LEFT JOIN'],
-    ['code', 'sql', `SELECT k.name, b.bestell_id
+    ['table', ['k.name', 'k.ort', 'b.bestell_id', 'b.datum'], [
+      ['Meier', 'Göppingen', '101', '2026-03-02'],
+      ['Meier', 'Göppingen', '102', '2026-03-05'],
+      ['Schulz', 'Ulm', '103', '2026-03-06'],
+      ['Yilmaz', 'Stuttgart', '104', '2026-03-09'],
+    ], {first: false}],
+    ['note', 'Beachte: Kunde **Brandt** (kunden_id = 4) taucht im Ergebnis **nicht auf**, da er noch keine Bestellung aufgegeben hat. Kunde **Meier** erscheint **zweimal**, weil er zwei verschiedene Bestellungen getätigt hat.'],
+    ['h', 'LEFT JOIN: Alle Datensätze der linken Tabelle behalten'],
+    ['p', 'Der `LEFT OUTER JOIN` stellt sicher, dass kein Datensatz der linken Tabelle verloren geht, selbst wenn rechts kein Eintrag existiert:'],
+    ['code', 'sql', `SELECT k.name, k.ort, b.bestell_id, b.datum
 FROM kunde k
 LEFT JOIN bestellung b ON k.kunden_id = b.kunden_id;`],
-    ['table', ['name', 'bestell_id'], [['Meier', '101'], ['Meier', '102'], ['Schulz', '103'], ['Yilmaz', '104'], ['Brandt', 'NULL']], {first: false, mark: [4]}],
-    ['p', '**Alle Kunden** stehen im Ergebnis. Für Brandt, der nie bestellt hat, sind die Spalten der Bestellung **NULL**.'],
-    ['h3', 'Anwendung: Kunden ohne Bestellung finden (Anti-Join)'],
-    ['code', 'sql', `SELECT k.name
+    ['table', ['k.name', 'k.ort', 'b.bestell_id', 'b.datum'], [
+      ['Meier', 'Göppingen', '101', '2026-03-02'],
+      ['Meier', 'Göppingen', '102', '2026-03-05'],
+      ['Schulz', 'Ulm', '103', '2026-03-06'],
+      ['Yilmaz', 'Stuttgart', '104', '2026-03-09'],
+      ['Brandt', 'Ulm', 'NULL', 'NULL'],
+    ], {first: false, mark: [4]}],
+    ['h', 'Der Anti-Join: Datensätze OHNE Verknüpfung aufspüren'],
+    ['p', 'Eine der beliebtesten IHK-Aufgaben: „Ermitteln Sie alle Kunden, die bisher noch keine einzige Bestellung getätigt haben.“ Lösung mit `LEFT JOIN` und Filter auf `IS NULL`:'],
+    ['code', 'sql', `SELECT k.kunden_id, k.name, k.ort
 FROM kunde k
 LEFT JOIN bestellung b ON k.kunden_id = b.kunden_id
-WHERE b.bestell_id IS NULL;      -- nur die Zeilen OHNE Treffer rechts`],
-    ['table', ['name'], [['Brandt']], {first: false}],
+WHERE b.bestell_id IS NULL;`],
+    ['table', ['k.kunden_id', 'k.name', 'k.ort'], [
+      ['4', 'Brandt', 'Ulm'],
+    ], {first: false}],
+    ['h', 'Wörter, die in der Prüfung vorkommen'],
+    ['table', ['Wort', 'Einfach erklärt'], [
+      ['JOIN', 'SQL-Klausel zum Verknüpfen zweier Tabellen über eine gemeinsame Spalte'],
+      ['ON-Klausel', 'Bedingung, die festlegt, welche Zeilen zusammengehören (meist Fremdschlüssel = Primärschlüssel)'],
+      ['Kartesisches Produkt (CROSS JOIN)', 'Jede Zeile von Tabelle A wird mit jeder Zeile von Tabelle B kombiniert'],
+      ['Anti-Join', 'Technik (LEFT JOIN + IS NULL), um Datensätze zu finden, die keine Beziehung haben'],
+      ['Mehrdeutiger Spaltenname (ambiguous)', 'Fehler, wenn zwei Tabellen denselben Spaltennamen haben und kein Tabellen-Alias vorangestellt wurde'],
+      ['Self-Join', 'Eine Tabelle wird mit sich selbst verknüpft (z. B. Mitarbeiter mit Vorgesetztem aus derselben Tabelle)'],
+    ]],
+    ['see', ['eua-sqlselect', 'eua-sqlgroup', 'eua-sqldml', 'eua-normalisierung']],
   ],
 });

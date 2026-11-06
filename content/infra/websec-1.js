@@ -1,17 +1,17 @@
 AP2.page('infra-websec', {
   b: 'infra', g: 'IT-Sicherheit', t: 'Webanwendungen absichern: TLS, Reverse Proxy, WAF und OWASP Top 10',
-  d: 'Webanwendungen sind öffentlich erreichbar und deshalb das häufigste Angriffsziel. Absicherung geschieht in Schichten: **TLS** verschlüsselt und schützt die Integrität der Übertragung (hybrid: asymmetrischer Schlüsselaustausch, symmetrische Datenverschlüsselung, MAC/AEAD für Integrität), ein **Reverse Proxy** nimmt Anfragen stellvertretend für die Webserver entgegen (TLS-Terminierung, Lastverteilung, **Web Application Firewall**), und **sichere Programmierung** nach den **OWASP Top 10** verhindert Lücken wie SQL-Injection oder XSS.',
+  d: 'Öffentlich erreichbare Webanwendungen müssen mit fremden und manipulierten Anfragen rechnen. Absicherung geschieht in Schichten: **TLS** verschlüsselt und schützt die Integrität der Übertragung (hybrid: asymmetrischer Schlüsselaustausch, symmetrische Datenverschlüsselung, MAC/AEAD für Integrität), ein **Reverse Proxy** nimmt Anfragen stellvertretend für die Webserver entgegen (TLS-Terminierung, Lastverteilung, **Web Application Firewall**), und **sichere Programmierung** nach den **OWASP Top 10** verhindert Lücken wie SQL-Injection oder XSS.',
   m: '**TLS ist der sichere Nachfolger von SSL** (SSL 2.0/3.0 und TLS 1.0/1.1 sind veraltet; heute TLS 1.2/1.3). **Hybrid:** asymmetrisch für den Schlüssel, symmetrisch für die Daten. Über das Internet geht nur der **öffentliche Schlüssel**, nie der private. **Reverse Proxy = Türsteher vor den Webservern.**',
   cheat: [
     ['TLS', ['Vertraulichkeit: symmetrische Verschlüsselung (AES-GCM, ChaCha20)', 'Schlüsselaustausch: (EC)DHE, Server-Authentizität per Zertifikat', 'Integrität: MAC bzw. AEAD', 'Perfect Forward Secrecy durch flüchtige Schlüssel', 'HTTPS = HTTP über TLS, Port 443']],
     ['Reverse Proxy', ['Steht vor den Webservern, Clients sehen nur ihn', '**TLS-Terminierung (SSL-Offloading):** entschlüsselt, entlastet Server', 'Lastverteilung, Caching, Kompression', '**WAF** filtert Angriffe (SQLi, XSS)', 'Interne Server bleiben verborgen']],
-    ['OWASP Top 10 (Auswahl)', ['Broken Access Control', 'Cryptographic Failures', '**Injection** (SQL, Command), auch XSS', 'Insecure Design', 'Security Misconfiguration', 'Vulnerable and Outdated Components', 'Identification and Authentication Failures', 'Software and Data Integrity Failures', 'Logging and Monitoring Failures', 'SSRF']],
+    ['OWASP Top 10, Ausgabe 2021 (Auswahl)', ['Broken Access Control', 'Cryptographic Failures', '**Injection** (SQL, Command), auch XSS', 'Insecure Design', 'Security Misconfiguration', 'Vulnerable and Outdated Components', 'Identification and Authentication Failures', 'Software and Data Integrity Failures', 'Logging and Monitoring Failures', 'SSRF']],
     ['Schutzmaßnahmen im Code', ['**Prepared Statements** gegen SQL-Injection', '**Ausgabe kodieren** (escapen) gegen XSS', 'CSRF-Token und SameSite-Cookies', 'Eingaben serverseitig validieren', 'Security-Header: HSTS, CSP, X-Frame-Options']],
   ],
   blocks: [
     ['h', 'Wie TLS Vertraulichkeit und Integrität sichert'],
     ['steps', ['**Authentizität:** Der Server weist sich mit einem **Zertifikat** aus, das eine vertrauenswürdige CA signiert hat. Der Client prüft Kette, Gültigkeit und Hostnamen.', '**Schlüsselaustausch:** Beide berechnen per (EC)DHE einen gemeinsamen **Sitzungsschlüssel**, ohne ihn zu übertragen (asymmetrische Verfahren).', '**Vertraulichkeit:** Alle Nutzdaten werden mit dem Sitzungsschlüssel **symmetrisch** verschlüsselt (schnell).', '**Integrität:** Jeder Datensatz trägt einen Authentifizierungscode (MAC, heute als AEAD-Verfahren integriert); Manipulationen fallen auf.']],
-    ['table', ['Version', 'Status'], [['SSL 2.0, SSL 3.0', 'unsicher, abgeschaltet (zum Beispiel POODLE)'], ['TLS 1.0, TLS 1.1', 'veraltet, seit 2021 offiziell abgekündigt'], ['TLS 1.2', 'noch zulässig mit sicheren Cipher Suites'], ['TLS 1.3', 'aktueller Standard: schnellerer Handshake, nur sichere Verfahren, immer Forward Secrecy']]],
+    ['table', ['Version', 'Status'], [['SSL 2.0, SSL 3.0', 'unsicher, abgeschaltet (zum Beispiel POODLE)'], ['TLS 1.0, TLS 1.1', 'veraltet, seit 2021 offiziell abgekündigt'], ['TLS 1.2', 'noch zulässig mit sicheren Cipher Suites'], ['TLS 1.3', 'Moderner Handshake und AEAD; Forward Secrecy bei passendem Schlüsselaustausch']]],
     ['h', 'Reverse Proxy mit TLS-Terminierung'],
     ['diagram', {w: 780, h: 290, cap: 'Der Reverse Proxy hält Zertifikat und privaten Schlüssel. Beim SSL-Offloading läuft die Verbindung zum internen Webserver unverschlüsselt (oder neu verschlüsselt).', nodes: [
       {id: 'c', x: 80, y: 140, k: 'round', s: 'plain', t: ['Client', '(Browser)'], w: 120, h: 60},
@@ -32,7 +32,7 @@ AP2.page('infra-websec', {
     ['table', ['Angriff', 'So funktioniert er', 'Abwehr'], [
       ['SQL-Injection', 'Eingaben werden ungeprüft in SQL eingebaut: `admin\' --` kommentiert die Passwortprüfung aus.', '**Prepared Statements** / parametrisierte Abfragen, minimale DB-Rechte'],
       ['Cross-Site Scripting (XSS)', 'Angreifer bringt JavaScript in eine Seite (zum Beispiel über einen Kommentar), das im Browser anderer Nutzer läuft und Cookies stiehlt.', 'Ausgaben **kontextgerecht kodieren**, Content Security Policy, HttpOnly-Cookies'],
-      ['Cross-Site Request Forgery (CSRF)', 'Eine fremde Seite löst im Namen des angemeldeten Nutzers Aktionen aus (Überweisung).', '**CSRF-Token**, SameSite-Cookies, Rückfrage bei kritischen Aktionen'],
+      ['Cross-Site Request Forgery (CSRF)', 'Eine fremde Seite löst im Namen des angemeldeten Nutzers Aktionen aus (Überweisung).', '**CSRF-Token**, SameSite-Cookies, Erneute Authentifizierung bei kritischen Aktionen'],
       ['Broken Access Control', 'Nutzer ändert die ID in der URL und sieht fremde Bestellungen.', 'Berechtigung **serverseitig** bei jeder Anfrage prüfen'],
       ['Veraltete Komponenten', 'Bekannte Lücke in einer Bibliothek (zum Beispiel Log4Shell).', 'Patch-Management, Abhängigkeiten scannen (SBOM)'],
     ]],
@@ -40,11 +40,19 @@ AP2.page('infra-websec', {
       ['java', `// Unsicher: Eingabe wird Teil des SQL-Textes
 String sql = "SELECT * FROM benutzer WHERE name = '" + name + "' AND pwd = '" + pwd + "'";
 
-// Sicher: Prepared Statement, Eingaben sind nur Daten
-PreparedStatement ps = con.prepareStatement(
-    "SELECT * FROM benutzer WHERE name = ? AND pwd_hash = ?");
-ps.setString(1, name);
-ps.setString(2, hash(pwd));`],
+// Sicherer SQL-Zugriff: Name ist ein Wertparameter.
+// Passwort danach mit einer geeigneten Bibliothek pruefen.
+try (PreparedStatement stmt = con.prepareStatement(
+        "SELECT pwd_hash FROM benutzer WHERE name = ?")) {
+    stmt.setString(1, name);
+    try (ResultSet rs = stmt.executeQuery()) {
+        if (rs.next()) {
+            String gespeichert = rs.getString("pwd_hash");
+            // Passwortbibliothek prueft pwd gegen gespeichert.
+            // Salt und Kostenparameter aus dem Hash verwenden.
+        }
+    }
+}`],
       ['php', `// Unsicher
 $sql = "SELECT * FROM benutzer WHERE name = '$name' AND pwd = '$pwd'";
 // Sicher
@@ -68,3 +76,131 @@ $ok = $user && password_verify($pwd, $user['pwd_hash']);`],
     ]],
   ],
 });
+
+// Quelle: https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
+AP2.add('infra-websec', [
+  [
+    "h",
+    "Passwortprüfung gehört nicht als einfacher Hashvergleich ins SQL"
+  ],
+  [
+    "p",
+    "Lade den gespeicherten Passwort-Hash über einen eindeutigen Benutzernamen. Eine geeignete Passwortbibliothek prüft danach das eingegebene Passwort. Sie verarbeitet Salt und Kostenparameter des gespeicherten Hashs. Schnelles SHA-256 allein ist für Passwörter ungeeignet."
+  ],
+  [
+    "p",
+    "Für neue Systeme ist beispielsweise Argon2id geeignet. Wähle Parameter anhand der Sicherheitsvorgaben und Messungen. Ein Salt ist ein individueller Zufallswert pro Passwort. Er verhindert identische gespeicherte Werte bei gleichen Passwörtern."
+  ],
+  [
+    "h",
+    "Maßnahmen lösen unterschiedliche Probleme"
+  ],
+  [
+    "table",
+    [
+      "Problem",
+      "Gezielte Maßnahme",
+      "Allein nicht ausreichend"
+    ],
+    [
+      [
+        "SQL-Injection",
+        "Parameter für Werte; erlaubte Liste für dynamische Bezeichner",
+        "HTTPS"
+      ],
+      [
+        "XSS",
+        "Kontextgerechte Ausgabe; textContent für reinen Text",
+        "Nur Eingaben prüfen"
+      ],
+      [
+        "CSRF bei Cookie-Anmeldung",
+        "Token und geeignete Cookie-Regeln",
+        "HttpOnly allein"
+      ],
+      [
+        "Fremde Aufträge lesen",
+        "Objektberechtigung serverseitig prüfen",
+        "Schwer erratbare IDs"
+      ],
+      [
+        "Passwortdatenbank gestohlen",
+        "Langsames Passwortverfahren mit Salt",
+        "Allgemeiner schneller Hash"
+      ],
+      [
+        "Gestohlene Sitzung",
+        "Geschützte Cookies, Ablauf und Widerruf",
+        "Passwort-Hashing allein"
+      ]
+    ]
+  ],
+  [
+    "h",
+    "XSS ohne unsichere HTML-Erzeugung vermeiden"
+  ],
+  [
+    "code",
+    "javascript",
+    "// Für reinen Text:\nkommentar.textContent = benutzereingabe;\n\n// Wenn HTML fachlich erforderlich ist:\n// Geprüften HTML-Sanitizer mit enger Erlaubnisliste verwenden.\n// Kein eigenes Entfernen einzelner Script-Tags bauen."
+  ],
+  [
+    "p",
+    "HttpOnly erschwert das Auslesen eines Cookies durch JavaScript. XSS kann trotzdem Aktionen im Browser des Opfers auslösen. Eine Content Security Policy ist eine zusätzliche Schutzschicht. Sie ersetzt sichere Ausgabe nicht."
+  ],
+  [
+    "h",
+    "Fehlende Objektberechtigung erkennen"
+  ],
+  [
+    "qa",
+    "GET /api/auftraege/731 liefert einer angemeldeten Person einen fremden Auftrag. Die Anmeldung ist gültig. **Erläutern** Sie den Fehler und zwei Schutzmaßnahmen.",
+    [
+      "Authentifizierung bestätigt nur die Identität. Die Objektberechtigung fehlt. 1 Punkt.",
+      "Der Server prüft bei jeder Anfrage Auftragseigentum und zulässige Rollen. 1 Punkt.",
+      "Tests verwenden mindestens zwei Konten und prüfen fremde IDs sowie Schreibzugriffe. 1 Punkt."
+    ],
+    3
+  ],
+  [
+    "qa",
+    "**Ordnen** Sie zu: Prepared Statement, Passwort-Hashing, TLS und CSRF-Token. Nennen Sie je das hauptsächliche Schutzziel.",
+    [
+      "Prepared Statement: SQL-Wertparameter werden nicht als SQL-Code ausgeführt.",
+      "Passwort-Hashing: Passwortoffenlegung und Offline-Raten nach Datenbankdiebstahl erschweren.",
+      "TLS: Vertraulichkeit und Integrität des Transports sowie Gegenstellenprüfung.",
+      "CSRF-Token: Ungewollte zustandsändernde Browseranfragen abwehren.",
+      "Je Zuordnung 1 Punkt."
+    ],
+    4
+  ],
+  [
+    "quiz",
+    [
+      {
+        "q": "Was leistet HttpOnly allein nicht?",
+        "o": [
+          "Alle Auswirkungen einer XSS-Lücke verhindern",
+          "JavaScript-Zugriff auf das markierte Cookie einschränken",
+          "Eine Cookie-Eigenschaft festlegen",
+          "Das direkte Cookie-Auslesen per document.cookie verhindern"
+        ],
+        "a": 0,
+        "e": "Schadcode kann weiterhin erlaubte Anfragen aus dem Opferbrowser auslösen."
+      }
+    ]
+  ],
+  [
+    "note",
+    "Vertiefung: OWASP Password Storage Cheat Sheet. Dort werden Passwortverfahren, Salt und Kostenparameter erklärt."
+  ],
+  [
+    "see",
+    [
+      "ps-dbzugriff",
+      "ps-testentwurf",
+      "infra-http",
+      "infra-webauth"
+    ]
+  ]
+]);

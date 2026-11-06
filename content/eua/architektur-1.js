@@ -1,0 +1,82 @@
+AP2.page('eua-architektur', {
+  b: 'eua', g: 'Web und Schnittstellen', t: 'Softwarearchitektur: Schichten, Microservices und API-Stile (REST, GraphQL, gRPC)',
+  d: 'Die **Softwarearchitektur** beschreibt die grundlegende Struktur und das Zusammenspiel der Komponenten eines Softwaresystems. Klassische Ansätze nutzen die **Schichtenarchitektur (3-Tier)** mit strikter Trennung von **Präsentation (UI)**, **Geschäftslogik (Business Layer)** und **Datenzugriff (Persistence)** sowie Entwurfsmuster wie **MVC (Model-View-Controller)**. In modernen verteilten Systemen lösen **Microservices** den monolithischen Ansatz ab. Für die Kommunikation zwischen Services und Frontends stehen verschiedene API-Architekturen zur Verfügung: **REST**, **GraphQL**, **gRPC** und **WebSocket**.',
+  m: '**3-Schichten-Modell:** Presentation Layer (Frontend) -> Logic Layer (Geschäftsregeln) -> Data Layer (Datenbank). **MVC:** Model (Daten), View (Anzeige), Controller (Steuerung/Eingabe). **Monolith:** Alles in einer Anwendung (einfach, aber schwer skalierbar). **Microservices:** Viele kleine, unabhängige Services (skalierbar, aber hohe Netzwerkkomplexität). **APIs:** REST (HTTP-Verben, zustandslos, JSON), GraphQL (1 Endpunkt, Client bestimmt Felder genau), gRPC (HTTP/2, Protocol Buffers, extrem schnell), WebSocket (Echtzeit, bidirektional).',
+  cheat: [
+    ['Schichtenarchitektur (3-Tier)', [
+      '**Präsentationsschicht (Presentation / GUI):** Benutzeroberfläche, Ein-/Ausgabe, HTML/CSS/App',
+      '**Logikschicht (Business Logic / Service):** Geschäftsregeln, Berechnungen, Validierung, Rechteprüfung',
+      '**Datenzugriffsschicht (Data Access / Persistence):** Verbindung zur Datenbank, SQL-Queries, ORM (Hibernate, Prisma)',
+      '**Vorteil:** Austauschbarkeit (z. B. neues Web-Frontend ohne Änderung der Datenbank)',
+    ]],
+    ['Monolith vs. Microservices', [
+      '**Monolith:** Eine einzige zusammenhängende Codebasis; einfaches Deployment, aber bei großen Teams unübersichtlich',
+      '**Microservices:** Zerlegung in kleine, fachlich abgegrenzte Services (z. B. Auth-Service, Bezahl-Service); unabhängig deploybar, fehlertolerant, aber aufwendiges API-Management und verteiltes Logging',
+    ]],
+    ['Die 4 großen API-Architekturen', [
+      '**REST:** Standard für Web-APIs; HTTP-Methoden (GET, POST, PUT, DELETE); zustandslos; nutzt JSON',
+      '**GraphQL:** Ein einziger Endpunkt (`/graphql`); Client fordert exakt die gewünschten Daten an (verhindert Overfetching/Underfetching)',
+      '**gRPC:** Google RPC über HTTP/2; binäre Protocol Buffers; extrem schnell; ideal für interne Microservice-Kommunikation',
+      '**WebSocket:** Dauerhafte, bidirektionale TCP-Verbindung für Echtzeitanwendungen (Chat, Börsenkurse)',
+    ]],
+  ],
+  blocks: [
+    ['h', 'Die klassische Schichtenarchitektur (3-Tier Architecture)'],
+    ['p', 'Die Schichtenarchitektur trennt Zuständigkeiten (**Separation of Concerns**). Jede Schicht hat eine klar definierte Aufgabe und darf nur mit der direkt darunterliegenden Schicht kommunizieren:'],
+    ['table', ['Schicht', 'Verantwortung', 'Typische Technologien'], [
+      ['**1. Präsentationsschicht (Presentation Layer)**', 'Interaktion mit dem Benutzer: Darstellung von Daten, Entgegennahme von Eingaben, Benutzerführung', 'React, Vue, Angular, HTML5/CSS, Flutter, Android/iOS Native'],
+      ['**2. Logikschicht (Business Logic Layer)**', 'Kern der Anwendung: Geschäftsregeln, Berechnungen (z. B. Rabattprüfung, Steuerkalkulation), Workflows', 'Java (Spring Boot), C# (.NET Core), Python (FastAPI/Django), Node.js'],
+      ['**3. Datenzugriffsschicht (Data Access / Persistence)**', 'Speichern, Laden und Abfragen von Daten; Abstraktion der konkreten Datenbank', 'JPA/Hibernate, Entity Framework, Prisma, Repository-Klassen, SQL'],
+      ['**Datenbank (Database Tier)**', 'Physische Persistenz der Datensätze', 'PostgreSQL, MySQL, Oracle, MongoDB'],
+    ]],
+    ['h', 'Monolithische Architektur versus Microservices'],
+    ['p', 'Eine der wichtigsten Architekturentscheidungen betrifft den Schnitt der Anwendung:'],
+    ['table', ['Kriterium', 'Monolithische Architektur', 'Microservices-Architektur'], [
+      ['**Struktur**', 'Ein einziges großes Softwareprojekt mit einer gemeinsamen Codebasis und Datenbank', 'Viele kleine, eigenständige Services, jeder mit eigener Datenbank (**Database-per-Service**)'],
+      ['**Bereitstellung (Deployment)**', 'Alles muss als Ganzes neu kompiliert und bereitgestellt werden', 'Jeder Service kann unabhängig und ohne Ausfallzeiten aktualisiert werden'],
+      ['**Technologiewahl**', 'Das gesamte Team ist an einen Technologie-Stack gebunden', 'Freie Technologiewahl pro Service (z. B. Auth in Go, KI in Python, Web in Node.js)'],
+      ['**Skalierbarkeit**', 'Nur die gesamte Anwendung kann auf mehreren Servern geklont werden', 'Gezielte Skalierung nur der stark belasteten Services (z. B. Suchservice)'],
+      ['**Komplexität**', 'Lokal einfach zu entwickeln und zu debuggen', 'Hohe Komplexität: Netzwerk-Latenzen, Service Discovery, verteilte Fehlerdiagnose'],
+    ]],
+    ['h', 'Vergleich moderner API-Architekturen (Prüfungsschwerpunkt!)'],
+    ['p', 'In der Abschlussprüfung (z. B. Winter 2025/2026 PB2 1.4) werden Alternativen zur klassischen REST-API abgefragt:'],
+    ['table', ['Architektur-Stil', 'Protokoll / Format', 'Hauptmerkmale & Vorteile', 'Typischer Einsatzzweck'], [
+      ['**REST (Representational State Transfer)**', 'HTTP/1.1 oder HTTP/2<br>Format: **JSON** oder XML', 'Standardisiert über HTTP-Verben (`GET`, `POST`, `PUT`, `DELETE`). Zustandslos, einfach zu cachen, von jedem Browser nativ unterstützt.', 'Öffentliche Web-APIs, Standard-Webshops, mobile Apps'],
+      ['**GraphQL (von Meta / Facebook)**', 'HTTP (`POST`)<br>Format: **JSON**', 'Client schickt eine Query und bestimmt **exakt die benötigten Felder**. Verhindert **Overfetching** (zu viele Daten) und **Underfetching** (zu viele Einzelanfragen).', 'Komplexe Frontends mit vielen verschachtelten Daten (z. B. Social Media, Dashboards)'],
+      ['**gRPC (Google Remote Procedure Call)**', 'HTTP/2<br>Format: **Protocol Buffers (binär)**', 'Extrem schnell und kompakt, da Daten binär übertragen werden. Strikte Typisierung durch `.proto`-Dateien. Unterstützt echtes bidirektionales Streaming.', 'Interne Kommunikation zwischen Microservices im Backend, rechenintensive IT-Systeme'],
+      ['**WebSocket**', 'WS / WSS (TCP-basiert)<br>Format: Text/Binär', 'Dauerhafte Vollduplex-Verbindung (beide Seiten können jederzeit unaufgefordert Daten senden). Sehr geringer Protokoll-Overhead.', 'Echtzeitanwendungen: Chat-Systeme, Börsen-Ticker, Multiplayer-Games, IoT-Dashboards'],
+    ]],
+    ['warn', 'Typische Prüfungsfrage zu REST-Problemen: Was bedeuten **Overfetching** und **Underfetching**? (1) **Overfetching:** Ein REST-Endpunkt `/api/users/1` liefert 50 Felder (Adresse, Telefon, Historie) zurück, obwohl das Smartphone-Frontend nur den `username` braucht (Bandbreitenverschwendung). (2) **Underfetching:** Ein REST-Endpunkt liefert zu wenig Daten. Der Client muss z. B. zuerst `/api/posts`, dann 10-mal `/api/authors/{id}` und dann `/api/comments` aufrufen (**N+1-Problem**). **GraphQL löst beide Probleme mit einer einzigen gezielten Anfrage!**'],
+    ['h', 'Wörter, die in der Prüfung vorkommen'],
+    ['table', ['Wort', 'Einfach erklärt'], [
+      ['Microservices', 'Architekturstil, bei dem eine App aus vielen kleinen, unabhängigen Diensten besteht'],
+      ['Monolith', 'Softwarearchitektur, bei der die gesamte Anwendung in einem einzigen Block gebaut ist'],
+      ['Separation of Concerns', 'Trennungsprinzip: Jedes Modul kümmert sich nur um seine eigene Aufgabe'],
+      ['Overfetching', 'Das Abrufen von mehr Daten über eine API, als die Benutzeroberfläche eigentlich benötigt'],
+      ['Underfetching', 'Ein API-Endpunkt liefert zu wenige Daten, sodass mehrere Anfragen hintereinander nötig sind'],
+      ['Protocol Buffers (Protobuf)', 'Binäres Serialisierungsformat von Google für extrem schnelle Datenübertragung'],
+      ['Vollduplex (Full Duplex)', 'Gleichzeitige Datenübertragung in beide Richtungen (wie beim Telefonieren oder WebSocket)'],
+      ['Service Discovery', 'Automatisches Finden von Netzwerkadressen anderer Microservices im Cluster'],
+    ]],
+    ['see', ['eua-webapi', 'eua-iot', 'eua-cleancode', 'ps-architektur']],
+    ['h', 'Aufgaben im Prüfungsstil'],
+    ['qa', 'Eine Webanwendung kommuniziert bisher über eine REST-API mit dem Server. Beschreiben Sie zwei weitere Architektur-APIs sowie deren wesentliche Unterschiede zur REST-API.', [
+      '- **1. GraphQL:** Im Gegensatz zu REST mit vielen starren URLs (`/kunden`, `/bestellungen`) gibt es bei GraphQL nur **einen einzigen Endpunkt** (`/graphql`). Der Client sendet eine genaue Abfragebeschreibung und erhält **exakt die gewünschten Datenfelder** zurück. Dadurch werden Overfetching und Underfetching vermieden.',
+      '- **2. gRPC:** Basiert auf **HTTP/2** und überträgt Daten im **binären Format (Protocol Buffers)** statt in lesbarem JSON. gRPC ist um ein Vielfaches schneller und kompakter als REST und eignet sich ideal für die hochperformante interne Kommunikation zwischen Microservices.',
+    ], 5],
+    ['qa', 'Nennen Sie jeweils zwei Vorteile und zwei Nachteile einer Microservices-Architektur gegenüber einem Monolithen.', [
+      '- **Vorteile:** (1) **Unabhängiges Deployment:** Einzelne Services können aktualisiert werden, ohne das Gesamtsystem neu zu starten. (2) **Gezielte Skalierbarkeit:** Nur hochbelastete Services müssen auf zusätzliche Server verteilt werden. (3) **Freie Technologiewahl:** Jeder Service kann mit der dafür am besten geeigneten Programmiersprache entwickelt werden.',
+      '- **Nachteile:** (1) **Hohe Komplexität:** Verteilte Systeme erfordern aufwendige Netzwerk-Infrastruktur und Service Discovery. (2) **Fehlersuche erschwert:** Verteilte Transaktionen und Logging über Netzwerkgrenzen hinweg sind schwer nachzuvollziehen.',
+    ], 6],
+    ['qa', 'Erklären Sie die Schichten einer klassischen 3-Tier-Architektur und begründen Sie, warum die Präsentationsschicht nicht direkt auf die Datenbank zugreifen sollte.', [
+      '- **Die drei Schichten:** (1) **Präsentationsschicht** (UI/Frontend), (2) **Logikschicht** (Geschäftsregeln/Berechnungen), (3) **Datenzugriffsschicht** (Persistenz/Datenbank).',
+      '- **Begründung:** Greift die UI direkt auf die Datenbank zu, fehlen die Validierungs- und Sicherheitsprüfungen der Geschäftslogik. Zudem führt jede Änderung an der Datenbankstruktur zu Fehlern im Frontend. Durch die Kapselung bleibt das System modular und wartbar.',
+    ], 4],
+    ['quiz', [
+      {q: 'Welches Problem wird durch den Einsatz von GraphQL gegenüber REST gelöst?', o: ['Overfetching (zu viele Daten) und Underfetching (zu viele Einzelanfragen)', 'Das Problem der Datenverschlüsselung', 'Die Abhängigkeit von CSS-Klassen', 'Die maximale Dateigröße von Bildern'], a: 0, e: 'GraphQL erlaubt es dem Client, exakt die benötigten Attribute mit einer Anfrage abzufragen.'},
+      {q: 'Welches Datenübertragungsformat nutzt gRPC standardmäßig?', o: ['Protocol Buffers (binär)', 'JSON', 'XML', 'CSV'], a: 0, e: 'gRPC setzt auf das stark typisierte, binäre Format Protocol Buffers (Protobuf).'},
+      {q: 'Welche Eigenschaft zeichnet WebSockets gegenüber klassischen HTTP-GET-Requests aus?', o: ['Echte bidirektionale Vollduplex-Verbindung in Echtzeit', 'WebSockets funktionieren ohne Internet', 'WebSockets können nur Bilder übertragen', 'WebSockets benötigen kein TCP'], a: 0, e: 'Über einen WebSocket können Client und Server jederzeit ohne neue Anfrage Daten austauschen.'},
+      {q: 'In welcher Schicht einer 3-Tier-Architektur werden Rabattberechnungen und Geschäftsregeln ausgeführt?', o: ['In der Logikschicht (Business Logic Layer)', 'In der Präsentationsschicht (UI)', 'In der Datenbankschicht', 'Im Betriebssystem'], a: 0, e: 'Geschäftsregeln und Berechnungen gehören in die Logikschicht.'},
+    ]],
+  ],
+});

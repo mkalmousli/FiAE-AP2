@@ -39,3 +39,106 @@
     ],
   });
 })();
+
+AP2.add('infra-topologien', [
+  [
+    "h",
+    "Leitungen einer Vollvermaschung berechnen"
+  ],
+  [
+    "p",
+    "Jedes Gerät verbindet sich mit allen anderen Geräten. Jede Verbindung wird dabei zweimal gezählt. Für ungerichtete direkte Verbindungen gilt: L = n × (n − 1) / 2."
+  ],
+  [
+    "table",
+    [
+      "Gerätezahl n",
+      "Rechnung",
+      "Leitungen L"
+    ],
+    [
+      [
+        "4",
+        "4 × 3 / 2",
+        "6"
+      ],
+      [
+        "6",
+        "6 × 5 / 2",
+        "15"
+      ],
+      [
+        "8",
+        "8 × 7 / 2",
+        "28"
+      ]
+    ]
+  ],
+  [
+    "qa",
+    "Sechs Standorte sind vollvermascht. Ein siebter kommt hinzu. **Berechnen** Sie Gesamtzahl und zusätzliche Leitungen.",
+    [
+      "Vorher: 6 × 5 / 2 = **15 Leitungen**. 1 Punkt.",
+      "Nachher: 7 × 6 / 2 = **21 Leitungen**. 1 Punkt.",
+      "Zusätzlich: 21 − 15 = **6 Leitungen**. 1 Punkt."
+    ],
+    3
+  ],
+  [
+    "h",
+    "Ausfälle einer Baumstruktur"
+  ],
+  [
+    "table",
+    [
+      "Fehler",
+      "Direkte Folge",
+      "Gegenmaßnahme"
+    ],
+    [
+      [
+        "Ein Endgerätekabel fällt aus",
+        "Dieses Endgerät ist getrennt",
+        "Ersatzkabel und Diagnose"
+      ],
+      [
+        "Access-Switch fällt aus",
+        "Alle angeschlossenen Geräte sind getrennt",
+        "Redundanz für kritische Geräte"
+      ],
+      [
+        "Einziger Core-Switch fällt aus",
+        "Teilnetze verlieren ihre Verbindung",
+        "Redundanter Kern mit Schleifenvermeidung"
+      ]
+    ]
+  ],
+  [
+    "warn",
+    "Eine zusätzliche Leitung allein erzeugt keine sichere Redundanz. Unkontrollierte Ethernet-Schleifen können Broadcast-Stürme verursachen. Geeignete Protokolle und Konfiguration sind nötig."
+  ],
+  [
+    "quiz",
+    [
+      {
+        "q": "Was zeigt ein logischer Netzplan?",
+        "o": [
+          "VLANs, Subnetze und Kommunikationswege",
+          "Nur die Lage der Kabelkanäle",
+          "Nur ein Rackfoto",
+          "Nur eine Kabelrechnung"
+        ],
+        "a": 0,
+        "e": "Physische und logische Struktur beantworten unterschiedliche Planungsfragen."
+      }
+    ]
+  ],
+  [
+    "see",
+    [
+      "infra-vlan",
+      "infra-verfuegbarkeit",
+      "infra-routing"
+    ]
+  ]
+]);

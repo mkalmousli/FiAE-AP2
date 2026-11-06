@@ -1,7 +1,7 @@
 AP2.page('infra-tcpudp', {
   b: 'infra', g: 'Transport und Dienste', t: 'TCP und UDP, Ports',
-  d: '**TCP** ist ein **verbindungsorientiertes, zuverlässiges** Transportprotokoll (Handshake, Quittungen, Wiederholung, richtige Reihenfolge). **UDP** ist **verbindungslos und ohne Garantie**, aber schnell. **Ports** (0 bis 65535) bestimmen auf einem Rechner, **welcher Dienst** die Daten bekommt. IP-Adresse plus Port ergibt einen **Socket**.',
-  m: '**IP-Adresse = Hausadresse, Port = Wohnungsnummer.** TCP = **Einschreiben mit Rückschein** (sicher, langsamer). UDP = **Postkarte** (schnell, vielleicht verloren). TCP-Verbindungsaufbau: **SYN, SYN-ACK, ACK** (Drei-Wege-Handshake).',
+  d: '**TCP** ist ein **verbindungsorientiertes, zuverlässiges** Transportprotokoll (Handshake, Quittungen, Wiederholung, richtige Reihenfolge). **UDP** ist **verbindungslos**. Es garantiert selbst weder Zustellung noch Reihenfolge. **Ports** (0 bis 65535) bestimmen auf einem Rechner, **welcher Dienst** die Daten bekommt. IP-Adresse plus Port ergibt einen **Socket**.',
+  m: '**IP-Adresse = Hausadresse, Port = Wohnungsnummer.** TCP ordnet und bestätigt Bytes. Es verschlüsselt sie nicht. UDP hat weniger Protokollfunktionen und garantiert selbst keine Zustellung. TCP-Verbindungsaufbau: **SYN, SYN-ACK, ACK** (Drei-Wege-Handshake).',
   cheat: [
     ['TCP', ['Verbindungsorientiert', 'Zuverlässig: ACK, Wiederholung, Reihenfolge', 'Flusskontrolle (Window)', 'Header ab 20 Byte', 'HTTP, HTTPS, FTP, SMTP, SSH']],
     ['UDP', ['Verbindungslos', 'Keine Garantie, keine Reihenfolge', 'Sehr geringer Overhead (8 Byte Header)', 'DNS, DHCP, VoIP, Streaming, Spiele, NTP']],
@@ -10,7 +10,7 @@ AP2.page('infra-tcpudp', {
   ],
   blocks: [
     ['h', 'Aufgabe der Transportschicht'],
-    ['p', 'Die IP-Schicht bringt ein Paket von Rechner zu Rechner. Aber auf einem Rechner laufen **viele Programme gleichzeitig**: Browser, E-Mail, Chat. Die Transportschicht (Schicht 4) sorgt dafür, dass die Daten beim **richtigen Programm** ankommen. Dazu dienen **Portnummern**. Außerdem entscheidet sie, ob die Übertragung **zuverlässig** sein soll (TCP) oder **schnell** (UDP).'],
+    ['p', 'Die IP-Schicht bringt ein Paket von Rechner zu Rechner. Aber auf einem Rechner laufen **viele Programme gleichzeitig**: Browser, E-Mail, Chat. Die Transportschicht (Schicht 4) sorgt dafür, dass die Daten beim **richtigen Programm** ankommen. Dazu dienen **Portnummern**. TCP ergänzt geordnete, zuverlässige Übertragung. UDP überlässt solche Anforderungen dem darauf aufbauenden Protokoll.'],
     ['h', 'Ports'],
     ['p', 'Ein **Port** ist eine 16-Bit-Zahl (0 bis 65535). Ein **Server-Dienst** wartet auf einem festen Port ("Standardport", zum Beispiel 443 für HTTPS). Der **Client** bekommt für jede Verbindung einen zufälligen hohen Port (zum Beispiel 51234). Eine Verbindung wird durch vier Werte eindeutig bestimmt: **Quell-IP, Quell-Port, Ziel-IP, Ziel-Port**.'],
     ['table', ['Bereich', 'Name', 'Verwendung'], [['0 bis 1023', 'Well-Known Ports', 'Standarddienste (HTTP 80, HTTPS 443, SSH 22)'], ['1024 bis 49151', 'Registered Ports', 'Registrierte Anwendungen (zum Beispiel MySQL 3306)'], ['49152 bis 65535', 'Dynamische / private Ports', 'Kurzzeitig vom Client für ausgehende Verbindungen genutzt']]],
@@ -24,3 +24,76 @@ AP2.page('infra-tcpudp', {
     ['list', ['**Quittungen (ACK):** Der Empfänger bestätigt, bis zu welchem Byte er alles erhalten hat.', '**Wiederholung:** Kommt keine Bestätigung (Timeout), sendet der Sender das Segment erneut.', '**Sequenznummern:** Segmente werden nummeriert und beim Empfänger **in die richtige Reihenfolge** gebracht. Duplikate werden erkannt.', '**Flusskontrolle:** Der Empfänger teilt mit einem **Fenster (Window)** mit, wie viele Daten er aufnehmen kann.', '**Überlastkontrolle:** Der Sender drosselt sich, wenn das Netz überlastet ist.']],
   ],
 });
+
+AP2.add('infra-tcpudp', [
+  [
+    "h",
+    "Zuverlässigkeit bedeutet keine Verschlüsselung"
+  ],
+  [
+    "p",
+    "TCP liefert einen geordneten Bytestrom. Nachrichten können dabei auf mehrere Lesezugriffe verteilt werden. Die Anwendung muss Nachrichtengrenzen selbst festlegen. TCP bestätigt außerdem keinen fachlichen Datenbankabschluss."
+  ],
+  [
+    "table",
+    [
+      "Aussage",
+      "Bewertung"
+    ],
+    [
+      [
+        "TCP verschlüsselt Passwörter",
+        "Falsch. Dafür braucht die Anwendung beispielsweise TLS."
+      ],
+      [
+        "UDP ist immer schneller",
+        "Falsch. Netzlast, Wiederholungen und Anwendungsprotokoll bestimmen die Gesamtdauer."
+      ],
+      [
+        "UDP verbietet zuverlässige Anwendungen",
+        "Falsch. Ein aufbauendes Protokoll kann Bestätigungen und Wiederholungen ergänzen."
+      ],
+      [
+        "Ein TCP-ACK bestätigt die Bestellung",
+        "Falsch. Ein Transport-ACK bestätigt keinen fachlichen Abschluss."
+      ]
+    ]
+  ],
+  [
+    "h",
+    "Anwendung entscheidet über verlorene Daten"
+  ],
+  [
+    "p",
+    "Bei einem Telefongespräch sind alte Audiopakete oft nutzlos. Bei einer Datei müssen dagegen alle Bytes stimmen. DNS kann UDP und TCP verwenden. HTTP/3 verwendet QUIC über UDP. QUIC ergänzt selbst Zuverlässigkeit und Verschlüsselung."
+  ],
+  [
+    "qa",
+    "Ein Programm sendet „HALLO“ und danach „WELT“ über TCP. Der Empfänger liest „HALLOWELT“ am Stück. **Beurteilen** Sie das Verhalten. **Nennen** Sie zwei Möglichkeiten zur Nachrichtentrennung.",
+    [
+      "Das Verhalten ist korrekt. TCP erhält die Bytereihenfolge, aber keine Nachrichtengrenzen. 1 Punkt.",
+      "Eine Längenangabe vor jeder Nachricht ermöglicht die Trennung. 1 Punkt.",
+      "Alternativ ein eindeutiges Trennzeichen mit festgelegter Escape-Regel verwenden. 1 Punkt."
+    ],
+    3
+  ],
+  [
+    "qa",
+    "Ein TCP-Client sendet einen Auftrag. Danach bricht die Verbindung ab. **Erläutern** Sie die Unsicherheit und eine Lösung.",
+    [
+      "Der Server könnte den Auftrag bereits gespeichert haben. 1 Punkt.",
+      "Der Client kann dies aus dem Verbindungsabbruch allein nicht erkennen. 1 Punkt.",
+      "Eine eindeutige Auftrags-ID mit atomarer Duplikatprüfung verhindert doppelte Verarbeitung. 1 Punkt."
+    ],
+    3
+  ],
+  [
+    "see",
+    [
+      "infra-http",
+      "infra-dns",
+      "infra-tls",
+      "ps-schnittstellen"
+    ]
+  ]
+]);

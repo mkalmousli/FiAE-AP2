@@ -72,3 +72,73 @@ AP2.page('infra-virtualisierung', {
     ]],
   ],
 });
+
+
+AP2.add('infra-virtualisierung', [
+  [
+    "h",
+    "Überbuchung und gemeinsame Ausfallgrenzen"
+  ],
+  [
+    "p",
+    "Mehrere VMs teilen physische Ressourcen. Zugewiesene virtuelle CPUs bedeuten keine zusätzlichen echten Kerne. Überbuchung funktioniert nur, solange nicht alle Gäste gleichzeitig ihre volle Leistung benötigen. Gemessene Last und Reserven bestimmen eine tragfähige Planung."
+  ],
+  [
+    "table",
+    [
+      "Risiko",
+      "Wirkung",
+      "Maßnahme"
+    ],
+    [
+      [
+        "Ein Host fällt aus",
+        "Alle dort laufenden VMs stoppen",
+        "Cluster mit Kapazitätsreserve"
+      ],
+      [
+        "Gemeinsamer Speicher fällt aus",
+        "Mehrere Hosts können gleichzeitig betroffen sein",
+        "Redundanz und unabhängige Sicherung"
+      ],
+      [
+        "Alle Gäste benötigen mehr RAM",
+        "Engpässe oder langsames Auslagern",
+        "Realistische Limits und Reserven"
+      ],
+      [
+        "Snapshot wächst stark",
+        "Speicherplatz wird knapp",
+        "Lebenszyklus und freien Speicher überwachen"
+      ]
+    ]
+  ],
+  [
+    "qa",
+    "Drei Hosts bieten je 64 GiB RAM. Je Host bleiben acht GiB für System und Reserve frei. Nach Ausfall eines Hosts müssen alle VMs weiterlaufen. **Berechnen** Sie die maximal planbare Gesamtbelegung unter dieser RAM-Annahme.",
+    [
+      "Nutzbar je Host: 64 − 8 = **56 GiB**. 1 Punkt.",
+      "Nach Ausfall bleiben zwei Hosts. 1 Punkt.",
+      "Planbare VM-Belegung: 2 × 56 = **112 GiB**. 1 Punkt.",
+      "CPU, Speicherzugriff, Neustartdauer und reale Last müssen zusätzlich geprüft werden. 1 Punkt."
+    ],
+    4
+  ],
+  [
+    "h",
+    "SaaS entbindet nicht von Datenverantwortung"
+  ],
+  [
+    "p",
+    "Der Anbieter betreibt die Standardanwendung. Die Organisation konfiguriert weiterhin Konten, Rollen und Freigaben. Aufbewahrung, Export und Wiederherstellung müssen zum Bedarf passen. Eine Verfügbarkeitszusage ist kein vollständiger Backupnachweis."
+  ],
+  [
+    "see",
+    [
+      "infra-container",
+      "infra-cloud",
+      "infra-monitoring",
+      "infra-backup"
+    ]
+  ]
+]);

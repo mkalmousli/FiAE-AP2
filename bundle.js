@@ -1688,6 +1688,27 @@ AP2.pages = function () {};
     return AP2.press(el, {fn: () => AP2.router.go(page.id), label: label + ': ' + page.t, base: (c) => ({backgroundColor: c.surface, borderColor: c.border}),
       hover: (c) => ({borderColor: c.accent, backgroundColor: c.hover})});
   };
+  // Lesezeit (ca. 200 Wörter/Min.) und einklappbares Inhaltsverzeichnis aus den Überschriften der Seite.
+  const readInfo = (body, p, root) => {
+    const words = (body.textContent || '').trim().split(/\s+/).length;
+    const info = AP2.tint(h('div', {text: 'Lesezeit ca. ' + Math.max(1, Math.round(words / 200)) + ' Min.', style: {fontSize: S.f.sm, margin: '0 0 ' + S.sp[4]}}), 'text3');
+    const wrap = h('div');
+    wrap.appendChild(info);
+    const heads = Array.prototype.slice.call(body.querySelectorAll('h2'));
+    if (heads.length >= 3) {
+      const det = h('details', {style: {margin: '0 0 ' + S.sp[4]}});
+      const sum = AP2.tint(h('summary', {text: 'Inhalt dieser Seite (' + heads.length + ')', style: {cursor: 'pointer', fontSize: S.f.sm, fontWeight: S.fw.med}}), 'text2');
+      const list = h('ol', {style: {margin: S.sp[2] + ' 0 0', paddingLeft: '22px', fontSize: S.f.sm, lineHeight: S.lh.body}});
+      heads.forEach((hd) => {
+        const a = AP2.tint(h('a', {text: hd.textContent, attrs: {href: '#'}, style: {textDecoration: 'none'}}), 'accent');
+        a.addEventListener('click', (ev) => { ev.preventDefault(); const t = hd.parentNode; t.style.scrollMarginTop = '80px'; t.scrollIntoView({behavior: 'smooth', block: 'start'}); });
+        list.appendChild(h('li', {}, [a]));
+      });
+      det.appendChild(sum); det.appendChild(list);
+      wrap.appendChild(det);
+    }
+    return wrap;
+  };
   const nav = (id) => {
     const near = AP2.store.neighbors(id);
     const row = h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[3], marginTop: S.sp[7]}});
@@ -1712,7 +1733,9 @@ AP2.pages = function () {};
     if (p.d) root.appendChild(AP2.blocks.def(p.d));
     if (p.m) root.appendChild(AP2.blocks.merk(p.m));
     if (p.cheat) root.appendChild(AP2.blocks.cheat(p.cheat));
-    root.appendChild(AP2.renderBlocks(p.blocks));
+    const body = AP2.renderBlocks(p.blocks);
+    root.appendChild(readInfo(body, p, root));
+    root.appendChild(body);
     root.appendChild(AP2.gk.panel([h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[3], alignItems: 'center', justifyContent: 'space-between'}}, [
       h('div', {}, [AP2.gk.kicker('Seite geschafft?', 'accent'), AP2.tint(h('div', {text: 'Markiere sie als erledigt (+' + AP2.game.XP.page + ' XP) und festige sie im Trainer.', style: {fontSize: S.f.sm, marginTop: '2px'}}), 'text2')]),
       h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[2]}}, [doneButton(p.id), m.total ? AP2.btn({text: 'Trainieren', icon: AP2.icon('play', 16), kind: 'primary', small: true, fn: () => AP2.router.go('trainer/seite/' + p.id)}) : null])])], {marginTop: S.sp[7]}));
@@ -6655,7 +6678,7 @@ AP2.page('ps-plausibilitaet', {
     ['h', 'Prüfungsfallen'],
     ['warn', '**Plausibel ist nicht richtig.** Eine Spannung von 3,9 V ist plausibel. Sie kann trotzdem falsch gemessen sein. Die Prüfung findet nur **unmögliche** Werte.'],
     ['warn', '**Grenzen genau lesen.** „von 2,5 bis 4,2 V“ heißt meist: Grenzen **gehören dazu** (>= und <=). Schreibe die Annahme in die Antwort.'],
-    ['tip', 'Im Struktogramm ist die Prüfung eine **Verzweigung** (Raute). Ungültig: Fehlerpfad (ablehnen, zählen). Gültig: weiterverarbeiten.'],
+    ['tip', 'Im Struktogramm ist die Prüfung ein **Auswahlblock mit zwei Bereichen**. Im Programmablaufplan verwendet man eine Raute. Ungültig: Fehlerpfad (ablehnen, zählen). Gültig: weiterverarbeiten.'],
     ['h', 'Aufgaben im Prüfungsstil'],
     ['qa', '**Erläutern** Sie, warum eine Plausibilitätsprüfung nicht beweist, dass ein Messwert richtig ist.', ['Sie prüft nur, ob der Wert **im möglichen Bereich** liegt.', 'Ein falsch gemessener Wert kann trotzdem im Bereich liegen, z. B. 3,9 V statt 3,7 V.'], 2],
     ['qa', '**Nennen** Sie drei Arten von Plausibilitätsprüfungen.', ['Wertebereich (min bis max)', 'Typ/Format (Zahl, Datum)', 'Pflichtfeld oder Abhängigkeit (Ende nach Anfang)'], 3],
@@ -6669,77 +6692,384 @@ AP2.page('ps-plausibilitaet', {
     ]],
   ],
 });
+
+AP2.add('ps-plausibilitaet', [
+  [
+    "h",
+    "Mehrstufig und serverseitig prüfen"
+  ],
+  [
+    "table",
+    [
+      "Stufe",
+      "Beispiel",
+      "Warum?"
+    ],
+    [
+      [
+        "Technischer Typ",
+        "Ist der Wert vorhanden und eine endliche Zahl?",
+        "null, NaN und unendliche Werte nicht verarbeiten"
+      ],
+      [
+        "Format und Bereich",
+        "Liegt Spannung zwischen 2,5 und 4,2 Volt?",
+        "Unmögliche Werte ablehnen"
+      ],
+      [
+        "Fachlicher Zusammenhang",
+        "Liegt das Enddatum nach dem Startdatum?",
+        "Einzelwerte können stimmen, Kombination kann falsch sein"
+      ],
+      [
+        "Berechtigung",
+        "Darf diese Person das Gerät ändern?",
+        "Gültige Daten bedeuten keine Zugriffsberechtigung"
+      ]
+    ]
+  ],
+  [
+    "p",
+    "Clientprüfungen geben schnelle Rückmeldung. Der Server muss trotzdem selbst prüfen. Eine Anfrage kann die Oberfläche umgehen. Datenbankregeln sichern zusätzlich dauerhaft gültige Zustände."
+  ],
+  [
+    "h",
+    "Fehlende Werte sicher behandeln"
+  ],
+  [
+    "code",
+    "java",
+    "boolean pruefeWert(Double spannung) {\n    return spannung != null\n        && Double.isFinite(spannung)\n        && spannung >= 2.5\n        && spannung <= 4.2;\n}"
+  ],
+  [
+    "note",
+    "Das logische UND wertet in Java von links nach rechts kurzschließend aus. Bei null wird der Rest nicht mehr geprüft. So entsteht keine NullPointerException durch das Entpacken von Double."
+  ],
+  [
+    "qa",
+    "Die Liste enthält null, 3,7, NaN und 4,3 Volt. **Bestimmen** Sie die gültigen Werte mit der neuen Prüfung. **Begründen** Sie die Serverprüfung.",
+    [
+      "Nur **3,7 Volt** ist gültig. 1 Punkt.",
+      "null fehlt; NaN ist keine endliche Zahl; 4,3 liegt außerhalb des Bereichs. 1 Punkt.",
+      "Der Client kann umgangen oder verändert werden. Deshalb prüft der Server erneut. 1 Punkt."
+    ],
+    3
+  ],
+  [
+    "warn",
+    "Ein Struktogramm nutzt verschachtelte Kästen. Eine Raute gehört zum Programmablaufplan. Verwechsle die Darstellungen nicht."
+  ],
+  [
+    "see",
+    [
+      "ps-testentwurf",
+      "ps-anforderungen",
+      "infra-websec"
+    ]
+  ]
+]);
 ;
 // content/ps/dbzugriff-1.js
 AP2.page('ps-dbzugriff', {
-  b: 'ps', g: 'Datenbanken', t: 'Datenbankzugriff aus dem Programm: Verbindung, ERM aus Script, REST',
-  d: 'Ein Programm spricht mit einer Datenbank über eine **Verbindung**. Dafür braucht es einen **Connection-String** (Verbindungszeichenfolge) mit den **Angaben**: wo läuft die Datenbank, wie heißt sie, wer darf zugreifen. Aus einem **SQL-Script** (CREATE TABLE) kann man das **ERM** ablesen: Jeder **FOREIGN KEY** ist eine Beziehung. Ein **REST-Service** gibt Daten über **HTTP(S)** meist im Format **JSON** weiter.',
-  m: '**Connection-String = Server, Port, Datenbankname, Benutzer, Passwort** (und evtl. Treiber/SSL). **FOREIGN KEY in Tabelle B auf A = Beziehung A 1 : n B.** **REST = HTTP(S) + JSON.**',
-  cheat: [
-    ['Connection-String', ['**Server/Host** (Name oder IP)', '**Port** (MySQL 3306)', '**Datenbankname**', '**Benutzer** und **Passwort**', 'Treiber, Zeichensatz, SSL (optional)']],
-    ['ERM aus Script', ['Jede **CREATE TABLE** = ein Entitätstyp', '**PRIMARY KEY** = Identifikator', '**FOREIGN KEY** = Beziehung (n-Seite hat den Fremdschlüssel)', 'Tabelle mit **zwei** Fremdschlüsseln im Schlüssel = Auflösung einer **n:m**-Beziehung']],
-    ['REST', ['Protokoll: **HTTP/HTTPS**', 'Format meist **JSON**', 'GET lesen, POST anlegen, PUT ändern, DELETE löschen']],
+  "b": "ps",
+  "g": "Datenbanken",
+  "t": "Datenbankzugriff: Verbindung, sichere Abfragen, Transaktionen und Beziehungen",
+  "d": "Eine Anwendung verwendet einen Datenbanktreiber. Die Verbindung enthält Angaben zu Server, Datenbank und Anmeldung. Schlüsselregeln im Schema bestimmen gültige Daten und Beziehungen.",
+  "m": "**Treiber verbindet. Parameter binden Werte. Transaktionen bündeln Änderungen.** Kardinalitäten aus FOREIGN KEY, UNIQUE und NOT NULL gemeinsam ableiten.",
+  "cheat": [
+    [
+      "Verbindung",
+      [
+        "Host, Port und Datenbank",
+        "Authentifizierung und minimale Rechte",
+        "Verschlüsselung mit Zertifikatsprüfung",
+        "Timeout, Pool und kontrollierte Freigabe"
+      ]
+    ],
+    [
+      "Schema lesen",
+      [
+        "FOREIGN KEY: Bezug zu einer anderen Zeile",
+        "NOT NULL: Wert muss vorhanden sein",
+        "UNIQUE: Wertkombination darf nicht mehrfach vorkommen",
+        "PRIMARY KEY: eindeutiger, nicht leerer Identifikator"
+      ]
+    ],
+    [
+      "Transaktion",
+      [
+        "BEGIN: Einheit starten",
+        "COMMIT: erfolgreich abschließen",
+        "ROLLBACK: nicht abgeschlossene Änderungen zurücknehmen"
+      ]
+    ]
   ],
-  blocks: [
-    ['h', 'Wie kommt ein Programm an die Daten?'],
-    ['p', 'Ein Java- oder C#-Programm liest Tabellen nicht direkt von der Festplatte. Es baut eine **Verbindung** zum Datenbankserver auf. Dann sendet es SQL-Befehle und bekommt die Ergebnisse zurück.'],
-    ['table', ['Wort', 'Einfach erklärt'], [
-      ['Connection-String', 'Text mit allen Angaben für die Verbindung'],
-      ['Port', 'Nummer des „Eingangs“ am Server (MySQL: 3306)'],
-      ['Treiber', 'Programmteil, der die Sprache der Datenbank spricht'],
-      ['Fremdschlüssel', 'Spalte, die auf den Schlüssel einer anderen Tabelle zeigt'],
-      ['Anomalie', 'Fehler durch doppelte Daten (Einfüge-, Änderungs-, Löschanomalie)'],
-    ]],
-    ['h', 'Connection-String: Parameter nennen'],
-    ['code', 'text', `Server=192.168.10.20;Port=3306;Database=angebote;Uid=appuser;Pwd=geheim;`],
-    ['table', ['Parameter', 'Bedeutung', 'Beispiel'], [
-      ['Server / Host', 'Wo läuft die Datenbank?', '192.168.10.20 oder db.firma.de'],
-      ['Port', 'Welcher Dienst-Eingang?', '3306'],
-      ['Database', 'Welche Datenbank auf dem Server?', 'angebote'],
-      ['Uid / User', 'Benutzername', 'appuser'],
-      ['Pwd / Password', 'Passwort', '(nie im Quelltext speichern!)'],
-    ]],
-    ['warn', 'Passwörter gehören **nicht** in den Quelltext. Besser: Konfigurationsdatei oder Umgebungsvariable. Der Benutzer bekommt nur die **nötigen Rechte** (Prinzip der minimalen Rechte).'],
-    ['h', 'ERM aus einem SQL-Script ablesen'],
-    ['p', 'Aufgabe: „Erstellen Sie das ERM ohne Attribute.“ Gehe so vor:'],
-    ['steps', [
-      'Zeichne für **jede Tabelle** ein Rechteck (Entitätstyp).',
-      'Suche alle **FOREIGN KEY**-Zeilen. Die Tabelle **mit** dem Fremdschlüssel ist die **n-Seite**.',
-      'Zeichne eine Linie zur Tabelle, auf die der Schlüssel zeigt. Das ist die **1-Seite**.',
-      'Hat eine Tabelle **zwei** Fremdschlüssel und besteht nur daraus, ist sie die **Verbindungstabelle** einer **n:m**-Beziehung. Zeichne sie als n:m zwischen den beiden Tabellen.',
-      'Schreibe an jede Linie die Kardinalität (1, n) und ein Verb (z. B. „erhält“).',
-    ]],
-    ['code', 'sql', `CREATE TABLE patient (pid INT PRIMARY KEY, name VARCHAR(40));
-CREATE TABLE befund  (bid INT PRIMARY KEY, pid INT,
-  FOREIGN KEY (pid) REFERENCES patient(pid));`],
-    ['p', '`befund` hat den Fremdschlüssel `pid`. Also: **patient 1 : n befund**. Ein Patient hat viele Befunde, ein Befund gehört zu einem Patienten.'],
-    ['diagram', {w: 520, h: 140, keep: 400, cap: 'ERM zum Script: patient 1 : n befund.', nodes: [
-      {id: 'p', x: 60, y: 40, k: 'box', t: 'Patient', w: 140, h: 50},
-      {id: 'b', x: 320, y: 40, k: 'box', t: 'Befund', w: 140, h: 50},
-    ], edges: [{a: 'p', b: 'b', ta: '1', tb: 'n', t: 'erhält'}]}],
-    ['h', 'REST-Service für Sensordaten'],
-    ['p', 'Ein **REST-Service** stellt Daten für andere Programme bereit. Ein Client schickt eine **HTTP-Anfrage**, der Server antwortet mit **JSON**.'],
-    ['table', ['Anfrage', 'Bedeutung'], [
-      ['GET /sensoren/7', 'Sensor 7 lesen'],
-      ['POST /sensoren', 'neuen Sensor anlegen'],
-      ['PUT /sensoren/7', 'Sensor 7 ändern'],
-      ['DELETE /sensoren/7', 'Sensor 7 löschen'],
-    ]],
-    ['code', 'json', `{ "id": 7, "typ": "Temperatur", "wert": 71.5, "einheit": "Grad C" }`],
-    ['tip', 'Prüfungsantwort kurz: Protokoll **HTTP(S)**. Datenformat **JSON** (JavaScript Object Notation). HTTPS, weil die Daten **verschlüsselt** übertragen werden.'],
-    ['h', 'Aufgaben im Prüfungsstil'],
-    ['qa', '**Nennen** Sie vier Parameter eines Connection-Strings.', ['Server/Host', 'Port', 'Datenbankname', 'Benutzername und Passwort'], 4],
-    ['qa', '**Erläutern** Sie, woran man im SQL-Script eine 1:n-Beziehung erkennt.', ['Eine Tabelle enthält einen **FOREIGN KEY**.', 'Diese Tabelle ist die **n-Seite**, die referenzierte Tabelle die **1-Seite**.'], 2],
-    ['qa', '**Benennen** Sie Protokoll und Datenformat einer REST-Schnittstelle.', ['HTTP bzw. HTTPS', 'JSON (seltener XML)'], 2],
-    ['see', ['ps-er', 'ps-relational', 'ps-normalisierung', 'eua-sqler', 'eua-webapi']],
-    ['quiz', [
-      {q: 'Welche Angabe gehört NICHT in einen Connection-String?', o: ['Farbe der Oberfläche', 'Server', 'Datenbankname', 'Benutzername'], a: 0, e: 'Der String enthält nur Angaben für die Verbindung.'},
-      {q: 'Tabelle B hat einen FOREIGN KEY auf Tabelle A. Welche Beziehung?', o: ['A 1 : n B', 'A n : 1 A', 'B 1 : n A', 'keine'], a: 0, e: 'Die Tabelle mit dem Fremdschlüssel ist die n-Seite.'},
-      {q: 'Welches Protokoll nutzt REST meist?', o: ['HTTP/HTTPS', 'SMTP', 'DHCP', 'ARP'], a: 0, e: 'REST nutzt die HTTP-Methoden GET, POST, PUT, DELETE.'},
-      {q: 'Welches Format liefert ein REST-Service meist?', o: ['JSON', 'EXE', 'MP3', 'BMP'], a: 0, e: 'JSON ist leicht lesbar und kompakt.'},
-    ]],
-  ],
+  "blocks": [
+    [
+      "h",
+      "Verbindung und Zuständigkeit"
+    ],
+    [
+      "p",
+      "Eine Weboberfläche spricht normalerweise mit einer Anwendungs-API. Diese greift auf die Datenbank zu. Datenbankzugangsdaten gehören nicht in ausgeliefertes Browser-JavaScript. Der Anwendungsserver prüft Rechte und Fachregeln."
+    ],
+    [
+      "code",
+      "text",
+      "Host=db.intern;Port=5432;Database=lager;Username=app;SSLMode=verify-full;\n# Format und Optionsnamen sind treiberabhängig.\n# Passwort oder technische Identität getrennt und geschützt bereitstellen."
+    ],
+    [
+      "table",
+      [
+        "Angabe",
+        "Zweck"
+      ],
+      [
+        [
+          "Host und Port",
+          "Datenbankdienst finden"
+        ],
+        [
+          "Datenbankname",
+          "Passenden Datenbestand auswählen"
+        ],
+        [
+          "Anmeldung",
+          "Technisches Konto oder unterstützte alternative Authentifizierung"
+        ],
+        [
+          "TLS mit Zertifikatsprüfung",
+          "Transport und Identität des Zielservers absichern"
+        ],
+        [
+          "Verbindungs- und Abfragetimeout",
+          "Wartezeiten begrenzen"
+        ],
+        [
+          "Connection Pool",
+          "Verbindungen wiederverwenden und Anzahl begrenzen"
+        ]
+      ]
+    ],
+    [
+      "warn",
+      "Ein Pool ist kein unbegrenzter Vorrat. Verbindungen nach Nutzung kontrolliert zurückgeben. Zu viele Verbindungen können die Datenbank überlasten. Secrets gehören nicht ins Repository oder in Logs."
+    ],
+    [
+      "h",
+      "Parametrisierte Abfrage"
+    ],
+    [
+      "code",
+      "java",
+      "String sql = \"SELECT artikel_id, preis FROM artikel WHERE artikel_id = ?\";\ntry (PreparedStatement stmt = con.prepareStatement(sql)) {\n    stmt.setInt(1, artikelId);\n    try (ResultSet rs = stmt.executeQuery()) {\n        while (rs.next()) {\n            // Ergebnis fachlich verarbeiten\n        }\n    }\n}"
+    ],
+    [
+      "p",
+      "Parameter werden als Daten gebunden. Sie werden nicht zu zusätzlichem SQL-Code. Tabellen- und Spaltennamen können meist nicht als normale Wertparameter gebunden werden. Dynamische Sortierspalten deshalb aus einer festen erlaubten Liste wählen."
+    ],
+    [
+      "h",
+      "Kardinalitäten aus SQL ableiten"
+    ],
+    [
+      "code",
+      "sql",
+      "CREATE TABLE kunde (\n  kunde_id INTEGER PRIMARY KEY,\n  name VARCHAR(80) NOT NULL\n);\nCREATE TABLE auftrag (\n  auftrag_id INTEGER PRIMARY KEY,\n  kunde_id INTEGER NOT NULL,\n  FOREIGN KEY (kunde_id) REFERENCES kunde(kunde_id)\n);\nCREATE TABLE kundenprofil (\n  kunde_id INTEGER PRIMARY KEY,\n  anzeige VARCHAR(80),\n  FOREIGN KEY (kunde_id) REFERENCES kunde(kunde_id)\n);"
+    ],
+    [
+      "table",
+      [
+        "Beziehung",
+        "Ableitung",
+        "Ergebnis"
+      ],
+      [
+        [
+          "Kunde → Auftrag",
+          "kunde_id im Auftrag ist nicht eindeutig",
+          "Ein Kunde kann null bis viele Aufträge haben"
+        ],
+        [
+          "Auftrag → Kunde",
+          "NOT NULL und gültiger FOREIGN KEY",
+          "Jeder Auftrag gehört genau einem vorhandenen Kunden"
+        ],
+        [
+          "Kunde → Kundenprofil",
+          "kunde_id ist im Profil PRIMARY KEY",
+          "Ein Kunde hat höchstens ein Profil"
+        ],
+        [
+          "Kundenprofil → Kunde",
+          "Schlüssel ist zugleich nicht leerer Fremdschlüssel",
+          "Jedes Profil gehört genau einem Kunden"
+        ]
+      ]
+    ],
+    [
+      "note",
+      "Ein Fremdschlüssel erzwingt allein keine Pflichtzeile auf der anderen Seite. Kunde ohne Auftrag bleibt hier erlaubt. Ohne NOT NULL kann ein Fremdschlüsselfeld leer bleiben. Mit UNIQUE wird seine maximale Häufigkeit begrenzt."
+    ],
+    [
+      "h",
+      "n:m mit fachlichen Zusatzdaten"
+    ],
+    [
+      "code",
+      "sql",
+      "CREATE TABLE auftragsposition (\n  auftrag_id INTEGER NOT NULL REFERENCES auftrag(auftrag_id),\n  artikel_id INTEGER NOT NULL REFERENCES artikel(artikel_id),\n  menge INTEGER NOT NULL CHECK (menge > 0),\n  PRIMARY KEY (auftrag_id, artikel_id)\n);"
+    ],
+    [
+      "p",
+      "Ein Auftrag enthält mehrere Artikel. Ein Artikel kann in mehreren Aufträgen vorkommen. Die Verbindungstabelle enthält hier zusätzlich die Menge. Ihr Schlüssel verbietet denselben Artikel zweimal im gleichen Auftrag. Andere Fachregeln können einen Positionsschlüssel erfordern."
+    ],
+    [
+      "h",
+      "Mehrere Änderungen zusammen sichern"
+    ],
+    [
+      "p",
+      "Eine Reservierung schreibt einen Auftrag und verändert den verfügbaren Bestand. Beide Änderungen müssen zusammen erfolgreich sein. Eine Transaktion schützt vor einem halben Ergebnis. Gegen konkurrierende Anfragen benötigt die Umsetzung zusätzlich passende Sperren oder atomare Bedingungen."
+    ],
+    [
+      "code",
+      "sql",
+      "BEGIN;\nUPDATE artikel\nSET bestand = bestand - 3\nWHERE artikel_id = 42 AND bestand >= 3;\n-- Anwendung prüft: genau eine Zeile geändert?\n-- Nur dann Reservierung anlegen, sonst ROLLBACK.\nINSERT INTO reservierung (reservierung_id, artikel_id, menge)\nVALUES (731, 42, 3);\nCOMMIT;\n-- Bei jedem Fehler vor COMMIT: ROLLBACK."
+    ],
+    [
+      "warn",
+      "Der Kommentar ist eine nötige Kontrollentscheidung der Anwendung. Das Script darf nicht blind weiterlaufen. Ein Timeout nach COMMIT kann ein bereits gespeichertes Ergebnis betreffen. Eine fachlich eindeutige ID erleichtert die sichere Wiederholung."
+    ],
+    [
+      "h",
+      "Aufgaben im Prüfungsstil"
+    ],
+    [
+      "tip",
+      "**Ableiten** heißt: eine Aussage aus konkreten Schlüsselregeln begründen. **Erläutern** heißt: Begriff und Zweck verbinden."
+    ],
+    [
+      "qa",
+      "**Leiten** Sie die Beziehung zwischen Kunde und Kundenprofil ab. Geben Sie beide Richtungen an.",
+      [
+        "Ein Kunde hat **null oder ein Profil**, weil kundenprofil.kunde_id eindeutig ist. 1 Punkt.",
+        "Ein Profil gehört **genau einem Kunden**, weil der Primärschlüssel nicht leer sein darf und zugleich Fremdschlüssel ist. 1 Punkt.",
+        "Das Schema erzwingt kein Profil für jeden Kunden. 1 Punkt."
+      ],
+      3
+    ],
+    [
+      "qa",
+      "**Erläutern** Sie Prepared Statement, Connection Pool und Transaktion mit je einem Zweck.",
+      [
+        "Prepared Statement bindet Werte getrennt vom SQL-Code und verhindert darüber SQL-Injection. 1 Punkt.",
+        "Connection Pool verwendet begrenzte vorhandene Verbindungen erneut und reduziert Verbindungsaufwand. 1 Punkt.",
+        "Eine Transaktion fasst zusammengehörige Änderungen zu einem erfolgreichen oder zurückgenommenen Ergebnis zusammen. 1 Punkt."
+      ],
+      3
+    ],
+    [
+      "qa",
+      "**Beurteilen** Sie die Aussage: „Zwei Fremdschlüssel beweisen immer eine reine n:m-Verbindungstabelle.“",
+      [
+        "Die Aussage ist falsch. Eine Tabelle kann mehrere unabhängige Beziehungen enthalten. 1 Punkt.",
+        "Schlüssel, Eindeutigkeitsregeln und fachliche Bedeutung müssen gemeinsam geprüft werden. 1 Punkt.",
+        "Eine n:m-Verbindungstabelle darf zusätzliche Attribute wie Menge oder Buchungsdatum enthalten. 1 Punkt."
+      ],
+      3
+    ],
+    [
+      "quiz",
+      [
+        {
+          "q": "Welche Regel macht die Zuordnung maximal eins zu eins?",
+          "o": [
+            "Ein eindeutiger Fremdschlüssel",
+            "Nur der Spaltenname id",
+            "Ein längerer Tabellenname",
+            "Eine zusätzliche Textspalte"
+          ],
+          "a": 0,
+          "e": "UNIQUE oder PRIMARY KEY auf dem Fremdschlüssel begrenzt die maximale Zuordnung."
+        },
+        {
+          "q": "Was sagt NOT NULL beim Fremdschlüssel aus?",
+          "o": [
+            "Die referenzierende Zeile muss einen Wert haben",
+            "Jeder Kunde muss einen Auftrag haben",
+            "Alle Tabellen sind unveränderlich",
+            "Es gibt keine 1:n-Beziehung"
+          ],
+          "a": 0,
+          "e": "Die Pflicht gilt für das Feld der referenzierenden Zeile."
+        },
+        {
+          "q": "Was ist bei dynamischen Sortierspalten sinnvoll?",
+          "o": [
+            "Aus einer festen erlaubten Liste auswählen",
+            "Beliebige Benutzereingabe in SQL einbauen",
+            "Die ganze Datenbank ohne Passwort öffnen",
+            "Nur Anführungszeichen entfernen"
+          ],
+          "a": 0,
+          "e": "Wertparameter ersetzen normalerweise keine SQL-Bezeichner."
+        }
+      ]
+    ],
+    [
+      "see",
+      [
+        "ps-er",
+        "ps-relational",
+        "ps-normalisierung",
+        "ps-schnittstellen",
+        "infra-http",
+        "ps-testentwurf"
+      ]
+    ]
+  ]
 });
+
+AP2.add("ps-dbzugriff", [
+  [
+    "h",
+    "Fachwörter einfach erklärt"
+  ],
+  [
+    "table",
+    [
+      "Wort",
+      "Einfach erklärt"
+    ],
+    [
+      [
+        "Atomar",
+        "Die zusammengehörige Änderung geschieht vollständig oder gar nicht."
+      ],
+      [
+        "Konsistent",
+        "Die festgelegten Datenregeln sind eingehalten."
+      ],
+      [
+        "Pool",
+        "Begrenzter Vorrat wiederverwendbarer Verbindungen."
+      ],
+      [
+        "Rollback",
+        "Nicht abgeschlossene Änderungen einer Transaktion zurücknehmen."
+      ],
+      [
+        "Timeout",
+        "Eine festgelegte Wartezeit ist überschritten."
+      ],
+      [
+        "Constraint",
+        "Regel, welche die Datenbank für gespeicherte Daten erzwingt."
+      ]
+    ]
+  ]
+]);
 ;
 // content/ps/phasen-1.js
 AP2.page('ps-phasen', {
@@ -6848,12 +7178,12 @@ AP2.add('ps-phasen', [
 // content/ps/vorgehen-1.js
 AP2.page('ps-vorgehen', {
   b: 'ps', g: 'Projektmanagement', t: 'Vorgehensmodelle (Wasserfall, V-Modell, agil)',
-  d: 'Ein **Vorgehensmodell** legt fest, in welcher Reihenfolge und mit welchen Regeln ein Softwareprojekt abläuft. **Klassische Modelle** (Wasserfall, V-Modell) arbeiten Phase für Phase nacheinander. **Agile Modelle** (Scrum, Kanban) liefern in kurzen Zyklen lauffähige Teilergebnisse.',
-  m: '**Wasserfall** = Wasser fließt nur nach unten, kein Zurück. **V-Modell** = jede Entwurfsstufe hat links ihre Teststufe rechts. **Agil** = kleine Schritte, oft liefern, oft Feedback.',
+  d: 'Ein **Vorgehensmodell** legt fest, in welcher Reihenfolge und mit welchen Regeln ein Softwareprojekt abläuft. **Klassische Modelle** (Wasserfall, V-Modell) arbeiten Phase für Phase nacheinander. **Agile Ansätze liefern früh nutzbare Ergebnisse. Scrum verwendet Sprints. Kanban steuert den Arbeitsfluss ohne zwingende Sprints.',
+  m: '**Wasserfall** = geplanter Ablauf in Phasen; Rücksprünge benötigen bewusste Überarbeitung. **V-Modell** = jede Entwurfsstufe hat links ihre Teststufe rechts. **Agil** = kleine Schritte, oft liefern, oft Feedback.',
   cheat: [
     ['Wasserfall', ['Phasen strikt nacheinander', 'Gut bei festen, klaren Anforderungen', 'Änderungen spät sehr teuer', 'Kunde sieht Ergebnis erst am Ende']],
     ['V-Modell', ['Wasserfall + Testzuordnung', 'Entwurf links, Tests rechts', 'Jede Teststufe prüft eine Entwurfsstufe', 'Üblich bei Behörden und sicherheitskritischer Software']],
-    ['Agil', ['Iterativ und inkrementell', 'Anforderungen dürfen sich ändern', 'Regelmäßiges Kundenfeedback', 'Weniger Dokumentation, mehr Zusammenarbeit']],
+    ['Agil', ['Iterativ und inkrementell', 'Anforderungen dürfen sich ändern', 'Regelmäßiges Kundenfeedback', 'Bedarfsgerechte Dokumentation und enge Zusammenarbeit']],
     ['Wann welches Modell?', ['Anforderungen stabil: klassisch', 'Anforderungen unklar: agil', 'Festpreis und Vertrag: eher klassisch', 'Neues Produkt, Markt unsicher: agil']],
   ],
   blocks: [
@@ -6871,6 +7201,73 @@ AP2.page('ps-vorgehen', {
     ['procon', 'Wasserfallmodell bewerten', ['Einfach zu verstehen und zu planen', 'Klare Phasen und Dokumente, gute Nachvollziehbarkeit', 'Gut bei stabilen Anforderungen und festem Budget'], ['Änderungswünsche sind spät sehr teuer', 'Kunde sieht erst am Ende ein Ergebnis', 'Fehler in der Anforderungsphase fallen oft erst beim Test auf']],
   ],
 });
+
+AP2.add('ps-vorgehen', [
+  [
+    "h",
+    "Modellwahl anhand konkreter Risiken"
+  ],
+  [
+    "table",
+    [
+      "Situation",
+      "Passender Ansatz",
+      "Begründung"
+    ],
+    [
+      [
+        "Fachlicher Ablauf ist unbekannt",
+        "Prototyp und kurze Feedbackzyklen",
+        "Missverständnisse früh sichtbar machen"
+      ],
+      [
+        "Feste Prüfnachweise erforderlich",
+        "Vorgehen mit früher Testplanung und Nachverfolgung",
+        "Jede Anforderung erhält passende Nachweise"
+      ],
+      [
+        "Riskante Fremdschnittstelle",
+        "Früher technischer Integrationsprototyp",
+        "Machbarkeit vor großer Investition klären"
+      ],
+      [
+        "Kleine stabile Anpassung",
+        "Schlanker geplanter Ablauf mit Regressionstest",
+        "Kein unnötiger Prozessaufwand"
+      ]
+    ]
+  ],
+  [
+    "h",
+    "Iterativ und inkrementell unterscheiden"
+  ],
+  [
+    "p",
+    "Iterativ bedeutet: Ein Ergebnis wird wiederholt verbessert. Inkrementell bedeutet: Weitere nutzbare Funktion kommt hinzu. Ein Team kann beide Ansätze verbinden. Beispiel: Erst eine einfache Suche liefern, dann verbessern und um Reservierung ergänzen."
+  ],
+  [
+    "warn",
+    "Agiles Arbeiten benötigt Dokumentation. Umfang und Form richten sich nach Bedarf und Risiko. Kanban schreibt keine Sprints vor. Ein Festpreisvertrag verbietet agile Entwicklung nicht."
+  ],
+  [
+    "qa",
+    "Ein Kunde kennt seine Bedienabläufe noch nicht. Der Endtermin bleibt fest. **Empfehlen** Sie ein Vorgehen mit drei konkreten Maßnahmen.",
+    [
+      "Kurze Feedbackzyklen mit einem frühen Prototyp reduzieren falsche Annahmen. 1 Punkt.",
+      "Wichtigste Funktionen priorisieren und den Lieferumfang am festen Termin ausrichten. 1 Punkt.",
+      "Akzeptanzkriterien und Qualitätsnachweise für jedes nutzbare Ergebnis festlegen. 1 Punkt."
+    ],
+    3
+  ],
+  [
+    "see",
+    [
+      "ps-anforderungen",
+      "ps-risiko",
+      "ps-cicd"
+    ]
+  ]
+]);
 ;
 // content/ps/vorgehen-2.js
 AP2.add('ps-vorgehen', [
@@ -6901,8 +7298,8 @@ AP2.add('ps-vorgehen', [
     ['Iterativ / inkrementell', 'Iterativ: etwas immer wieder verbessern. Inkrementell: Funktion für Funktion Stück für Stück liefern. Grundlage der agilen Modelle.'],
   ]],
   ['h', 'Agile Modelle'],
-  ['p', 'Agile Methoden (zum Beispiel **Scrum** und **Kanban**) gehen davon aus, dass sich Anforderungen ändern. Statt alles am Anfang zu planen, wird in kurzen **Iterationen (Sprints)** gearbeitet. Nach jedem Sprint gibt es ein **lauffähiges Teilprodukt** und Feedback vom Kunden. Das Agile Manifest betont: Menschen und Zusammenarbeit vor Prozessen, funktionierende Software vor umfassender Dokumentation, Zusammenarbeit mit dem Kunden vor Vertragsverhandlung, Reagieren auf Veränderung vor dem Befolgen eines Plans.'],
-  ['procon', 'Klassisch (Wasserfall/V-Modell) oder agil?', ['**Klassisch:** gute Planbarkeit von Kosten und Terminen', '**Klassisch:** passt zu Festpreisverträgen und Zulassungen', '**Agil:** schnelle Reaktion auf Änderungen', '**Agil:** früher Nutzen durch frühe Auslieferung'], ['**Klassisch:** Änderungen spät teuer, Kunde sieht Ergebnis spät', '**Agil:** Aufwand und Endtermin schwerer vorab festzulegen', '**Agil:** braucht aktive Mitarbeit des Kunden und selbstorganisierte Teams', '**Agil:** weniger Dokumentation kann ein Problem werden']],
+  ['p', 'Agile Methoden (zum Beispiel **Scrum** und **Kanban**) gehen davon aus, dass sich Anforderungen ändern. Scrum plant in Sprints und erzeugt nutzbare Inkremente. Kanban begrenzt parallele Arbeit und verbessert den Fluss. Kanban schreibt keine Sprints vor. Beide Ansätze benötigen passende Planung, Qualitätssicherung und Feedback. Das Agile Manifest betont: Menschen und Zusammenarbeit vor Prozessen, funktionierende Software vor umfassender Dokumentation, Zusammenarbeit mit dem Kunden vor Vertragsverhandlung, Reagieren auf Veränderung vor dem Befolgen eines Plans.'],
+  ['procon', 'Klassisch (Wasserfall/V-Modell) oder agil?', ['**Klassisch:** gute Planbarkeit von Kosten und Terminen', '**Klassisch:** passt zu Festpreisverträgen und Zulassungen', '**Agil:** schnelle Reaktion auf Änderungen', '**Agil:** früher Nutzen durch frühe Auslieferung'], ['**Klassisch:** Änderungen spät teuer, Kunde sieht Ergebnis spät', '**Agil:** Aufwand und Endtermin schwerer vorab festzulegen', '**Agil:** braucht aktive Mitarbeit des Kunden und selbstorganisierte Teams', '**Agil:** fehlende bedarfsgerechte Dokumentation kann Wissen und Nachweise gefährden']],
   ['h', 'Aufgaben im Prüfungsstil'],
   ['qa', 'Ein Kunde möchte eine Software, deren Funktionen er noch nicht genau beschreiben kann. Welches Vorgehensmodell empfehlen Sie und warum?', 'Ein agiles Vorgehen (zum Beispiel Scrum). Da die Anforderungen unklar sind und sich ändern werden, liefert man in kurzen Sprints lauffähige Teile, holt regelmäßig Feedback ein und passt die Planung an. Ein Wasserfallmodell wäre riskant, weil Fehler in den Anforderungen erst spät auffallen.', 4],
   ['qa', 'Nennen Sie die Stufen des V-Modells und ordnen Sie jeder Entwurfsstufe eine Teststufe zu.', ['- Anforderungsanalyse: Abnahmetest', '- Systementwurf: System- bzw. Integrationstest', '- Komponentenentwurf: Modultest', '- Ganz unten liegt die Implementierung.'], 4],
@@ -7159,6 +7556,82 @@ AP2.page('ps-aufwand', {
     ['ex', ['Beispiel: 6 einfache EI (6 mal 3 = 18), 4 mittlere EO (4 mal 5 = 20), 5 einfache EQ (5 mal 3 = 15), 3 ILF mittel (3 mal 10 = 30), 1 EIF einfach (5). UFP = 18 + 20 + 15 + 30 + 5 = **88**.', 'Bewertungsfaktor 1,05 ergibt 88 mal 1,05 = **92,4 FP**. Bei 0,5 FP pro Personentag: 92,4 geteilt durch 0,5 = **184,8 Personentage** (etwa 185).']],
   ],
 });
+
+AP2.add('ps-aufwand', [
+  [
+    "h",
+    "Dreipunktschätzung mit Unsicherheit"
+  ],
+  [
+    "p",
+    "Für eine Schnittstelle werden drei Werte geschätzt. Optimistisch sind es 16 Stunden. Am wahrscheinlichsten sind 28 Stunden. Pessimistisch sind es 52 Stunden. Die Werte beruhen auf dokumentierten Annahmen."
+  ],
+  [
+    "code",
+    "text",
+    "PERT-Näherung:\nErwartungswert = (optimistisch + 4 × wahrscheinlich + pessimistisch) / 6\n              = (16 + 4 × 28 + 52) / 6\n              = 180 / 6 = 30 Stunden\n\nStreuungsmaß = (pessimistisch − optimistisch) / 6\n             = (52 − 16) / 6 = 6 Stunden"
+  ],
+  [
+    "note",
+    "Das Ergebnis ist eine Schätzung, keine Zusage. Aus drei Schätzwerten folgt keine garantierte Fertigstellungswahrscheinlichkeit. Die PERT-Formel ist eine Näherung."
+  ],
+  [
+    "h",
+    "Verfügbare Kapazität einbeziehen"
+  ],
+  [
+    "p",
+    "Ein Arbeitspaket braucht 90 Stunden. Drei Personen arbeiten jeweils sechs Projektstunden pro Tag. Ideale Dauer: 90 / (3 × 6) = fünf Arbeitstage. Das setzt vollständig teilbare Arbeit und gleiche Verfügbarkeit voraus."
+  ],
+  [
+    "table",
+    [
+      "Einfluss",
+      "Warum verändert er den Termin?"
+    ],
+    [
+      [
+        "Abhängige Aufgaben",
+        "Nicht alles kann gleichzeitig beginnen"
+      ],
+      [
+        "Einarbeitung",
+        "Neue Personen benötigen Zeit und Unterstützung"
+      ],
+      [
+        "Abstimmung",
+        "Mehr Beteiligte benötigen mehr Kommunikation"
+      ],
+      [
+        "Abwesenheiten",
+        "Kalendertage sind nicht automatisch Arbeitstage"
+      ],
+      [
+        "Unklare Anforderungen",
+        "Neue Erkenntnisse verändern die Schätzung"
+      ]
+    ]
+  ],
+  [
+    "qa",
+    "Ein Paket braucht 84 Stunden. Zwei Personen stehen je sieben Stunden täglich zur Verfügung. **Berechnen** Sie die ideale Dauer. **Nennen** Sie zwei Annahmen.",
+    [
+      "Kapazität: 2 × 7 = **14 Stunden pro Tag**. 1 Punkt.",
+      "Dauer: 84 / 14 = **6 Arbeitstage**. 1 Punkt.",
+      "Arbeit kann ausreichend parallel aufgeteilt werden. 1 Punkt.",
+      "Beide Personen sind verfügbar; zusätzlicher Abstimmungsaufwand ist nicht enthalten. 1 Punkt."
+    ],
+    4
+  ],
+  [
+    "see",
+    [
+      "ps-risiko",
+      "ps-aenderungen",
+      "ps-netzplan"
+    ]
+  ]
+]);
 ;
 // content/ps/aufwand-2.js
 AP2.add('ps-aufwand', [
@@ -7188,12 +7661,12 @@ AP2.add('ps-aufwand', [
 AP2.page('ps-kosten', {
   b: 'ps', g: 'Projektmanagement', t: 'Kosten-Nutzen-Rechnung, ROI und Amortisation',
   d: 'Die **Kosten-Nutzen-Rechnung** vergleicht, was ein Projekt kostet (Investition und laufende Kosten) mit dem, was es bringt (Einsparungen, Mehrerlöse). Der **ROI** (Return on Investment) misst den Gewinn im Verhältnis zur Investition. Die **Amortisationsdauer** gibt an, nach welcher Zeit die Investition zurückgeflossen ist.',
-  m: '**ROI = Gewinn / Investition mal 100 Prozent.** **Amortisation = Investition / jährliche Einsparung.** Je kürzer die Amortisationsdauer, desto besser. ROI kleiner als 0: Projekt lohnt sich nicht.',
+  m: '**ROI = Gewinn / Investition mal 100 Prozent.** **Amortisation = Investition / jährliche Einsparung.** Je kürzer die Amortisationsdauer, desto besser. Ein negativer ROI zeigt im betrachteten Zeitraum einen negativen rechnerischen Überschuss. Andere Pflichtziele und Zeiträume getrennt beurteilen.',
   cheat: [
     ['Formeln', ['Gewinn = Nutzen - Kosten', '**ROI (%) = Gewinn / Investition mal 100**', '**Amortisationsdauer = Investition / Einsparung pro Jahr**', '**TCO** = Anschaffung + Betrieb über die Nutzungsdauer']],
     ['Kostenarten', ['**Einmalig:** Entwicklung, Hardware, Schulung, Migration', '**Laufend:** Lizenzen, Wartung, Support, Strom, Hosting', 'Direkt (Projekt) und indirekt (Gemeinkosten)']],
     ['Nutzenarten', ['**Monetär:** Kosten sparen, Umsatz steigern', '**Nicht monetär:** Zufriedenheit, Image, Sicherheit', 'Nicht-monetär bewertet die Nutzwertanalyse']],
-    ['Entscheidung', ['ROI positiv und Amortisation kurz: Projekt umsetzen', 'Mehrere Varianten: Kostenvergleich oder Nutzwertanalyse', 'Annahmen immer nennen']],
+    ['Entscheidung', ['ROI, Amortisation, Risiken und Pflichtziele gemeinsam beurteilen', 'Mehrere Varianten: Kostenvergleich oder Nutzwertanalyse', 'Annahmen immer nennen']],
   ],
   blocks: [
     ['h', 'Warum rechnet man vor dem Start?'],
@@ -7219,6 +7692,115 @@ AP2.page('ps-kosten', {
     ['tool', 'roi'],
   ],
 });
+
+AP2.add('ps-kosten', [
+  [
+    "h",
+    "Zeitersparnis in einen jährlichen Rückfluss übersetzen"
+  ],
+  [
+    "p",
+    "Ein Team bearbeitet 6.000 Vorgänge pro Jahr. Die Software spart vier Minuten je Vorgang. Eine Arbeitsstunde wird mit 45 Euro bewertet. Zusätzlicher Betrieb kostet 4.000 Euro jährlich. Die Investition beträgt 24.000 Euro."
+  ],
+  [
+    "walk",
+    {
+      "t": "Nettonutzen und Amortisation",
+      "steps": [
+        {
+          "t": "Stunden bestimmen",
+          "b": [
+            [
+              "p",
+              "6.000 × 4 Minuten = 24.000 Minuten."
+            ],
+            [
+              "p",
+              "24.000 / 60 = **400 Stunden pro Jahr**."
+            ]
+          ]
+        },
+        {
+          "t": "Jährlichen Nettoeffekt berechnen",
+          "b": [
+            [
+              "p",
+              "400 × 45 Euro = **18.000 Euro** bewertete Ersparnis."
+            ],
+            [
+              "p",
+              "18.000 − 4.000 = **14.000 Euro** jährlicher Nettoeffekt."
+            ]
+          ]
+        },
+        {
+          "t": "Amortisation berechnen",
+          "b": [
+            [
+              "p",
+              "24.000 / 14.000 ≈ **1,71 Jahre**."
+            ],
+            [
+              "p",
+              "Die Rechnung setzt gleichmäßige und tatsächlich nutzbare Einsparungen voraus."
+            ]
+          ]
+        }
+      ]
+    }
+  ],
+  [
+    "warn",
+    "Freie Arbeitszeit ist nicht automatisch eine Auszahlungseinsparung. Sie kann Kapazität für andere Aufgaben schaffen. Begründe, ob Personalkosten tatsächlich sinken oder ein bewerteter Kapazitätsnutzen entsteht."
+  ],
+  [
+    "h",
+    "Break-even zweier Betriebsvarianten"
+  ],
+  [
+    "p",
+    "Variante A kostet einmalig 12.000 Euro und monatlich 300 Euro. Variante B kostet einmalig 3.000 Euro und monatlich 600 Euro. Der Leistungsumfang ist laut Anlage gleich."
+  ],
+  [
+    "code",
+    "text",
+    "K_A(m) = 12.000 + 300m\nK_B(m) =  3.000 + 600m\n\n12.000 + 300m = 3.000 + 600m\n9.000 = 300m\nm = 30 Monate\n\nBeide Varianten kosten dann 21.000 Euro."
+  ],
+  [
+    "qa",
+    "**Beurteilen** Sie beide Varianten bei 24 und 36 Monaten. **Erläutern** Sie eine Grenze des Kostenvergleichs.",
+    [
+      "Bei 24 Monaten: A = 19.200 Euro; B = 17.400 Euro. B ist günstiger. 1 Punkt.",
+      "Bei 36 Monaten: A = 22.800 Euro; B = 24.600 Euro. A ist günstiger. 1 Punkt.",
+      "Nur bei vergleichbarer Leistung, Risiken und gleichen enthaltenen Kosten ist der Vergleich sinnvoll. 1 Punkt."
+    ],
+    3
+  ],
+  [
+    "quiz",
+    [
+      {
+        "q": "Was gehört in den Nenner der einfachen Amortisationsrechnung?",
+        "o": [
+          "Jährlicher Netto-Rückfluss nach zusätzlichen laufenden Kosten",
+          "Gesamter Umsatz ohne Kosten",
+          "Nur der Kaufpreis",
+          "Alle Stunden ohne Umrechnung"
+        ],
+        "a": 0,
+        "e": "Bruttoersparnis und Netto-Rückfluss dürfen nicht verwechselt werden."
+      }
+    ]
+  ],
+  [
+    "see",
+    [
+      "ps-nutzwert",
+      "ps-tco",
+      "ps-risiko"
+    ]
+  ]
+]);
 ;
 // content/ps/kosten-2.js
 AP2.add('ps-kosten', [
@@ -7284,6 +7866,98 @@ AP2.page('ps-orga', {
     ['procon', 'Einfluss-Projektorganisation', ['Schnell eingerichtet, kaum Umstellung', 'Keine Konflikte um Weisungen', 'Gut für kleine, kurze Projekte'], ['Projektleiter hat wenig Durchsetzungskraft', 'Verantwortung unklar', 'Abteilungsinteressen gehen oft vor Projektinteressen']],
   ],
 });
+
+AP2.add('ps-orga', [
+  [
+    "h",
+    "Verantwortung mit RACI klären"
+  ],
+  [
+    "p",
+    "RACI ordnet Aufgaben Rollen zu. Responsible führt aus. Accountable trägt die Ergebnisverantwortung. Consulted wird fachlich einbezogen. Informed erhält Informationen. Die Schreibweise ersetzt keine vereinbarte Entscheidungsbefugnis."
+  ],
+  [
+    "table",
+    [
+      "Aufgabe",
+      "Projektleitung",
+      "Entwicklung",
+      "Fachseite",
+      "Betrieb"
+    ],
+    [
+      [
+        "Anforderungen freigeben",
+        "C",
+        "C",
+        "A/R",
+        "I"
+      ],
+      [
+        "Schnittstelle entwickeln",
+        "A",
+        "R",
+        "C",
+        "C"
+      ],
+      [
+        "Betriebsübergabe bestätigen",
+        "C",
+        "C",
+        "I",
+        "A/R"
+      ]
+    ]
+  ],
+  [
+    "p",
+    "Für diese Tabelle gilt: Jede Aufgabe hat genau eine accountable Rolle. Mehrere responsible Rollen sind möglich, müssen aber koordiniert werden. A/R bedeutet, dass eine Rolle beide Aufgaben übernimmt."
+  ],
+  [
+    "h",
+    "Ressourcenkonflikt in der Matrixorganisation"
+  ],
+  [
+    "p",
+    "Eine Entwicklerin ist zu 60 Prozent im Projekt eingeplant. Die Linienleitung verlangt gleichzeitig eine dringende Wartung. Die Projektleitung und Linienleitung müssen die Priorität gemeinsam klären. Eine stille Doppelplanung führt zu unrealistischen Terminen."
+  ],
+  [
+    "qa",
+    "**Beschreiben** Sie vier Schritte zur Lösung dieses Kapazitätskonflikts.",
+    [
+      "- Tatsächlich verfügbare Stunden und beide Aufgaben erfassen.",
+      "- Auswirkungen auf Betrieb und Projekttermin bewerten.",
+      "- Priorität mit entscheidungsbefugten Rollen verbindlich klären.",
+      "- Kapazitätsplan und betroffene Termine aktualisieren und mitteilen.",
+      "Je passendem Schritt 1 Punkt."
+    ],
+    4
+  ],
+  [
+    "quiz",
+    [
+      {
+        "q": "Welche RACI-Rolle führt eine Aufgabe aus?",
+        "o": [
+          "Responsible",
+          "Informed",
+          "Consulted",
+          "Keine Rolle"
+        ],
+        "a": 0,
+        "e": "Accountable trägt die Ergebnisverantwortung. Responsible arbeitet an der Aufgabe."
+      }
+    ]
+  ],
+  [
+    "see",
+    [
+      "ps-stakeholder",
+      "ps-aufwand",
+      "ps-aenderungen"
+    ]
+  ]
+]);
 ;
 // content/ps/orga-2.js
 AP2.add('ps-orga', [
@@ -7397,7 +8071,7 @@ AP2.add('ps-scrum', [
 AP2.add('ps-scrum', [
   ['h', 'Aufgaben im Prüfungsstil'],
   ['qa', 'Nennen Sie die drei Rollen im Scrum-Team und beschreiben Sie je eine Hauptaufgabe.', ['- **Product Owner:** Verantwortlich für den Wert des Produkts; priorisiert das Product Backlog.', '- **Scrum Master:** Sorgt für das Einhalten von Scrum und beseitigt Hindernisse.', '- **Developers:** Setzen die Einträge des Sprint Backlogs zu einem Inkrement um.'], 3],
-  ['qa', 'Erläutern Sie den Unterschied zwischen Product Backlog und Sprint Backlog.', 'Das **Product Backlog** enthält alle Anforderungen an das Produkt, priorisiert und langfristig. Das **Sprint Backlog** enthält nur die Einträge, die das Team im aktuellen Sprint umsetzen will, plus den Plan dazu. Es ist ein Ausschnitt des Product Backlogs.', 4],
+  ['qa', 'Erläutern Sie den Unterschied zwischen Product Backlog und Sprint Backlog.', 'Das **Product Backlog** enthält alle Anforderungen an das Produkt, priorisiert und langfristig. Das **Sprint Backlog** enthält das Sprint-Ziel, ausgewählte Product-Backlog-Einträge und den ausführbaren Plan. Die Developers passen diesen Plan während des Sprints an.', 4],
   ['qa', 'Das Team merkt, dass es immer wieder den Termin der Daily Scrums verschiebt und sie zu lang werden. Welches Ereignis ist der richtige Ort, das zu besprechen?', 'Die **Sprint Retrospektive**. Dort wird die Zusammenarbeit des Teams reflektiert und eine Verbesserung für den nächsten Sprint beschlossen, zum Beispiel feste Zeit, Timebox von 15 Minuten.', 3],
   ['qa', 'Formulieren Sie eine User Story mit Akzeptanzkriterien für einen Online-Shop.', ['**Story:** Als Kunde möchte ich Artikel in einen Warenkorb legen, um mehrere Artikel gemeinsam zu bestellen.', '**Akzeptanzkriterien:**', '- Ein Artikel kann mit einem Klick hinzugefügt werden.', '- Der Warenkorb zeigt Menge, Einzelpreis und Gesamtsumme.', '- Die Menge kann geändert und der Artikel entfernt werden.'], 4],
   ['quiz', [
@@ -7407,6 +8081,77 @@ AP2.add('ps-scrum', [
     {q: 'Was ist ein WIP-Limit in Kanban?', o: ['Obergrenze gleichzeitig bearbeiteter Aufgaben', 'Maximale Sprintlänge', 'Minimale Teamgröße', 'Budget pro Aufgabe'], a: 0, e: 'Das WIP-Limit begrenzt die Arbeit in Bearbeitung, um Überlastung und lange Durchlaufzeiten zu vermeiden.'},
     {q: 'Welches Artefakt ist das Ergebnis eines Sprints, das alle Fertig-Kriterien erfüllt?', o: ['Inkrement', 'Product Backlog', 'Burndown', 'Retrospektive'], a: 0, e: 'Das Inkrement ist die Summe aller fertigen Einträge, nutzbar und entsprechend der Definition of Done.'},
   ]],
+]);
+
+AP2.add('ps-scrum', [
+  [
+    "h",
+    "Artefakt und Commitment zusammen lernen"
+  ],
+  [
+    "table",
+    [
+      "Artefakt",
+      "Commitment",
+      "Leitfrage"
+    ],
+    [
+      [
+        "Product Backlog",
+        "Produkt-Ziel",
+        "Welches längerfristige Ergebnis wird verfolgt?"
+      ],
+      [
+        "Sprint Backlog",
+        "Sprint-Ziel",
+        "Warum ist dieser Sprint wertvoll?"
+      ],
+      [
+        "Inkrement",
+        "Definition of Done",
+        "Welcher gemeinsame Qualitätszustand muss erreicht sein?"
+      ]
+    ]
+  ],
+  [
+    "h",
+    "Review und Retrospektive unterscheiden"
+  ],
+  [
+    "p",
+    "Im Sprint Review werden Ergebnis und weiteres Vorgehen mit relevanten Stakeholdern überprüft. Die Retrospektive verbessert Zusammenarbeit und Arbeitsweise. Ein Review ist keine bloße Vorführung. Es ist auch keine zwingende Freigabeschranke vor jeder Auslieferung."
+  ],
+  [
+    "h",
+    "Unfertige Arbeit und neue Erkenntnisse"
+  ],
+  [
+    "p",
+    "Ein Eintrag erfüllt die Definition of Done noch nicht. Er zählt deshalb nicht als fertiger Teil des Inkrements. Die weitere Arbeit wird transparent neu geplant. Während des Sprints passen die Developers ihren Plan laufend an. Das Sprint-Ziel darf nicht gefährdet werden."
+  ],
+  [
+    "qa",
+    "Eine Funktion ist programmiert. Die vereinbarten Tests fehlen. **Beurteilen** Sie den Fertigstatus. **Nennen** Sie zwei nächste Schritte.",
+    [
+      "Die Funktion erfüllt die Definition of Done noch nicht und ist damit nicht fertig. 1 Punkt.",
+      "Fehlende Tests und Risiken transparent machen. 1 Punkt.",
+      "Restarbeit mit Product Owner und Developers passend zum Ziel neu planen. 1 Punkt."
+    ],
+    3
+  ],
+  [
+    "note",
+    "Quelle: Scrum Guide 2020. Er beschreibt Ergebnisverantwortlichkeiten, Artefakte und ihre Commitments."
+  ],
+  [
+    "see",
+    [
+      "ps-anforderungen",
+      "ps-testentwurf",
+      "ps-aenderungen",
+      "ps-cicd"
+    ]
+  ]
 ]);
 ;
 // content/ps/lastenheft-1.js
@@ -7532,6 +8277,907 @@ AP2.page('ps-istsoll', {
     ]],
   ],
 });
+
+AP2.add('ps-istsoll', [
+  [
+    "h",
+    "Nutzen aus dem Prozess ableiten"
+  ],
+  [
+    "p",
+    "Die Werkstatt bearbeitet monatlich 800 Aufträge. Die mittlere Erfassungszeit sinkt von zwölf auf drei Minuten. Eine Arbeitsstunde wird mit 36 Euro bewertet. Das System verursacht monatlich 900 Euro Zusatzkosten."
+  ],
+  [
+    "table",
+    [
+      "Schritt",
+      "Rechnung",
+      "Ergebnis"
+    ],
+    [
+      [
+        "Ersparnis pro Auftrag",
+        "12 − 3",
+        "9 Minuten"
+      ],
+      [
+        "Ersparnis im Monat",
+        "800 × 9 / 60",
+        "120 Stunden"
+      ],
+      [
+        "Bewertete Zeitersparnis",
+        "120 × 36",
+        "4.320 Euro"
+      ],
+      [
+        "Monatlicher Nettoeffekt",
+        "4.320 − 900",
+        "3.420 Euro"
+      ]
+    ]
+  ],
+  [
+    "note",
+    "Das ist ein bewerteter Kapazitätsnutzen. Ob tatsächlich Geld abfließt oder gespart wird, hängt von der Nutzung freier Zeit ab."
+  ],
+  [
+    "h",
+    "Erfolgskontrolle fair planen"
+  ],
+  [
+    "steps",
+    [
+      "Vorher und nachher denselben Prozessabschnitt messen.",
+      "Gleiche Auftragsarten und vergleichbare Auslastung wählen.",
+      "Messzeitraum und Stichprobe festlegen.",
+      "Fehlerquote und Bearbeitungszeit gemeinsam prüfen.",
+      "Abweichungen erklären und Maßnahmen dokumentieren."
+    ]
+  ],
+  [
+    "qa",
+    "Die Fehlerquote sinkt von sechs auf ein Prozent. **Berechnen** Sie absolute und relative Senkung. Unterscheiden heißt: beide Bezugsgrößen klar nennen.",
+    [
+      "Absolute Senkung: 6 − 1 = **5 Prozentpunkte**. 1 Punkt.",
+      "Relative Senkung: (6 − 1) / 6 × 100 ≈ **83,33 Prozent**. 1 Punkt.",
+      "Die relative Senkung bezieht sich auf die ursprünglichen sechs Prozent. 1 Punkt."
+    ],
+    3
+  ],
+  [
+    "warn",
+    "Prozentpunkte sind eine Differenz zweier Prozentwerte. Prozent ist hier eine relative Änderung. Beide Zahlen dürfen nicht vertauscht werden."
+  ],
+  [
+    "see",
+    [
+      "ps-anforderungen",
+      "ps-kosten",
+      "ps-abnahme"
+    ]
+  ]
+]);
+;
+// content/ps/anforderungen-1.js
+AP2.page('ps-anforderungen', {
+  "b": "ps",
+  "g": "Anforderungsanalyse",
+  "t": "Anforderungen: User Story, Akzeptanzkriterien und Nachverfolgung",
+  "d": "Eine Anforderung beschreibt eine benötigte Eigenschaft oder Funktion. Sie muss verständlich und prüfbar sein. Akzeptanzkriterien legen fest, wann ein konkretes Ergebnis akzeptiert wird.",
+  "m": "**Bedarf → Anforderung → Akzeptanzkriterium → Test → Nachweis.** Eine User Story startet ein Gespräch. Sie ersetzt keine nötigen Details.",
+  "cheat": [
+    [
+      "Anforderungsarten",
+      [
+        "Funktional: Was leistet die Anwendung?",
+        "Qualität: Wie gut leistet sie es?",
+        "Randbedingung: Welche Grenze muss eingehalten werden?"
+      ]
+    ],
+    [
+      "Prüfbar formulieren",
+      [
+        "Eindeutige ID und klare Aussage",
+        "Messgröße, Grenzwert und Bedingungen",
+        "Quelle, Priorität und Abnahmetest",
+        "Keine unklaren Wörter wie schnell oder modern"
+      ]
+    ]
+  ],
+  "blocks": [
+    [
+      "h",
+      "Vom Problem zum Bedarf"
+    ],
+    [
+      "p",
+      "Ein Lager reserviert Artikel bislang per Telefon. Zwei Personen vergeben manchmal denselben Restbestand. Das Ziel ist eine zuverlässige Reservierung. Eine bestimmte Datenbank ist noch keine fachliche Anforderung."
+    ],
+    [
+      "table",
+      [
+        "Art",
+        "Beispiel",
+        "Passender Nachweis"
+      ],
+      [
+        [
+          "Funktional",
+          "Das System reserviert die angeforderte Menge bei ausreichendem Bestand.",
+          "Reservierung mit ausreichendem Bestand testen"
+        ],
+        [
+          "Qualität",
+          "95 Prozent der Reservierungen dauern unter einer Sekunde bei 100 parallelen Nutzern.",
+          "Lasttest mit festgelegter Datenmenge"
+        ],
+        [
+          "Randbedingung",
+          "Die Schnittstelle des vorhandenen ERP muss weiterverwendet werden.",
+          "Integrationstest gegen vereinbarte Version"
+        ]
+      ]
+    ],
+    [
+      "h",
+      "User Story und Kriterien"
+    ],
+    [
+      "p",
+      "Eine User Story beschreibt Rolle, Wunsch und Nutzen. Beispiel: Als Lagerkraft möchte ich Artikel reservieren, damit sie für den Auftrag verfügbar bleiben."
+    ],
+    [
+      "code",
+      "text",
+      "Story R-12: Artikel reservieren\n\nGegeben: Artikel 42 hat fünf verfügbare Stück.\nWenn: Eine berechtigte Lagerkraft drei Stück reserviert.\nDann: Die Reservierung enthält drei Stück.\nUnd: Der verfügbare Bestand beträgt zwei Stück.\n\nGegeben: Zwei Stück sind verfügbar.\nWenn: Drei Stück angefordert werden.\nDann: Das System lehnt die Reservierung ab.\nUnd: Der Bestand bleibt unverändert."
+    ],
+    [
+      "note",
+      "Gegeben–Wenn–Dann entspricht Given–When–Then. Es beschreibt Ausgangslage, Aktion und beobachtbares Ergebnis. Formuliere auch Ablehnungsfälle und fehlende Rechte."
+    ],
+    [
+      "h",
+      "Priorisieren mit MoSCoW"
+    ],
+    [
+      "table",
+      [
+        "Priorität",
+        "Bedeutung im vereinbarten Umfang",
+        "Beispiel"
+      ],
+      [
+        [
+          "Must",
+          "Ohne diese Eigenschaft ist die Lieferung nicht brauchbar",
+          "Keine Überbuchung"
+        ],
+        [
+          "Should",
+          "Wichtig; zeitweise Umgehung möglich",
+          "E-Mail nach Reservierung"
+        ],
+        [
+          "Could",
+          "Nützlich bei freier Kapazität",
+          "Farbige Favoritenliste"
+        ],
+        [
+          "Won’t this time",
+          "Bewusst nicht in dieser Lieferung",
+          "Automatische Lieferantenbestellung"
+        ]
+      ]
+    ],
+    [
+      "warn",
+      "Nicht alle Wünsche können Must sein. Prioritäten benötigen eine begründete Entscheidung. Won’t bedeutet hier „diesmal nicht“, nicht „niemals“."
+    ],
+    [
+      "h",
+      "Nachverfolgung als Tabelle"
+    ],
+    [
+      "table",
+      [
+        "ID",
+        "Quelle",
+        "Kriterium",
+        "Test",
+        "Status"
+      ],
+      [
+        [
+          "R-12",
+          "Lagerleitung",
+          "Bestand wird atomar reserviert",
+          "T-12: gleichzeitige Anfragen",
+          "Offen"
+        ],
+        [
+          "R-13",
+          "Lagerleitung",
+          "Ablehnung verändert Bestand nicht",
+          "T-13: Anforderung zu groß",
+          "Bestanden"
+        ],
+        [
+          "Q-04",
+          "Betrieb",
+          "p95 unter 1 s bei 100 Nutzern",
+          "L-04: Lasttest",
+          "Offen"
+        ]
+      ]
+    ],
+    [
+      "p",
+      "Traceability bedeutet Nachverfolgbarkeit. Die Tabelle verbindet Anforderungen mit Umsetzung und Tests. Bei einer Änderung findet das Team betroffene Nachweise schneller."
+    ],
+    [
+      "h",
+      "Definition of Done und Akzeptanzkriterium"
+    ],
+    [
+      "table",
+      [
+        "Begriff",
+        "Geltung",
+        "Beispiel"
+      ],
+      [
+        [
+          "Akzeptanzkriterium",
+          "Konkrete fachliche Anforderung",
+          "Überbuchung wird verhindert"
+        ],
+        [
+          "Definition of Done",
+          "Gemeinsamer Qualitätsmaßstab für das Inkrement",
+          "Review und vereinbarte Tests abgeschlossen"
+        ]
+      ]
+    ],
+    [
+      "tip",
+      "**Formulieren** heißt: einen vollständigen, prüfbaren Satz schreiben. Ergänze Bedingungen und Ergebnis. **Erläutern** verlangt zusätzlich Zweck oder Beispiel."
+    ],
+    [
+      "qa",
+      "Der Kunde fordert: „Die Suche soll schnell sein.“ **Formulieren** Sie eine messbare Anforderung mit vier Merkmalen.",
+      [
+        "Beispiel: Bei 100 parallelen Nutzern zeigt die Suche bei 200.000 Artikeln 95 Prozent der Ergebnisse innerhalb einer Sekunde an.",
+        "Messgröße Antwortzeit: 1 Punkt.",
+        "Grenzwert eine Sekunde: 1 Punkt.",
+        "Last- und Datenbedingungen: 1 Punkt.",
+        "Anteil 95 Prozent als eindeutiges Erfolgskriterium: 1 Punkt."
+      ],
+      4
+    ],
+    [
+      "qa",
+      "Bestand ist fünf. Zwei Anfragen reservieren gleichzeitig je vier Stück. **Entwerfen** Sie drei fachliche Akzeptanzkriterien.",
+      [
+        "- Genau eine der beiden Reservierungen wird erfolgreich angelegt.",
+        "- Die zweite Anfrage wird wegen unzureichenden Bestands abgelehnt.",
+        "- Nach Abschluss beträgt der verfügbare Bestand eins.",
+        "Je beobachtbarem Kriterium 1 Punkt. Die Reihenfolge der Gewinner ist nicht vorgegeben."
+      ],
+      3
+    ],
+    [
+      "quiz",
+      [
+        {
+          "q": "Was ist ein Akzeptanzkriterium?",
+          "o": [
+            "Eine prüfbare Bedingung für die Annahme",
+            "Ein beliebiger Programmierstil",
+            "Immer eine Kostenstelle",
+            "Nur der Seitenname"
+          ],
+          "a": 0,
+          "e": "Es beschreibt ein beobachtbares erwartetes Ergebnis."
+        },
+        {
+          "q": "Warum benötigen Anforderungen eindeutige IDs?",
+          "o": [
+            "Damit Änderungen und Tests zugeordnet werden können",
+            "Damit sie länger aussehen",
+            "Damit Tests entfallen",
+            "Damit jede Anforderung geheim bleibt"
+          ],
+          "a": 0,
+          "e": "IDs ermöglichen verlässliche Verweise."
+        },
+        {
+          "q": "Was beschreibt eine User Story typischerweise?",
+          "o": [
+            "Rolle, Wunsch und Nutzen",
+            "Nur Tabellen und Spalten",
+            "Nur Budget und Termin",
+            "Nur einen Quelltext"
+          ],
+          "a": 0,
+          "e": "Details werden im Gespräch und in Kriterien ergänzt."
+        }
+      ]
+    ],
+    [
+      "see",
+      [
+        "ps-lastenheft",
+        "ps-usecase",
+        "ps-softwarequalitaet",
+        "ps-testentwurf",
+        "ps-abnahme"
+      ]
+    ]
+  ]
+});
+;
+// content/ps/aenderungen-1.js
+AP2.page('ps-aenderungen', {
+  "b": "ps",
+  "g": "Projektmanagement",
+  "t": "Änderungsmanagement: Auswirkungen prüfen und Umfang kontrollieren",
+  "d": "Änderungen gehören zu Softwareprojekten. Sie beeinflussen häufig Umfang, Aufwand, Termine und Risiken. Ein geregelter Änderungsablauf macht diese Auswirkungen sichtbar und hält Entscheidungen nachvollziehbar.",
+  "m": "**Wunsch erfassen → Auswirkungen prüfen → entscheiden → umsetzen → nachweisen.** Ein Wunsch ist noch keine freigegebene Erweiterung.",
+  "cheat": [
+    [
+      "Änderungsantrag",
+      [
+        "ID, Anlass und gewünschtes Ergebnis",
+        "Betroffene Anforderungen und Systeme",
+        "Aufwand, Kosten, Termine und Risiken",
+        "Entscheidung, Verantwortung und Termin"
+      ]
+    ],
+    [
+      "Begriffe",
+      [
+        "Baseline: vereinbarter Bezugsstand",
+        "Scope: vereinbarter Leistungsumfang",
+        "Scope Creep: schleichende unkontrollierte Erweiterung",
+        "Change Log: nachvollziehbare Änderungsliste"
+      ]
+    ]
+  ],
+  "blocks": [
+    [
+      "h",
+      "Szenario: zusätzliche Exportfunktion"
+    ],
+    [
+      "p",
+      "Nach der Planung wünscht die Fachseite einen Tabellenexport. Der Export benötigt Datenfilter und Berechtigungen. Der Wunsch wirkt klein, betrifft aber Entwicklung, Tests und Dokumentation."
+    ],
+    [
+      "table",
+      [
+        "Arbeit",
+        "Aufwand"
+      ],
+      [
+        [
+          "Export entwickeln",
+          "12 Stunden"
+        ],
+        [
+          "Berechtigungen und Datenfilter",
+          "6 Stunden"
+        ],
+        [
+          "Tests erweitern",
+          "8 Stunden"
+        ],
+        [
+          "Dokumentation und Freigabe",
+          "4 Stunden"
+        ]
+      ]
+    ],
+    [
+      "walk",
+      {
+        "t": "Änderung kalkulieren",
+        "steps": [
+          {
+            "t": "Grundaufwand",
+            "b": [
+              [
+                "p",
+                "12 + 6 + 8 + 4 = **30 Stunden**."
+              ]
+            ]
+          },
+          {
+            "t": "Reserve nach Vorgabe",
+            "b": [
+              [
+                "p",
+                "Die Aufgabe verlangt 20 Prozent Aufwandreserve."
+              ],
+              [
+                "p",
+                "30 × 0,20 = **6 Stunden**. Gesamt: **36 Stunden**."
+              ]
+            ]
+          },
+          {
+            "t": "Kosten und Dauer",
+            "b": [
+              [
+                "p",
+                "36 Stunden × 75 Euro/Stunde = **2.700 Euro netto**."
+              ],
+              [
+                "p",
+                "Eine Person hat täglich sechs Projektstunden. 36 / 6 = **6 Arbeitstage**."
+              ]
+            ]
+          }
+        ]
+      }
+    ],
+    [
+      "warn",
+      "Sechs Arbeitstage Aufwand verschieben den Endtermin nicht automatisch um sechs Tage. Freie Kapazität, Abhängigkeiten und Puffer bestimmen die Terminwirkung. Prüfe den kritischen Pfad."
+    ],
+    [
+      "h",
+      "Auswirkungen systematisch prüfen"
+    ],
+    [
+      "table",
+      [
+        "Bereich",
+        "Prüffrage"
+      ],
+      [
+        [
+          "Anforderungen",
+          "Was ändert sich an Akzeptanzkriterien und Prioritäten?"
+        ],
+        [
+          "Architektur und Daten",
+          "Welche Komponenten und Tabellen sind betroffen?"
+        ],
+        [
+          "Qualität und Sicherheit",
+          "Können unberechtigte Personen Daten exportieren?"
+        ],
+        [
+          "Tests",
+          "Welche neuen und bestehenden Fälle sind nötig?"
+        ],
+        [
+          "Zeit und Kosten",
+          "Welche Kapazität und Reserven werden benötigt?"
+        ],
+        [
+          "Betrieb",
+          "Sind Monitoring, Support oder Schulung anzupassen?"
+        ]
+      ]
+    ],
+    [
+      "h",
+      "Entscheidungsoptionen"
+    ],
+    [
+      "list",
+      [
+        "Freigeben und Planung ausdrücklich anpassen.",
+        "Später in einer anderen Lieferung umsetzen.",
+        "Mit einer weniger wichtigen Funktion tauschen.",
+        "Ablehnen und den Grund dokumentieren.",
+        "Zusätzliche Analyse beauftragen, wenn Angaben fehlen."
+      ]
+    ],
+    [
+      "h",
+      "Agiler Umgang mit Änderungen"
+    ],
+    [
+      "p",
+      "Neue Wünsche können ins Product Backlog aufgenommen werden. Der Product Owner ordnet sie nach Wert und Priorität. Aufwand und technische Risiken werden mit den Developers geklärt. Im Sprint darf das Sprint-Ziel nicht gefährdet werden."
+    ],
+    [
+      "p",
+      "Agilität beseitigt keine Kapazitätsgrenzen. Eine neue wichtige Funktion kann eine andere Funktion verdrängen. Qualitätsziele und notwendige Tests bleiben Teil der Arbeit."
+    ],
+    [
+      "h",
+      "Nachweis und Abschluss"
+    ],
+    [
+      "steps",
+      [
+        "Freigegebene Anforderungen und Planstände aktualisieren.",
+        "Änderung mit Versionsstand umsetzen und prüfen.",
+        "Betroffene Beteiligte über neue Termine informieren.",
+        "Nachweise und offene Punkte zur Änderungs-ID ablegen.",
+        "Erst nach erfüllten Kriterien als abgeschlossen markieren."
+      ]
+    ],
+    [
+      "tip",
+      "**Berechnen** verlangt Einheiten und Rechenweg. **Beurteilen** verlangt eine Entscheidung mit Bezug auf Kapazität und Projektziel."
+    ],
+    [
+      "qa",
+      "**Berechnen** Sie für die Anlage Gesamtaufwand mit Reserve, Kosten und ideale Dauer. **Begründen** Sie eine Einschränkung der Dauerrechnung.",
+      [
+        "30 × 1,20 = **36 Stunden**. 1 Punkt.",
+        "36 × 75 = **2.700 Euro netto**. 1 Punkt.",
+        "36 / 6 = **6 Arbeitstage** bei einer verfügbaren Person. 1 Punkt.",
+        "Die Terminverschiebung hängt von Abhängigkeiten und Puffern ab. 1 Punkt."
+      ],
+      4
+    ],
+    [
+      "qa",
+      "Die Fachseite nennt den Export einen „kleinen Zusatz“. **Erläutern** Sie drei weitere Arbeiten neben dem Exportcode.",
+      [
+        "- Rechteprüfung verhindert unberechtigte Datenabzüge.",
+        "- Tests prüfen Filter, Formate und große Datenmengen.",
+        "- Dokumentation und Abnahme erklären Nutzung und bestätigen Kriterien.",
+        "Je Arbeit mit Zweck 1 Punkt."
+      ],
+      3
+    ],
+    [
+      "quiz",
+      [
+        {
+          "q": "Was ist Scope Creep?",
+          "o": [
+            "Schleichende unkontrollierte Erweiterung des Umfangs",
+            "Eine geplante Teststufe",
+            "Ein festes Kostenmodell",
+            "Eine SQL-Verknüpfung"
+          ],
+          "a": 0,
+          "e": "Zusätze brauchen eine bewusste Auswirkungsprüfung und Entscheidung."
+        },
+        {
+          "q": "Was ist eine Baseline?",
+          "o": [
+            "Ein vereinbarter Bezugsstand",
+            "Eine beliebige neue Idee",
+            "Ein Gerätetreiber",
+            "Eine geheime Kopie"
+          ],
+          "a": 0,
+          "e": "Änderungen werden gegen diesen Stand bewertet."
+        },
+        {
+          "q": "Was gilt für neue Anforderungen im agilen Projekt?",
+          "o": [
+            "Sie benötigen weiterhin Priorisierung und Aufwandbetrachtung",
+            "Sie kosten keine Zeit",
+            "Sie ersetzen jede Prüfung",
+            "Sie sind automatisch im aktuellen Sprint"
+          ],
+          "a": 0,
+          "e": "Agile Planung macht Änderungen handhabbar, schafft aber keine unbegrenzte Kapazität."
+        }
+      ]
+    ],
+    [
+      "see",
+      [
+        "ps-scrum",
+        "ps-netzplan",
+        "ps-aufwand",
+        "ps-risiko",
+        "ps-abnahme"
+      ]
+    ]
+  ]
+});
+;
+// content/ps/risiko-1.js
+AP2.page('ps-risiko', {
+  "b": "ps",
+  "g": "Projektmanagement",
+  "t": "Projektrisiken: Bewerten, Maßnahmen planen und kontrollieren",
+  "d": "Ein Risiko ist ein unsicheres Ereignis mit möglichen Auswirkungen. Es kann Kosten, Termine oder Qualität gefährden. Risikomanagement erkennt Risiken früh und legt passende Maßnahmen fest.",
+  "m": "**Risiko: könnte eintreten. Problem: ist bereits eingetreten.** Zu jeder Maßnahme gehören Verantwortung, Termin und Kontrolle.",
+  "cheat": [
+    [
+      "Risikoregister",
+      [
+        "Ursache und mögliches Ereignis",
+        "Eintrittswahrscheinlichkeit und Auswirkung",
+        "Vorbeugung und Notfallmaßnahme",
+        "Verantwortliche Person und Auslöser"
+      ]
+    ],
+    [
+      "Strategien",
+      [
+        "Vermeiden",
+        "Vermindern",
+        "Übertragen oder teilen",
+        "Bewusst akzeptieren"
+      ]
+    ]
+  ],
+  "blocks": [
+    [
+      "h",
+      "Risiken konkret beschreiben"
+    ],
+    [
+      "p",
+      "„Der Termin ist gefährdet“ ist zu ungenau. Besser: Die Fremdschnittstelle könnte drei Wochen verspätet bereitstehen. Dadurch könnte die Integration den Abnahmetermin verschieben."
+    ],
+    [
+      "table",
+      [
+        "Risiko",
+        "Wahrscheinlichkeit",
+        "Schaden bei Eintritt",
+        "Erwartungswert"
+      ],
+      [
+        [
+          "R1: Schnittstelle verspätet",
+          "30 Prozent",
+          "20.000 Euro",
+          "6.000 Euro"
+        ],
+        [
+          "R2: Testdaten unbrauchbar",
+          "50 Prozent",
+          "4.000 Euro",
+          "2.000 Euro"
+        ],
+        [
+          "R3: Fachperson fällt aus",
+          "10 Prozent",
+          "30.000 Euro",
+          "3.000 Euro"
+        ]
+      ]
+    ],
+    [
+      "p",
+      "Der monetäre Erwartungswert ist Wahrscheinlichkeit mal Schaden. Er ist ein Planungswert. Er sagt nicht, dass genau dieser Betrag entstehen wird. Schäden dürfen nur mit passenden Annahmen zusammengefasst werden."
+    ],
+    [
+      "walk",
+      {
+        "t": "Maßnahme gegen R1 bewerten",
+        "steps": [
+          {
+            "t": "Ausgangswert",
+            "b": [
+              [
+                "p",
+                "0,30 × 20.000 Euro = **6.000 Euro**."
+              ]
+            ]
+          },
+          {
+            "t": "Maßnahme einbeziehen",
+            "b": [
+              [
+                "p",
+                "Ein früher Prototyp kostet 1.500 Euro. Laut Aufgabe sinkt die Wahrscheinlichkeit auf zehn Prozent."
+              ],
+              [
+                "p",
+                "Neuer erwarteter Schaden: 0,10 × 20.000 = **2.000 Euro**."
+              ]
+            ]
+          },
+          {
+            "t": "Gesamtwirkung beurteilen",
+            "b": [
+              [
+                "p",
+                "Maßnahme plus Restrisiko: 1.500 + 2.000 = **3.500 Euro**."
+              ],
+              [
+                "p",
+                "Erwartete Verbesserung: 6.000 − 3.500 = **2.500 Euro**."
+              ]
+            ]
+          }
+        ]
+      }
+    ],
+    [
+      "h",
+      "Maßnahmen unterscheiden"
+    ],
+    [
+      "table",
+      [
+        "Strategie",
+        "Beispiel",
+        "Grenze"
+      ],
+      [
+        [
+          "Vermeiden",
+          "Ungeprüfte Zusatzfunktion aus dem Lieferumfang entfernen",
+          "Benötigter Nutzen entfällt möglicherweise"
+        ],
+        [
+          "Vermindern",
+          "Prototyp und frühe Schnittstellentests",
+          "Restrisiko bleibt"
+        ],
+        [
+          "Übertragen oder teilen",
+          "Versicherung oder vereinbarte Haftung eines Partners",
+          "Ausfallfolgen und Abhängigkeit bleiben teilweise"
+        ],
+        [
+          "Akzeptieren",
+          "Kleines Risiko bewusst tragen und Reserve einplanen",
+          "Entscheidung und Auslöser dokumentieren"
+        ]
+      ]
+    ],
+    [
+      "h",
+      "Bewertung ohne belastbare Eurobeträge"
+    ],
+    [
+      "p",
+      "Eine Risikomatrix ordnet Wahrscheinlichkeit und Auswirkung auf Skalen ein. Beispiel: eins bedeutet gering, drei bedeutet hoch. Ein Produkt aus Skalenwerten ist ein Prioritätswert. Es ist kein Eurobetrag."
+    ],
+    [
+      "table",
+      [
+        "Auswirkung / Wahrscheinlichkeit",
+        "1 gering",
+        "2 mittel",
+        "3 hoch"
+      ],
+      [
+        [
+          "3 hoch",
+          "3",
+          "6",
+          "9"
+        ],
+        [
+          "2 mittel",
+          "2",
+          "4",
+          "6"
+        ],
+        [
+          "1 gering",
+          "1",
+          "2",
+          "3"
+        ]
+      ]
+    ],
+    [
+      "warn",
+      "Seltene Risiken können existenzbedrohlich sein. Ein kleiner Erwartungswert allein rechtfertigt keine Annahme solcher Risiken. Bewerte auch Sicherheit, Abhängigkeiten und nichtmonetäre Folgen."
+    ],
+    [
+      "h",
+      "Risikoregister im Betrieb"
+    ],
+    [
+      "table",
+      [
+        "Feld",
+        "R1: Fremdschnittstelle"
+      ],
+      [
+        [
+          "Vorbeugung",
+          "Testversion bis 10. Juni gemeinsam prüfen"
+        ],
+        [
+          "Verantwortung",
+          "Integrationsverantwortliche Person"
+        ],
+        [
+          "Frühwarnzeichen",
+          "Vereinbarte Testversion fehlt"
+        ],
+        [
+          "Notfallmaßnahme",
+          "Priorisierte Funktionen mit freigegebenem Ersatzverfahren liefern"
+        ],
+        [
+          "Restrisiko",
+          "Kompatibilitätsfehler trotz erfolgreichem Prototyp"
+        ],
+        [
+          "Kontrolle",
+          "Wöchentlich Status und Annahmen neu bewerten"
+        ]
+      ]
+    ],
+    [
+      "tip",
+      "**Bewerten** verlangt Kriterien und Urteil. **Begründen** verlangt einen nachvollziehbaren Zusammenhang mit dem Szenario."
+    ],
+    [
+      "qa",
+      "Ein Risiko hat 20 Prozent Eintrittswahrscheinlichkeit und 40.000 Euro Schaden. Eine Maßnahme kostet 2.000 Euro. Sie senkt die Wahrscheinlichkeit auf fünf Prozent. **Berechnen** und **beurteilen** Sie die Maßnahme.",
+      [
+        "Vorher: 0,20 × 40.000 = **8.000 Euro** erwarteter Schaden. 1 Punkt.",
+        "Nachher: 0,05 × 40.000 = **2.000 Euro** Restrisiko. 1 Punkt.",
+        "Gesamt: 2.000 + 2.000 = **4.000 Euro**. 1 Punkt.",
+        "Die erwarteten Gesamtkosten sinken um 4.000 Euro. Die Maßnahme ist unter diesen Annahmen wirtschaftlich. 1 Punkt."
+      ],
+      4
+    ],
+    [
+      "qa",
+      "Der angekündigte Testserver fehlt bereits. **Unterscheiden** Sie Problem und Risiko. **Nennen** Sie zwei nächste Schritte.",
+      [
+        "Das Fehlen ist ein eingetretenes Problem. 1 Punkt.",
+        "Ein dadurch möglicher verspäteter Testabschluss ist ein Folgerisiko. 1 Punkt.",
+        "Zuständigkeit und Ersatzumgebung klären. 1 Punkt.",
+        "Terminwirkung ermitteln und betroffene Beteiligte informieren. 1 Punkt."
+      ],
+      4
+    ],
+    [
+      "quiz",
+      [
+        {
+          "q": "Was ist ein Restrisiko?",
+          "o": [
+            "Risiko nach berücksichtigten Maßnahmen",
+            "Ein garantierter Schaden",
+            "Ein erledigter Test",
+            "Ein genauer Rechnungsbetrag"
+          ],
+          "a": 0,
+          "e": "Maßnahmen beseitigen Risiken nicht immer vollständig."
+        },
+        {
+          "q": "Was ergibt 0,25 × 12.000 Euro?",
+          "o": [
+            "3.000 Euro Erwartungswert",
+            "12.000 Euro garantierte Kosten",
+            "25 Euro",
+            "48.000 Euro"
+          ],
+          "a": 0,
+          "e": "Wahrscheinlichkeit und Schaden werden multipliziert."
+        },
+        {
+          "q": "Wozu dient ein Auslöser im Notfallplan?",
+          "o": [
+            "Er legt fest, wann eine Reaktion beginnt",
+            "Er ersetzt die Verantwortung",
+            "Er beweist Fehlerfreiheit",
+            "Er verhindert jedes Risiko"
+          ],
+          "a": 0,
+          "e": "Ein beobachtbares Ereignis startet die vereinbarte Maßnahme."
+        }
+      ]
+    ],
+    [
+      "see",
+      [
+        "ps-aufwand",
+        "ps-kosten",
+        "ps-stakeholder",
+        "ps-aenderungen"
+      ]
+    ]
+  ]
+});
 ;
 // content/ps/usecase-1.js
 AP2.page('ps-usecase', {
@@ -7595,6 +9241,77 @@ AP2.add('ps-usecase', [
     {q: 'Was gehört in die Systemgrenze?', o: ['Die Anwendungsfälle', 'Die Akteure', 'Die Entwickler', 'Der Kunde'], a: 0, e: 'Innerhalb der Systemgrenze liegen die Anwendungsfälle, Akteure stehen außerhalb.'},
     {q: 'Welche Form hat ein Anwendungsfall?', o: ['Oval', 'Raute', 'Dreieck', 'Zylinder'], a: 0, e: 'Anwendungsfälle werden als Ovale gezeichnet.'},
   ]],
+]);
+
+AP2.add('ps-usecase', [
+  [
+    "h",
+    "Use Case als prüfbaren Text beschreiben"
+  ],
+  [
+    "table",
+    [
+      "Feld",
+      "Beispiel: Artikel reservieren"
+    ],
+    [
+      [
+        "Primärer Akteur",
+        "Berechtigte Lagerkraft"
+      ],
+      [
+        "Auslöser",
+        "Lagerkraft bestätigt die gewünschte Menge"
+      ],
+      [
+        "Vorbedingung",
+        "Artikel existiert; Lagerkraft ist angemeldet und berechtigt"
+      ],
+      [
+        "Normalablauf",
+        "Bestand prüfen, Reservierung anlegen, Bestand anpassen, Bestätigung zeigen"
+      ],
+      [
+        "Alternativablauf",
+        "Bestand reicht nicht: ablehnen und verfügbaren Bestand anzeigen"
+      ],
+      [
+        "Nachbedingung bei Erfolg",
+        "Reservierung existiert; verfügbarer Bestand ist passend vermindert"
+      ],
+      [
+        "Nachbedingung bei Ablehnung",
+        "Keine neue Reservierung; Bestand bleibt unverändert"
+      ]
+    ]
+  ],
+  [
+    "p",
+    "Die Vorbedingung beschreibt, was vor dem Start bereits gilt. Der Normalablauf beschreibt die eigentliche Interaktion. Die Nachbedingung beschreibt den zugesagten Endzustand. Alternativen gehören an die passende Stelle des Ablaufs."
+  ],
+  [
+    "qa",
+    "**Entwerfen** Sie für „Reservierung stornieren“ eine Vorbedingung, zwei Schritte und eine Nachbedingung.",
+    [
+      "Vorbedingung: Reservierung ist aktiv und die Person darf sie stornieren. 1 Punkt.",
+      "Schritt: Server prüft Berechtigung und aktuellen Zustand. 1 Punkt.",
+      "Schritt: Reservierung wird beendet und reservierte Menge freigegeben. 1 Punkt.",
+      "Nachbedingung: Reservierung ist storniert; die Menge ist wieder verfügbar. 1 Punkt."
+    ],
+    4
+  ],
+  [
+    "warn",
+    "Eine Anmeldung ist nicht immer ein include-Anwendungsfall. Wenn die Sitzung bereits besteht, kann Anmeldung eine Vorbedingung sein. Entscheidend sind die modellierte Systemgrenze und der beschriebene Ablauf."
+  ],
+  [
+    "see",
+    [
+      "ps-anforderungen",
+      "ps-testentwurf",
+      "ps-aktivitaet"
+    ]
+  ]
 ]);
 ;
 // content/ps/epk-1.js
@@ -8174,6 +9891,16 @@ AP2.page('ps-struktogramm', {
     ['diagram', AP2.dg.nsd([['until', 'bis eingabe > 0', [['act', 'eingabe lesen']]]], {w: 460, cap: 'Fußgesteuerte Schleife: Der Rumpf läuft mindestens einmal, die Bedingung steht unten.'})],
   ],
 });
+
+AP2.add('ps-struktogramm', [
+  ['diagram', AP2.dg.nsd([['act', 'summe = 0; anzahl = 0'], ['for', 'für jeden wert in werte', [['if', '0 <= wert UND wert <= 100', [['act', 'summe = summe + wert'], ['act', 'anzahl = anzahl + 1']], []]]], ['if', 'anzahl > 0', [['act', 'mittelwert = summe / anzahl'], ['act', 'mittelwert ausgeben']], [['act', 'keine gültigen Werte ausgeben']]]], {w: 680, cap: 'Messwertauswertung mit Bereichsprüfung und Schutz vor Division durch null'})],
+  ["h", "Mehrstufiges Beispiel: gültige Messwerte auswerten"],
+  ["p", "Die Liste enthält 12, −1, 18, 101 und 20. Gültig sind Werte von null bis 100 einschließlich. Gesucht sind Anzahl und Mittelwert gültiger Werte. Bei leerer gültiger Menge wird „keine gültigen Werte“ ausgegeben."],
+  ["table", ["Wert", "Gültig?", "Summe danach", "Anzahl danach"], [["12", "Ja", "12", "1"], ["−1", "Nein", "12", "1"], ["18", "Ja", "30", "2"], ["101", "Nein", "30", "2"], ["20", "Ja", "50", "3"]]],
+  ["p", "Ergebnis: 50 / 3 ≈ 16,67. Die Division benötigt einen passenden Dezimaltyp. Die Prüfung anzahl > 0 verhindert eine Division durch null."],
+  ["qa", "**Bestimmen** Sie Anzahl und Mittelwert für die Liste −5, 0, 100, 105. **Nennen** Sie zwei wichtige Testfälle.", ["Gültig sind 0 und 100. Anzahl = **2**. 1 Punkt.", "Summe = 100. Mittelwert = 100 / 2 = **50**. 1 Punkt.", "Testfall: leere Liste oder ausschließlich ungültige Werte. 1 Punkt.", "Testfall: gültige Grenzwerte 0 und 100 mit Nachbarwerten −1 und 101. 1 Punkt."], 4],
+  ["see", ["ps-testentwurf", "ps-plausibilitaet"]]
+]);
 ;
 // content/ps/struktogramm-2.js
 AP2.add('ps-struktogramm', [
@@ -8223,7 +9950,7 @@ else:
 AP2.page('ps-architektur', {
   b: 'ps', g: 'Software-Architektur', t: 'Software-Architektur: Schichten, Client-Server, MVC, Microservices',
   d: 'Die **Software-Architektur** beschreibt die grundlegende Struktur eines Systems: seine **Komponenten**, deren **Beziehungen** und die **Prinzipien** für Entwurf und Weiterentwicklung (nach ISO/IEC/IEEE 42010). **Architekturmuster** (zum Beispiel Schichten, Client-Server, MVC, Microservices) lösen Strukturprobleme des **ganzen Systems**, **Entwurfsmuster** (Singleton, Observer) lösen wiederkehrende Probleme **im Kleinen** zwischen wenigen Klassen.',
-  m: '**Architekturmuster = Stadtplan, Entwurfsmuster = Bauplan eines Hauses.** MVC: **Model** kennt niemanden, **View** zeigt an, **Controller** steuert. Schichten: jede Schicht nutzt **nur die darunter**.',
+  m: '**Architekturmuster = Stadtplan, Entwurfsmuster = Bauplan eines Hauses.** MVC: **Model** kennt niemanden, **View** zeigt an, **Controller** steuert. Strenge Schichten: Aufrufe nur an die direkt darunterliegende Schicht. Andere Varianten erlauben Überspringen.',
   cheat: [
     ['Kategorien (POSA)', ['**Strukturierte Systeme:** Schichten, Pipes and Filters', '**Verteilte Systeme:** Client-Server, SOA, Microservices, Broker', '**Interaktive Systeme:** MVC, MVP, MVVM', '**Adaptive Systeme:** Reflexion, Microkernel (Plug-ins)']],
     ['Drei-Schichten-Architektur', ['**Präsentation:** UI', '**Logik:** Fachregeln, Berechnungen', '**Daten:** Datenbankzugriff', 'Austauschbar, testbar, wartbar']],
@@ -8272,7 +9999,7 @@ AP2.page('ps-architektur', {
     ['h', 'Aufgaben im Prüfungsstil'],
     ['qa', 'Erläutern Sie den Unterschied zwischen Architekturmustern und Entwurfsmustern.', 'Ein **Architekturmuster** beschreibt die **grundlegende Struktur des gesamten Systems** (Komponenten, Verteilung, Kommunikation), zum Beispiel Schichten oder Client-Server. Ein **Entwurfsmuster** ist eine bewährte Lösung für ein **wiederkehrendes Problem im Kleinen**, also für die Zusammenarbeit weniger Klassen, zum Beispiel Singleton oder Observer. Architekturmuster wirken auf das ganze System, Entwurfsmuster lokal im Code.', 3],
     ['qa', 'Ordnen Sie den Kategorien verteilte, interaktive, strukturierte und adaptive Systeme zu: Schichtenarchitektur, Serviceorientierte Architektur, Client-Server, Model View Presenter, Reflexion.', ['- **Strukturierte Systeme:** Schichtenarchitektur', '- **Verteilte Systeme:** Serviceorientierte Architektur, Client-Server', '- **Interaktive Systeme:** Model View Presenter', '- **Adaptive Systeme:** Reflexion'], 4],
-    ['qa', 'Nennen Sie je zwei Vor- und Nachteile einer Microservice-Architektur gegenüber einem Monolithen.', ['- **Vorteile:** Dienste unabhängig entwickeln und deployen; gezielt skalieren (nur der Bestell-Service bekommt mehr Instanzen); Ausfall eines Dienstes legt nicht alles lahm; je Dienst passende Technologie.', '- **Nachteile:** Höhere Komplexität (Netzwerk, verteilte Transaktionen, Versionierung von Schnittstellen); aufwendiges Monitoring und Logging; Datenkonsistenz über mehrere Datenbanken schwieriger.'], 4],
+    ['qa', 'Nennen Sie je zwei Vor- und Nachteile einer Microservice-Architektur gegenüber einem Monolithen.', ['- **Vorteile:** Dienste unabhängig entwickeln und deployen; gezielt skalieren (nur der Bestell-Service bekommt mehr Instanzen); Geeignete Entkopplung kann Ausfälle auf einzelne Bereiche begrenzen; je Dienst passende Technologie.', '- **Nachteile:** Höhere Komplexität (Netzwerk, verteilte Transaktionen, Versionierung von Schnittstellen); aufwendiges Monitoring und Logging; Datenkonsistenz über mehrere Datenbanken schwieriger.'], 4],
     ['see', ['eua-patterns', 'ps-umlueberblick', 'ps-sequenz', 'eua-webapi']],
     ['quiz', [
       {q: 'Welche Komponente kennt bei MVC weder View noch Controller?', o: ['Model', 'View', 'Controller', 'Alle kennen sich gegenseitig'], a: 0, e: 'Das Model ist unabhängig; Änderungen werden über Benachrichtigungen (Observer) mitgeteilt.'},
@@ -8283,6 +10010,411 @@ AP2.page('ps-architektur', {
       {q: 'Was gilt bei einer strengen Schichtenarchitektur?', o: ['Jede Schicht nutzt nur die direkt darunterliegende', 'Jede Schicht ruft jede andere auf', 'Die Datenschicht ruft die Oberfläche auf', 'Es gibt immer genau zwei Schichten'], a: 0, e: 'So bleiben Abhängigkeiten gering und Schichten austauschbar.'},
     ]],
   ],
+});
+
+AP2.add('ps-architektur', [
+  [
+    "h",
+    "Kopplung, Kohäsion und Testbarkeit"
+  ],
+  [
+    "table",
+    [
+      "Begriff",
+      "Einfach erklärt",
+      "Gutes Beispiel"
+    ],
+    [
+      [
+        "Kopplung",
+        "Abhängigkeit zwischen Komponenten",
+        "Fachlogik kennt eine Repository-Schnittstelle statt konkreter SQL-Verbindung"
+      ],
+      [
+        "Kohäsion",
+        "Zusammengehörigkeit innerhalb einer Komponente",
+        "Preisberechnung enthält passende Preisregeln"
+      ],
+      [
+        "Dependency Injection",
+        "Benötigte Abhängigkeit wird von außen übergeben",
+        "Test übergibt ein kontrollierbares Repository"
+      ]
+    ]
+  ],
+  [
+    "p",
+    "Hohe Kohäsion und geringe unnötige Kopplung erleichtern Änderungen. Ein Test kann das Repository ersetzen. Dadurch prüft er Fachregeln ohne echte Datenbank. Integrationstests müssen den echten Datenbankzugriff zusätzlich prüfen."
+  ],
+  [
+    "h",
+    "Architekturentscheidung im Szenario"
+  ],
+  [
+    "p",
+    "Ein vierköpfiges Team baut eine kleine Reservierungsanwendung. Die Funktionen ändern sich oft gemeinsam. Ein modularer Monolith kann dafür gut passen. Er trennt Fachmodule, bleibt aber eine gemeinsame Deployment-Einheit."
+  ],
+  [
+    "table",
+    [
+      "Kriterium",
+      "Modularer Monolith",
+      "Microservices"
+    ],
+    [
+      [
+        "Deployment",
+        "Eine gemeinsame Auslieferung",
+        "Mehrere unabhängig betreibbare Dienste"
+      ],
+      [
+        "Datenkonsistenz",
+        "Lokale Transaktionen oft einfacher",
+        "Dienstübergreifende Konsistenz benötigt zusätzliche Konzepte"
+      ],
+      [
+        "Skalierung",
+        "Anwendung als Einheit skalieren",
+        "Einzelne Dienste getrennt skalieren"
+      ],
+      [
+        "Betriebsaufwand",
+        "Für kleine Teams oft geringer",
+        "Netzwerk, verteilte Diagnose und mehrere Deployments"
+      ]
+    ]
+  ],
+  [
+    "warn",
+    "Microservices verhindern keine Kettenausfälle. Timeouts, begrenzte Wiederholungen und geeignete Entkopplung sind nötig. Ein gemeinsamer Datenbankausfall kann weiterhin viele Dienste treffen."
+  ],
+  [
+    "qa",
+    "**Begründen** Sie für das kleine Team einen modularen Monolithen mit zwei Argumenten. **Nennen** Sie einen späteren Auslöser für eine getrennte Dienststruktur.",
+    [
+      "Weniger getrennte Deployments und Betriebsaufgaben passen zur kleinen Teamkapazität. 1 Punkt.",
+      "Gemeinsame fachliche Änderungen und lokale Transaktionen bleiben einfacher. 1 Punkt.",
+      "Ein eigenständig wachsender Bereich mit anderer Last oder eigenem Team kann eine Trennung begründen. 1 Punkt."
+    ],
+    3
+  ],
+  [
+    "see",
+    [
+      "ps-schnittstellen",
+      "ps-cicd",
+      "ps-testentwurf",
+      "infra-cloud"
+    ]
+  ]
+]);
+;
+// content/ps/schnittstellen-1.js
+AP2.page('ps-schnittstellen', {
+  "b": "ps",
+  "g": "Software-Architektur",
+  "t": "Schnittstellen spezifizieren: Datenvertrag, Fehler und Versionierung",
+  "d": "Eine Schnittstelle verbindet Komponenten oder Systeme. Ihr Vertrag beschreibt Aufrufe, Daten und erwartetes Verhalten. Fehler, Zeitgrenzen und Berechtigungen gehören ebenfalls dazu.",
+  "m": "**Eine Feldliste allein ist kein vollständiger Schnittstellenvertrag.** Beide Seiten brauchen dieselben Bedeutungen, Einheiten und Fehlerregeln.",
+  "cheat": [
+    [
+      "Vertrag",
+      [
+        "Zweck, Beteiligte und Transport",
+        "Datenstruktur, Pflichtfelder und Wertebereiche",
+        "Authentifizierung und Objektberechtigungen",
+        "Statuscodes, Timeout und Wiederholbarkeit"
+      ]
+    ],
+    [
+      "Änderungen",
+      [
+        "Kompatibilität prüfen.",
+        "Versionen und Übergangszeit vereinbaren.",
+        "Verbraucher mit Vertragstests absichern."
+      ]
+    ]
+  ],
+  "blocks": [
+    [
+      "h",
+      "Szenario: Versandauftrag übergeben"
+    ],
+    [
+      "p",
+      "Ein Shop übergibt Sendungen an eine Versandsoftware. Der Vertrag beschreibt das Gewicht in Gramm. Ohne Einheit könnte ein Wert von 1500 anders verstanden werden."
+    ],
+    [
+      "table",
+      [
+        "Feld",
+        "Typ",
+        "Pflicht",
+        "Regel"
+      ],
+      [
+        [
+          "auftragId",
+          "Zeichenkette",
+          "Ja",
+          "1 bis 40 Zeichen; je Auftrag eindeutig"
+        ],
+        [
+          "gewichtGramm",
+          "Ganzzahl",
+          "Ja",
+          "1 bis 31.500"
+        ],
+        [
+          "land",
+          "Zeichenkette",
+          "Ja",
+          "Genau zwei vereinbarte Großbuchstaben"
+        ],
+        [
+          "adresszusatz",
+          "Zeichenkette oder null",
+          "Nein",
+          "Höchstens 80 Zeichen"
+        ],
+        [
+          "erstelltAm",
+          "Zeichenkette",
+          "Ja",
+          "Zeitstempel mit vereinbarter Zeitzonenangabe"
+        ]
+      ]
+    ],
+    [
+      "code",
+      "json",
+      "{\"auftragId\":\"A-204\",\"gewichtGramm\":1500,\"land\":\"DE\",\n \"adresszusatz\":null,\"erstelltAm\":\"2026-04-02T10:30:00Z\"}"
+    ],
+    [
+      "h",
+      "Fehlend, null und leer unterscheiden"
+    ],
+    [
+      "table",
+      [
+        "Darstellung",
+        "Mögliche Bedeutung",
+        "Vertragliche Entscheidung"
+      ],
+      [
+        [
+          "Feld fehlt",
+          "Nicht geliefert oder bei Teiländerung unverändert",
+          "Für jeden Aufruf festlegen"
+        ],
+        [
+          "null",
+          "Ausdrücklich kein Wert",
+          "Nur zulassen, wenn fachlich sinnvoll"
+        ],
+        [
+          "Leere Zeichenkette",
+          "Vorhandener, aber leerer Text",
+          "Nicht automatisch wie null behandeln"
+        ],
+        [
+          "0",
+          "Tatsächlicher Zahlenwert null",
+          "Nicht mit fehlendem Gewicht verwechseln"
+        ]
+      ]
+    ],
+    [
+      "h",
+      "Fehlerobjekt"
+    ],
+    [
+      "code",
+      "json",
+      "{\"code\":\"INVALID_WEIGHT\",\"message\":\"Gewicht ist ungültig.\",\n \"field\":\"gewichtGramm\",\"requestId\":\"r-204\"}"
+    ],
+    [
+      "p",
+      "Ein stabiler Fehlercode hilft Programmen. Eine kurze Meldung hilft Menschen. Eine Anfrage-ID verbindet Antwort und Serverlog. Interne Stacktraces oder Zugangsdaten gehören nicht in die Antwort."
+    ],
+    [
+      "h",
+      "Zusammenarbeit absichern"
+    ],
+    [
+      "seq",
+      {
+        "w": 760,
+        "actors": [
+          "Shop",
+          "Versand-API",
+          "Versanddaten"
+        ],
+        "steps": [
+          [
+            0,
+            1,
+            "Anfrage mit Authentifizierung",
+            "s"
+          ],
+          [
+            1,
+            1,
+            "Schema und Berechtigung prüfen",
+            "s"
+          ],
+          [
+            1,
+            2,
+            "Auftrag eindeutig speichern",
+            "s"
+          ],
+          [
+            2,
+            1,
+            "Sendungs-ID liefern",
+            "r"
+          ],
+          [
+            1,
+            0,
+            "201 mit Sendungs-ID",
+            "r"
+          ]
+        ],
+        "cap": "Datenprüfung, Berechtigung und Eindeutigkeit gehören in den Serverablauf."
+      }
+    ],
+    [
+      "h",
+      "Kompatibilität beurteilen"
+    ],
+    [
+      "table",
+      [
+        "Änderung",
+        "Auswirkung",
+        "Mögliche Lösung"
+      ],
+      [
+        [
+          "Neues optionales Antwortfeld",
+          "Oft verträglich; strikte Verbraucher können scheitern",
+          "Robuste Verbraucher und Vertragstests"
+        ],
+        [
+          "Optionales Eingabefeld wird Pflicht",
+          "Alte Clients liefern es nicht",
+          "Neue Version oder Übergangsregel"
+        ],
+        [
+          "Feldname wird geändert",
+          "Alte Clients finden das Feld nicht",
+          "Altes Feld vorübergehend weiter unterstützen"
+        ],
+        [
+          "Einheit wechselt Gramm zu Kilogramm",
+          "Semantisch inkompatibel trotz gleichem Datentyp",
+          "Neues Feld oder neue Version mit klarer Einheit"
+        ],
+        [
+          "Neuer Aufzählungswert",
+          "Clients kennen den Wert möglicherweise nicht",
+          "Fallback oder abgestimmte Erweiterung"
+        ]
+      ]
+    ],
+    [
+      "warn",
+      "Ein unveränderter Datentyp garantiert keine Kompatibilität. Auch Bedeutung, Einheit und erlaubte Werte sind Teil des Vertrags."
+    ],
+    [
+      "h",
+      "Prüfstrategie"
+    ],
+    [
+      "steps",
+      [
+        "Produzent und Verbraucher gegen gemeinsame Beispiele prüfen.",
+        "Pflichtfelder, Nullwerte und Grenzen testen.",
+        "Fehlercodes und fehlende Rechte testen.",
+        "Timeouts und doppelte Anfragen kontrolliert simulieren.",
+        "Vertragstests bei jeder relevanten Änderung ausführen."
+      ]
+    ],
+    [
+      "qa",
+      "Ein Feld bleibt numerisch. Seine Einheit wechselt von Cent zu Euro. **Beurteilen** Sie die Kompatibilität. **Nennen** Sie zwei Gegenmaßnahmen.",
+      [
+        "Die Änderung ist fachlich inkompatibel. Ein alter Client interpretiert denselben Wert hundertfach falsch. 1 Punkt.",
+        "Neue eindeutig benannte Felder oder eine neue Version anbieten. 1 Punkt.",
+        "Umstellung mit Testwerten und vereinbarter Übergangszeit koordinieren. 1 Punkt."
+      ],
+      3
+    ],
+    [
+      "qa",
+      "**Nennen** Sie sechs Inhalte eines Schnittstellenvertrags. Denken Sie an Ablauf, Daten und Fehler.",
+      [
+        "- Operation mit Zweck und Aufrufweg.",
+        "- Datenfelder mit Typen und Pflichtangaben.",
+        "- Fachliche Wertebereiche und Einheiten.",
+        "- Authentifizierung und Zugriffsrechte.",
+        "- Fehlerfälle und Statuscodes.",
+        "- Zeitgrenzen und Regeln für Wiederholungen.",
+        "Je Inhalt 1 Punkt."
+      ],
+      6
+    ],
+    [
+      "quiz",
+      [
+        {
+          "q": "Was ist eine semantische Änderung?",
+          "o": [
+            "Eine Änderung der Bedeutung eines Feldes",
+            "Nur das Verschieben eines Kommentars",
+            "Nur ein anderer Dateiname",
+            "Ein unveränderter Vertrag"
+          ],
+          "a": 0,
+          "e": "Einheiten und Fachbedeutungen sind Teil der Semantik."
+        },
+        {
+          "q": "Wozu dient eine Anfrage-ID?",
+          "o": [
+            "Zum Verbinden von Antwort und Diagnoseinformationen",
+            "Als universelles Passwort",
+            "Als Ersatz für Verschlüsselung",
+            "Zum Berechnen des Portbereichs"
+          ],
+          "a": 0,
+          "e": "Sie erleichtert die Fehlersuche über Systemgrenzen."
+        },
+        {
+          "q": "Was kann alte Clients brechen?",
+          "o": [
+            "Ein bisher optionales Feld wird verpflichtend",
+            "Ein zusätzlicher interner Kommentar",
+            "Eine neue Teamnotiz",
+            "Ein unveränderter Wertebereich"
+          ],
+          "a": 0,
+          "e": "Alte Clients senden das nun verlangte Feld möglicherweise nicht."
+        }
+      ]
+    ],
+    [
+      "see",
+      [
+        "infra-http",
+        "ps-dbzugriff",
+        "ps-architektur",
+        "ps-testentwurf",
+        "ps-migration"
+      ]
+    ]
+  ]
 });
 ;
 // content/ps/er-1.js
@@ -8865,7 +10997,7 @@ AP2.page('ps-wireframe', {
 AP2.add('ps-wireframe', [
   ['h', 'Navigationskonzepte und Layoutmuster'],
   ['kv', [
-    ['Hauptnavigation', 'Oben (Menüleiste) oder links (Seitenleiste). Zeigt die wichtigsten Bereiche. Maximal etwa 7 Punkte.'],
+    ['Hauptnavigation', 'Oben (Menüleiste) oder links (Seitenleiste). Zeigt die wichtigsten Bereiche. Anzahl nach Aufgaben, Begriffen und Nutzerprüfung wählen; keine starre Sieben-Punkte-Regel.'],
     ['Breadcrumb (Brotkrumen)', 'Zeigt den Pfad: Start / Produkte / Laptops. Hilft bei der Orientierung.'],
     ['Responsive Design', 'Die Oberfläche passt sich der Bildschirmgröße an (Desktop, Tablet, Handy). **Mobile First**: erst für kleine Bildschirme entwerfen.'],
     ['Raster (Grid)', 'Ein unsichtbares Spaltenraster (zum Beispiel 12 Spalten) sorgt für Ordnung und Ausrichtung.'],
@@ -8883,6 +11015,347 @@ AP2.add('ps-wireframe', [
     {q: 'Was bedeutet "Mobile First"?', o: ['Zuerst für kleine Bildschirme entwerfen', 'Nur für Handys entwickeln', 'Handys zuerst verkaufen', 'Erst mobil testen, nie am PC'], a: 0, e: 'Mobile First beginnt beim kleinsten Bildschirm und erweitert für größere.'},
   ]],
 ]);
+
+AP2.add('ps-wireframe', [
+  [
+    "h",
+    "Auch Fehler-, Leer- und Ladezustände entwerfen"
+  ],
+  [
+    "table",
+    [
+      "Zustand",
+      "Darstellung",
+      "Erwartete Aktion"
+    ],
+    [
+      [
+        "Laden",
+        "Verständlicher Hinweis; relevante Aktion vorübergehend gesperrt",
+        "Warten oder bei langer Dauer abbrechen"
+      ],
+      [
+        "Keine Treffer",
+        "Suchbegriff zeigen; Filter erklären",
+        "Filter zurücksetzen oder Suche ändern"
+      ],
+      [
+        "Eingabefehler",
+        "Feldbezogener Text mit Korrekturhinweis",
+        "Eingabe korrigieren"
+      ],
+      [
+        "Netzwerkfehler",
+        "Ergebnisstatus klar benennen",
+        "Kontrolliert erneut versuchen"
+      ],
+      [
+        "Erfolg",
+        "Bestätigung mit ID oder nächstem Schritt",
+        "Weiterarbeiten ohne ungewollte Wiederholung"
+      ]
+    ]
+  ],
+  [
+    "p",
+    "Ein Wireframe nur für den Erfolgsfall lässt wichtige Fragen offen. Bei unbekanntem Ergebnis darf „erneut senden“ keine doppelte Bestellung erzeugen. Oberfläche und Schnittstellenvertrag müssen zusammenpassen."
+  ],
+  [
+    "qa",
+    "Die Suche zeigt bei leerem Ergebnis eine weiße Fläche. **Entwerfen** Sie drei Verbesserungen mit Zweck.",
+    [
+      "Suchbegriff und Filter anzeigen, damit der aktuelle Suchkontext erkennbar bleibt. 1 Punkt.",
+      "„Keine Treffer“ als Text ausgeben, damit kein Ladefehler vermutet wird. 1 Punkt.",
+      "Filter zurücksetzen oder Suchbegriff ändern anbieten, damit eine nächste Aktion möglich ist. 1 Punkt."
+    ],
+    3
+  ],
+  [
+    "h",
+    "Akzeptanzkriterien für den Entwurf"
+  ],
+  [
+    "list",
+    [
+      "Wichtige Aktionen mit Tastatur erreichbar.",
+      "Fokus und Fehlermeldungen sichtbar und verständlich.",
+      "Kritische Daten vor endgültiger Aktion prüfbar.",
+      "Leere Listen und laufende Anfragen haben eigene Zustände.",
+      "Navigation bleibt auch bei schmaler Ansicht verständlich."
+    ]
+  ],
+  [
+    "see",
+    [
+      "ps-barrierefreiheit",
+      "ps-anforderungen",
+      "infra-http"
+    ]
+  ]
+]);
+;
+// content/ps/barrierefreiheit-1.js
+// Quellen: https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html
+// https://www.w3.org/WAI/WCAG22/Understanding/keyboard.html
+AP2.page('ps-barrierefreiheit', {
+  "b": "ps",
+  "g": "Oberfläche und Gebrauchstauglichkeit",
+  "t": "Barrierefreiheit: Tastatur, Semantik, Kontrast und verständliche Fehler",
+  "d": "Barrierefreie Oberflächen berücksichtigen unterschiedliche Fähigkeiten und Hilfsmittel. Menschen müssen Informationen wahrnehmen und Funktionen bedienen können. Verständliche Texte und klare Zustände helfen allen Nutzern.",
+  "m": "**Wahrnehmbar, bedienbar, verständlich und robust.** Prüfe konkrete Aufgaben mit Tastatur und passenden Hilfsmitteln.",
+  "cheat": [
+    [
+      "Gestaltung",
+      [
+        "Feldbeschriftungen sichtbar zuordnen.",
+        "Nicht nur Farbe als Information verwenden.",
+        "Tastaturbedienung und sichtbaren Fokus vorsehen.",
+        "Bilder nach ihrem Zweck beschreiben."
+      ]
+    ],
+    [
+      "Prüfung",
+      [
+        "Manuelle Tastaturprüfung",
+        "Vergrößerung und schmale Ansicht",
+        "Screenreader-Stichprobe",
+        "Automatische Prüfungen als Ergänzung"
+      ]
+    ]
+  ],
+  "blocks": [
+    [
+      "h",
+      "Barrierefreiheit und Usability"
+    ],
+    [
+      "p",
+      "Usability beschreibt wirksame, effiziente und zufriedenstellende Nutzung im jeweiligen Kontext. Barrierefreiheit berücksichtigt insbesondere Menschen mit Einschränkungen. Eine schöne Oberfläche kann trotzdem mit Tastatur unbedienbar sein. Beide Qualitätsziele ergänzen sich."
+    ],
+    [
+      "table",
+      [
+        "Situation",
+        "Hürde",
+        "Geeignete Verbesserung"
+      ],
+      [
+        [
+          "Person kann keine Maus verwenden",
+          "Aktionen nur per Klick erreichbar",
+          "Tastaturbedienbare Standard-Steuerelemente"
+        ],
+        [
+          "Person sieht Farben nicht sicher",
+          "Fehler nur rot markiert",
+          "Zusätzlicher Text und Symbol mit verständlicher Bedeutung"
+        ],
+        [
+          "Person nutzt Screenreader",
+          "Feld ohne zugeordneten Namen",
+          "Beschriftung mit label und passender Zuordnung"
+        ],
+        [
+          "Person vergrößert die Darstellung",
+          "Inhalt wird abgeschnitten",
+          "Flexibles Layout und kontrollierte Vergrößerungsprüfung"
+        ],
+        [
+          "Person versteht Fachsprache schwer",
+          "„Validierung fehlgeschlagen“",
+          "Konkreten Fehler und nächsten Schritt nennen"
+        ]
+      ]
+    ],
+    [
+      "h",
+      "Semantisches HTML verwenden"
+    ],
+    [
+      "code",
+      "html",
+      "<form>\n  <label for=\"menge\">Menge</label>\n  <input id=\"menge\" name=\"menge\" type=\"number\" min=\"1\" max=\"50\"\n         required aria-describedby=\"mengenhilfe mengenfehler\">\n  <p id=\"mengenhilfe\">Bitte 1 bis 50 Stück eingeben.</p>\n  <p id=\"mengenfehler\"></p>\n  <button type=\"submit\">Reservieren</button>\n</form>"
+    ],
+    [
+      "p",
+      "Das Label gibt dem Feld einen Namen. Hilfetext erklärt die Grenze. Bei einem Fehler ergänzt die Anwendung eine konkrete Meldung. Sie setzt aria-invalid passend und kündigt neue Fehlermeldungen geeignet an. Serverseitige Prüfung bleibt notwendig."
+    ],
+    [
+      "warn",
+      "Ein klickbares div ersetzt keinen vollständigen Button. Name, Rolle, Fokus und Tastaturverhalten müssten zusätzlich umgesetzt werden. Ein nativer Button bringt wichtige Grundfunktionen bereits mit."
+    ],
+    [
+      "h",
+      "Tastatur und Fokus"
+    ],
+    [
+      "p",
+      "Tastaturfokus zeigt das aktuell bedienbare Element. Die Reihenfolge soll zum sichtbaren und fachlichen Ablauf passen. Entferne die Fokusmarkierung nicht ohne geeigneten Ersatz. Dialoge müssen nach dem Schließen eine sinnvolle Fokusposition hinterlassen."
+    ],
+    [
+      "steps",
+      [
+        "Seite öffnen und die Maus beiseitelegen.",
+        "Mit Tab und Umschalt+Tab alle Funktionen erreichen.",
+        "Buttons mit den üblichen Tasten betätigen.",
+        "Formular mit ungültigen Werten absenden und Fehlermeldungen prüfen.",
+        "Dialog öffnen, bedienen und wieder verlassen.",
+        "Prüfen, ob der Fokus sichtbar bleibt und keine Tastaturfalle entsteht."
+      ]
+    ],
+    [
+      "h",
+      "Textkontrast prüfen"
+    ],
+    [
+      "p",
+      "WCAG 2.2 nennt für normalen Text auf Stufe AA grundsätzlich mindestens 4,5:1 Kontrast. Für ausreichend großen Text gilt 3:1. Ausnahmen bestehen etwa für Logos und rein dekorative Inhalte. Diese Einzelprüfung beweist keine vollständige Konformität."
+    ],
+    [
+      "table",
+      [
+        "Gemessener Kontrast",
+        "Normaler Text ohne Ausnahme",
+        "Begründung"
+      ],
+      [
+        [
+          "4,49:1",
+          "Nicht ausreichend",
+          "Grenzwert 4,5:1 ist nicht erreicht"
+        ],
+        [
+          "4,50:1",
+          "Grenzwert erreicht",
+          "Kein Aufrunden nötig"
+        ],
+        [
+          "7,00:1",
+          "Grenzwert überschritten",
+          "Weitere Anforderungen trotzdem prüfen"
+        ]
+      ]
+    ],
+    [
+      "h",
+      "Bilder und Fehlermeldungen"
+    ],
+    [
+      "list",
+      [
+        "Informative Bilder erhalten einen zweckgerechten Alternativtext.",
+        "Reine Dekorationsbilder können einen leeren Alternativtext erhalten.",
+        "Ein Symbolbutton benötigt einen verständlichen zugänglichen Namen.",
+        "Fehler benennen das betroffene Feld und einen möglichen Korrekturschritt.",
+        "Eingegebene gültige Werte nach einem Fehler möglichst erhalten."
+      ]
+    ],
+    [
+      "h",
+      "Nachweise im Testplan"
+    ],
+    [
+      "table",
+      [
+        "Test",
+        "Erwartung"
+      ],
+      [
+        [
+          "Reservierung nur per Tastatur",
+          "Alle Schritte ohne Maus ausführbar"
+        ],
+        [
+          "Fehlende Menge",
+          "Feld und Fehler sind verständlich zugeordnet"
+        ],
+        [
+          "Rote Fehlermarkierung ohne Farbe betrachten",
+          "Fehler bleibt durch Text verständlich"
+        ],
+        [
+          "Automatischer Scanner",
+          "Maschinell erkennbare Befunde werden bearbeitet"
+        ],
+        [
+          "Screenreader-Stichprobe",
+          "Namen, Rollen und Zustände sind nachvollziehbar"
+        ]
+      ]
+    ],
+    [
+      "tip",
+      "**Erläutern** heißt: Hürde, Maßnahme und Nutzen verbinden. „Barrierefreiheit verbessern“ allein ist keine konkrete Antwort."
+    ],
+    [
+      "qa",
+      "Ein Formular zeigt Fehler nur als roten Rand. Der Speichern-Button ist ein div mit Klickhandler. **Erläutern** Sie zwei Probleme mit je einer Verbesserung.",
+      [
+        "Der rote Rand übermittelt die Information nur durch Farbe. Eine konkrete Textmeldung ergänzen. 2 Punkte: Problem und Maßnahme.",
+        "Das div hat ohne weitere Umsetzung keine passende Tastatur- und Buttonsemantik. Einen nativen Button verwenden. 2 Punkte: Problem und Maßnahme."
+      ],
+      4
+    ],
+    [
+      "qa",
+      "Normaler Text hat 4,49:1 Kontrast. **Beurteilen** Sie die Einhaltung von 4,5:1. **Nennen** Sie zwei weitere manuelle Prüfungen.",
+      [
+        "4,49 ist kleiner als 4,5. Der Grenzwert wird nicht erreicht; nicht aufrunden. 1 Punkt.",
+        "Kompletten Ablauf mit Tastatur prüfen. 1 Punkt.",
+        "Beschriftungen und Zustände mit Screenreader oder Vergrößerung prüfen. 1 Punkt."
+      ],
+      3
+    ],
+    [
+      "quiz",
+      [
+        {
+          "q": "Was ersetzt ein automatischer Scanner nicht?",
+          "o": [
+            "Manuelle Prüfung von Bedienabläufen",
+            "Das Finden einiger technischer Befunde",
+            "Das Erkennen mancher fehlender Namen",
+            "Eine wiederholbare maschinelle Kontrolle"
+          ],
+          "a": 0,
+          "e": "Ein Scanner kann nicht jede fachliche Bedienhürde beurteilen."
+        },
+        {
+          "q": "Wann ist ein leerer Alternativtext sinnvoll?",
+          "o": [
+            "Bei rein dekorativen Bildern",
+            "Bei jeder Anleitungsgrafik",
+            "Bei einem Symbolbutton ohne anderen Namen",
+            "Bei jedem Produktfoto"
+          ],
+          "a": 0,
+          "e": "Der Zweck im Kontext bestimmt, ob eine Beschreibung benötigt wird."
+        },
+        {
+          "q": "Welche Fehlermeldung hilft am meisten?",
+          "o": [
+            "Menge muss zwischen 1 und 50 liegen",
+            "Fehler 999",
+            "Ungültig",
+            "Es ging nicht"
+          ],
+          "a": 0,
+          "e": "Die Meldung nennt das Feld und die erlaubten Werte."
+        }
+      ]
+    ],
+    [
+      "see",
+      [
+        "ps-ergonomie",
+        "ps-ux",
+        "ps-wireframe",
+        "ps-testentwurf",
+        "ps-anforderungen"
+      ]
+    ]
+  ]
+});
 ;
 // content/ps/qm-1.js
 AP2.page('ps-qm', {
@@ -9098,20 +11571,336 @@ AP2.add('ps-testarten', [
   ]],
 ]);
 ;
+// content/ps/testentwurf-1.js
+AP2.page('ps-testentwurf', {
+  "b": "ps",
+  "g": "Qualitätssicherung",
+  "t": "Testfallentwurf: Äquivalenzklassen, Grenzwerte und Entscheidungstabellen",
+  "d": "Black-Box-Tests werden aus Anforderungen abgeleitet. Äquivalenzklassen bündeln gleichartig behandelte Eingaben. Grenzwerte prüfen Übergänge. Entscheidungstabellen ordnen Kombinationen aus Bedingungen und Aktionen.",
+  "m": "**Jeder Test braucht Eingabe, Ausgangslage und erwartetes Ergebnis.** Ein ausgeführter Test ohne Sollwert liefert keinen verlässlichen Nachweis.",
+  "cheat": [
+    [
+      "Verfahren",
+      [
+        "Äquivalenzklassen: Vertreter je Klasse wählen",
+        "Grenzwertanalyse: Werte an Übergängen prüfen",
+        "Entscheidungstabelle: Bedingungskombinationen abdecken"
+      ]
+    ],
+    [
+      "Dokumentation",
+      [
+        "Test-ID und Anforderungs-ID",
+        "Vorbedingungen und konkrete Daten",
+        "Schritte und erwartetes Ergebnis",
+        "Ist-Ergebnis, Status und Fehlerverweis"
+      ]
+    ]
+  ],
+  "blocks": [
+    [
+      "h",
+      "Szenario: Versandkosten"
+    ],
+    [
+      "p",
+      "Eine Bestellung enthält ganzzahlig zwischen eins und 50 Stück. Andere Mengen werden abgelehnt. Stammkunden zahlen keinen Versand. Sonst ist der Versand ab 80 Euro Warenwert kostenlos. Darunter kostet er fünf Euro."
+    ],
+    [
+      "table",
+      [
+        "Mengenklasse",
+        "Vertreter",
+        "Erwartung"
+      ],
+      [
+        [
+          "Ungültig: unter 1",
+          "0",
+          "Ablehnung"
+        ],
+        [
+          "Gültig: 1 bis 50",
+          "20",
+          "Menge akzeptiert"
+        ],
+        [
+          "Ungültig: über 50",
+          "51",
+          "Ablehnung"
+        ],
+        [
+          "Ungültiger Datentyp",
+          "1,5 oder Text",
+          "Ablehnung ohne stilles Abschneiden"
+        ]
+      ]
+    ],
+    [
+      "h",
+      "Grenzwerte wählen"
+    ],
+    [
+      "table",
+      [
+        "Grenze",
+        "Werte bei Ganzzahlen",
+        "Zweck"
+      ],
+      [
+        [
+          "Untere Grenze 1",
+          "0, 1, 2",
+          "Zu klein, gerade gültig, innen"
+        ],
+        [
+          "Obere Grenze 50",
+          "49, 50, 51",
+          "Innen, gerade gültig, zu groß"
+        ],
+        [
+          "Versandgrenze 80,00 Euro",
+          "79,99; 80,00; 80,01",
+          "Unter, auf und über der Grenze"
+        ]
+      ]
+    ],
+    [
+      "note",
+      "Der kleinste Abstand hängt vom Datentyp ab. Bei Geld in Cent beträgt er hier 0,01 Euro. Für ganzzahlige Mengen beträgt er eins."
+    ],
+    [
+      "h",
+      "Entscheidungstabelle"
+    ],
+    [
+      "table",
+      [
+        "Bedingung / Aktion",
+        "R1",
+        "R2",
+        "R3",
+        "R4"
+      ],
+      [
+        [
+          "Menge gültig?",
+          "Nein",
+          "Ja",
+          "Ja",
+          "Ja"
+        ],
+        [
+          "Stammkunde?",
+          "–",
+          "Ja",
+          "Nein",
+          "Nein"
+        ],
+        [
+          "Warenwert mindestens 80 Euro?",
+          "–",
+          "–",
+          "Ja",
+          "Nein"
+        ],
+        [
+          "Ablehnen",
+          "X",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Versand kostenlos",
+          "",
+          "X",
+          "X",
+          ""
+        ],
+        [
+          "Versand fünf Euro",
+          "",
+          "",
+          "",
+          "X"
+        ]
+      ]
+    ],
+    [
+      "p",
+      "Ein Strich bedeutet: Für diese Regel ist der Wert egal. Die Priorität „ungültige Menge ablehnen“ gilt auch für Stammkunden. R2 fasst zwei mögliche Warenwertfälle zusammen."
+    ],
+    [
+      "h",
+      "Vollständige Testfälle"
+    ],
+    [
+      "table",
+      [
+        "ID",
+        "Menge",
+        "Stammkunde",
+        "Warenwert",
+        "Erwartetes Ergebnis"
+      ],
+      [
+        [
+          "T1",
+          "0",
+          "Ja",
+          "100,00 Euro",
+          "Ablehnung; keine Bestellung"
+        ],
+        [
+          "T2",
+          "1",
+          "Ja",
+          "10,00 Euro",
+          "Akzeptiert; 0,00 Euro Versand"
+        ],
+        [
+          "T3",
+          "50",
+          "Nein",
+          "80,00 Euro",
+          "Akzeptiert; 0,00 Euro Versand"
+        ],
+        [
+          "T4",
+          "20",
+          "Nein",
+          "79,99 Euro",
+          "Akzeptiert; 5,00 Euro Versand"
+        ],
+        [
+          "T5",
+          "51",
+          "Nein",
+          "100,00 Euro",
+          "Ablehnung; keine Bestellung"
+        ]
+      ]
+    ],
+    [
+      "warn",
+      "Die fünf Fälle decken die vier Tabellenregeln ab. Sie decken noch nicht alle genannten Grenzwerte ab. Regelüberdeckung und Grenzwertabdeckung sind verschiedene Testziele."
+    ],
+    [
+      "h",
+      "Tests mit mehreren ungültigen Eingaben"
+    ],
+    [
+      "p",
+      "Prüfe ungültige Klassen möglichst einzeln. Sonst bleibt unklar, welche Prüfung ausgelöst wurde. Ein Test mit falscher Menge und kaputtem Preis kann die Mengenprüfung verdecken."
+    ],
+    [
+      "h",
+      "Tests priorisieren"
+    ],
+    [
+      "list",
+      [
+        "Zuerst kritische Geschäftsregeln und häufige Abläufe prüfen.",
+        "Ungültige Eingaben und fehlende Rechte einbeziehen.",
+        "Zustandsänderungen wie Bestand und Buchungen kontrollieren.",
+        "Nach einer Korrektur den Fehlerfall erneut ausführen.",
+        "Regressionstests prüfen, ob andere Funktionen weiter richtig arbeiten."
+      ]
+    ],
+    [
+      "tip",
+      "**Entwerfen** heißt: konkrete Testdaten mit erwarteten Ergebnissen angeben. „Grenzwerte prüfen“ allein ist kein fertiger Testfall."
+    ],
+    [
+      "qa",
+      "**Entwerfen** Sie sechs Mengen-Grenzwerttests. Nennen Sie jeweils das erwartete Ergebnis.",
+      [
+        "0: ablehnen.",
+        "1: akzeptieren.",
+        "2: akzeptieren.",
+        "49: akzeptieren.",
+        "50: akzeptieren.",
+        "51: ablehnen.",
+        "Je korrektem Daten-Ergebnis-Paar 1 Punkt. Andere Felder werden gültig belegt."
+      ],
+      6
+    ],
+    [
+      "qa",
+      "Ein Stammkunde bestellt null Stück für 100 Euro. **Bestimmen** Sie die Tabellenregel. **Begründen** Sie das Ergebnis. **Nennen** Sie eine Zustandsprüfung.",
+      [
+        "R1 gilt, weil die Menge ungültig ist. 1 Punkt.",
+        "Die Bestellung wird trotz Stammkundenstatus abgelehnt. 1 Punkt.",
+        "In Datenbank und Bestand darf keine Bestellung beziehungsweise Reservierung entstehen. 1 Punkt."
+      ],
+      3
+    ],
+    [
+      "quiz",
+      [
+        {
+          "q": "Was gehört zwingend zu einem Testfall?",
+          "o": [
+            "Ein erwartetes Ergebnis",
+            "Nur eine Bildschirmfarbe",
+            "Nur ein Testername",
+            "Nur die Uhrzeit"
+          ],
+          "a": 0,
+          "e": "Ohne Sollwert kann das Ist-Ergebnis nicht sinnvoll bewertet werden."
+        },
+        {
+          "q": "Welche Eingabe liegt direkt unter der oberen Mengengrenze 50?",
+          "o": [
+            "49",
+            "0",
+            "51",
+            "100"
+          ],
+          "a": 0,
+          "e": "Bei Ganzzahlen ist der direkte Vorgänger 49."
+        },
+        {
+          "q": "Was bedeutet ein Strich in der Entscheidungstabelle?",
+          "o": [
+            "Diese Bedingung beeinflusst die Regel nicht",
+            "Die Regel ist verboten",
+            "Der Test wurde bestanden",
+            "Der Wert ist immer falsch"
+          ],
+          "a": 0,
+          "e": "Der Wert ist für die betrachtete Regel beliebig."
+        }
+      ]
+    ],
+    [
+      "see",
+      [
+        "ps-anforderungen",
+        "ps-testarten",
+        "ps-ueberdeckung",
+        "ps-verifikation",
+        "ps-abnahme"
+      ]
+    ]
+  ]
+});
+;
 // content/ps/ueberdeckung-1.js
 AP2.page('ps-ueberdeckung', {
   b: 'ps', g: 'Qualitätssicherung', t: 'White-Box-Test: Kontrollflussgraph, Anweisungs-, Zweig- und Pfadüberdeckung',
   d: 'White-Box-Tests leiten Testfälle aus dem **Quellcode** ab. Grundlage ist der **Kontrollflussgraph**: Knoten sind Anweisungen, Kanten mögliche Abläufe. Die **Anweisungsüberdeckung (C0)** fordert, dass jede Anweisung, die **Zweigüberdeckung (C1)**, dass jede Kante (jeder Zweig), und die **Pfadüberdeckung (C2)**, dass jeder Weg vom Start zum Ende mindestens einmal durchlaufen wird.',
-  m: '**C0 Knoten, C1 Kanten, C2 Wege.** Jede Stufe schließt die vorige ein: C2 deckt C1, C1 deckt C0. Ein if **ohne** else braucht für C1 zusätzlich den Fall "Bedingung falsch". Schleifen bei C2: **keinmal, einmal, mehrmals**.',
+  m: '**C0 Knoten, C1 Kanten, C2 Wege.** Jede Stufe schließt die vorige ein: C2 deckt C1, C1 deckt C0. Ein if **ohne** else braucht für C1 zusätzlich den Fall "Bedingung falsch". Schleifentests: **keinmal, einmal, mehrmals**, soweit möglich. Das ersetzt keine vollständige C2-Überdeckung.',
   cheat: [
     ['Überdeckungsmaße', ['**C0 Anweisungsüberdeckung:** jede Anweisung mindestens einmal', '**C1 Zweigüberdeckung:** jeder Zweig (wahr und falsch) mindestens einmal', '**C2 Pfadüberdeckung:** jeder Pfad von Start bis Ende', 'Stärke: C2 vor C1 vor C0']],
     ['Kontrollflussgraph', ['Knoten = Anweisung oder Block', 'Kante = möglicher Übergang', 'Verzweigung: Knoten mit 2 ausgehenden Kanten', 'Schleife: Rückwärtskante']],
-    ['Zyklomatische Komplexität', ['**M = E - N + 2** (Kanten - Knoten + 2)', 'oder: **Anzahl Entscheidungen + 1**', '= Zahl der Basispfade; Obergrenze der Testfälle für C1', 'Richtwert: M unter 10 je Methode']],
+    ['Zyklomatische Komplexität', ['**M = E - N + 2** (Kanten - Knoten + 2)', 'oder: **Anzahl Entscheidungen + 1**', '= Zahl linear unabhängiger Basispfade im Kontrollflussgraphen', 'Richtwert: M unter 10 je Methode']],
     ['Testgetrieben (TDD)', ['**Erst Test, dann Code**', 'Red: Test schlägt fehl', 'Green: minimal implementieren', 'Refactor: aufräumen, Tests bleiben grün']],
   ],
   blocks: [
     ['h', 'Black-Box und White-Box'],
-    ['p', 'Beim **Black-Box-Test** kennt der Tester nur die **Spezifikation**: Eingabe rein, erwartete Ausgabe vergleichen (Äquivalenzklassen, Grenzwerte). Beim **White-Box-Test** (Glass-Box, strukturorientiert) schaut man **in den Code** und sorgt dafür, dass bestimmte Strukturen ausgeführt werden. White-Box-Tests finden **nicht ausgeführten oder toten Code**, aber keine **fehlenden** Funktionen. Deshalb kombiniert man beide Verfahren.'],
+    ['p', 'Beim **Black-Box-Test** kennt der Tester nur die **Spezifikation**: Eingabe rein, erwartete Ausgabe vergleichen (Äquivalenzklassen, Grenzwerte). Beim **White-Box-Test** (Glass-Box, strukturorientiert) schaut man **in den Code** und sorgt dafür, dass bestimmte Strukturen ausgeführt werden. White-Box-Analysen zeigen ungetesteten oder möglicherweise unerreichbaren Code. Aus dem Code allein lassen sich fehlende Anforderungen nicht zuverlässig ableiten. Deshalb kombiniert man beide Verfahren.'],
     ['h', 'Beispiel: Kontrollflussgraph einer Rabattfunktion'],
     ['code', 'java', `double rabatt(double betrag, boolean stammkunde) {
     double r = 0;                 // A
@@ -9135,12 +11924,12 @@ AP2.page('ps-ueberdeckung', {
     ], edges: [{a: 'A', b: 'B'}, {a: 'B', b: 'C', t: 'ja'}, {a: 'C', b: 'D'}, {a: 'B', b: 'D', t: 'nein', lo: [22, 0]}, {a: 'D', b: 'E', t: 'ja'}, {a: 'E', b: 'F'}, {a: 'D', b: 'F', t: 'nein', lo: [22, 0]}]}],
     ['table', ['Maß', 'Was muss abgedeckt werden?', 'Minimale Testfälle', 'Beispiel-Eingaben'], [
       ['C0 Anweisungen', 'Knoten A bis F', '**1**', '(150, true): Pfad A B C D E F'],
-      ['C1 Zweige', 'Alle 8 Kanten, auch B nach D und D nach F', '**2**', '(150, true) und (50, false)'],
-      ['C2 Pfade', 'Alle Wege: ACE, AC ohne E, ohne C mit E, weder noch', '**4**', '(150, true), (150, false), (50, true), (50, false)'],
+      ['C1 Zweige', 'Alle 7 Kanten, auch B nach D und D nach F', '**2**', '(150, true) und (50, false)'],
+      ['C2 Pfade', 'Vier Wege mit allen Knoten: ABCDEF; ABCDF; ABDEF; ABDF', '**4**', '(150, true), (150, false), (50, true), (50, false)'],
     ]],
-    ['p', 'Man sieht: **C0 mit einem Test** lässt die Fälle "kein Rabatt" ungeprüft; ein Fehler im nein-Zweig (zum Beispiel falscher Startwert von r) bliebe unentdeckt. **C1** prüft jede Entscheidung in beide Richtungen. **C2** kombiniert alle Entscheidungen; die Zahl der Pfade wächst **exponentiell** (n unabhängige ifs ergeben 2^n Pfade).'],
+    ['p', 'Man sieht: **C0 mit einem Test** lässt die Fälle "kein Rabatt" ungeprüft; ein Fehler, der nur ohne Rabatt sichtbar wird, kann unentdeckt bleiben. **C1** prüft jede Entscheidung in beide Richtungen. **C2** kombiniert alle Entscheidungen; die Zahl der Pfade wächst **exponentiell** (n unabhängige ifs ergeben 2^n Pfade).'],
     ['h', 'Schleifen und Pfadüberdeckung'],
-    ['p', 'Mit Schleifen gibt es unendlich viele Pfade. In der Praxis begrenzt man deshalb: Die Schleife wird **keinmal**, **genau einmal** und **mehrmals** (zum Beispiel maximal oder typisch) durchlaufen. Diese Näherung heißt auch **Boundary-Interior-Test**.'],
+    ['p', 'Bei Schleifen ohne feste Obergrenze können unendlich viele Pfade entstehen. In der Praxis begrenzt man deshalb: Die Schleife wird **keinmal**, **genau einmal** und **mehrmals** (zum Beispiel maximal oder typisch) durchlaufen. Das sind ausgewählte Schleifentests. Vollständige Pfadüberdeckung wird dadurch nicht erreicht.'],
     ['code', 'c', `int zaehle(void) {                 // Nstart
     int zahl, treffer = 0;         // N1
     do {
@@ -9157,12 +11946,12 @@ AP2.page('ps-ueberdeckung', {
     ]],
     ['tip', 'Pfadangaben in der Prüfung: **Knotenfolge lückenlos** aufschreiben und die Schleifenbedingung bei jedem Durchlauf auswerten. Ein **do-while** wird immer mindestens einmal ausgeführt.'],
     ['h', 'Zyklomatische Komplexität nach McCabe'],
-    ['p', 'Die **zyklomatische Komplexität** misst, wie verzweigt Code ist: **M = E - N + 2** (E Kanten, N Knoten) oder einfacher **Anzahl binärer Entscheidungen + 1**. Für die Rabattfunktion: 8 Kanten, 6 Knoten, M = 8 - 6 + 2 = **3** (zwei ifs + 1). M ist gleich der Zahl der **linear unabhängigen Pfade (Basispfade)** und eine **Obergrenze** für die Testfälle, die man für C1 braucht. Hohe Werte (über 10) deuten auf schwer testbaren Code hin.'],
+    ['p', 'Die **zyklomatische Komplexität** misst, wie verzweigt Code ist: **M = E - N + 2** (E Kanten, N Knoten) oder einfacher **Anzahl binärer Entscheidungen + 1**. Für die Rabattfunktion: 7 Kanten, 6 Knoten, M = 7 - 6 + 2 = **3** (zwei ifs + 1). M ist gleich der Zahl der **linear unabhängigen Pfade (Basispfade)** im betrachteten Kontrollflussgraphen. Die Zahl ist nicht automatisch die minimale Testfallzahl für C1. Hohe Werte (über 10) deuten auf schwer testbaren Code hin.'],
     ['h', 'Testgetriebene Entwicklung (TDD)'],
     ['diagram', AP2.dg.cycle(['Red: Test schreiben, er schlägt fehl', 'Green: gerade so viel Code, bis er besteht', 'Refactor: Code verbessern, Tests bleiben grün'], {w: 680, h: 300, rx: 210, ry: 95, styles: ['bad', 'ok', 'accent'], cap: 'TDD-Zyklus: Tests steuern das Design, jede Funktion ist von Anfang an getestet.'})],
     ['p', 'Bei **TDD** werden Tests **vor** der Implementierung geschrieben (meist mit einem Framework wie JUnit). Vorteile: hohe Testabdeckung, gut testbares Design, Tests dienen als Dokumentation und als Sicherheitsnetz für Refactoring. Nachteil: anfangs mehr Aufwand, Disziplin nötig. TDD ist damit **auch eine Designstrategie**, nicht nur ein Testverfahren.'],
     ['h', 'Aufgaben im Prüfungsstil'],
-    ['qa', 'Beschreiben Sie stichpunktartig Anweisungs-, Zweig- und Pfadüberdeckung.', ['- **Anweisungsüberdeckung (C0):** Jede Anweisung wird mindestens einmal ausgeführt. Verzweigungen ohne Anweisung (leerer else-Zweig) werden nicht erzwungen. Notwendig, aber keine Garantie für Fehlerfreiheit.', '- **Zweigüberdeckung (C1):** Jeder Zweig jeder Entscheidung (wahr und falsch) wird mindestens einmal durchlaufen. Schließt C0 ein. Schleifen werden nur einmal betrachtet.', '- **Pfadüberdeckung (C2):** Alle möglichen Pfade vom Start zum Ende werden durchlaufen. Schließt C1 ein. Bei Schleifen praktisch nicht vollständig möglich, daher Begrenzung (keinmal, einmal, mehrmals).'], 6],
+    ['qa', 'Beschreiben Sie stichpunktartig Anweisungs-, Zweig- und Pfadüberdeckung.', ['- **Anweisungsüberdeckung (C0):** Jede Anweisung wird mindestens einmal ausgeführt. Verzweigungen ohne Anweisung (leerer else-Zweig) werden nicht erzwungen. Notwendig, aber keine Garantie für Fehlerfreiheit.', '- **Zweigüberdeckung (C1):** Jeder Zweig jeder Entscheidung (wahr und falsch) wird mindestens einmal durchlaufen. Schließt C0 ein. Bei Schleifen müssen Eintritt und Verlassen entsprechend dem Graphen abgedeckt werden.', '- **Pfadüberdeckung (C2):** Alle möglichen Pfade vom Start zum Ende werden durchlaufen. Schließt C1 ein. Bei unbeschränkt möglichen Wiederholungen nicht endlich vollständig erreichbar. Ausgewählte Schleifenfälle sind eine begrenzte Strategie.'], 6],
     ['qa', 'Wie viele Testfälle braucht die Funktion rabatt() oben mindestens für C0, C1 und C2? Begründen Sie.', ['- **C0: 1** Testfall, zum Beispiel (150, true) durchläuft alle Anweisungen A bis F.', '- **C1: 2** Testfälle, zum Beispiel (150, true) und (50, false); damit sind beide Entscheidungen je einmal wahr und einmal falsch.', '- **C2: 4** Testfälle, weil zwei unabhängige Entscheidungen 2 mal 2 = 4 Pfade ergeben.'], 4],
     ['qa', 'Was versteht man unter testgetriebener Entwicklung?', 'Bei der testgetriebenen Entwicklung (TDD) wird zu jeder Funktion **zuerst ein automatisierter Test** geschrieben, der zunächst fehlschlägt. Dann wird nur so viel Code implementiert, bis der Test besteht, anschließend wird der Code aufgeräumt (Red, Green, Refactor). So hat jede Funktion von Beginn an Tests; TDD steuert damit auch das Design.', 3],
     ['see', ['ps-testarten', 'eua-testfaelle', 'eua-unittest', 'ps-verifikation']],
@@ -9171,12 +11960,80 @@ AP2.page('ps-ueberdeckung', {
       {q: 'Welches Maß ist am stärksten?', o: ['Pfadüberdeckung', 'Zweigüberdeckung', 'Anweisungsüberdeckung', 'Alle gleich stark'], a: 0, e: 'C2 schließt C1 ein, C1 schließt C0 ein.'},
       {q: 'Eine Funktion hat 3 unabhängige if-Anweisungen hintereinander. Wie viele Pfade gibt es?', o: ['8', '3', '4', '6'], a: 0, e: '2 hoch 3 = 8 Pfade; für C1 reichen dagegen 2 Testfälle.'},
       {q: 'Berechnen Sie die zyklomatische Komplexität: 9 Kanten, 7 Knoten.', o: ['4', '2', '16', '3'], a: 0, e: 'M = E - N + 2 = 9 - 7 + 2 = 4.'},
-      {q: 'Was findet ein White-Box-Test grundsätzlich NICHT?', o: ['Fehlende Funktionen, die nie programmiert wurden', 'Nicht ausgeführten Code', 'Falsche Verzweigungen', 'Tote Codezeilen'], a: 0, e: 'Was nicht im Code steht, kann ein codebasierter Test nicht abdecken; dafür braucht es Black-Box-Tests gegen die Spezifikation.'},
+      {q: 'Was lässt sich aus reiner Codeüberdeckung nicht zuverlässig erkennen?', o: ['Fehlende Funktionen, die nie programmiert wurden', 'Nicht ausgeführten Code', 'Falsche Verzweigungen', 'Tote Codezeilen'], a: 0, e: 'Fehlende Anforderungen können trotz hoher Codeüberdeckung ungetestet bleiben. Ergänze Tests gegen die Spezifikation.'},
       {q: 'In welcher Reihenfolge läuft TDD ab?', o: ['Red, Green, Refactor', 'Green, Red, Refactor', 'Code, Test, Deploy', 'Refactor, Red, Green'], a: 0, e: 'Erst der fehlschlagende Test (Red), dann minimaler Code (Green), dann Aufräumen (Refactor).'},
-      {q: 'Wie testet man Schleifen bei der Pfadüberdeckung in der Praxis?', o: ['Keinmal, einmal und mehrmals durchlaufen', 'Unendlich oft', 'Gar nicht', 'Nur den ersten Durchlauf'], a: 0, e: 'Vollständige Pfadüberdeckung ist bei Schleifen unmöglich, daher wird sie angenähert.'},
+      {q: 'Wie testet man Schleifen bei der Pfadüberdeckung in der Praxis?', o: ['Keinmal, einmal und mehrmals durchlaufen', 'Unendlich oft', 'Gar nicht', 'Nur den ersten Durchlauf'], a: 0, e: 'Bei unbeschränkten Schleifen ist vollständige Pfadüberdeckung nicht endlich möglich. Die genannten Fälle sind ausgewählte Schleifentests.'},
     ]],
   ],
 });
+
+AP2.add('ps-ueberdeckung', [
+  [
+    "h",
+    "Überdeckungsquote und Testergebnis trennen"
+  ],
+  [
+    "code",
+    "text",
+    "Anweisungsüberdeckung = ausgeführte Anweisungen / betrachtete Anweisungen × 100\nZweigüberdeckung = ausgeführte Zweige / betrachtete Zweige × 100"
+  ],
+  [
+    "p",
+    "Eine ausgeführte Zeile ist noch kein korrekt geprüftes Ergebnis. Der Test braucht passende Erwartungen. Auch 100 Prozent Überdeckung schließen Fehler und fehlende Anforderungen nicht aus. Nicht erreichbare Pfade müssen erklärt werden."
+  ],
+  [
+    "table",
+    [
+      "Beispiel",
+      "Eingaben",
+      "Bedeutung"
+    ],
+    [
+      [
+        "if (a && b)",
+        "true/true und false/false",
+        "Entscheidung einmal wahr und einmal falsch"
+      ],
+      [
+        "Einzelbedingungen prüfen",
+        "Auch true/false und false/true betrachten",
+        "Fehler in Teilbedingungen gezielter erkennen"
+      ],
+      [
+        "Kurzschluss beachten",
+        "Bei a=false wird b möglicherweise nicht ausgewertet",
+        "Auswertung und logischen Wert unterscheiden"
+      ]
+    ]
+  ],
+  [
+    "qa",
+    "Ein Modul hat 40 betrachtete Anweisungen. 34 werden ausgeführt. Von zwölf Zweigen werden neun durchlaufen. **Berechnen** Sie beide Quoten. **Beurteilen** Sie die Fehlerfreiheit.",
+    [
+      "Anweisungsüberdeckung: 34 / 40 × 100 = **85 Prozent**. 1 Punkt.",
+      "Zweigüberdeckung: 9 / 12 × 100 = **75 Prozent**. 1 Punkt.",
+      "Die Quoten beweisen keine Fehlerfreiheit. Es fehlen zusätzlich Ergebnisse und Anforderungsnachweise. 1 Punkt."
+    ],
+    3
+  ],
+  [
+    "qa",
+    "**Berechnen** Sie M für den gezeichneten Rabattgraphen. **Unterscheiden** Sie Basispfade und alle Pfade.",
+    [
+      "E = 7, N = 6. M = 7 − 6 + 2 = **3**. 1 Punkt.",
+      "M beschreibt drei linear unabhängige Basispfade. 1 Punkt.",
+      "Der Graph hat trotzdem vier mögliche vollständige Start-Ende-Pfade. 1 Punkt."
+    ],
+    3
+  ],
+  [
+    "see",
+    [
+      "ps-testentwurf",
+      "ps-anforderungen"
+    ]
+  ]
+]);
 ;
 // content/ps/verifikation-1.js
 AP2.page('ps-verifikation', {
@@ -9239,6 +12096,255 @@ AP2.add('ps-verifikation', [
     {q: 'Zu welcher Art gehört das Code-Review?', o: ['Analytische Qualitätssicherung (statisch)', 'Konstruktive Maßnahme', 'Last-Test', 'Hardwareprüfung'], a: 0, e: 'Ein Review prüft vorhandenen Code ohne Ausführung: analytisch und statisch.'},
   ]],
 ]);
+;
+// content/ps/abnahme-1.js
+AP2.page('ps-abnahme', {
+  "b": "ps",
+  "g": "Qualitätssicherung",
+  "t": "Abnahme und Übergabe: Kriterien, Nachweise und Betriebsbereitschaft",
+  "d": "Die fachliche Abnahme bewertet die vereinbarten Ergebnisse. Die Übergabe macht den geregelten Betrieb möglich. Beide Schritte brauchen klare Kriterien, Verantwortliche und nachvollziehbare Nachweise.",
+  "m": "**Abnahme prüft vereinbarte Ergebnisse. Übergabe sichert den Betrieb.** Ein erfolgreiches Deployment allein ersetzt beide Schritte nicht.",
+  "cheat": [
+    [
+      "Vorbereitung",
+      [
+        "Abnahmekriterien und Zuständigkeit früh vereinbaren.",
+        "Testumgebung, Daten und Version festhalten.",
+        "Offene Befunde nach vereinbarten Regeln bewerten."
+      ]
+    ],
+    [
+      "Übergabe",
+      [
+        "Dokumentation und Schulung",
+        "Zugänge und Berechtigungen",
+        "Monitoring, Backup und Wiederherstellung",
+        "Support, Eskalation und Wartungsverantwortung"
+      ]
+    ]
+  ],
+  "blocks": [
+    [
+      "h",
+      "Szenario: Reservierungssoftware"
+    ],
+    [
+      "p",
+      "Die Lagerleitung prüft fachliche Kriterien. Der Betrieb prüft Wiederherstellung und Überwachung. Das Team dokumentiert den geprüften Stand. Eine spätere Version braucht passende neue Nachweise."
+    ],
+    [
+      "table",
+      [
+        "Kriterium",
+        "Nachweis",
+        "Ergebnis"
+      ],
+      [
+        [
+          "Keine Überbuchung",
+          "Paralleltest mit zwei Reservierungen",
+          "Bestanden"
+        ],
+        [
+          "p95 unter einer Sekunde bei 100 Nutzern",
+          "Lasttest mit freigegebenem Datenbestand",
+          "0,82 Sekunden"
+        ],
+        [
+          "Wiederanlauf innerhalb von 60 Minuten",
+          "Dokumentierte Wiederherstellungsprobe",
+          "48 Minuten"
+        ],
+        [
+          "Bedienung durch geschulte Lagerkraft",
+          "Drei vorgegebene Arbeitsabläufe",
+          "Ein offener Befund"
+        ]
+      ]
+    ],
+    [
+      "h",
+      "Ein Abnahmeprotokoll strukturieren"
+    ],
+    [
+      "table",
+      [
+        "Feld",
+        "Beispiel"
+      ],
+      [
+        [
+          "Gegenstand",
+          "Reservierungssoftware, Version 2.3; Dokumentstand 7"
+        ],
+        [
+          "Beteiligte",
+          "Auftraggebende Fachseite und verantwortliches Projektteam"
+        ],
+        [
+          "Grundlage",
+          "Vereinbarte Anforderungen und Testfälle"
+        ],
+        [
+          "Umgebung",
+          "Staging mit definierten Testdaten und Konfiguration"
+        ],
+        [
+          "Ergebnisse",
+          "Bestandene Tests und belegte Abweichungen"
+        ],
+        [
+          "Offene Punkte",
+          "Befundnummer, Auswirkung, Maßnahme, Zuständigkeit, Termin"
+        ],
+        [
+          "Entscheidung",
+          "Freigabe nach vereinbartem Verfahren oder Nachprüfung"
+        ],
+        [
+          "Bestätigung",
+          "Datum und dokumentierte Zustimmung zuständiger Personen"
+        ]
+      ]
+    ],
+    [
+      "note",
+      "Diese Seite behandelt den fachlichen Ablauf. Vertragliche Rechtsfolgen richten sich nach dem konkreten Vertrag. Eine technische Fehlerklasse ist keine automatische rechtliche Bewertung."
+    ],
+    [
+      "h",
+      "Befunde bewerten"
+    ],
+    [
+      "table",
+      [
+        "Befund",
+        "Auswirkung",
+        "Mögliche Entscheidung nach vereinbarten Kriterien"
+      ],
+      [
+        [
+          "Reservierung erzeugt negativen Bestand",
+          "Zentrale Geschäftsregel verletzt",
+          "Freigabe stoppen und nachtesten"
+        ],
+        [
+          "Hilfetext enthält Schreibfehler",
+          "Kernfunktion weiterhin nutzbar",
+          "Mit Termin zur Korrektur dokumentieren"
+        ],
+        [
+          "Backup wurde nie zurückgespielt",
+          "Wiederherstellbarkeit nicht nachgewiesen",
+          "Betriebsfreigabe bis zum Nachweis zurückstellen"
+        ]
+      ]
+    ],
+    [
+      "h",
+      "Betriebsübergabe als Checkliste"
+    ],
+    [
+      "list",
+      [
+        "Installations- und Konfigurationsanleitung mit Versionsstand bereitstellen.",
+        "Betriebshandbuch mit Start, Stopp und Diagnose übergeben.",
+        "Rollen, technische Konten und Geheimnisse sicher übertragen.",
+        "Backupplan und geprüften Restore-Ablauf dokumentieren.",
+        "Alarmierung mit Bereitschaft und Eskalation einrichten.",
+        "Supportkontakt und Wartungszuständigkeit festlegen.",
+        "Nutzer schulen und kurze Hilfe bereitstellen.",
+        "Offene Punkte mit Verantwortlichen und Terminen verfolgen."
+      ]
+    ],
+    [
+      "h",
+      "Messbare Freigabekriterien"
+    ],
+    [
+      "p",
+      "Ein Kriterium kann lauten: Alle priorisierten Kernabläufe bestehen den Abnahmetest. Kein Befund der vereinbarten höchsten Fehlerklasse bleibt offen. Die Wiederherstellungsprobe erfüllt das RTO. Die zuständigen Personen bestätigen die Nachweise."
+    ],
+    [
+      "warn",
+      "„Keine Fehler gemeldet“ beweist keine Fehlerfreiheit. Eine Abnahmeprüfung deckt nur ihre festgelegten Bedingungen ab. Offene Punkte brauchen eine bewusste Entscheidung, keine stille Übernahme."
+    ],
+    [
+      "tip",
+      "**Beurteilen** heißt: Kriterien anwenden und eine begründete Entscheidung treffen. **Nennen** heißt: kurze, passende Angaben reichen."
+    ],
+    [
+      "qa",
+      "Die Oberfläche funktioniert. Es gibt keine Restore-Probe und keinen Supportkontakt. **Beurteilen** Sie die Betriebsbereitschaft. **Nennen** Sie zwei fehlende Nachweise.",
+      [
+        "Die Oberfläche allein belegt keinen geregelten Betrieb. 1 Punkt.",
+        "Die Wiederherstellungsprobe muss zeigen, dass vereinbarte Wiederanlaufziele erreichbar sind. 1 Punkt.",
+        "Ein benannter Supportkontakt mit Eskalationsweg muss Störungen übernehmen können. 1 Punkt."
+      ],
+      3
+    ],
+    [
+      "qa",
+      "Ein kritischer Paralleltest scheitert. Alle anderen Tests bestehen. **Begründen** Sie eine Entscheidung. **Nennen** Sie drei nächste Schritte.",
+      [
+        "Keine Freigabe nach dem Kriterium „keine Überbuchung“, weil eine zentrale Geschäftsregel verletzt wird. 1 Punkt.",
+        "Fehler mit Daten, Version und Schritten dokumentieren. 1 Punkt.",
+        "Korrektur durch eine verantwortliche Person terminieren. 1 Punkt.",
+        "Fehlerfall und betroffene Regressionstests erneut ausführen. 1 Punkt."
+      ],
+      4
+    ],
+    [
+      "quiz",
+      [
+        {
+          "q": "Was gehört in ein Abnahmeprotokoll?",
+          "o": [
+            "Geprüfte Version und konkrete Ergebnisse",
+            "Nur ein Logo",
+            "Nur die private Telefonnummer aller Entwickler",
+            "Nur ein pauschales Lob"
+          ],
+          "a": 0,
+          "e": "Der Nachweis muss eindeutig zum geprüften Stand gehören."
+        },
+        {
+          "q": "Was ist für die Betriebsübergabe wichtig?",
+          "o": [
+            "Alarmierung und Zuständigkeit",
+            "Nur der Quelltext als Ausdruck",
+            "Nur die Farbauswahl",
+            "Keine Dokumentation"
+          ],
+          "a": 0,
+          "e": "Störungen benötigen eine handlungsfähige Zuständigkeit."
+        },
+        {
+          "q": "Wie behandelt man offene Punkte?",
+          "o": [
+            "Mit Auswirkung, Verantwortung und Termin dokumentieren",
+            "Aus dem Protokoll löschen",
+            "Ohne Prüfung als bestanden markieren",
+            "Nur mündlich vergessen"
+          ],
+          "a": 0,
+          "e": "Die Entscheidung muss nach vereinbarten Kriterien nachvollziehbar bleiben."
+        }
+      ]
+    ],
+    [
+      "see",
+      [
+        "ps-anforderungen",
+        "ps-testentwurf",
+        "ps-verifikation",
+        "ps-itsm",
+        "infra-backup",
+        "ps-aenderungen"
+      ]
+    ]
+  ]
+});
 ;
 // content/ps/dsgvo-1.js
 AP2.page('ps-dsgvo', {
@@ -9785,7 +12891,7 @@ AP2.add('ps-ide', [
 // content/ps/git-1.js
 AP2.page('ps-git', {
   b: 'ps', g: 'Entwicklungsumgebungen', t: 'Versionsverwaltung mit Git',
-  d: 'Eine **Versionsverwaltung** speichert **jede Änderung** am Quellcode mit Autor, Zeit und Beschreibung. **Git** ist ein **verteiltes** System: Jeder Entwickler hat eine **vollständige Kopie** (Repository) mit der ganzen Historie. Mit **Branches** (Zweigen) arbeitet man parallel, mit **Merge** führt man die Zweige wieder zusammen.',
+  d: 'Eine **Versionsverwaltung** speichert bewusst erfasste Quelltextstände mit Autor, Zeit und Beschreibung. **Git** ist ein **verteiltes** System: Jeder Entwickler hat eine **vollständige Kopie** (Repository) mit der ganzen Historie. Mit **Branches** (Zweigen) arbeitet man parallel, mit **Merge** führt man die Zweige wieder zusammen.',
   m: '**add - commit - push**: Änderung vormerken (add), lokal speichern (commit), zum Server hochladen (push). Gegenrichtung: **fetch/pull**. **Git ist nicht GitHub**: Git = Werkzeug, GitHub/GitLab = Plattform im Netz.',
   cheat: [
     ['Vier Bereiche', ['**Arbeitsverzeichnis:** deine Dateien', '**Staging Area (Index):** vorgemerkt für Commit', '**Lokales Repository:** gespeicherte Commits', '**Remote Repository:** Server (origin)']],
@@ -9796,7 +12902,7 @@ AP2.page('ps-git', {
   blocks: [
     ['h', 'Wozu Versionsverwaltung?'],
     ['p', 'Stell dir vor, drei Entwickler arbeiten am selben Projekt und schicken sich ZIP-Dateien per E-Mail. Wer hat die aktuelle Version? Was wurde geändert? Wie kommt man zum Stand von letzter Woche zurück? Eine **Versionsverwaltung** löst diese Probleme: Sie speichert alle Versionen, zeigt Unterschiede, erlaubt das **Zurückkehren** und ermöglicht **gleichzeitiges Arbeiten** ohne Überschreiben.'],
-    ['procon', 'Zentrale oder verteilte Versionsverwaltung?', ['**Verteilt (Git):** Arbeiten ohne Netzverbindung möglich, Historie lokal, schnell', '**Verteilt:** Server-Ausfall ist kein Datenverlust, jede Kopie ist ein Backup', '**Zentral (SVN):** einfaches Modell, klare Zugriffskontrolle'], ['**Verteilt:** Lernkurve (Branches, Merge, Rebase)', '**Zentral:** ohne Server nichts möglich, Branches umständlich', '**Zentral:** Historie nur auf dem Server']],
+    ['procon', 'Zentrale oder verteilte Versionsverwaltung?', ['**Verteilt (Git):** Arbeiten ohne Netzverbindung möglich, Historie lokal, schnell', '**Verteilt:** Verteilte Repository-Kopien können gespeicherte Historie erhalten. Sie ersetzen kein vollständiges Backup-Konzept.', '**Zentral (SVN):** einfaches Modell, klare Zugriffskontrolle'], ['**Verteilt:** Lernkurve (Branches, Merge, Rebase)', '**Zentral:** ohne Server nichts möglich, Branches umständlich', '**Zentral:** Historie nur auf dem Server']],
     ['h', 'Die vier Bereiche und der Weg einer Änderung'],
     ['diagram', {w: 760, h: 240, keep: 620, cap: 'Der Weg einer Änderung in Git. Oben: nach vorne, unten: zurückholen.', nodes: [
       {id: 'w', k: 'round', x: 90, y: 110, t: ['Arbeits-', 'verzeichnis'], w: 130, h: 64, s: 'soft'}, {id: 's', k: 'round', x: 270, y: 110, t: ['Staging Area', '(Index)'], w: 130, h: 64, s: 'accent'},
@@ -9805,9 +12911,9 @@ AP2.page('ps-git', {
       {a: 'w', b: 's', t: 'git add', lo: [0, -42], via: [[90, 50], [270, 50]]}, {a: 's', b: 'l', t: 'git commit', lo: [0, -42], via: [[270, 50], [460, 50]]}, {a: 'l', b: 'r', t: 'git push', lo: [0, -42], via: [[460, 50], [660, 50]]},
       {a: 'r', b: 'l', t: 'git fetch', lo: [0, 42], via: [[660, 175], [460, 175]]}, {a: 'l', b: 'w', t: 'git merge / pull', lo: [0, 42], via: [[460, 215], [90, 215]]},
     ]}],
-    ['steps', ['Du änderst Dateien im **Arbeitsverzeichnis**.', '`git add datei` merkt die Änderung für den nächsten Commit vor (**Staging**).', '`git commit -m "Beschreibung"` speichert einen **Schnappschuss** im lokalen Repository.', '`git push` lädt die Commits auf den **Server** (Remote).', '`git pull` (= `fetch` + `merge`) holt Änderungen anderer vom Server.']],
+    ['steps', ['Du änderst Dateien im **Arbeitsverzeichnis**.', '`git add datei` merkt die Änderung für den nächsten Commit vor (**Staging**).', '`git commit -m "Beschreibung"` speichert einen **Schnappschuss** im lokalen Repository.', '`git push` lädt die Commits auf den **Server** (Remote).', '`git pull` (Abruf plus Integration durch Merge oder Rebase, je Konfiguration) holt Änderungen anderer vom Server.']],
     ['h', 'Ein Commit'],
-    ['p', 'Ein **Commit** ist ein Schnappschuss des Projekts mit einer eindeutigen **ID** (Hash, zum Beispiel `a1b2c3d`), dem **Autor**, einem **Zeitstempel** und einer **Nachricht**. Jeder Commit kennt seinen **Vorgänger**. So entsteht die Historie als Kette. Gute Commit-Nachrichten sind kurz und sagen **was und warum**: "Fehler beim Runden der Mehrwertsteuer behoben".'],
+    ['p', 'Ein **Commit** ist ein Schnappschuss des Projekts mit einer eindeutigen **ID** (Hash, zum Beispiel `a1b2c3d`), dem **Autor**, einem **Zeitstempel** und einer **Nachricht**. Commits verweisen auf ihre Vorgänger. Der erste Commit hat keinen Vorgänger. Ein Merge-Commit kann mehrere Vorgänger haben. So entsteht ein gerichteter Graph. Gute Commit-Nachrichten sind kurz und sagen **was und warum**: "Fehler beim Runden der Mehrwertsteuer behoben".'],
     ['code', 'text', `$ git status
 Auf Branch main
 Änderungen, die nicht zum Commit vorgemerkt sind:
@@ -9821,6 +12927,73 @@ $ git commit -m "Mehrwertsteuer korrekt runden"
 $ git push origin main`],
   ],
 });
+
+AP2.add('ps-git', [
+  [
+    "h",
+    "Was ein Commit tatsächlich erfasst"
+  ],
+  [
+    "p",
+    "Git speichert den vorgemerkten Stand. Ändere ich eine Datei nach git add erneut, bleibt zunächst der vorher vorgemerkte Inhalt im Index. Vor dem Commit sollten deshalb Arbeitsstand und Index getrennt geprüft werden."
+  ],
+  [
+    "table",
+    [
+      "Schritt",
+      "Arbeitsverzeichnis",
+      "Index",
+      "Nächster Commit"
+    ],
+    [
+      [
+        "Datei auf A ändern",
+        "A",
+        "Vorheriger Stand",
+        "Vorheriger Stand"
+      ],
+      [
+        "git add datei",
+        "A",
+        "A",
+        "A"
+      ],
+      [
+        "Datei auf B ändern",
+        "B",
+        "A",
+        "A"
+      ],
+      [
+        "Erneut git add datei",
+        "B",
+        "B",
+        "B"
+      ]
+    ]
+  ],
+  [
+    "warn",
+    "Ein Repository ist keine vollständige Datensicherung des Arbeitsplatzes. Unversionierte Dateien, Secrets und externe Datenbanken fehlen normalerweise. Auch ein Server kann fehlerhaft oder kompromittiert sein."
+  ],
+  [
+    "qa",
+    "Eine Datei wird vorgemerkt und danach weiter bearbeitet. **Erläutern** Sie, welcher Stand im nächsten Commit landet. **Nennen** Sie zwei passende Prüfbefehle.",
+    [
+      "Der zum letzten git add vorgemerkte Stand landet im Commit. 1 Punkt.",
+      "git diff zeigt Änderungen zwischen Arbeitsverzeichnis und Index. 1 Punkt.",
+      "git diff --staged zeigt vorgemerkte Änderungen gegenüber HEAD. 1 Punkt."
+    ],
+    3
+  ],
+  [
+    "see",
+    [
+      "ps-cicd",
+      "ps-testarten"
+    ]
+  ]
+]);
 ;
 // content/ps/git-2.js
 AP2.add('ps-git', [
@@ -9857,7 +13030,7 @@ dann: git add rechnung.py  und  git commit`],
   ['steps', ['Neuen **Feature-Branch** aus main anlegen.', 'Änderungen committen und den Branch **pushen**.', 'Auf der Plattform (GitHub, GitLab) einen **Pull Request** (GitLab: Merge Request) eröffnen.', 'Kollegen führen ein **Code-Review** durch, automatische Tests laufen (**CI**, Continuous Integration).', 'Nach Freigabe wird in **main gemergt**, der Branch gelöscht.']],
   ['h', 'Wichtige Dateien und Befehle'],
   ['table', ['Befehl / Datei', 'Bedeutung'], [
-    ['`.gitignore`', 'Liste von Dateien und Ordnern, die Git ignorieren soll (Build-Ergebnisse, Passwörter, `node_modules`). **Geheimnisse wie Passwörter nie committen!**'],
+    ['`.gitignore`', 'Muster für unversionierte Dateien wie Build-Ergebnisse und `node_modules`. Bereits versionierte Dateien bleiben erfasst. **Geheimnisse nie committen!**'],
     ['`git log --oneline`', 'Kurze Historie anzeigen'],
     ['`git diff`', 'Unterschiede anzeigen'],
     ['`git stash`', 'Änderungen vorübergehend zwischenspeichern'],
@@ -9878,11 +13051,613 @@ AP2.add('ps-git', [
   ['quiz', [
     {q: 'Was ist Git?', o: ['Ein verteiltes Versionsverwaltungssystem', 'Eine Programmiersprache', 'Eine Datenbank', 'Ein Betriebssystem'], a: 0, e: 'Git speichert die Historie von Dateien in verteilten Repositories.'},
     {q: 'Mit welchem Befehl merkt man Änderungen für den nächsten Commit vor?', o: ['git add', 'git push', 'git clone', 'git merge'], a: 0, e: '`git add` überträgt Änderungen in die Staging Area.'},
-    {q: 'Was bewirkt git pull?', o: ['Holt Änderungen vom Server und führt sie ein (fetch plus merge)', 'Lädt lokale Commits hoch', 'Löscht das Repository', 'Erstellt einen Branch'], a: 0, e: 'pull = fetch + merge.'},
+    {q: 'Was bewirkt git pull?', o: ['Holt Änderungen vom Server und integriert sie durch Merge oder Rebase', 'Lädt lokale Commits hoch', 'Löscht das Repository', 'Erstellt einen Branch'], a: 0, e: 'pull ruft ab und integriert. Die Integration kann Merge oder Rebase verwenden.'},
     {q: 'Was ist ein Branch?', o: ['Ein paralleler Entwicklungszweig', 'Ein Backup auf USB', 'Eine Datei', 'Ein Passwort'], a: 0, e: 'Branches erlauben paralleles Arbeiten ohne den Hauptzweig zu stören.'},
-    {q: 'Wofür dient .gitignore?', o: ['Dateien festlegen, die nicht versioniert werden', 'Passwörter speichern', 'Commits löschen', 'Branches umbenennen'], a: 0, e: 'In .gitignore stehen Muster für Dateien, die Git ignorieren soll.'},
+    {q: 'Wofür dient .gitignore?', o: ['Ignoriermuster für unversionierte Dateien festlegen', 'Passwörter speichern', 'Commits löschen', 'Branches umbenennen'], a: 0, e: 'Die Muster betreffen unversionierte Dateien. Bereits versionierte Dateien bleiben erfasst.'},
   ]],
 ]);
+
+AP2.add('ps-git', [
+  [
+    "h",
+    "Geheimnis versehentlich veröffentlicht"
+  ],
+  [
+    "steps",
+    [
+      "Betroffenen Schlüssel sofort sperren oder rotieren.",
+      "Nutzung und mögliche Zugriffe untersuchen.",
+      "Geheimnis aus dem aktuellen Stand entfernen und sichere Übergabe einrichten.",
+      "Gegebenenfalls Historienbereinigung mit allen Beteiligten abstimmen.",
+      "Scans und sichere Abläufe gegen Wiederholung einrichten."
+    ]
+  ],
+  [
+    "warn",
+    "Ein späteres Löschen der Datei oder ein Eintrag in .gitignore macht einen veröffentlichten Schlüssel nicht wieder geheim. .gitignore entfernt keine bereits versionierten Inhalte."
+  ],
+  [
+    "qa",
+    "Ein Zugangsschlüssel steht in einem alten Commit. **Begründen** Sie die zuerst nötige Maßnahme. **Nennen** Sie zwei weitere Schritte.",
+    [
+      "Den Schlüssel sperren oder rotieren, weil Kopien bereits außerhalb der eigenen Kontrolle sein können. 1 Punkt.",
+      "Nutzung des Schlüssels und betroffene Systeme untersuchen. 1 Punkt.",
+      "Secret-Verwaltung und Repository-Scans einrichten. 1 Punkt."
+    ],
+    3
+  ],
+  [
+    "see",
+    [
+      "infra-websec",
+      "ps-cicd"
+    ]
+  ]
+]);
+;
+// content/ps/cicd-1.js
+AP2.page('ps-cicd', {
+  "b": "ps",
+  "g": "Entwicklungsumgebungen",
+  "t": "CI/CD: Pipeline, Freigabe, Deployment und Rückfall",
+  "d": "Continuous Integration integriert Änderungen häufig und prüft sie automatisiert. Continuous Delivery hält geprüfte Software auslieferbar. Continuous Deployment spielt erfolgreiche Änderungen automatisch produktiv ein.",
+  "m": "**Integration prüfen → Artefakt erstellen → ausliefern → Betrieb beobachten.** Deployment und fachliche Freigabe können getrennte Schritte sein.",
+  "cheat": [
+    [
+      "Begriffe",
+      [
+        "Artefakt: versioniertes auslieferbares Ergebnis",
+        "Pipeline: automatisierte Folge von Schritten",
+        "Staging: produktionsähnliche Prüfumgebung",
+        "Rollback: Rückkehr zu einem vorherigen Stand"
+      ]
+    ],
+    [
+      "Gates",
+      [
+        "Automatisierte Tests und Analyse",
+        "Sicherheitsprüfungen und Review",
+        "Nachvollziehbare Freigabe",
+        "Gesundheitsprüfung nach dem Start"
+      ]
+    ]
+  ],
+  "blocks": [
+    [
+      "h",
+      "Eine sinnvolle Pipeline"
+    ],
+    [
+      "table",
+      [
+        "Stufe",
+        "Prüfung oder Ergebnis",
+        "Bei Fehler"
+      ],
+      [
+        [
+          "Quellstand",
+          "Version und Abhängigkeiten sind festgelegt",
+          "Nicht weiter ausliefern"
+        ],
+        [
+          "Schnelle Prüfungen",
+          "Syntax, statische Analyse und Unit-Tests",
+          "Entwicklung informiert"
+        ],
+        [
+          "Build",
+          "Versioniertes Artefakt mit Prüfsumme",
+          "Kein unfertiges Artefakt nutzen"
+        ],
+        [
+          "Integration",
+          "Datenbank und externe Verträge prüfen",
+          "Auslieferung stoppen"
+        ],
+        [
+          "Staging",
+          "Kritische Abläufe und Migration prüfen",
+          "Fehler beheben"
+        ],
+        [
+          "Freigabe",
+          "Verantwortliche akzeptieren den geprüften Stand",
+          "Warten oder verwerfen"
+        ],
+        [
+          "Produktion",
+          "Gesundheitsprüfung und Monitoring",
+          "Rückfall oder gezielte Reparatur"
+        ]
+      ]
+    ],
+    [
+      "p",
+      "Die konkrete Reihenfolge hängt vom Projekt ab. Kleine, schnelle Prüfungen sollten früh laufen. Das geprüfte Artefakt wird möglichst unverändert weitergereicht. Eine neue Übersetzung kann sonst einen anderen Inhalt erzeugen."
+    ],
+    [
+      "h",
+      "Delivery und Deployment unterscheiden"
+    ],
+    [
+      "table",
+      [
+        "Begriff",
+        "Automatisiert",
+        "Produktionsentscheidung"
+      ],
+      [
+        [
+          "Continuous Integration",
+          "Integrieren und Prüfen",
+          "Noch keine notwendige Auslieferung"
+        ],
+        [
+          "Continuous Delivery",
+          "Prüfen und auslieferbaren Stand vorbereiten",
+          "Kann bewusst manuell freigegeben werden"
+        ],
+        [
+          "Continuous Deployment",
+          "Auch produktive Auslieferung nach erfolgreichen Prüfungen",
+          "Automatisch durch definierte Regeln"
+        ]
+      ]
+    ],
+    [
+      "h",
+      "Deployment-Strategien"
+    ],
+    [
+      "table",
+      [
+        "Strategie",
+        "Ablauf",
+        "Abwägung"
+      ],
+      [
+        [
+          "Rolling",
+          "Instanzen schrittweise ersetzen",
+          "Spart Zusatzkapazität; alte und neue Version laufen gleichzeitig"
+        ],
+        [
+          "Blue-Green",
+          "Zwei Umgebungen; Verkehr auf neue Version umschalten",
+          "Schneller Wechsel; mehr Kapazität und gemeinsame Daten beachten"
+        ],
+        [
+          "Canary",
+          "Zunächst kleiner Anteil des Verkehrs auf neue Version",
+          "Risiko begrenzen; Messung und Routing erforderlich"
+        ]
+      ]
+    ],
+    [
+      "h",
+      "Datenänderungen können Rollbacks verhindern"
+    ],
+    [
+      "p",
+      "Version zwei entfernt eine Spalte. Version eins benötigt diese Spalte noch. Ein Zurückschalten des Programms reicht dann nicht. Datenbankänderungen müssen mit dem Rückfallplan vereinbar sein."
+    ],
+    [
+      "steps",
+      [
+        "Neue Spalte ergänzen, ohne die alte sofort zu entfernen.",
+        "Kompatiblen Anwendungscode ausliefern.",
+        "Bestehende Daten kontrolliert übertragen und prüfen.",
+        "Nutzung umstellen und beobachten.",
+        "Alte Struktur erst nach der Übergangszeit entfernen."
+      ]
+    ],
+    [
+      "note",
+      "Dieses Vorgehen heißt Expand–Migrate–Contract. Rückfälle müssen auch Daten und zwischenzeitliche Schreibzugriffe berücksichtigen. Ein Datenbank-Backup zurückzuspielen kann neue Geschäftsdaten verlieren."
+    ],
+    [
+      "h",
+      "Geprüfte Rückfallentscheidung"
+    ],
+    [
+      "table",
+      [
+        "Signal",
+        "Beispiel für eine vorher vereinbarte Regel"
+      ],
+      [
+        [
+          "Fehlerquote",
+          "Über zwei Prozent für fünf Minuten"
+        ],
+        [
+          "Kritischer Ablauf",
+          "Reservierung scheitert beim Smoke-Test"
+        ],
+        [
+          "Datenintegrität",
+          "Bestand wird negativ"
+        ],
+        [
+          "Verantwortung",
+          "Betriebsverantwortliche Person entscheidet nach Runbook"
+        ],
+        [
+          "Nachweis",
+          "Version, Zeitpunkt, Messwerte und Entscheidung protokollieren"
+        ]
+      ]
+    ],
+    [
+      "warn",
+      "Grüne Tests beweisen keine vollständige Fehlerfreiheit. Pipeline-Zugangsdaten benötigen minimale Rechte. Ungeprüfte Fremdänderungen dürfen keine produktiven Secrets erhalten."
+    ],
+    [
+      "qa",
+      "**Unterscheiden** Sie Continuous Integration, Delivery und Deployment mit je einer Aussage.",
+      [
+        "CI integriert und prüft Änderungen häufig automatisiert.",
+        "Delivery hält einen geprüften Stand jederzeit auslieferbar; die Produktionsfreigabe kann manuell sein.",
+        "Deployment liefert erfolgreiche Änderungen automatisch produktiv aus.",
+        "Je zutreffender Abgrenzung 1 Punkt."
+      ],
+      3
+    ],
+    [
+      "qa",
+      "Nach einem Update steigt die Fehlerquote. Die neue Version hat eine Spalte gelöscht. **Erläutern** Sie das Rollback-Problem. **Nennen** Sie drei vorbereitende Maßnahmen.",
+      [
+        "Die alte Programmversion kann mit der veränderten Datenbank scheitern. 1 Punkt.",
+        "Kompatible Datenbankmigrationen mit Übergangsphase planen. 1 Punkt.",
+        "Rollback und Datenwiederherstellung vorher in Staging prüfen. 1 Punkt.",
+        "Messbare Rückfallkriterien und eine verantwortliche Person festlegen. 1 Punkt."
+      ],
+      4
+    ],
+    [
+      "quiz",
+      [
+        {
+          "q": "Was ist ein Artefakt?",
+          "o": [
+            "Ein versioniertes auslieferbares Ergebnis",
+            "Nur eine ungespeicherte Idee",
+            "Ein Produktionspasswort",
+            "Ein Besprechungstermin"
+          ],
+          "a": 0,
+          "e": "Beispiele sind Pakete oder Container-Images."
+        },
+        {
+          "q": "Was kennzeichnet Canary Deployment?",
+          "o": [
+            "Zunächst nur ein kleiner Verkehrsanteil nutzt die neue Version",
+            "Alle alten Daten werden sofort gelöscht",
+            "Es gibt keine Überwachung",
+            "Nur die Dokumentation ändert sich"
+          ],
+          "a": 0,
+          "e": "So kann das Team Auffälligkeiten vor einer breiten Auslieferung erkennen."
+        },
+        {
+          "q": "Was ist ein Smoke-Test nach dem Deployment?",
+          "o": [
+            "Kurze Prüfung zentraler Funktionen",
+            "Eine vollständige Anforderungserhebung",
+            "Nur ein Quelltextvergleich",
+            "Ein Hardware-Stresstest mit Hitze"
+          ],
+          "a": 0,
+          "e": "Er prüft, ob wesentliche Abläufe grundsätzlich funktionieren."
+        }
+      ]
+    ],
+    [
+      "see",
+      [
+        "ps-git",
+        "ps-testarten",
+        "infra-container",
+        "infra-monitoring",
+        "ps-migration",
+        "ps-abnahme"
+      ]
+    ]
+  ]
+});
+;
+// content/ps/migration-1.js
+AP2.page('ps-migration', {
+  "b": "ps",
+  "g": "Datenbanken",
+  "t": "Datenmigration: Mapping, Probelauf, Abgleich und Umstellung",
+  "d": "Eine Migration überführt Daten in ein neues System. Formate, Schlüssel und Fachbedeutungen müssen zusammenpassen. Ein erfolgreicher Import allein beweist noch keine korrekte Migration.",
+  "m": "**Extrahieren → umformen → laden → fachlich abgleichen.** Vor der Umstellung braucht das Team einen Rückfallplan und klare Freigabekriterien.",
+  "cheat": [
+    [
+      "Vorbereitung",
+      [
+        "Quellen, Datenmenge und Verantwortliche klären.",
+        "Felder und Regeln zuordnen: Mapping.",
+        "Dubletten und ungültige Werte behandeln.",
+        "Probelauf mit realistischen Daten durchführen."
+      ]
+    ],
+    [
+      "Kontrolle",
+      [
+        "Anzahlen und Summen vergleichen.",
+        "Schlüsselbeziehungen prüfen.",
+        "Fehlerlisten bearbeiten.",
+        "Fachliche Stichproben und Abschlussfreigabe dokumentieren."
+      ]
+    ]
+  ],
+  "blocks": [
+    [
+      "h",
+      "Szenario: Kundendaten übernehmen"
+    ],
+    [
+      "table",
+      [
+        "Altsystem",
+        "Zielsystem",
+        "Umwandlungsregel"
+      ],
+      [
+        [
+          "KundenNr",
+          "kunde_id",
+          "Alte ID über Zuordnungstabelle auf neue ID abbilden"
+        ],
+        [
+          "NameKomplett",
+          "anzeigename",
+          "Nicht unkontrolliert in Vorname und Nachname zerlegen"
+        ],
+        [
+          "UmsatzCent",
+          "umsatz_euro",
+          "Durch 100 teilen; exakt als Dezimalzahl verarbeiten"
+        ],
+        [
+          "Aktiv: J/N",
+          "aktiv: Boolean",
+          "J → wahr; N → falsch; andere Werte in Fehlerliste"
+        ],
+        [
+          "Datum: TT.MM.JJJJ",
+          "Datum: JJJJ-MM-TT",
+          "Kalenderdatum prüfen und umformatieren"
+        ]
+      ]
+    ],
+    [
+      "h",
+      "ETL erklären"
+    ],
+    [
+      "list",
+      [
+        "Extract: Quelldaten kontrolliert lesen.",
+        "Transform: Daten nach dokumentierten Regeln bereinigen und umformen.",
+        "Load: Daten mit passenden Schlüsseln in das Ziel laden.",
+        "Für jeden Schritt Anzahl, Version und Fehler protokollieren."
+      ]
+    ],
+    [
+      "h",
+      "Fehler transparent behandeln"
+    ],
+    [
+      "p",
+      "Die Quelle enthält 12.000 Kundensätze. 300 zusätzliche Dublettensätze werden regelbasiert zusammengeführt. 120 andere Sätze fehlen Pflichtdaten. Diese 120 Sätze werden zurückgestellt. Die Gruppen überschneiden sich laut Anlage nicht."
+    ],
+    [
+      "walk",
+      {
+        "t": "Erwartete Zielanzahl",
+        "steps": [
+          {
+            "t": "Dubletten berücksichtigen",
+            "b": [
+              [
+                "p",
+                "12.000 − 300 zusätzliche Dublettensätze = **11.700 eindeutige Datensätze**."
+              ]
+            ]
+          },
+          {
+            "t": "Zurückgestellte Fälle abziehen",
+            "b": [
+              [
+                "p",
+                "11.700 − 120 = **11.580 geladene Datensätze**."
+              ]
+            ]
+          },
+          {
+            "t": "Vollständigkeit nachweisen",
+            "b": [
+              [
+                "p",
+                "11.580 + 300 + 120 = **12.000 Quellsätze**."
+              ],
+              [
+                "p",
+                "Die 120 offenen Fälle bleiben mit Grund und Zuständigkeit dokumentiert."
+              ]
+            ]
+          }
+        ]
+      }
+    ],
+    [
+      "warn",
+      "Dubletten dürfen nicht ohne fachliche Regel gelöscht werden. Zwei gleiche Namen können verschiedene Personen bezeichnen. Fremdschlüssel aus Bestellungen müssen auf die richtige neue Kunden-ID zeigen."
+    ],
+    [
+      "h",
+      "Kontrollen kombinieren"
+    ],
+    [
+      "table",
+      [
+        "Kontrolle",
+        "Findet",
+        "Findet allein nicht sicher"
+      ],
+      [
+        [
+          "Anzahlvergleich",
+          "Fehlende oder zusätzliche Sätze",
+          "Vertauschte Werte bei gleicher Anzahl"
+        ],
+        [
+          "Summenvergleich",
+          "Abweichende Gesamtbeträge",
+          "Gegenseitig ausgleichende Fehler"
+        ],
+        [
+          "Referenzprüfung",
+          "Verwaiste Fremdschlüssel",
+          "Fachlich falsche, aber existierende Zuordnung"
+        ],
+        [
+          "Stichprobe",
+          "Fachliche Fehler in ausgewählten Fällen",
+          "Jeden Fehler im Gesamtbestand"
+        ],
+        [
+          "Vollständiger Feldvergleich nach Mapping",
+          "Abweichungen der verglichenen Inhalte",
+          "Fehlerhafte Mapping-Vorgaben"
+        ]
+      ]
+    ],
+    [
+      "h",
+      "Umstellungsplan"
+    ],
+    [
+      "table",
+      [
+        "Schritt",
+        "Warum nötig?"
+      ],
+      [
+        [
+          "Probelauf und Laufzeit messen",
+          "Zeitfenster und Fehler vorher kennen"
+        ],
+        [
+          "Schreibsperre oder kontrollierte Deltaübernahme",
+          "Änderungen während des Exports nicht verlieren"
+        ],
+        [
+          "Letzte Sicherung und Wiederherstellung prüfen",
+          "Rückkehr zu konsistentem Zustand ermöglichen"
+        ],
+        [
+          "Import und Abgleich durchführen",
+          "Korrekte Datenübernahme nachweisen"
+        ],
+        [
+          "Go-/No-Go-Entscheidung treffen",
+          "Freigabe an messbare Kriterien binden"
+        ],
+        [
+          "Neues System öffnen und überwachen",
+          "Fehler früh erkennen"
+        ],
+        [
+          "Altbestand kontrolliert vorhalten",
+          "Nachfragen und Rückfall ermöglichen"
+        ]
+      ]
+    ],
+    [
+      "p",
+      "Eine Deltaübernahme überträgt nur Änderungen seit einem definierten Stand. Sie benötigt eine verlässliche Änderungserkennung. Löschungen und mehrfache Änderungen müssen ebenfalls berücksichtigt werden."
+    ],
+    [
+      "tip",
+      "**Entwerfen** verlangt einen ausführbaren Ablauf mit Kontrollen. **Berechnen** verlangt Zwischenschritte und eine erkennbare Mengenbilanz."
+    ],
+    [
+      "qa",
+      "**Berechnen** Sie die Zielanzahl aus der Anlage. **Nennen** Sie zwei zusätzliche Qualitätsprüfungen.",
+      [
+        "12.000 − 300 − 120 = **11.580**. 1 Punkt.",
+        "Bilanz: 11.580 geladen + 300 zusammengeführt + 120 zurückgestellt = 12.000. 1 Punkt.",
+        "Summen nach dokumentierter Cent-Euro-Umrechnung vergleichen. 1 Punkt.",
+        "Fremdschlüssel der Bestellungen auf neue Kunden-IDs prüfen. 1 Punkt."
+      ],
+      4
+    ],
+    [
+      "qa",
+      "Während des Exports können Kunden weiter Bestellungen erfassen. **Erläutern** Sie das Risiko. **Nennen** Sie zwei Lösungen und einen Rückfallaspekt.",
+      [
+        "Änderungen nach dem Exportstand können im neuen System fehlen. 1 Punkt.",
+        "Lösung: vereinbarte Schreibpause mit klarer Kommunikation. 1 Punkt.",
+        "Alternativ: konsistenter Export und kontrollierte Deltaübernahme. 1 Punkt.",
+        "Rückfall muss auch neue Schreibzugriffe nach der Umstellung erhalten oder kontrolliert zurückübertragen. 1 Punkt."
+      ],
+      4
+    ],
+    [
+      "quiz",
+      [
+        {
+          "q": "Was beschreibt ein Mapping?",
+          "o": [
+            "Die Zuordnung und Umwandlung von Quell- zu Zielfeldern",
+            "Nur die Anzahl der Server",
+            "Eine Bilddatei",
+            "Ein Backup-Passwort"
+          ],
+          "a": 0,
+          "e": "Mapping legt auch Einheiten und Bedeutungen fest."
+        },
+        {
+          "q": "Reicht ein gleicher Zeilenzähler als Nachweis?",
+          "o": [
+            "Nein, Werte können trotzdem falsch sein",
+            "Ja, immer",
+            "Ja, wenn die Datei groß ist",
+            "Nur ohne Fremdschlüssel"
+          ],
+          "a": 0,
+          "e": "Ergänze Inhalts-, Summen- und Beziehungskontrollen."
+        },
+        {
+          "q": "Was bedeutet Deltaübernahme?",
+          "o": [
+            "Änderungen seit einem definierten Stand übernehmen",
+            "Jedes Mal nur die erste Zeile übernehmen",
+            "Alle Schlüssel löschen",
+            "Nur das neue Programm kopieren"
+          ],
+          "a": 0,
+          "e": "Auch gelöschte Datensätze und wiederholte Änderungen müssen geregelt werden."
+        }
+      ]
+    ],
+    [
+      "see",
+      [
+        "ps-dbzugriff",
+        "ps-schnittstellen",
+        "ps-abnahme",
+        "infra-backup",
+        "ps-risiko"
+      ]
+    ]
+  ]
+});
 ;
 // content/ps/kostenarten-1.js
 AP2.page('ps-kostenarten', {
@@ -10208,6 +13983,280 @@ AP2.page('ps-beschaffung', {
   ],
 });
 ;
+// content/ps/nutzwert-1.js
+AP2.page('ps-nutzwert', {
+  "b": "ps",
+  "g": "Kaufmännische Rechnungen",
+  "t": "Nutzwertanalyse: Gewichten, rechnen und Entscheidungen begründen",
+  "d": "Eine Nutzwertanalyse vergleicht Alternativen anhand gewichteter Kriterien. Punkte machen Bewertungen nachvollziehbar. Das Ergebnis hängt jedoch von Kriterien, Gewichten und belastbaren Bewertungen ab.",
+  "m": "**Erst Muss-Kriterien prüfen. Dann gewichten und bewerten.** Hohe Punktwerte müssen bei allen Kriterien dieselbe Bedeutung haben.",
+  "cheat": [
+    [
+      "Rechenweg",
+      [
+        "Gewichte zusammen: 100 Prozent",
+        "Gewicht als Dezimalzahl × Bewertung",
+        "Teilwerte je Alternative addieren",
+        "Ergebnis und Grenzen begründen"
+      ]
+    ],
+    [
+      "Grenzen",
+      [
+        "Bewertungen können subjektiv sein.",
+        "Ähnliche Kriterien nicht doppelt zählen.",
+        "Kosten und Nutzen getrennt nachvollziehbar dokumentieren."
+      ]
+    ]
+  ],
+  "blocks": [
+    [
+      "h",
+      "Szenario: Ticketsystem auswählen"
+    ],
+    [
+      "p",
+      "Drei Lösungen erfüllen den vereinbarten Funktionsumfang. Eine vierte Lösung scheidet vorher aus. Sie unterstützt den erforderlichen Datenexport nicht. Das ist ein Muss-Kriterium."
+    ],
+    [
+      "table",
+      [
+        "Kriterium",
+        "Gewicht",
+        "A: Eigenentwicklung",
+        "B: Standardsoftware",
+        "C: Cloud-Dienst"
+      ],
+      [
+        [
+          "Funktionsabdeckung",
+          "40 Prozent",
+          "5",
+          "4",
+          "3"
+        ],
+        [
+          "Bedienbarkeit",
+          "30 Prozent",
+          "3",
+          "4",
+          "5"
+        ],
+        [
+          "Wartbarkeit",
+          "20 Prozent",
+          "2",
+          "4",
+          "5"
+        ],
+        [
+          "Einführungsgeschwindigkeit",
+          "10 Prozent",
+          "1",
+          "4",
+          "5"
+        ]
+      ]
+    ],
+    [
+      "p",
+      "Die Skala reicht von eins bis fünf. Fünf bedeutet immer die beste Eignung. Alle Zahlen sind begründete Aufgabenwerte. Geldbeträge werden nicht direkt mit Punkten addiert."
+    ],
+    [
+      "walk",
+      {
+        "t": "Gewichteten Nutzwert berechnen",
+        "steps": [
+          {
+            "t": "Gewichte prüfen",
+            "b": [
+              [
+                "p",
+                "40 + 30 + 20 + 10 = **100 Prozent**."
+              ]
+            ]
+          },
+          {
+            "t": "Teilwerte berechnen",
+            "b": [
+              [
+                "table",
+                [
+                  "Alternative",
+                  "Rechnung",
+                  "Nutzwert"
+                ],
+                [
+                  [
+                    "A",
+                    "0,40×5 + 0,30×3 + 0,20×2 + 0,10×1",
+                    "3,40"
+                  ],
+                  [
+                    "B",
+                    "0,40×4 + 0,30×4 + 0,20×4 + 0,10×4",
+                    "4,00"
+                  ],
+                  [
+                    "C",
+                    "0,40×3 + 0,30×5 + 0,20×5 + 0,10×5",
+                    "4,20"
+                  ]
+                ]
+              ]
+            ]
+          },
+          {
+            "t": "Entscheidung begründen",
+            "b": [
+              [
+                "p",
+                "C erreicht mit **4,20 Punkten** den höchsten Nutzwert."
+              ],
+              [
+                "p",
+                "B liegt nur 0,20 Punkte dahinter. Prüfe deshalb empfindliche Annahmen und Gesamtkosten."
+              ]
+            ]
+          }
+        ]
+      }
+    ],
+    [
+      "h",
+      "Sensitivitätsanalyse"
+    ],
+    [
+      "p",
+      "Sensitivität bedeutet Empfindlichkeit. Die Fachabteilung erhöht das Gewicht der Funktionsabdeckung auf 60 Prozent. Bedienbarkeit erhält 20 Prozent. Wartbarkeit erhält 15 Prozent. Einführungsgeschwindigkeit erhält fünf Prozent."
+    ],
+    [
+      "table",
+      [
+        "Alternative",
+        "Neue Rechnung",
+        "Neuer Nutzwert"
+      ],
+      [
+        [
+          "A",
+          "0,60×5 + 0,20×3 + 0,15×2 + 0,05×1",
+          "3,95"
+        ],
+        [
+          "B",
+          "0,60×4 + 0,20×4 + 0,15×4 + 0,05×4",
+          "4,00"
+        ],
+        [
+          "C",
+          "0,60×3 + 0,20×5 + 0,15×5 + 0,05×5",
+          "3,80"
+        ]
+      ]
+    ],
+    [
+      "p",
+      "Jetzt gewinnt B. Die Rangfolge ist also nicht stabil. Die Beteiligten müssen die Gewichtung gemeinsam begründen. Die Analyse unterstützt die Entscheidung; sie macht Annahmen sichtbar."
+    ],
+    [
+      "h",
+      "Kosten als Kriterium richtig behandeln"
+    ],
+    [
+      "p",
+      "Bei Kosten ist ein kleinerer Eurobetrag meist besser. Die Punkteskala muss dies umkehren. Beispiel: Bis 20.000 Euro ergeben fünf Punkte. Über 60.000 Euro ergibt ein Punkt. Grenzen vor der Bewertung festlegen."
+    ],
+    [
+      "warn",
+      "Ein Muss-Kriterium darf nicht durch gute Werte anderer Kriterien ausgeglichen werden. Eine Punktesumme beweist keine objektiv beste Lösung. Bewertungen benötigen Quellen oder nachvollziehbare Tests."
+    ],
+    [
+      "h",
+      "Prüfungsantwort aufbauen"
+    ],
+    [
+      "steps",
+      [
+        "Ausschlusskriterien nennen und prüfen.",
+        "Kriterien und Skala erklären.",
+        "Gewichte auf 100 Prozent prüfen.",
+        "Teilwerte und Summe mit Rechenweg angeben.",
+        "Sieger mit Szenariobezug nennen.",
+        "Empfindliche Annahmen und Kostenvergleich ergänzen."
+      ]
+    ],
+    [
+      "qa",
+      "**Berechnen** Sie den ursprünglichen Nutzwert für B und C. **Begründen** Sie eine Empfehlung. **Nennen** Sie eine Grenze.",
+      [
+        "B: 0,4×4 + 0,3×4 + 0,2×4 + 0,1×4 = **4,00**. 1 Punkt.",
+        "C: 0,4×3 + 0,3×5 + 0,2×5 + 0,1×5 = **4,20**. 1 Punkt.",
+        "C ist nach dieser Gewichtung vorzuziehen, weil der Nutzwert höher liegt. 1 Punkt.",
+        "Andere Gewichte oder unsichere Bewertungen können die Rangfolge ändern. 1 Punkt."
+      ],
+      4
+    ],
+    [
+      "qa",
+      "Eine Lösung erfüllt die zwingende Schnittstelle nicht. Sie erreicht dennoch die höchste Punktzahl. **Beurteilen** Sie ihre Auswahl.",
+      [
+        "Die Lösung scheidet am Muss-Kriterium aus. 1 Punkt.",
+        "Punkte aus anderen Kriterien dürfen das fehlende Muss-Kriterium nicht kompensieren. 1 Punkt.",
+        "Soll die Bedingung geändert werden, ist vorher eine bewusste fachliche Entscheidung erforderlich. 1 Punkt."
+      ],
+      3
+    ],
+    [
+      "quiz",
+      [
+        {
+          "q": "Wie wird ein gewichteter Teilwert berechnet?",
+          "o": [
+            "Gewicht × Bewertung",
+            "Gewicht + Eurobetrag",
+            "Bewertung / Anbieterzahl",
+            "Alle Punkte ohne Gewicht addieren"
+          ],
+          "a": 0,
+          "e": "Bei 30 Prozent und vier Punkten ergibt sich 0,30 × 4 = 1,20."
+        },
+        {
+          "q": "Was zeigt eine wechselnde Rangfolge bei kleinen Änderungen?",
+          "o": [
+            "Die Entscheidung ist empfindlich gegenüber den Annahmen",
+            "Die Rechnung ist automatisch falsch",
+            "Es darf keinen Sieger geben",
+            "Alle Kosten sind gleich"
+          ],
+          "a": 0,
+          "e": "Eine Sensitivitätsanalyse macht diese Abhängigkeit sichtbar."
+        },
+        {
+          "q": "Wie viele Punkte ergeben 25 Prozent mit Bewertung vier?",
+          "o": [
+            "1,00",
+            "100",
+            "4,25",
+            "0,25"
+          ],
+          "a": 0,
+          "e": "0,25 × 4 = 1,00."
+        }
+      ]
+    ],
+    [
+      "see",
+      [
+        "ps-beschaffung",
+        "ps-tco",
+        "ps-anforderungen",
+        "ps-risiko"
+      ]
+    ]
+  ]
+});
+;
 // content/ps/tco-1.js
 AP2.page('ps-tco', {
   b: 'ps', g: 'Kaufmännische Rechnungen', t: 'TCO, Make-or-Buy, Outsourcing und Cloud',
@@ -10233,20 +14282,20 @@ AP2.page('ps-tco', {
       ['Managed Server', '29 € · 48 Monate + 39 €', '**1.431 €**'],
     ]],
     ['p', 'Die **Miete ist deutlich günstiger**. Weitere Punkte für die Entscheidung:'],
-    ['procon', 'Managed Server / Cloud mieten', ['Professioneller Anbieter: **hohe Verfügbarkeit**, redundante Hardware, automatischer Hardwaretausch', 'Administration und Updates übernimmt der Anbieter (kein eigenes Know-how nötig)', 'Aktuelle Sicherheitstechnik und SSL-Zertifikat inklusive', 'Kosten **planbar** (monatliche Rate), keine Anfangsinvestition', 'Skalierbar: mehr Leistung bei Bedarf'], ['**Datenschutz**: personenbezogene Daten liegen beim Anbieter (Auftragsverarbeitungsvertrag nach DSGVO nötig, Serverstandort EU prüfen)', '**Abhängigkeit** vom Anbieter (Preiserhöhungen, Insolvenz, Vendor-Lock-in)', 'Zugriff nur über das **Internet**', 'Weniger Kontrolle über Hardware und Konfiguration']],
+    ['procon', 'Managed Server / Cloud mieten', ['Professioneller Anbieter: **hohe Verfügbarkeit**, redundante Hardware, automatischer Hardwaretausch', 'Administration und Updates kann der Anbieter im vereinbarten Umfang übernehmen. Für Rechte, Daten und Kontrolle bleibt eigenes Wissen nötig.', 'Sicherheitstechnik und TLS-Zertifikate können enthalten sein; Vertrag und Konfiguration prüfen.', 'Kosten **planbar** (monatliche Rate), keine Anfangsinvestition', 'Skalierbar: mehr Leistung bei Bedarf'], ['**Datenschutz**: personenbezogene Daten liegen beim Anbieter (Auftragsverarbeitungsvertrag nach DSGVO nötig, Serverstandort EU prüfen)', '**Abhängigkeit** vom Anbieter (Preiserhöhungen, Insolvenz, Vendor-Lock-in)', 'Zugriff nur über das **Internet**', 'Weniger Kontrolle über Hardware und Konfiguration']],
     ['h', 'Inhouse oder Outsourcing? (Sommer 2025)'],
     ['table', ['Argument für Inhouse-Entwicklung/-Betreuung', 'Erläuterung'], [
       ['Kosten', 'Langfristig oft günstiger, kein Gewinnaufschlag des Dienstleisters'],
       ['Kompatibilität', 'Eigenes Team kennt die übrige Software, Integration klappt besser'],
       ['Qualität und Image', 'Schlechte Leistung eines Dienstleisters fällt auf das eigene Unternehmen zurück'],
       ['Know-how', 'Wissen bleibt im Unternehmen und kann weiter genutzt werden'],
-      ['Unabhängigkeit', 'Kein Risiko, dass der Dienstleister Preise erhöht oder ausfällt'],
+      ['Unabhängigkeit', 'Weniger Abhängigkeit vom Entwicklungsdienstleister; Abhängigkeiten von Personal und Werkzeugen bleiben.'],
       ['Auslastung', 'Eigene Mitarbeiter werden beschäftigt, Arbeitsplätze gesichert'],
     ]],
     ['table', ['Argument für Outsourcing', 'Erläuterung'], [
       ['Spezialwissen', 'Dienstleister hat Erfahrung und Fachleute'],
       ['Konzentration aufs Kerngeschäft', 'Eigene Mitarbeiter bleiben für wichtigere Aufgaben frei'],
-      ['Fixkosten werden variabel', 'Man zahlt nur, was man braucht'],
+      ['Fixkosten werden variabel', 'Nutzungsabhängige Preise sind möglich; Mindestmengen und Vertragslaufzeiten prüfen.'],
       ['Schnellere Umsetzung', 'Keine eigene Einarbeitung nötig'],
     ]],
     ['h', 'Cloud-Servicemodelle'],
@@ -10271,6 +14320,88 @@ AP2.page('ps-tco', {
     ['see', ['ps-kosten', 'ps-kostenarten', 'infra-usv', 'ps-itsm', 'ps-dsgvo']],
   ],
 });
+
+AP2.add('ps-tco', [
+  [
+    "h",
+    "Make-or-Buy mit Softwarekosten vergleichen"
+  ],
+  [
+    "table",
+    [
+      "Kosten über drei Jahre",
+      "Eigenentwicklung",
+      "Standardsoftware"
+    ],
+    [
+      [
+        "Entwicklung beziehungsweise Einführung",
+        "400 h × 80 Euro = 32.000 Euro",
+        "8.000 Euro"
+      ],
+      [
+        "Anpassung",
+        "In Entwicklung enthalten",
+        "80 h × 80 Euro = 6.400 Euro"
+      ],
+      [
+        "Wartung beziehungsweise Lizenz",
+        "60 h/Jahr × 80 Euro × 3 = 14.400 Euro",
+        "6.000 Euro/Jahr × 3 = 18.000 Euro"
+      ],
+      [
+        "Migration und Schulung",
+        "4.000 Euro",
+        "4.000 Euro"
+      ],
+      [
+        "Summe",
+        "50.400 Euro",
+        "36.400 Euro"
+      ]
+    ]
+  ],
+  [
+    "p",
+    "Nach diesen Aufgabenwerten spart die Standardsoftware 14.000 Euro. Beide Varianten müssen denselben fachlichen Umfang erfüllen. Fehlende Funktionen, Exportfähigkeit und Schnittstellen können die Entscheidung verändern."
+  ],
+  [
+    "h",
+    "Versteckte Kosten und Ausstieg"
+  ],
+  [
+    "list",
+    [
+      "Datenbereinigung und Migration benötigen Fachzeit.",
+      "Updates können Anpassungen und Regressionstests auslösen.",
+      "Laufende Lizenzkosten können mit Nutzerzahl oder Datenmenge steigen.",
+      "Datenexport, Kündigung und Wechsel verursachen Aufwand.",
+      "Interne Personalkosten verschwinden bei Fremdvergabe nicht automatisch."
+    ]
+  ],
+  [
+    "qa",
+    "Die Standardsoftware verursacht zusätzlich monatlich 200 Euro Schnittstellenkosten. **Berechnen** Sie die neue TCO über drei Jahre und den Abstand zur Eigenentwicklung.",
+    [
+      "Zusatzkosten: 200 × 12 × 3 = **7.200 Euro**. 1 Punkt.",
+      "Neue TCO: 36.400 + 7.200 = **43.600 Euro**. 1 Punkt.",
+      "Abstand: 50.400 − 43.600 = **6.800 Euro** zugunsten der Standardsoftware. 1 Punkt."
+    ],
+    3
+  ],
+  [
+    "warn",
+    "Eine Miete enthält nicht automatisch Administration, Backups, sichere Konfiguration und alle Updates. Prüfe den vereinbarten Leistungsumfang. Die Beispielrechnung zeigt nur die ausdrücklich angegebenen Kosten."
+  ],
+  [
+    "see",
+    [
+      "ps-nutzwert",
+      "infra-cloud",
+      "ps-migration"
+    ]
+  ]
+]);
 ;
 // content/ps/marketing-1.js
 AP2.page('ps-marketing', {
@@ -10348,10 +14479,10 @@ AP2.page('ps-itsm', {
       ['**Event** (Ereignis)', 'Jede erkennbare **Zustandsänderung** eines IT-Systems, die für das Management relevant ist. Kann informativ, eine Warnung oder ein Ausnahmefall sein.', 'Backup erfolgreich abgeschlossen; Festplatte zu 85 % voll; Benutzer meldet sich an'],
       ['**Incident** (Störung)', 'Eine **ungeplante Unterbrechung** oder **Qualitätsminderung** eines IT-Service. Ziel: Service **so schnell wie möglich** wiederherstellen.', 'Drucker druckt nicht; E-Mail-Server nicht erreichbar; Anwendung stürzt ab'],
       ['**Service Request** (Serviceanfrage)', 'Eine **Standardanfrage** eines Benutzers, die nicht durch eine Störung ausgelöst wird und nach einem festen Ablauf erledigt wird.', 'Passwort zurücksetzen; neuen Monitor bestellen; Zugriff auf einen Ordner'],
-      ['**Problem**', 'Die **unbekannte Ursache** eines oder mehrerer Incidents. Ziel: Ursache finden und dauerhaft beseitigen.', 'Warum fällt der Server jeden Montag aus?'],
+      ['**Problem**', 'Eine Ursache oder mögliche Ursache eines oder mehrerer Incidents. Ziel: Ursache finden und dauerhaft beseitigen.', 'Warum fällt der Server jeden Montag aus?'],
       ['**Change**', 'Eine **geplante Änderung** an der IT, die bewertet und genehmigt wird.', 'Update des Betriebssystems, neue Firewall-Regel'],
     ]],
-    ['p', 'Ein **Service Desk** ist die zentrale Anlaufstelle (Single Point of Contact). Tickets werden nach **Priorität** bearbeitet; Priorität = **Auswirkung (Impact) x Dringlichkeit (Urgency)**. Kann der First-Level-Support nicht helfen, wird an den Second Level (Spezialisten) oder Third Level (Hersteller) **eskaliert**.'],
+    ['p', 'Ein **Service Desk** ist die zentrale Anlaufstelle (Single Point of Contact). Tickets werden nach **Priorität** bearbeitet; Die Priorität ergibt sich aus einer vereinbarten Matrix für **Auswirkung (Impact)** und **Dringlichkeit (Urgency)**. Kann der First-Level-Support nicht helfen, wird an den Second Level (Spezialisten) oder Third Level (Hersteller) **eskaliert**.'],
     ['h', 'Statusmeldungen und Dringlichkeitsstufen (Syslog)'],
     ['p', 'Server, Router und Firewalls schreiben Meldungen in ein Protokoll (zum Beispiel per **Syslog**, RFC 5424). Jede Meldung hat einen **Schweregrad** von 0 (am dringendsten) bis 7. In AP1-Aufgaben sind Meldungen den Stufen zuzuordnen.'],
     ['table', ['Stufe', 'Name', 'Bedeutung', 'Beispielmeldung'], [
@@ -10370,7 +14501,7 @@ AP2.page('ps-itsm', {
       '**Leistungsbeschreibung:** Welche Services (Hosting, Support, Backup)?',
       '**Servicezeiten:** zum Beispiel Mo bis Fr 8 bis 18 Uhr oder 24/7.',
       '**Verfügbarkeit:** zum Beispiel 99,9 % pro Jahr (= höchstens 8,76 Stunden Ausfall).',
-      '**Reaktionszeit:** Zeit bis zur ersten Rückmeldung; **Wiederherstellungszeit** (Entstördauer, MTTR): Zeit bis der Service wieder läuft, gestaffelt nach Priorität.',
+      '**Reaktionszeit:** Zeit bis zur ersten Rückmeldung; **Wiederherstellungszeit** (Entstördauer, MTTR): Zeit bis der Service wieder läuft, gestaffelt nach Priorität. MTTR ist dagegen ein gemessener Mittelwert.',
       '**Datensicherung:** RPO/RTO, Aufbewahrung.',
       '**Eskalationswege, Ansprechpartner, Berichte** (Reporting).',
       '**Vertragsstrafen/Gutschriften** (Pönale) bei Unterschreitung, Laufzeit, Kündigung.',
@@ -10418,6 +14549,79 @@ AP2.page('ps-itsm', {
     ['see', ['infra-verfuegbarkeit', 'ps-tco', 'ps-vertraege', 'ps-dsgvo']],
   ],
 });
+
+AP2.add('ps-itsm', [
+  [
+    "h",
+    "Incident und Problem an einem Ablauf unterscheiden"
+  ],
+  [
+    "p",
+    "Der Bestelldienst antwortet nicht. Ein Neustart stellt ihn wieder her. Der Incident kann nach Prüfung geschlossen werden. Die unbekannte Ursache wird weiterhin als Problem untersucht. Ein Workaround behebt also nicht zwingend die Ursache."
+  ],
+  [
+    "table",
+    [
+      "Zeitpunkt",
+      "Maßnahme",
+      "Zweck"
+    ],
+    [
+      [
+        "09:00",
+        "Störung aufnehmen und Wirkung prüfen",
+        "Incident einstufen"
+      ],
+      [
+        "09:05",
+        "Bereitschaft alarmieren",
+        "Schnell reagieren"
+      ],
+      [
+        "09:15",
+        "Geprüften Workaround anwenden",
+        "Service wiederherstellen"
+      ],
+      [
+        "09:25",
+        "Fachliche Funktion bestätigen",
+        "Wiederherstellung nachweisen"
+      ],
+      [
+        "Später",
+        "Ursache analysieren und Änderung testen",
+        "Dauerhafte Lösung umsetzen"
+      ]
+    ]
+  ],
+  [
+    "h",
+    "SLA-Kennzahlen getrennt prüfen"
+  ],
+  [
+    "qa",
+    "Ein Incident wird um 09:00 Uhr gemeldet. Der Support reagiert um 09:20 Uhr. Um 11:10 Uhr läuft der Dienst wieder. Vereinbart sind 30 Minuten Reaktion und zwei Stunden Wiederherstellung ab Meldung. **Berechnen** und **beurteilen** Sie beide Ziele.",
+    [
+      "Reaktion: 09:20 − 09:00 = **20 Minuten**. 1 Punkt.",
+      "20 ≤ 30: Reaktionsziel eingehalten. 1 Punkt.",
+      "Wiederherstellung: 11:10 − 09:00 = **130 Minuten**. 1 Punkt.",
+      "130 > 120: Wiederherstellungsziel um zehn Minuten verfehlt. 1 Punkt."
+    ],
+    4
+  ],
+  [
+    "warn",
+    "Ein Incident kann auch nur eine Qualitätsminderung sein. Der Dienst muss nicht vollständig ausgefallen sein. Eine Priorität entsteht aus vereinbarten Kriterien für Auswirkung und Dringlichkeit."
+  ],
+  [
+    "see",
+    [
+      "infra-monitoring",
+      "ps-aenderungen",
+      "ps-abnahme"
+    ]
+  ]
+]);
 ;
 // content/infra/osi-1.js
 AP2.page('infra-osi', {
@@ -10653,6 +14857,109 @@ AP2.page('infra-ethernet', {
     ],
   });
 })();
+
+AP2.add('infra-topologien', [
+  [
+    "h",
+    "Leitungen einer Vollvermaschung berechnen"
+  ],
+  [
+    "p",
+    "Jedes Gerät verbindet sich mit allen anderen Geräten. Jede Verbindung wird dabei zweimal gezählt. Für ungerichtete direkte Verbindungen gilt: L = n × (n − 1) / 2."
+  ],
+  [
+    "table",
+    [
+      "Gerätezahl n",
+      "Rechnung",
+      "Leitungen L"
+    ],
+    [
+      [
+        "4",
+        "4 × 3 / 2",
+        "6"
+      ],
+      [
+        "6",
+        "6 × 5 / 2",
+        "15"
+      ],
+      [
+        "8",
+        "8 × 7 / 2",
+        "28"
+      ]
+    ]
+  ],
+  [
+    "qa",
+    "Sechs Standorte sind vollvermascht. Ein siebter kommt hinzu. **Berechnen** Sie Gesamtzahl und zusätzliche Leitungen.",
+    [
+      "Vorher: 6 × 5 / 2 = **15 Leitungen**. 1 Punkt.",
+      "Nachher: 7 × 6 / 2 = **21 Leitungen**. 1 Punkt.",
+      "Zusätzlich: 21 − 15 = **6 Leitungen**. 1 Punkt."
+    ],
+    3
+  ],
+  [
+    "h",
+    "Ausfälle einer Baumstruktur"
+  ],
+  [
+    "table",
+    [
+      "Fehler",
+      "Direkte Folge",
+      "Gegenmaßnahme"
+    ],
+    [
+      [
+        "Ein Endgerätekabel fällt aus",
+        "Dieses Endgerät ist getrennt",
+        "Ersatzkabel und Diagnose"
+      ],
+      [
+        "Access-Switch fällt aus",
+        "Alle angeschlossenen Geräte sind getrennt",
+        "Redundanz für kritische Geräte"
+      ],
+      [
+        "Einziger Core-Switch fällt aus",
+        "Teilnetze verlieren ihre Verbindung",
+        "Redundanter Kern mit Schleifenvermeidung"
+      ]
+    ]
+  ],
+  [
+    "warn",
+    "Eine zusätzliche Leitung allein erzeugt keine sichere Redundanz. Unkontrollierte Ethernet-Schleifen können Broadcast-Stürme verursachen. Geeignete Protokolle und Konfiguration sind nötig."
+  ],
+  [
+    "quiz",
+    [
+      {
+        "q": "Was zeigt ein logischer Netzplan?",
+        "o": [
+          "VLANs, Subnetze und Kommunikationswege",
+          "Nur die Lage der Kabelkanäle",
+          "Nur ein Rackfoto",
+          "Nur eine Kabelrechnung"
+        ],
+        "a": 0,
+        "e": "Physische und logische Struktur beantworten unterschiedliche Planungsfragen."
+      }
+    ]
+  ],
+  [
+    "see",
+    [
+      "infra-vlan",
+      "infra-verfuegbarkeit",
+      "infra-routing"
+    ]
+  ]
+]);
 ;
 // content/infra/topologien-2.js
 AP2.add('infra-topologien', [
@@ -11163,11 +15470,11 @@ AP2.page('infra-vlsm', {
 AP2.page('infra-ipv6', {
   b: 'infra', g: 'IP-Adressierung', t: 'IPv6-Grundlagen',
   d: '**IPv6** ist der Nachfolger von IPv4. Eine IPv6-Adresse hat **128 Bit** und wird als **8 Gruppen aus je 4 Hexadezimalziffern** geschrieben (zum Beispiel `2001:0db8:0000:0000:0000:ff00:0042:8329`). Es gibt **kein Broadcast** mehr, der Adressraum ist so groß, dass **NAT nicht nötig** ist. Das Standard-Subnetz ist ein **/64**.',
-  m: '**128 Bit = 8 mal 16 Bit = 8 Gruppen.** Kürzen: **führende Nullen weglassen** und **eine** Folge aus Null-Gruppen durch `::` ersetzen (nur **einmal** pro Adresse!). Kein Broadcast: stattdessen **Multicast**. Link-Local beginnt mit **fe80**.',
+  m: '**128 Bit = 8 mal 16 Bit = 8 Gruppen.** Kürzen: **führende Nullen weglassen** und **eine** Folge aus Null-Gruppen durch `::` ersetzen (nur **einmal** pro Adresse!). Kein Broadcast: stattdessen **Multicast**. Link-Local liegt im Bereich **fe80::/10**.',
   cheat: [
     ['Aufbau', ['128 Bit, 8 Gruppen, hexadezimal, durch `:` getrennt', 'Präfix (Netz) + Interface-ID (Host)', 'Standard-Subnetz **/64**: 64 Bit Netz, 64 Bit Host']],
     ['Kürzungsregeln', ['1. **Führende Nullen** einer Gruppe weglassen', '2. **Eine** Folge von Null-Gruppen durch `::`', '`2001:0db8:0000:0000:0000:ff00:0042:8329` wird `2001:db8::ff00:42:8329`']],
-    ['Adresstypen', ['**Unicast:** ein Empfänger (global 2000::/3, link-local fe80::/10, ULA fc00::/7)', '**Multicast:** Gruppe (ff00::/8)', '**Anycast:** nächster Empfänger', '**Kein Broadcast!**']],
+    ['Adresstypen', ['**Unicast:** ein Empfänger (global 2000::/3, link-local fe80::/10, ULA fc00::/7)', '**Multicast:** Gruppe (ff00::/8)', '**Anycast:** gemäß Routing nächster Empfänger', '**Kein Broadcast!**']],
     ['Sonderadressen', ['`::1` Loopback', '`::` unspezifiziert', '`fe80::` Link-Local (jedes Interface)', '`2001:db8::/32` nur für Dokumentation']],
   ],
   blocks: [
@@ -11185,13 +15492,114 @@ Schritt 2:    2001:db8::ff00:42:8329            (Null-Gruppen durch :: ersetzt)`
     ['table', ['Typ', 'Präfix', 'Bedeutung', 'Vergleich IPv4'], [
       ['**Global Unicast (GUA)**', '2000::/3 (meist 2001:..., 2003:...)', 'Öffentlich, weltweit eindeutig, im Internet erreichbar', 'Öffentliche Adresse'],
       ['**Link-Local**', 'fe80::/10', 'Nur im lokalen Netzsegment, jedes Interface hat automatisch eine', 'APIPA (169.254.x.x), aber immer vorhanden'],
-      ['**Unique Local (ULA)**', 'fc00::/7 (praktisch fd00::/8)', 'Privates, nicht geroutetes Netz', 'Private Adressen (10.x, 192.168.x)'],
+      ['**Unique Local (ULA)**', 'fc00::/7 (praktisch fd00::/8)', 'Innerhalb eigener Netze routbar; nicht für öffentliches Internet', 'Private Adressen (10.x, 192.168.x)'],
       ['**Multicast**', 'ff00::/8', 'Gruppe von Empfängern, ersetzt Broadcast (zum Beispiel ff02::1 = alle Geräte im Link)', 'Multicast und Broadcast'],
-      ['**Anycast**', 'wie Unicast', 'Dieselbe Adresse an mehreren Orten, der nächste antwortet', '-'],
+      ['**Anycast**', 'wie Unicast', 'Dieselbe Adresse an mehreren Orten; das Routing wählt ein Ziel', '-'],
       ['**Loopback**', '::1/128', 'Eigenes Gerät', '127.0.0.1'],
     ]],
   ],
 });
+
+AP2.add('infra-ipv6', [
+  [
+    "h",
+    "Adressvergabe und Nachbarn"
+  ],
+  [
+    "table",
+    [
+      "Verfahren",
+      "Aufgabe",
+      "Prüfungsfalle"
+    ],
+    [
+      [
+        "Router Advertisement (RA)",
+        "Router teilt Präfixe und Routerinformationen mit",
+        "Standardrouter wird über RA gelernt, nicht über DHCPv6"
+      ],
+      [
+        "SLAAC",
+        "Gerät bildet selbst eine Adresse aus einem angekündigten Präfix",
+        "Autokonfiguration ersetzt keine Sicherheitsregeln"
+      ],
+      [
+        "DHCPv6",
+        "Vergibt je Betriebsart Adressen oder Zusatzkonfiguration",
+        "DHCPv4-DORA nicht unverändert übertragen"
+      ],
+      [
+        "Neighbor Discovery (NDP)",
+        "Ermittelt Nachbarn und prüft Erreichbarkeit",
+        "Verwendet ICMPv6 statt ARP"
+      ],
+      [
+        "Duplicate Address Detection (DAD)",
+        "Prüft vor Nutzung auf mögliche Adressduplikate",
+        "Mehrere Adressen pro Schnittstelle sind trotzdem normal"
+      ]
+    ]
+  ],
+  [
+    "h",
+    "Präfix und Geltungsbereich"
+  ],
+  [
+    "p",
+    "Link-Local-Adressen werden nicht über Router weitergeleitet. ULA-Adressen können innerhalb eigener Netze geroutet werden. Sie sind nicht für das öffentliche Internet vorgesehen. Global Unicast bedeutet nicht automatisch weltweit erreichbar. Firewalls und Routing bleiben entscheidend."
+  ],
+  [
+    "code",
+    "text",
+    "Voll: 2001:0db8:0000:0000:0012:0000:0000:0045\nKurz: 2001:db8::12:0:0:45\n\nBei gleich langen Nullfolgen wird die erste gekürzt.\nEin einzelner Nullblock wird kanonisch nicht durch :: ersetzt."
+  ],
+  [
+    "qa",
+    "**Erläutern** Sie drei Unterschiede zwischen IPv4 und IPv6 im lokalen Netz.",
+    [
+      "- IPv6 hat 128 statt 32 Adressbits.",
+      "- IPv6 nutzt NDP über ICMPv6 statt ARP.",
+      "- IPv6 nutzt Multicast statt Broadcast.",
+      "Je korrektem Unterschied 1 Punkt."
+    ],
+    3
+  ],
+  [
+    "qa",
+    "Ein IPv6-Client besitzt eine Adresse, aber keinen Standardrouter. Der Administrator ändert nur DHCPv6. **Beurteilen** Sie den Ansatz.",
+    [
+      "Die Adresse allein reicht für fremde Netze nicht. 1 Punkt.",
+      "Der Standardrouter wird normalerweise über Router Advertisements gelernt. 1 Punkt.",
+      "RA, Router-Lifetime, VLAN und ICMPv6-Regeln prüfen. 1 Punkt."
+    ],
+    3
+  ],
+  [
+    "quiz",
+    [
+      {
+        "q": "Welche Aussage zu ULA stimmt?",
+        "o": [
+          "ULA kann innerhalb privater IPv6-Netze geroutet werden",
+          "ULA ist zwingend auf einen einzigen Link begrenzt",
+          "ULA ist eine Broadcastadresse",
+          "ULA hat nur 32 Bit"
+        ],
+        "a": 0,
+        "e": "Link-Local ist linkbegrenzt. ULA dient eigenen gerouteten Netzen."
+      }
+    ]
+  ],
+  [
+    "see",
+    [
+      "infra-ipv6sub",
+      "infra-dhcp",
+      "infra-routing",
+      "infra-firewall"
+    ]
+  ]
+]);
 ;
 // content/infra/ipv6-2.js
 AP2.add('infra-ipv6', [
@@ -11285,7 +15693,7 @@ AP2.page('infra-ipv6sub', {
 AP2.page('infra-ipconfig', {
   b: 'infra', g: 'IP-Adressierung', t: 'IP-Konfiguration, DHCP-Vergabearten, NAT und Fehlersuche',
   d: 'Damit ein Gerät im Netz und im Internet arbeiten kann, braucht es vier Angaben: **IP-Adresse**, **Subnetzmaske** (bzw. Präfix), **Standardgateway** (Router ins andere Netz) und **DNS-Server**. Diese vergibt meist ein **DHCP-Server** im vierstufigen Ablauf **DORA** (Discover, Offer, Request, Acknowledge), entweder **manuell** (fest per MAC-Adresse), **automatisch** (dauerhaft dieselbe Adresse) oder **dynamisch** (für eine Lease-Zeit). Private Adressen (10/8, 172.16/12, 192.168/16) werden am Router per **NAT** in eine öffentliche Adresse übersetzt. Viele Prüfungsaufgaben drehen sich um **Fehlersuche**: falsches Subnetz, fehlendes Gateway, doppelte Adressen.',
-  m: '**IP + Maske + Gateway + DNS.** **DORA: Discover (Broadcast) - Offer - Request (Broadcast) - Acknowledge.** **Gleiche Netz-ID = direkt erreichbar, sonst über das Gateway.** **Gateway muss im eigenen Subnetz liegen.** **Private IPs sind im Internet nicht routbar -> NAT/Portweiterleitung/VPN.** **169.254.x.x = kein DHCP-Server gefunden (APIPA).**',
+  m: '**IP + Maske + Gateway + DNS.** **DORA: Discover (Broadcast) - Offer - Request (Broadcast) - Acknowledge.** **Gleiche Netz-ID = direkt erreichbar, sonst über das Gateway.** **Gateway muss im eigenen Subnetz liegen.** **Private IPs sind im Internet nicht routbar -> NAT/Portweiterleitung/VPN.** **169.254.x.x kann auf fehlgeschlagene automatische Konfiguration hinweisen (APIPA).**',
   cheat: [
     ['Pflichtangaben', ['IP-Adresse', 'Subnetzmaske / Präfix', 'Standardgateway', 'DNS-Server (+ Lease-Zeit)']],
     ['DHCP-Vergabearten', ['**manuell/statisch**: Liste MAC -> IP', '**automatisch**: erste Vergabe, dann immer dieselbe', '**dynamisch**: Lease, danach evtl. andere', 'Reservierung = manuell im DHCP']],
@@ -11368,12 +15776,66 @@ AP2.page('infra-ipconfig', {
     ['see', ['infra-ports', 'infra-subnetting', 'infra-vlan', 'infra-vpn', 'infra-ipv6']],
   ],
 });
+
+AP2.add("infra-ipconfig", [
+  [
+    "h",
+    "Fehlersuche: Aussage und Beweis unterscheiden"
+  ],
+  [
+    "table",
+    [
+      "Beobachtung",
+      "Zulässige Aussage",
+      "Nicht bewiesen"
+    ],
+    [
+      [
+        "Ping an Server-IP klappt",
+        "ICMP-Antwort wurde empfangen",
+        "HTTPS und Fachfunktion sind korrekt"
+      ],
+      [
+        "DNS liefert eine Adresse",
+        "Ein DNS-Server hat geantwortet",
+        "Die Adresse ist aktuell und der Dienst erreichbar"
+      ],
+      [
+        "169.254-Adresse vorhanden",
+        "Link-Local-Konfiguration ist aktiv",
+        "DHCP-Server ist sicher abgeschaltet"
+      ],
+      [
+        "TCP-Port 443 erreichbar",
+        "TCP-Verbindung zu diesem Ziel ist möglich",
+        "Zertifikat und Anmeldung funktionieren"
+      ]
+    ]
+  ],
+  [
+    "p",
+    "Ein Standardgateway ist nur nötig, wenn passende Ziele nicht direkt erreichbar sind. DNS ist für die verwendeten Namen nötig. Andere Routen können vor der Default-Route greifen. Das Gateway muss über einen erreichbaren nächsten Hop nutzbar sein."
+  ],
+  [
+    "warn",
+    "Ein fehlendes Standardgateway ersetzt keine Firewall. Ein Angreifer mit Kontrolle über einen Rechner kann dessen Routen ändern. Zugriffsschutz braucht überprüfte Regeln und Berechtigungen."
+  ],
+  [
+    "see",
+    [
+      "infra-dhcp",
+      "infra-dns",
+      "infra-http",
+      "infra-monitoring"
+    ]
+  ]
+]);
 ;
 // content/infra/tcpudp-1.js
 AP2.page('infra-tcpudp', {
   b: 'infra', g: 'Transport und Dienste', t: 'TCP und UDP, Ports',
-  d: '**TCP** ist ein **verbindungsorientiertes, zuverlässiges** Transportprotokoll (Handshake, Quittungen, Wiederholung, richtige Reihenfolge). **UDP** ist **verbindungslos und ohne Garantie**, aber schnell. **Ports** (0 bis 65535) bestimmen auf einem Rechner, **welcher Dienst** die Daten bekommt. IP-Adresse plus Port ergibt einen **Socket**.',
-  m: '**IP-Adresse = Hausadresse, Port = Wohnungsnummer.** TCP = **Einschreiben mit Rückschein** (sicher, langsamer). UDP = **Postkarte** (schnell, vielleicht verloren). TCP-Verbindungsaufbau: **SYN, SYN-ACK, ACK** (Drei-Wege-Handshake).',
+  d: '**TCP** ist ein **verbindungsorientiertes, zuverlässiges** Transportprotokoll (Handshake, Quittungen, Wiederholung, richtige Reihenfolge). **UDP** ist **verbindungslos**. Es garantiert selbst weder Zustellung noch Reihenfolge. **Ports** (0 bis 65535) bestimmen auf einem Rechner, **welcher Dienst** die Daten bekommt. IP-Adresse plus Port ergibt einen **Socket**.',
+  m: '**IP-Adresse = Hausadresse, Port = Wohnungsnummer.** TCP ordnet und bestätigt Bytes. Es verschlüsselt sie nicht. UDP hat weniger Protokollfunktionen und garantiert selbst keine Zustellung. TCP-Verbindungsaufbau: **SYN, SYN-ACK, ACK** (Drei-Wege-Handshake).',
   cheat: [
     ['TCP', ['Verbindungsorientiert', 'Zuverlässig: ACK, Wiederholung, Reihenfolge', 'Flusskontrolle (Window)', 'Header ab 20 Byte', 'HTTP, HTTPS, FTP, SMTP, SSH']],
     ['UDP', ['Verbindungslos', 'Keine Garantie, keine Reihenfolge', 'Sehr geringer Overhead (8 Byte Header)', 'DNS, DHCP, VoIP, Streaming, Spiele, NTP']],
@@ -11382,7 +15844,7 @@ AP2.page('infra-tcpudp', {
   ],
   blocks: [
     ['h', 'Aufgabe der Transportschicht'],
-    ['p', 'Die IP-Schicht bringt ein Paket von Rechner zu Rechner. Aber auf einem Rechner laufen **viele Programme gleichzeitig**: Browser, E-Mail, Chat. Die Transportschicht (Schicht 4) sorgt dafür, dass die Daten beim **richtigen Programm** ankommen. Dazu dienen **Portnummern**. Außerdem entscheidet sie, ob die Übertragung **zuverlässig** sein soll (TCP) oder **schnell** (UDP).'],
+    ['p', 'Die IP-Schicht bringt ein Paket von Rechner zu Rechner. Aber auf einem Rechner laufen **viele Programme gleichzeitig**: Browser, E-Mail, Chat. Die Transportschicht (Schicht 4) sorgt dafür, dass die Daten beim **richtigen Programm** ankommen. Dazu dienen **Portnummern**. TCP ergänzt geordnete, zuverlässige Übertragung. UDP überlässt solche Anforderungen dem darauf aufbauenden Protokoll.'],
     ['h', 'Ports'],
     ['p', 'Ein **Port** ist eine 16-Bit-Zahl (0 bis 65535). Ein **Server-Dienst** wartet auf einem festen Port ("Standardport", zum Beispiel 443 für HTTPS). Der **Client** bekommt für jede Verbindung einen zufälligen hohen Port (zum Beispiel 51234). Eine Verbindung wird durch vier Werte eindeutig bestimmt: **Quell-IP, Quell-Port, Ziel-IP, Ziel-Port**.'],
     ['table', ['Bereich', 'Name', 'Verwendung'], [['0 bis 1023', 'Well-Known Ports', 'Standarddienste (HTTP 80, HTTPS 443, SSH 22)'], ['1024 bis 49151', 'Registered Ports', 'Registrierte Anwendungen (zum Beispiel MySQL 3306)'], ['49152 bis 65535', 'Dynamische / private Ports', 'Kurzzeitig vom Client für ausgehende Verbindungen genutzt']]],
@@ -11396,6 +15858,79 @@ AP2.page('infra-tcpudp', {
     ['list', ['**Quittungen (ACK):** Der Empfänger bestätigt, bis zu welchem Byte er alles erhalten hat.', '**Wiederholung:** Kommt keine Bestätigung (Timeout), sendet der Sender das Segment erneut.', '**Sequenznummern:** Segmente werden nummeriert und beim Empfänger **in die richtige Reihenfolge** gebracht. Duplikate werden erkannt.', '**Flusskontrolle:** Der Empfänger teilt mit einem **Fenster (Window)** mit, wie viele Daten er aufnehmen kann.', '**Überlastkontrolle:** Der Sender drosselt sich, wenn das Netz überlastet ist.']],
   ],
 });
+
+AP2.add('infra-tcpudp', [
+  [
+    "h",
+    "Zuverlässigkeit bedeutet keine Verschlüsselung"
+  ],
+  [
+    "p",
+    "TCP liefert einen geordneten Bytestrom. Nachrichten können dabei auf mehrere Lesezugriffe verteilt werden. Die Anwendung muss Nachrichtengrenzen selbst festlegen. TCP bestätigt außerdem keinen fachlichen Datenbankabschluss."
+  ],
+  [
+    "table",
+    [
+      "Aussage",
+      "Bewertung"
+    ],
+    [
+      [
+        "TCP verschlüsselt Passwörter",
+        "Falsch. Dafür braucht die Anwendung beispielsweise TLS."
+      ],
+      [
+        "UDP ist immer schneller",
+        "Falsch. Netzlast, Wiederholungen und Anwendungsprotokoll bestimmen die Gesamtdauer."
+      ],
+      [
+        "UDP verbietet zuverlässige Anwendungen",
+        "Falsch. Ein aufbauendes Protokoll kann Bestätigungen und Wiederholungen ergänzen."
+      ],
+      [
+        "Ein TCP-ACK bestätigt die Bestellung",
+        "Falsch. Ein Transport-ACK bestätigt keinen fachlichen Abschluss."
+      ]
+    ]
+  ],
+  [
+    "h",
+    "Anwendung entscheidet über verlorene Daten"
+  ],
+  [
+    "p",
+    "Bei einem Telefongespräch sind alte Audiopakete oft nutzlos. Bei einer Datei müssen dagegen alle Bytes stimmen. DNS kann UDP und TCP verwenden. HTTP/3 verwendet QUIC über UDP. QUIC ergänzt selbst Zuverlässigkeit und Verschlüsselung."
+  ],
+  [
+    "qa",
+    "Ein Programm sendet „HALLO“ und danach „WELT“ über TCP. Der Empfänger liest „HALLOWELT“ am Stück. **Beurteilen** Sie das Verhalten. **Nennen** Sie zwei Möglichkeiten zur Nachrichtentrennung.",
+    [
+      "Das Verhalten ist korrekt. TCP erhält die Bytereihenfolge, aber keine Nachrichtengrenzen. 1 Punkt.",
+      "Eine Längenangabe vor jeder Nachricht ermöglicht die Trennung. 1 Punkt.",
+      "Alternativ ein eindeutiges Trennzeichen mit festgelegter Escape-Regel verwenden. 1 Punkt."
+    ],
+    3
+  ],
+  [
+    "qa",
+    "Ein TCP-Client sendet einen Auftrag. Danach bricht die Verbindung ab. **Erläutern** Sie die Unsicherheit und eine Lösung.",
+    [
+      "Der Server könnte den Auftrag bereits gespeichert haben. 1 Punkt.",
+      "Der Client kann dies aus dem Verbindungsabbruch allein nicht erkennen. 1 Punkt.",
+      "Eine eindeutige Auftrags-ID mit atomarer Duplikatprüfung verhindert doppelte Verarbeitung. 1 Punkt."
+    ],
+    3
+  ],
+  [
+    "see",
+    [
+      "infra-http",
+      "infra-dns",
+      "infra-tls",
+      "ps-schnittstellen"
+    ]
+  ]
+]);
 ;
 // content/infra/tcpudp-2.js
 AP2.add('infra-tcpudp', [
@@ -11703,8 +16238,8 @@ AP2.page('infra-routing', {
     ['procon', 'Dynamisches Routing', ['Passt sich automatisch an Ausfälle und neue Netze an', 'Skaliert für große Netze', 'Kann alternative Wege und Lastverteilung nutzen'], ['Protokoll-Overhead (CPU, Bandbreite)', 'Komplexere Konfiguration und Fehlersuche', 'Muss gegen gefälschte Routen abgesichert werden']],
     ['h', 'RIPv2 und OSPF im Vergleich'],
     ['table', ['Eigenschaft', 'RIPv2', 'OSPF'], [
-      ['Klasse', '**Distance-Vector** ("Routing nach Gerücht": Nachbarn erzählen Entfernungen)', '**Link-State** (jeder Router kennt die ganze Topologie)'],
-      ['Metrik', 'Nur **Hop-Anzahl**', '**Kosten** aus der Bandbreite, auch weitere Kriterien'],
+      ['Klasse', '**Distance-Vector** ("Routing nach Gerücht": Nachbarn erzählen Entfernungen)', '**Link-State** (Router kennen die Topologie ihrer Area)'],
+      ['Metrik', 'Nur **Hop-Anzahl**', 'Summe konfigurierter **Link-Kosten**; oft aus der Bandbreite abgeleitet'],
       ['Grenze', 'Ziel mehr als **15** Hops entfernt gilt als unerreichbar', 'Keine Hop-Grenze, Gliederung in **Areas**'],
       ['Konvergenz', 'Langsam (Updates alle 30 s)', '**Schnell** (Änderungen sofort gemeldet)'],
       ['Lastverteilung', 'eingeschränkt', 'Mehrere gleich teure Routen (**Load Balancing**)'],
@@ -11712,7 +16247,7 @@ AP2.page('infra-routing', {
     ], {first: true}],
     ['h', 'Aufgaben im Prüfungsstil'],
     ['qa', 'Vervollständigen Sie die Routing-Tabelle von Router Vertrieb (Interfaces I_0 10.10.9.3/28 und I_1 10.10.1.129/25) so, dass alle Abteilungen sich erreichen und eine Default-Route ins Internet besteht.', ['- 10.10.1.128/25, lokal, I_1', '- 10.10.9.0/28, lokal, I_0', '- 10.10.0.0/24, Next Hop 10.10.9.1, I_0', '- 10.10.1.0/25, Next Hop 10.10.9.2, I_0', '- 10.10.2.0/27, Next Hop 10.10.9.4, I_0', '- 0.0.0.0/0, Next Hop 10.10.9.14, I_0'], 6],
-    ['qa', 'Ordnen Sie zu, ob die Aussage für RIPv2 oder OSPF gilt: Distance-Vector, Ziel über 15 Router entfernt gilt als unerreichbar, schnelle Konvergenz, Link-State, Metrik zählt nur Hops, Metrik kann Geschwindigkeit berücksichtigen, unterstützt Load Balancing.', ['- **RIPv2:** Distance-Vector; über 15 Hops unerreichbar; Metrik zählt nur Hops.', '- **OSPF:** schnelle Konvergenz; Link-State; Metrik kann Geschwindigkeit und Zuverlässigkeit berücksichtigen; mehrere Routen zum Ziel (Load Balancing).'], 7],
+    ['qa', 'Ordnen Sie zu, ob die Aussage für RIPv2 oder OSPF gilt: Distance-Vector, Ziel über 15 Router entfernt gilt als unerreichbar, schnelle Konvergenz, Link-State, Metrik zählt nur Hops, Metrik kann Geschwindigkeit berücksichtigen, unterstützt Load Balancing.', ['- **RIPv2:** Distance-Vector; über 15 Hops unerreichbar; Metrik zählt nur Hops.', '- **OSPF:** schnelle Konvergenz; Link-State; Metrik nutzt konfigurierte Link-Kosten, häufig aus Referenzbandbreite und Bandbreite; mehrere Routen zum Ziel (Load Balancing).'], 7],
     ['qa', 'Ein Router hat die Einträge 10.0.0.0/8 über A, 10.10.0.0/16 über B und 10.10.4.0/22 über C. Über welchen Weg geht ein Paket an 10.10.5.9? Begründen Sie.', 'Alle drei Netze enthalten 10.10.5.9 (10.10.4.0/22 reicht von 10.10.4.0 bis 10.10.7.255). Es gewinnt der **längste Präfix-Treffer /22**, also der Weg **über C**.', 3],
     ['see', ['infra-subnetting', 'infra-vlsm', 'infra-komponenten', 'infra-vlan']],
     ['quiz', [
@@ -11726,6 +16261,66 @@ AP2.page('infra-routing', {
     ]],
   ],
 });
+
+AP2.add('infra-routing', [
+  [
+    "h",
+    "Hinweg und Rückweg prüfen"
+  ],
+  [
+    "p",
+    "Eine passende Hinroute reicht nicht. Auch das Ziel benötigt einen Rückweg. Firewalls können Anfragen oder Antworten filtern. NAT kann Adressen verändern. Prüfe die beteiligten Netze in beiden Richtungen."
+  ],
+  [
+    "table",
+    [
+      "Ziel",
+      "Passende Einträge",
+      "Auswahl"
+    ],
+    [
+      [
+        "10.40.8.20",
+        "10.0.0.0/8; 10.40.0.0/16; 10.40.8.0/24; 0.0.0.0/0",
+        "10.40.8.0/24"
+      ],
+      [
+        "10.40.9.20",
+        "10.0.0.0/8; 10.40.0.0/16; 0.0.0.0/0",
+        "10.40.0.0/16"
+      ],
+      [
+        "192.0.2.20",
+        "0.0.0.0/0",
+        "Default-Route"
+      ]
+    ]
+  ],
+  [
+    "note",
+    "Longest Prefix Match betrifft die Weiterleitung mit vorhandenen Routen. Welche Route installiert wird, hängt zusätzlich von Quelle und Präferenz ab. Metriken verschiedener Routingprotokolle sind nicht direkt vergleichbar."
+  ],
+  [
+    "qa",
+    "Ein Client erreicht ein anderes Subnetz nicht. Die Hinroute ist korrekt. **Nennen** Sie vier weitere Prüfungen.",
+    [
+      "- Rückroute am Ziel beziehungsweise dessen Gateway prüfen.",
+      "- Netzmaske und Gateway des Zielgeräts prüfen.",
+      "- Firewall-Regeln in beiden Richtungen prüfen.",
+      "- Erreichbarkeit des nächsten Hops und Schnittstellenzustand prüfen.",
+      "Je sinnvoller Prüfung 1 Punkt."
+    ],
+    4
+  ],
+  [
+    "see",
+    [
+      "infra-dhcp",
+      "infra-dns",
+      "infra-monitoring"
+    ]
+  ]
+]);
 ;
 // content/infra/vlan-1.js
 AP2.page('infra-vlan', {
@@ -11816,6 +16411,947 @@ AP2.page('infra-vlan', {
     ]],
     ['see', ['infra-subnetting', 'infra-komponenten', 'infra-firewall', 'infra-topologien', 'infra-wlan']],
   ],
+});
+;
+// content/infra/dns-1.js
+AP2.page('infra-dns', {
+  "b": "infra",
+  "g": "Netzwerkbetrieb",
+  "t": "DNS: Namen auflösen, Records und Fehler eingrenzen",
+  "d": "DNS (Domain Name System) ordnet Namen Informationen zu. Dazu gehören IPv4-Adressen und IPv6-Adressen. Ein Resolver fragt DNS-Server ab. Ein Cache speichert Antworten vorübergehend.",
+  "m": "**DNS löst Namen auf. DHCP verteilt die Netzkonfiguration.** Ein DNS-Fehler ist kein Beweis für einen Netzwerkausfall.",
+  "cheat": [
+    [
+      "Records",
+      [
+        "A: IPv4-Adresse",
+        "AAAA: IPv6-Adresse",
+        "CNAME: anderer DNS-Name",
+        "MX: Mailserver",
+        "PTR: Rückwärtsauflösung",
+        "TXT: Textinformationen"
+      ]
+    ],
+    [
+      "Fehlersuche",
+      [
+        "Namensauflösung getrennt von Erreichbarkeit prüfen.",
+        "TTL begrenzt die Cache-Dauer.",
+        "DNSSEC prüft Herkunft und Integrität. Es verschlüsselt keine Anfragen."
+      ]
+    ]
+  ],
+  "blocks": [
+    [
+      "h",
+      "Vom Namen zur Adresse"
+    ],
+    [
+      "p",
+      "Ein Browser benötigt eine Zieladresse. Er fragt dafür meist den lokalen Resolver. Dieser nutzt seinen Cache oder fragt weitere DNS-Server. Ein autoritativer Server liefert verbindliche Daten seiner Zone."
+    ],
+    [
+      "table",
+      [
+        "Wort",
+        "Einfach erklärt"
+      ],
+      [
+        [
+          "Zone",
+          "Verwalteter Ausschnitt des DNS-Namensraums"
+        ],
+        [
+          "Resolver",
+          "Dienst, der DNS-Antworten für den Client beschafft"
+        ],
+        [
+          "Autoritativ",
+          "Für diese Zone zuständig"
+        ],
+        [
+          "TTL",
+          "Time To Live: verbleibende Cache-Dauer in Sekunden"
+        ]
+      ]
+    ],
+    [
+      "seq",
+      {
+        "w": 760,
+        "actors": [
+          "Client",
+          "Resolver",
+          "Root / TLD",
+          "Zonenserver"
+        ],
+        "steps": [
+          [
+            0,
+            1,
+            "A portal.beispiel.test?",
+            "s"
+          ],
+          [
+            1,
+            2,
+            "Zuständigen Server suchen",
+            "s"
+          ],
+          [
+            2,
+            1,
+            "Verweis auf nächste Stelle",
+            "r"
+          ],
+          [
+            1,
+            3,
+            "A portal.beispiel.test?",
+            "s"
+          ],
+          [
+            3,
+            1,
+            "192.0.2.40; TTL 300",
+            "r"
+          ],
+          [
+            1,
+            0,
+            "Adresse zurückgeben und cachen",
+            "r"
+          ]
+        ],
+        "cap": "Vereinfachte Auflösung ohne Cache. Root und TLD sind getrennte Ebenen."
+      }
+    ],
+    [
+      "h",
+      "DNS-Einträge lesen"
+    ],
+    [
+      "table",
+      [
+        "Name",
+        "Typ",
+        "Wert",
+        "Bedeutung"
+      ],
+      [
+        [
+          "portal.beispiel.test",
+          "A",
+          "192.0.2.40",
+          "IPv4-Ziel"
+        ],
+        [
+          "portal.beispiel.test",
+          "AAAA",
+          "2001:db8::40",
+          "IPv6-Ziel"
+        ],
+        [
+          "www.beispiel.test",
+          "CNAME",
+          "portal.beispiel.test",
+          "Alias auf einen Namen"
+        ],
+        [
+          "beispiel.test",
+          "MX",
+          "10 mail.beispiel.test",
+          "Mailziel; niedrigere Prioritätszahl wird bevorzugt"
+        ],
+        [
+          "40.2.0.192.in-addr.arpa",
+          "PTR",
+          "portal.beispiel.test",
+          "Name zu einer IPv4-Adresse"
+        ]
+      ]
+    ],
+    [
+      "note",
+      "Die Adressen 192.0.2.0/24 und 2001:db8::/32 dienen hier nur als Dokumentationsbeispiele."
+    ],
+    [
+      "h",
+      "Transport und Sicherheit"
+    ],
+    [
+      "list",
+      [
+        "Klassisches DNS verwendet UDP und TCP auf Port 53.",
+        "TCP wird beispielsweise bei abgeschnittenen Antworten und Zonenübertragungen benötigt.",
+        "DNS über TLS oder HTTPS schützt den Transport zum jeweiligen DNS-Dienst.",
+        "DNSSEC signiert DNS-Daten. Es schützt deren überprüfbare Herkunft und Integrität.",
+        "DNSSEC ersetzt weder HTTPS noch die Berechtigungsprüfung der Anwendung."
+      ]
+    ],
+    [
+      "h",
+      "Fehler systematisch eingrenzen"
+    ],
+    [
+      "code",
+      "text",
+      "nslookup portal.beispiel.test\nnslookup portal.beispiel.test 10.20.0.53\n# Unter Systemen mit dig:\ndig portal.beispiel.test A\ndig portal.beispiel.test AAAA"
+    ],
+    [
+      "table",
+      [
+        "Beobachtung",
+        "Mögliche Ursache",
+        "Nächster Schritt"
+      ],
+      [
+        [
+          "IP-Verbindung klappt, Name liefert NXDOMAIN",
+          "Name existiert nicht oder falsche Zone wird gefragt",
+          "Schreibweise und zuständigen DNS-Server prüfen"
+        ],
+        [
+          "SERVFAIL",
+          "Server kann keine gültige Antwort liefern",
+          "DNS-Server, Weiterleitung und DNSSEC-Prüfung untersuchen"
+        ],
+        [
+          "Timeout",
+          "Keine Antwort rechtzeitig",
+          "Erreichbarkeit und Firewall für UDP/TCP 53 prüfen"
+        ],
+        [
+          "Alter Zielserver trotz Änderung",
+          "Antwort noch im Cache",
+          "TTL und Eintrag beim autoritativen Server prüfen"
+        ]
+      ]
+    ],
+    [
+      "warn",
+      "Ein HTTPS-Aufruf über eine IP kann am Zertifikat oder virtuellen Host scheitern. Das beweist keinen DNS-Fehler. Ein erfolgloser Ping beweist ebenfalls keinen Serverausfall."
+    ],
+    [
+      "qa",
+      "Ein Eintrag hat TTL 600 Sekunden. Er wird um 10:04 Uhr frisch gecacht. Um 10:06 Uhr ändert sich das Ziel. **Berechnen** Sie das reguläre Cache-Ende. **Erläutern** Sie die Verzögerung.",
+      [
+        "10:04 Uhr + 600 Sekunden = **10:14 Uhr**. Dafür 1 Punkt.",
+        "Ab der Änderung bleiben maximal acht Minuten in diesem Cache. Dafür 1 Punkt.",
+        "Der Cache darf bis zum Ablauf noch die alte Antwort liefern. Dafür 1 Punkt."
+      ],
+      3
+    ],
+    [
+      "qa",
+      "Ein Portal ist über seinen Namen unerreichbar. Eine TCP-Verbindung zur bekannten IP auf Port 443 klappt. **Beschreiben** Sie vier sinnvolle Prüfschritte. Nennen heißt hier: konkrete Schritte angeben.",
+      [
+        "- Namen und Fehlermeldung prüfen.",
+        "- A- und AAAA-Einträge beim konfigurierten Resolver abfragen.",
+        "- Antworten mit dem zuständigen Zonenserver vergleichen.",
+        "- Bei Abweichungen Cache, TTL und Serverkonfiguration prüfen.",
+        "Je Schritt 1 Punkt. Die TCP-Verbindung allein bestätigt noch keinen funktionierenden HTTPS-Dienst."
+      ],
+      4
+    ],
+    [
+      "quiz",
+      [
+        {
+          "q": "Was enthält ein CNAME-Eintrag?",
+          "o": [
+            "Einen anderen DNS-Namen",
+            "Eine MAC-Adresse",
+            "Eine Subnetzmaske",
+            "Ein Passwort"
+          ],
+          "a": 0,
+          "e": "Ein CNAME ist ein Alias auf einen DNS-Namen."
+        },
+        {
+          "q": "Was schützt DNSSEC?",
+          "o": [
+            "Die Integrität und Herkunft signierter DNS-Daten",
+            "Den Inhalt jeder HTTPS-Seite",
+            "Die Geheimhaltung aller DNS-Anfragen",
+            "Die lokale Festplatte"
+          ],
+          "a": 0,
+          "e": "DNSSEC ist keine Transportverschlüsselung."
+        },
+        {
+          "q": "Welche Aussage über Port 53 stimmt?",
+          "o": [
+            "DNS kann UDP und TCP nutzen",
+            "DNS nutzt nur UDP",
+            "DNS nutzt nur TCP",
+            "DNS braucht keinen Port"
+          ],
+          "a": 0,
+          "e": "Beide Transportprotokolle sind für klassisches DNS wichtig."
+        }
+      ]
+    ],
+    [
+      "see",
+      [
+        "infra-ipconfig",
+        "infra-dhcp",
+        "infra-http",
+        "infra-tls"
+      ]
+    ]
+  ]
+});
+;
+// content/infra/dhcp-1.js
+AP2.page('infra-dhcp', {
+  "b": "infra",
+  "g": "Netzwerkbetrieb",
+  "t": "DHCP: DORA, Lease, Relay und Adressplanung",
+  "d": "DHCP (Dynamic Host Configuration Protocol) verteilt die Netzkonfiguration automatisch. DHCPv4 vergibt Adressen zeitweise oder nach festen Zuordnungen. Ein Relay verbindet Clients mit einem DHCP-Server in einem anderen Netz.",
+  "m": "**DORA: Discover → Offer → Request → ACK.** Eine Reservierung bleibt DHCP. Eine lokal eingetragene Adresse benötigt keine DHCP-Vergabe.",
+  "cheat": [
+    [
+      "DHCPv4",
+      [
+        "Server: UDP 67; Client: UDP 68",
+        "IP-Adresse, Maske, Gateway, DNS und Lease",
+        "Reservierung: feste Zuordnung zu einem Client"
+      ]
+    ],
+    [
+      "Betrieb",
+      [
+        "Adresspool ausreichend groß planen.",
+        "Feste Geräteadressen nicht unkontrolliert im dynamischen Pool verwenden.",
+        "Relay für getrennte Subnetze einrichten."
+      ]
+    ]
+  ],
+  "blocks": [
+    [
+      "h",
+      "DORA bei der ersten Vergabe"
+    ],
+    [
+      "seq",
+      {
+        "w": 760,
+        "actors": [
+          "Client",
+          "Relay im Clientnetz",
+          "DHCP-Server"
+        ],
+        "steps": [
+          [
+            0,
+            1,
+            "Discover als Broadcast",
+            "s"
+          ],
+          [
+            1,
+            2,
+            "Discover mit Netzzuordnung weiterleiten",
+            "s"
+          ],
+          [
+            2,
+            1,
+            "Offer mit Konfiguration",
+            "r"
+          ],
+          [
+            1,
+            0,
+            "Offer zustellen",
+            "r"
+          ],
+          [
+            0,
+            1,
+            "Request: Angebot auswählen",
+            "s"
+          ],
+          [
+            1,
+            2,
+            "Request weiterleiten",
+            "s"
+          ],
+          [
+            2,
+            1,
+            "ACK bestätigt Lease",
+            "r"
+          ],
+          [
+            1,
+            0,
+            "ACK zustellen",
+            "r"
+          ]
+        ],
+        "cap": "Mit Relay. Ohne Relay kommunizieren Client und Server im gleichen Broadcastbereich."
+      }
+    ],
+    [
+      "p",
+      "Der anfängliche Request informiert auch andere Server über die Auswahl. Offer und ACK können je nach Zustand Broadcast oder Unicast sein. DORA beschreibt die Erstvergabe. Verlängerungen benötigen meist weniger Nachrichten."
+    ],
+    [
+      "table",
+      [
+        "Vergabeart",
+        "Zuordnung",
+        "Beispiel"
+      ],
+      [
+        [
+          "Manuell durch DHCP",
+          "Administrator reserviert eine Adresse für einen Client",
+          "Netzwerkdrucker"
+        ],
+        [
+          "Automatisch",
+          "Server vergibt eine dauerhafte Zuordnung",
+          "Fester Arbeitsplatz"
+        ],
+        [
+          "Dynamisch",
+          "Adresse gilt für eine begrenzte Lease-Zeit",
+          "Besuchergerät"
+        ],
+        [
+          "Lokal statisch",
+          "Adresse steht direkt im Betriebssystem",
+          "Server ohne DHCP-Abhängigkeit"
+        ]
+      ]
+    ],
+    [
+      "h",
+      "Lease richtig verstehen"
+    ],
+    [
+      "p",
+      "Eine Lease ist eine befristete Nutzungserlaubnis. Der Client versucht rechtzeitig eine Verlängerung. Bei Standardwerten liegt T1 bei 50 Prozent der Lease-Zeit. T2 liegt bei 87,5 Prozent. Server dürfen andere Zeiten vorgeben."
+    ],
+    [
+      "table",
+      [
+        "Phase",
+        "Ziel",
+        "Verhalten"
+      ],
+      [
+        [
+          "Vor T1",
+          "Bestehende Konfiguration verwenden",
+          "Lease läuft weiter"
+        ],
+        [
+          "Ab T1",
+          "Ursprünglichen Server erreichen",
+          "Renewal meist per Unicast"
+        ],
+        [
+          "Ab T2",
+          "Beliebigen passenden Server erreichen",
+          "Rebinding meist per Broadcast"
+        ],
+        [
+          "Nach Ablauf",
+          "Abgelaufene Adresse nicht weiterverwenden",
+          "Neue Konfiguration anfordern"
+        ]
+      ]
+    ],
+    [
+      "h",
+      "Adresspool berechnen"
+    ],
+    [
+      "p",
+      "Ein Schulungsnetz nutzt 10.30.8.0/24. Der dynamische Pool reicht von .50 bis .199. Zwölf Pooladressen sind ausdrücklich reserviert. Weitere 18 Leases gehören noch abwesenden Geräten. 95 Geräte sind aktiv."
+    ],
+    [
+      "walk",
+      {
+        "t": "Reicht der Pool für 30 neue Geräte?",
+        "steps": [
+          {
+            "t": "Pool zählen",
+            "b": [
+              [
+                "p",
+                "199 − 50 + 1 = **150 Adressen**. Die Grenzen werden mitgezählt."
+              ]
+            ]
+          },
+          {
+            "t": "Belegte und gebundene Adressen abziehen",
+            "b": [
+              [
+                "p",
+                "150 − 12 − 18 − 95 = **25 freie Adressen**. Laut Anlage überschneiden sich die Gruppen nicht."
+              ]
+            ]
+          },
+          {
+            "t": "Bedarf beurteilen",
+            "b": [
+              [
+                "p",
+                "30 neue Geräte benötigen 30 Adressen. Es fehlen **5 Adressen**."
+              ],
+              [
+                "p",
+                "Pool im Subnetz erweitern oder nicht benötigte Leases kontrolliert freigeben."
+              ]
+            ]
+          }
+        ]
+      }
+    ],
+    [
+      "warn",
+      "Eine kurze Lease trennt Geräte nicht automatisch vom Netz. Aktive Geräte können ihre Lease verlängern. Ein VLAN benötigt einen passenden DHCP-Bereich und gegebenenfalls ein Relay."
+    ],
+    [
+      "h",
+      "Fehlersuche"
+    ],
+    [
+      "table",
+      [
+        "Symptom",
+        "Vermutung",
+        "Prüfung"
+      ],
+      [
+        [
+          "169.254.x.x auf Windows",
+          "Keine erfolgreiche DHCP-Konfiguration",
+          "Kabel, VLAN, Pool, Dienst und Relay prüfen"
+        ],
+        [
+          "Falsches Gateway",
+          "Falsche DHCP-Option oder fremder DHCP-Server",
+          "Lease-Details und Serverkennung prüfen"
+        ],
+        [
+          "Nur ein VLAN betroffen",
+          "Relay oder Bereich fehlt",
+          "Relay-Ziel und Subnetzzuordnung prüfen"
+        ],
+        [
+          "IP-Konflikte",
+          "Statische Adresse liegt im Pool",
+          "Ausschlüsse und Reservierungen prüfen"
+        ]
+      ]
+    ],
+    [
+      "tip",
+      "**Erläutern** heißt: Schritt nennen und seine Aufgabe erklären. Schreibe bei DORA vier kurze Sätze."
+    ],
+    [
+      "qa",
+      "**Erläutern** Sie die vier DORA-Schritte für ein neues Notebook.",
+      [
+        "- Discover: Der Client sucht DHCP-Server.",
+        "- Offer: Ein Server bietet eine Konfiguration an.",
+        "- Request: Der Client fordert das ausgewählte Angebot an.",
+        "- ACK: Der Server bestätigt die Nutzung für die Lease-Zeit.",
+        "Je vollständigem Schritt 1 Punkt."
+      ],
+      4
+    ],
+    [
+      "qa",
+      "Eine Lease dauert acht Stunden. Beginn ist 08:00 Uhr. **Berechnen** Sie T1 und T2 mit Standardwerten. **Begründen** Sie den Relay-Einsatz bei einem zentralen Server.",
+      [
+        "T1: 8 h × 0,5 = 4 h; also **12:00 Uhr**. 1 Punkt.",
+        "T2: 8 h × 0,875 = 7 h; also **15:00 Uhr**. 1 Punkt.",
+        "Router leiten lokale DHCP-Broadcasts normalerweise nicht weiter. 1 Punkt.",
+        "Das Relay übermittelt die Nachrichten zwischen Clientnetz und zentralem Server. 1 Punkt."
+      ],
+      4
+    ],
+    [
+      "quiz",
+      [
+        {
+          "q": "Wie viele Adressen umfasst der Bereich .100 bis .149?",
+          "o": [
+            "50",
+            "49",
+            "149",
+            "100"
+          ],
+          "a": 0,
+          "e": "149 − 100 + 1 = 50."
+        },
+        {
+          "q": "Was gilt bei einer DHCP-Reservierung?",
+          "o": [
+            "Der Client nutzt weiterhin DHCP",
+            "Der Client braucht kein Netz",
+            "Es gibt keinen DHCP-Server",
+            "Die Adresse ist öffentlich"
+          ],
+          "a": 0,
+          "e": "Die Zuordnung ist fest. Die Konfiguration wird trotzdem per DHCP geliefert."
+        },
+        {
+          "q": "Welcher Port gehört zum DHCPv4-Client?",
+          "o": [
+            "UDP 68",
+            "TCP 443",
+            "UDP 53",
+            "TCP 22"
+          ],
+          "a": 0,
+          "e": "DHCPv4 verwendet UDP 67 am Server und UDP 68 am Client."
+        }
+      ]
+    ],
+    [
+      "see",
+      [
+        "infra-dns",
+        "infra-ipconfig",
+        "infra-vlan",
+        "infra-subnetting"
+      ]
+    ]
+  ]
+});
+;
+// content/infra/http-1.js
+AP2.page('infra-http', {
+  "b": "infra",
+  "g": "Transport und Dienste",
+  "t": "HTTP und REST: Methoden, Statuscodes, Cache und Wiederholungen",
+  "d": "HTTP überträgt Anfragen und Antworten zwischen Client und Server. HTTPS schützt diese Übertragung mit TLS. REST ist ein Architekturstil. Er verwendet oft HTTP und JSON, schreibt JSON aber nicht vor.",
+  "m": "**Methode + Ziel + Header + optionaler Body = Anfrage.** Statuscode und Antwortinhalt gemeinsam auswerten.",
+  "cheat": [
+    [
+      "Methoden",
+      [
+        "GET: lesen; sicher und idempotent",
+        "POST: Verarbeitung; nicht allgemein idempotent",
+        "PUT: Zielzustand ersetzen; idempotent",
+        "PATCH: teilweise Änderung; nicht allgemein idempotent",
+        "DELETE: Ressource entfernen; idempotent"
+      ]
+    ],
+    [
+      "Statusgruppen",
+      [
+        "2xx: erfolgreich",
+        "3xx: Weiterleitung oder Cachebehandlung",
+        "4xx: Anfrage oder Berechtigung problematisch",
+        "5xx: serverseitiger Fehler"
+      ]
+    ]
+  ],
+  "blocks": [
+    [
+      "h",
+      "Eine Anfrage lesen"
+    ],
+    [
+      "code",
+      "http",
+      "POST /api/auftraege HTTP/1.1\nHost: portal.beispiel.test\nContent-Type: application/json\nAccept: application/json\n\n{\"artikelId\": 42, \"anzahl\": 3}"
+    ],
+    [
+      "code",
+      "http",
+      "HTTP/1.1 201 Created\nLocation: /api/auftraege/731\nContent-Type: application/json\n\n{\"id\": 731, \"status\": \"offen\"}"
+    ],
+    [
+      "table",
+      [
+        "Teil",
+        "Bedeutung"
+      ],
+      [
+        [
+          "Content-Type",
+          "Format des gesendeten Inhalts"
+        ],
+        [
+          "Accept",
+          "Gewünschte Antwortformate"
+        ],
+        [
+          "Location",
+          "Adresse einer neu angelegten Ressource oder Weiterleitungsziel"
+        ],
+        [
+          "Body",
+          "Nutzdaten; nicht jede Nachricht benötigt einen Body"
+        ]
+      ]
+    ],
+    [
+      "h",
+      "Statuscodes passend wählen"
+    ],
+    [
+      "table",
+      [
+        "Code",
+        "Bedeutung",
+        "Beispiel"
+      ],
+      [
+        [
+          "200 OK",
+          "Erfolgreiche Anfrage mit Antwortinhalt",
+          "Auftrag gelesen"
+        ],
+        [
+          "201 Created",
+          "Ressource wurde angelegt",
+          "Neue Bestellung"
+        ],
+        [
+          "204 No Content",
+          "Erfolg ohne Antwortinhalt",
+          "Erfolgreiches Löschen"
+        ],
+        [
+          "400 Bad Request",
+          "Ungültige Anfrage",
+          "Fehlerhaftes JSON"
+        ],
+        [
+          "401 Unauthorized",
+          "Authentifizierung fehlt oder ist ungültig",
+          "Sitzung abgelaufen"
+        ],
+        [
+          "403 Forbidden",
+          "Zugriff wird verweigert",
+          "Rolle darf nicht freigeben"
+        ],
+        [
+          "404 Not Found",
+          "Ressource nicht gefunden oder bewusst verborgen",
+          "Unbekannte Auftrags-ID"
+        ],
+        [
+          "409 Conflict",
+          "Konflikt mit dem aktuellen Zustand",
+          "Doppelte fachlich eindeutige Nummer"
+        ],
+        [
+          "429 Too Many Requests",
+          "Zu viele Anfragen",
+          "Rate Limit erreicht"
+        ],
+        [
+          "500 Internal Server Error",
+          "Unerwarteter Serverfehler",
+          "Unbehandelte Ausnahme"
+        ],
+        [
+          "502 Bad Gateway",
+          "Gateway erhält ungültige Upstream-Antwort",
+          "Backend-Verbindung scheitert"
+        ],
+        [
+          "503 Service Unavailable",
+          "Dienst vorübergehend nicht verfügbar",
+          "Wartung oder Überlastung"
+        ]
+      ]
+    ],
+    [
+      "h",
+      "Idempotenz und Timeouts"
+    ],
+    [
+      "p",
+      "Idempotent bedeutet: Wiederholungen haben denselben beabsichtigten Effekt wie eine Ausführung. Antworten dürfen sich trotzdem unterscheiden. DELETE kann erst 204 und danach 404 liefern. Die Ressource bleibt in beiden Fällen gelöscht."
+    ],
+    [
+      "seq",
+      {
+        "w": 760,
+        "actors": [
+          "Client",
+          "API",
+          "Datenbank"
+        ],
+        "steps": [
+          [
+            0,
+            1,
+            "POST Bestellung; Schlüssel K-17",
+            "s"
+          ],
+          [
+            1,
+            2,
+            "Bestellung und Schlüssel atomar speichern",
+            "s"
+          ],
+          [
+            2,
+            1,
+            "Bestellung 731",
+            "r"
+          ],
+          [
+            1,
+            0,
+            "Antwort geht im Netz verloren",
+            "r"
+          ],
+          [
+            0,
+            1,
+            "Wiederholung mit K-17",
+            "s"
+          ],
+          [
+            1,
+            2,
+            "Vorhandenen Schlüssel nachschlagen",
+            "s"
+          ],
+          [
+            2,
+            1,
+            "Schon verarbeitet: 731",
+            "r"
+          ],
+          [
+            1,
+            0,
+            "Ursprüngliches Ergebnis zurückgeben",
+            "r"
+          ]
+        ],
+        "cap": "Ein fachlich vereinbarter Idempotenzschlüssel verhindert eine doppelte Bestellung."
+      }
+    ],
+    [
+      "warn",
+      "Ein Timeout bedeutet: Die Antwort kam nicht rechtzeitig an. Die Aktion kann bereits gespeichert sein. Wiederhole einen POST deshalb nicht blind. Ein Idempotenzschlüssel benötigt eine atomare serverseitige Umsetzung."
+    ],
+    [
+      "h",
+      "Cache mit ETag"
+    ],
+    [
+      "steps",
+      [
+        "Server liefert Daten und einen ETag als Versionskennung.",
+        "Client sendet später If-None-Match mit dieser Kennung.",
+        "Bei unveränderten Daten antwortet der Server mit 304 ohne neuen Body.",
+        "Bei geänderten Daten kommen der neue Inhalt und ein neuer ETag."
+      ]
+    ],
+    [
+      "note",
+      "Für schreibende Zugriffe kann If-Match verlorene Änderungen verhindern. Der Server prüft die Version atomar. Eine veraltete Version führt beispielsweise zu 412 Precondition Failed."
+    ],
+    [
+      "h",
+      "Sicherheit an der Schnittstelle"
+    ],
+    [
+      "list",
+      [
+        "HTTPS schützt Daten auf dem Transportweg.",
+        "Der Server prüft für jede Ressource die Berechtigung.",
+        "Eingaben werden serverseitig nach Typ, Länge und Fachregeln geprüft.",
+        "Tokens gehören weder in URLs noch in frei lesbare Logs.",
+        "CORS steuert Browserzugriffe. Es ersetzt keine Authentifizierung oder Autorisierung."
+      ]
+    ],
+    [
+      "tip",
+      "**Begründen** heißt: Entscheidung mit einer passenden Ursache verbinden. Beispiel: 201, weil eine neue Ressource entsteht."
+    ],
+    [
+      "qa",
+      "Ein Client sendet dieselbe Bestellung nach einem Timeout erneut. **Erläutern** Sie das Risiko. **Entwerfen** Sie eine Lösung mit drei Merkmalen.",
+      [
+        "Risiko: Die erste Anfrage wurde schon gespeichert; eine zweite Bestellung entsteht. 1 Punkt.",
+        "Client erzeugt einen stabilen Schlüssel für denselben Bestellversuch. 1 Punkt.",
+        "Server speichert Schlüssel und Ergebnis atomar mit einer Eindeutigkeitsregel. 1 Punkt.",
+        "Wiederholung liefert das gespeicherte Ergebnis; abweichende Nutzdaten werden zurückgewiesen. 1 Punkt."
+      ],
+      4
+    ],
+    [
+      "qa",
+      "**Ordnen** Sie passende Statuscodes zu: Auftrag angelegt, Login fehlt, Zugriff verboten, Versionskonflikt mit If-Match.",
+      [
+        "Auftrag angelegt: **201**.",
+        "Login fehlt: **401**.",
+        "Zugriff verboten: **403**.",
+        "If-Match passt nicht: **412**.",
+        "Je Zuordnung 1 Punkt."
+      ],
+      4
+    ],
+    [
+      "quiz",
+      [
+        {
+          "q": "Welche Aussage ist richtig?",
+          "o": [
+            "REST kann auch XML übertragen",
+            "REST verlangt immer JSON",
+            "HTTPS ersetzt Berechtigungen",
+            "Jeder POST ist idempotent"
+          ],
+          "a": 0,
+          "e": "REST ist ein Architekturstil. Die Darstellung kann verschiedene Formate verwenden."
+        },
+        {
+          "q": "Was bedeutet 304?",
+          "o": [
+            "Vorhandene Cache-Darstellung ist weiter verwendbar",
+            "Neue Bestellung angelegt",
+            "Passwort falsch",
+            "Server abgestürzt"
+          ],
+          "a": 0,
+          "e": "Die bedingte Anfrage braucht keinen neuen Antwortinhalt."
+        },
+        {
+          "q": "Was bedeutet idempotent?",
+          "o": [
+            "Wiederholungen ändern den beabsichtigten Endeffekt nicht",
+            "Jede Antwort hat identische Header",
+            "Der Aufruf ist immer lesend",
+            "Die Anfrage braucht kein Netz"
+          ],
+          "a": 0,
+          "e": "Auch PUT und DELETE sind idempotent, obwohl sie schreiben."
+        }
+      ]
+    ],
+    [
+      "see",
+      [
+        "infra-tls",
+        "infra-websec",
+        "ps-dbzugriff",
+        "ps-schnittstellen"
+      ]
+    ]
+  ]
 });
 ;
 // content/infra/vpn-1.js
@@ -12115,11 +17651,95 @@ Ausfallzeit pro Jahr = (1 - 0,998) mal 8760 h = ca. 17,5 Stunden`],
     ['tool', 'avail'],
   ],
 });
+
+AP2.add('infra-verfuegbarkeit', [
+  [
+    "h",
+    "Gemessene Verfügbarkeit und Zielwert"
+  ],
+  [
+    "p",
+    "Für einen Messzeitraum gilt: Verfügbarkeit = (Messzeit − Ausfallzeit) / Messzeit. Das SLA legt fest, was als Ausfall zählt. Ebenso wichtig sind Messpunkt, Servicezeit und Wartungsregel."
+  ],
+  [
+    "table",
+    [
+      "Begriff",
+      "Bedeutung"
+    ],
+    [
+      [
+        "SLA-Ziel",
+        "Vereinbarte Qualität eines Dienstes"
+      ],
+      [
+        "RTO",
+        "Geplante maximale Wiederanlaufdauer nach einer Unterbrechung"
+      ],
+      [
+        "MTTR",
+        "Statistischer Mittelwert der betrachteten Reparatur- oder Wiederherstellungszeiten"
+      ],
+      [
+        "Reaktionszeit",
+        "Zeit bis zur vereinbarten ersten Bearbeitung oder Rückmeldung"
+      ]
+    ]
+  ],
+  [
+    "warn",
+    "MTTR ist ein Mittelwert. Ein RTO ist ein Ziel. Eine kurze Reaktionszeit garantiert keine schnelle Wiederherstellung."
+  ],
+  [
+    "qa",
+    "Ein Dienst wird 30 Tage rund um die Uhr gemessen. Das SLA fordert 99,95 Prozent. Ausfälle dauern 12 und 18 Minuten. Wartung zählt vollständig mit. **Berechnen** und **beurteilen** Sie das Ergebnis.",
+    [
+      "Messzeit: 30 × 24 × 60 = **43.200 Minuten**. 1 Punkt.",
+      "Erlaubter Ausfall: 43.200 × 0,0005 = **21,6 Minuten**. 1 Punkt.",
+      "Tatsächlicher Ausfall: 12 + 18 = **30 Minuten**. 1 Punkt.",
+      "Verfügbarkeit: (43.200 − 30) / 43.200 × 100 ≈ **99,9306 Prozent**. 1 Punkt.",
+      "Ziel verfehlt: 30 − 21,6 = **8,4 Minuten** zu viel Ausfall. 1 Punkt."
+    ],
+    5
+  ],
+  [
+    "h",
+    "Grenzen der Redundanzrechnung"
+  ],
+  [
+    "p",
+    "Die einfache Parallelformel setzt unabhängige Ausfälle voraus. Außerdem muss eine einzelne Komponente den Dienst tragen können. Umschalten und gemeinsame Abhängigkeiten müssen berücksichtigt werden. Zwei Server an derselben defekten Stromversorgung helfen nicht."
+  ],
+  [
+    "quiz",
+    [
+      {
+        "q": "Welche Aussage ist richtig?",
+        "o": [
+          "Ein gemeinsamer Ausfallgrund kann beide redundanten Server treffen",
+          "Zwei Server garantieren immer 100 Prozent",
+          "MTTR ist immer die längste Reparaturzeit",
+          "Reaktionszeit und Ausfalldauer sind identisch"
+        ],
+        "a": 0,
+        "e": "Gemeinsame Stromversorgung, Softwarefehler und Fehlkonfiguration können Redundanz unwirksam machen."
+      }
+    ]
+  ],
+  [
+    "see",
+    [
+      "infra-monitoring",
+      "ps-abnahme",
+      "ps-risiko"
+    ]
+  ]
+]);
 ;
 // content/infra/verfuegbarkeit-2.js
 AP2.add('infra-verfuegbarkeit', [
   ['h', 'Reihen- und Parallelschaltung'],
-  ['p', 'Besteht ein System aus mehreren Komponenten, hängt die **Gesamtverfügbarkeit** von der Anordnung ab.'],
+  ['p', 'Die Gesamtverfügbarkeit hängt von der Anordnung ab. Die folgenden Produktformeln setzen **unabhängige Ausfälle** voraus. Beim Parallelbetrieb muss eine Komponente genügen. Umschaltfehler und gemeinsame Abhängigkeiten werden im einfachen Modell ausgeblendet.'],
   ['diagram', {w: 720, h: 270, keep: 540, cap: 'Oben: Reihenschaltung, jede Komponente muss laufen. Unten: Parallelschaltung (Redundanz), nur eine muss laufen.', nodes: [
     {id: 'a1', k: 'round', x: 130, y: 50, t: ['Server', '99 %'], w: 120, h: 50}, {id: 'a2', k: 'round', x: 330, y: 50, t: ['Switch', '99 %'], w: 120, h: 50}, {id: 'a3', k: 'round', x: 530, y: 50, t: ['Datenbank', '99 %'], w: 120, h: 50}, {id: 'ta', k: 'text', x: 360, y: 105, t: 'Reihe: 0,99 mal 0,99 mal 0,99 = 97,03 %', fs: 12, b: true, tc: 'bad'},
     {id: 'b1', k: 'round', x: 280, y: 170, t: ['Server 1', '99 %'], w: 120, h: 44}, {id: 'b2', k: 'round', x: 280, y: 230, t: ['Server 2', '99 %'], w: 120, h: 44}, {id: 'in', k: 'dot', x: 130, y: 200}, {id: 'out', k: 'dot', x: 430, y: 200}, {id: 'tb', k: 'text', x: 580, y: 200, t: ['Parallel: 1 - 0,01 mal 0,01', '= 99,99 %'], fs: 12, b: true, tc: 'ok'},
@@ -12135,7 +17755,7 @@ AP2.add('infra-verfuegbarkeit', [
     ['Verfügbarkeit', '99,9 % pro Monat, gemessen an der Erreichbarkeit des Dienstes'],
     ['Messzeitraum und Wartungsfenster', 'Wartung zählt nicht als Ausfall, wenn sie sonntags 2 bis 4 Uhr stattfindet'],
     ['Reaktionszeit', 'Störungen der Priorität 1 werden innerhalb von 30 Minuten bearbeitet'],
-    ['Wiederherstellungszeit (MTTR / RTO)', 'Kritische Störungen innerhalb von 4 Stunden behoben'],
+    ['Wiederherstellungsziel; getrennt vom Mittelwert MTTR', 'Kritische Störungen innerhalb von 4 Stunden behoben'],
     ['Servicezeiten', '24/7 oder Montag bis Freitag 8 bis 18 Uhr'],
     ['Sanktionen', 'Gutschrift von 10 Prozent der Monatsgebühr bei Unterschreitung'],
     ['Berichte und Kennzahlen', 'Monatlicher Verfügbarkeitsbericht'],
@@ -12160,7 +17780,7 @@ AP2.add('infra-verfuegbarkeit', [
 AP2.page('infra-backup', {
   b: 'infra', g: 'Storage und Verfügbarkeit', t: 'Backup-Strategien: 3-2-1-Regel, RPO und RTO',
   d: 'Ein **Backup** ist eine **getrennte Kopie** von Daten, mit der man sie nach Verlust **wiederherstellen** kann. Die **3-2-1-Regel**: **3** Kopien, auf **2** verschiedenen Medien, davon **1** an einem anderen Ort. **RPO** (Recovery Point Objective) ist der **tolerierbare Datenverlust**, **RTO** (Recovery Time Objective) die **tolerierbare Wiederherstellungsdauer**.',
-  m: '**3-2-1:** 3 Kopien, 2 Medien, 1 extern (offsite). **RPO = wie viel Daten darf ich verlieren (Zeit seit letztem Backup), RTO = wie lange darf die Wiederherstellung dauern.** Backup-Arten: **Voll** (alles), **Differenziell** (seit letztem Voll), **Inkrementell** (seit letztem Backup jeder Art).',
+  m: '**3-2-1:** 3 Kopien, 2 Medien, 1 extern (offsite). **RPO = maximal tolerierter Datenverlust in Zeit, RTO = wie lange darf die Wiederherstellung dauern.** Backup-Arten: **Voll** (alles), **Differenziell** (seit letztem Voll), **Inkrementell** (seit letztem Backup jeder Art).',
   cheat: [
     ['3-2-1-Regel', ['**3** Kopien der Daten (Original + 2 Backups)', '**2** verschiedene Medien (zum Beispiel Platte und Band/Cloud)', '**1** Kopie an einem **anderen Ort** (Offsite)', 'Erweitert: **3-2-1-1-0**: 1 unveränderbar (immutable/offline), 0 Fehler bei Restore-Test']],
     ['Backup-Arten', ['**Vollsicherung:** alle Daten', '**Differenziell:** Änderungen seit der letzten **Vollsicherung**', '**Inkrementell:** Änderungen seit dem letzten **Backup (egal welcher Art)**', 'Restore: Voll + letztes Diff. oder Voll + alle Inkremente']],
@@ -12172,10 +17792,10 @@ AP2.page('infra-backup', {
     ['p', 'Daten können durch **Hardwaredefekt, Bedienfehler, Schadsoftware (Ransomware), Diebstahl, Brand oder Wasser** verloren gehen. Ein **Backup** ermöglicht es, den Betrieb wiederherzustellen. Wichtig: **Ein Backup ist erst dann etwas wert, wenn die Wiederherstellung getestet wurde.** Die Datensicherung ist außerdem Teil der DSGVO-Pflicht zur Verfügbarkeit und Belastbarkeit der Systeme.'],
     ['h', 'Die 3-2-1-Regel'],
     ['diagram', {w: 760, h: 230, keep: 600, cap: 'Die 3-2-1-Regel: drei Kopien, zwei Medien, eine Kopie an einem anderen Ort.', nodes: [
-      {id: 'o', k: 'cyl', x: 110, y: 110, t: ['Original', 'Server'], w: 120, h: 90, s: 'solid'}, {id: 'b1', k: 'cyl', x: 330, y: 70, t: ['Kopie 1', 'NAS (Platte)'], w: 120, h: 80, s: 'accent'}, {id: 'b2', k: 'cyl', x: 330, y: 170, t: ['Kopie 2', 'Bandlaufwerk'], w: 120, h: 80, s: 'accent'}, {id: 'b3', k: 'cyl', x: 620, y: 120, t: ['Kopie 3', 'Cloud / anderer Standort'], w: 150, h: 96, s: 'ok'},
+      {id: 'o', k: 'cyl', x: 110, y: 110, t: ['Original', 'Server'], w: 120, h: 90, s: 'solid'}, {id: 'b1', k: 'cyl', x: 330, y: 70, t: ['Kopie 1', 'NAS (Platte)'], w: 120, h: 80, s: 'accent'}, {id: 'b2', k: 'cyl', x: 620, y: 120, t: ['Kopie 2', 'Band am anderen Standort'], w: 180, h: 96, s: 'ok'},
       {id: 'site', k: 'group', x: 190, y: 120, w: 380, h: 200, t: 'Standort A', s: 'soft'},
-    ], edges: [{a: 'o', b: 'b1'}, {a: 'o', b: 'b2'}, {a: 'b1', b: 'b3', t: 'Offsite'}]}],
-    ['table', ['Zahl', 'Bedeutung', 'Schutz vor'], [['**3** Kopien', 'Original plus mindestens zwei Sicherungen', 'Ausfall einer Kopie'], ['**2** Medien', 'Unterschiedliche Speichertypen (Festplatte, Band, Cloud)', 'Fehler oder Defekt einer Mediensorte'], ['**1** Offsite', 'Eine Kopie an einem anderen Ort (anderes Gebäude, Cloud)', 'Brand, Wasser, Diebstahl, Ransomware im Netz']]],
+    ], edges: [{a: 'o', b: 'b1'}, {a: 'b1', b: 'b2', t: 'Offsite'}]}],
+    ['table', ['Zahl', 'Bedeutung', 'Schutz vor'], [['**3** Kopien', 'Original plus mindestens zwei Sicherungen', 'Ausfall einer Kopie'], ['**2** Medien', 'Unterschiedliche Speichertypen (Festplatte, Band, Cloud)', 'Fehler oder Defekt einer Mediensorte'], ['**1** Offsite', 'Eine Kopie an einem anderen Ort (anderes Gebäude, Cloud)', 'Brand, Wasser und Diebstahl am Hauptstandort']]],
     ['h', 'Backup-Arten'],
     ['table', ['Art', 'Was wird gesichert?', 'Backup-Dauer / Platz', 'Wiederherstellung'], [
       ['**Vollsicherung**', 'Alle Daten, jedes Mal', 'Lang, viel Platz', 'Am einfachsten: nur dieses Backup nötig'],
@@ -12185,16 +17805,95 @@ AP2.page('infra-backup', {
     ['chart', {kind: 'bar', w: 720, h: 320, labels: ['Montag (Voll)', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag'], series: [{n: 'Differenziell (GB)', d: [100, 8, 15, 21, 30], k: 'accent'}, {n: 'Inkrementell (GB)', d: [100, 8, 7, 6, 9], k: 'text3'}], vals: true, yl: 'Gesicherte Datenmenge (GB)', cap: 'Beispiel: Differenzielle Sicherungen wachsen täglich (alles seit Voll), inkrementelle bleiben klein (nur Änderungen seit gestern).'}],
   ],
 });
+
+AP2.add('infra-backup', [
+  [
+    "h",
+    "Wiederherstellung einer laufenden Anwendung"
+  ],
+  [
+    "p",
+    "Eine Datenbank verändert Dateien während des Betriebs. Eine einfache Dateikopie kann deshalb inkonsistent sein. Nutze ein geeignetes Datenbank-Backup oder eine abgestimmte konsistente Momentaufnahme. Sichere auch Konfiguration, Schlüssel und benötigte Versionen."
+  ],
+  [
+    "table",
+    [
+      "Baustein",
+      "Zweck"
+    ],
+    [
+      [
+        "Datenbank und Transaktionsprotokolle",
+        "Konsistenter Stand; gegebenenfalls Wiederherstellung auf einen Zeitpunkt"
+      ],
+      [
+        "Anwendung und Konfiguration",
+        "Daten allein starten keinen funktionierenden Dienst"
+      ],
+      [
+        "Schlüssel und Zugriffsrechte",
+        "Verschlüsselte Sicherungen müssen im Notfall lesbar sein"
+      ],
+      [
+        "Getrennte Konten",
+        "Anwendungskonten dürfen Backups nicht löschen"
+      ],
+      [
+        "Restore-Protokoll",
+        "Belegt Dauer, Datenstand und fachliche Funktion"
+      ]
+    ]
+  ],
+  [
+    "h",
+    "RPO-Ziel und tatsächlichen Verlust trennen"
+  ],
+  [
+    "p",
+    "RPO ist eine Vorgabe aus dem Geschäft. Das Sicherungsverfahren muss diese Vorgabe erfüllen. Das Sicherungsintervall allein definiert das Ziel nicht. Sicherungsdauer, Fehler und nutzbarer Datenstand zählen ebenfalls."
+  ],
+  [
+    "qa",
+    "Vorgabe: RPO höchstens 30 Minuten, RTO höchstens 90 Minuten. Letzter nutzbarer Stand: 13:40 Uhr. Ausfall: 14:05 Uhr. Betrieb wieder bereit: 15:50 Uhr. **Berechnen** und **beurteilen** Sie beide Werte.",
+    [
+      "Datenverlust: 14:05 − 13:40 = **25 Minuten**. 1 Punkt.",
+      "25 ≤ 30 Minuten: RPO-Ziel eingehalten. 1 Punkt.",
+      "Ausfalldauer: 15:50 − 14:05 = **105 Minuten**. 1 Punkt.",
+      "105 > 90 Minuten: RTO-Ziel um 15 Minuten überschritten. 1 Punkt."
+    ],
+    4
+  ],
+  [
+    "h",
+    "Restore-Zeit abschätzen"
+  ],
+  [
+    "p",
+    "1,2 TB entsprechen hier dezimal 1.200.000 MB. Bei gemessenen 200 MB/s dauert der reine Datentransfer 6.000 Sekunden. Das sind 100 Minuten. Erkennung, Bereitstellung, Datenbankstart und Fachtest kommen noch hinzu."
+  ],
+  [
+    "warn",
+    "Offsite schützt gegen Standortverlust. Es schützt allein nicht gegen gestohlene Zugangsdaten oder Löschzugriffe. Dafür sind getrennte Rechte und offline oder unveränderbar gespeicherte Sicherungen nötig."
+  ],
+  [
+    "see",
+    [
+      "ps-migration",
+      "infra-monitoring",
+      "infra-cloud"
+    ]
+  ]
+]);
 ;
 // content/infra/backup-2.js
 AP2.add('infra-backup', [
   ['h', 'Backup-Rechenbeispiel'],
   ['ex', ['Montag Vollsicherung (100 GB). Täglich ändern sich 10 GB neue Daten. Am Donnerstag fällt der Server aus.', '**Inkrementell:** Wiederherstellung = Voll (Mo) + Inkrement Di (10 GB) + Mi (10 GB) = 3 Medien nötig.', '**Differenziell:** Di sichert 10 GB, Mi sichert 20 GB (seit Voll). Wiederherstellung = Voll + **nur** Differenz von Mi (20 GB) = 2 Medien nötig.', '**Fazit:** Inkrementell spart Backup-Zeit und Platz, Restore ist aufwendiger. Differenziell braucht mehr Platz, der Restore geht schneller.']],
   ['h', 'RPO und RTO'],
-  ['diagram', {w: 760, h: 200, keep: 640, cap: 'Zeitleiste eines Ausfalls: RPO misst rückwärts (Datenverlust), RTO misst vorwärts (Ausfalldauer).', nodes: [
+  ['diagram', {w: 760, h: 200, keep: 640, cap: 'Zeitleiste eines Ausfalls: Datenverlust und Ausfalldauer werden mit den Zielwerten RPO und RTO verglichen.', nodes: [
     {id: 'lb', k: 'text', x: 150, y: 40, t: 'Letztes Backup', fs: 12, b: true}, {id: 'fa', k: 'text', x: 380, y: 40, t: 'Ausfall', fs: 12, b: true, tc: 'bad'}, {id: 'wb', k: 'text', x: 620, y: 40, t: 'System wieder in Betrieb', fs: 12, b: true, tc: 'ok'},
     {id: 'p1', k: 'dot', x: 150, y: 100}, {id: 'p2', k: 'dot', x: 380, y: 100, s: 'bad'}, {id: 'p3', k: 'dot', x: 620, y: 100},
-    {id: 'rpo', k: 'text', x: 265, y: 140, t: 'RPO: Datenverlust (Zeit seit letztem Backup)', fs: 12, tc: 'accent', b: true}, {id: 'rto', k: 'text', x: 500, y: 165, t: 'RTO: Ausfalldauer bis zur Wiederherstellung', fs: 12, tc: 'accent', b: true},
+    {id: 'rpo', k: 'text', x: 265, y: 140, t: 'Datenverlust: Abstand zum letzten nutzbaren Stand', fs: 12, tc: 'accent', b: true}, {id: 'rto', k: 'text', x: 500, y: 165, t: 'Ausfalldauer bis zur Betriebsbereitschaft', fs: 12, tc: 'accent', b: true},
   ], edges: [{a: 'p1', b: 'p2', ea: 'none', s: 'accent', w: 2.5}, {a: 'p2', b: 'p3', ea: 'none', s: 'ok', w: 2.5}]}],
   ['table', ['Kennzahl', 'Frage', 'Beispiel', 'Folge für die Planung'], [
     ['**RPO** (Recovery Point Objective)', 'Wie viele Daten (in Zeit) dürfen im Notfall höchstens verloren gehen?', 'RPO = 1 Stunde: Alle Daten bis höchstens 1 Stunde vor dem Ausfall müssen wiederherstellbar sein', 'Backup oder Replikation mindestens **stündlich**'],
@@ -12204,7 +17903,7 @@ AP2.add('infra-backup', [
     ['MTD / MAO', 'Maximum Tolerable Downtime: Wie lange darf der Prozess maximal ausfallen, bevor dem Unternehmen Existenzgefahr droht? RTO muss kleiner sein.'],
     ['Disaster Recovery (DR)', 'Notfallkonzept für Katastrophen: zweiter Standort, Wiederanlaufplan, regelmäßige Übungen.'],
     ['Replikation', 'Laufende Kopie auf ein zweites System. Kleiner RPO (nahe 0) möglich, aber **schützt nicht vor Löschen/Ransomware**, weil Änderungen mitrepliziert werden.'],
-    ['Snapshot', 'Momentaufnahme eines Systems oder Dateisystems, schnell erstellt. Gut für kurzfristige Rücksicherung, **kein vollwertiges Backup** (liegt auf demselben System).'],
+    ['Snapshot', 'Momentaufnahme eines Systems oder Dateisystems. Sie bleibt häufig vom Ursprungsspeicher abhängig. Ein Snapshot allein ist deshalb kein unabhängiges Backup. Eine getrennt gesicherte Snapshot-Kopie kann Teil des Backup-Verfahrens sein.'],
     ['Image-Backup', 'Komplettes Abbild eines Systems (Betriebssystem und Daten). Schnelle Wiederherstellung auf ähnlicher Hardware oder in virtueller Umgebung.'],
   ]],
   ['h', 'Backup-Konzept: Was gehört dazu?'],
@@ -12212,7 +17911,7 @@ AP2.add('infra-backup', [
   ['procon', 'Backup in der Cloud', ['Automatisch offsite, skalierbar, keine eigene Hardware', 'Gute Ergänzung zur 3-2-1-Regel'], ['Wiederherstellung großer Datenmengen dauert (Bandbreite, RTO)', 'Datenschutz (DSGVO): Standort, Verschlüsselung, Vertrag zur Auftragsverarbeitung', 'Laufende Kosten, Abhängigkeit vom Anbieter']],
   ['h', 'Aufgaben im Prüfungsstil'],
   ['qa', 'Erklären Sie die 3-2-1-Regel am Beispiel eines Firmenservers.', ['- **3 Kopien:** Original auf dem Server, Kopie 1 auf einem NAS, Kopie 2 in der Cloud.', '- **2 Medien:** Festplatte im NAS und zum Beispiel Band oder Cloud-Objektspeicher.', '- **1 Offsite:** Die Cloud-Kopie liegt an einem anderen Ort und schützt bei Brand oder Diebstahl.'], 4],
-  ['qa', 'Ein Unternehmen sichert täglich um 22:00 Uhr. Um 15:00 Uhr fällt der Server aus. Wie viel Datenverlust ist im ungünstigsten Fall entstanden? Welchen RPO hat das Backup-Verfahren?', ['Im ungünstigsten Fall (Ausfall kurz vor dem nächsten Backup) gehen **fast 24 Stunden** Daten verloren. Konkret hier: seit 22:00 des Vortages bis 15:00 = **17 Stunden**.', 'Der **RPO** des Verfahrens beträgt **24 Stunden** (Sicherungsintervall). Für kleinere RPO muss öfter gesichert oder repliziert werden.'], 5],
+  ['qa', 'Ein Unternehmen sichert täglich um 22:00 Uhr. Um 15:00 Uhr fällt der Server aus. Wie viel Datenverlust ist im ungünstigsten Fall entstanden? Welchen RPO hat das Backup-Verfahren?', ['Im ungünstigsten Fall (Ausfall kurz vor dem nächsten Backup) gehen **fast 24 Stunden** Daten verloren. Konkret hier: seit 22:00 des Vortages bis 15:00 = **17 Stunden**.', 'Das Verfahren ermöglicht bei erfolgreichen täglichen Sicherungen einen Datenverlust von bis zu ungefähr **24 Stunden**. Das geforderte **RPO-Ziel** muss dazu passen. Für kleinere Zielwerte sind häufigere nutzbare Stände nötig.'], 5],
   ['qa', 'Nennen Sie je einen Vor- und Nachteil der inkrementellen und der differenziellen Sicherung.', ['**Inkrementell:** Vorteil: geringster Zeit- und Platzbedarf pro Backup. Nachteil: Wiederherstellung braucht Vollsicherung plus alle Inkremente (aufwendig, ein defektes Inkrement gefährdet die Kette).', '**Differenziell:** Vorteil: Wiederherstellung nur mit Vollsicherung plus der letzten Differenzsicherung. Nachteil: Backup wird mit der Zeit größer und länger.'], 4],
   ['qa', 'Warum reicht eine Spiegelung auf einen zweiten Server (Replikation) nicht als Backup?', 'Bei der Replikation werden Änderungen **sofort mit kopiert**, auch Löschungen, Fehler und Ransomware-Verschlüsselung. Ein Backup bewahrt dagegen **frühere Stände** auf, aus denen man zurückkehren kann.', 3],
   ['quiz', [
@@ -12427,6 +18126,1006 @@ AP2.page('infra-virtualisierung', {
       {q: 'Welcher Vorteil gilt für eine selbst gehostete VDI gegenüber Cloud-VDI?', o: ['Mehr Kontrolle und Anpassungsmöglichkeiten', 'Keine Anfangsinvestition', 'Unbegrenzte Skalierung', 'Keine Wartung'], a: 0, e: 'Dafür sind Anfangsinvestition und Wartungsaufwand höher.'},
     ]],
   ],
+});
+
+
+AP2.add('infra-virtualisierung', [
+  [
+    "h",
+    "Überbuchung und gemeinsame Ausfallgrenzen"
+  ],
+  [
+    "p",
+    "Mehrere VMs teilen physische Ressourcen. Zugewiesene virtuelle CPUs bedeuten keine zusätzlichen echten Kerne. Überbuchung funktioniert nur, solange nicht alle Gäste gleichzeitig ihre volle Leistung benötigen. Gemessene Last und Reserven bestimmen eine tragfähige Planung."
+  ],
+  [
+    "table",
+    [
+      "Risiko",
+      "Wirkung",
+      "Maßnahme"
+    ],
+    [
+      [
+        "Ein Host fällt aus",
+        "Alle dort laufenden VMs stoppen",
+        "Cluster mit Kapazitätsreserve"
+      ],
+      [
+        "Gemeinsamer Speicher fällt aus",
+        "Mehrere Hosts können gleichzeitig betroffen sein",
+        "Redundanz und unabhängige Sicherung"
+      ],
+      [
+        "Alle Gäste benötigen mehr RAM",
+        "Engpässe oder langsames Auslagern",
+        "Realistische Limits und Reserven"
+      ],
+      [
+        "Snapshot wächst stark",
+        "Speicherplatz wird knapp",
+        "Lebenszyklus und freien Speicher überwachen"
+      ]
+    ]
+  ],
+  [
+    "qa",
+    "Drei Hosts bieten je 64 GiB RAM. Je Host bleiben acht GiB für System und Reserve frei. Nach Ausfall eines Hosts müssen alle VMs weiterlaufen. **Berechnen** Sie die maximal planbare Gesamtbelegung unter dieser RAM-Annahme.",
+    [
+      "Nutzbar je Host: 64 − 8 = **56 GiB**. 1 Punkt.",
+      "Nach Ausfall bleiben zwei Hosts. 1 Punkt.",
+      "Planbare VM-Belegung: 2 × 56 = **112 GiB**. 1 Punkt.",
+      "CPU, Speicherzugriff, Neustartdauer und reale Last müssen zusätzlich geprüft werden. 1 Punkt."
+    ],
+    4
+  ],
+  [
+    "h",
+    "SaaS entbindet nicht von Datenverantwortung"
+  ],
+  [
+    "p",
+    "Der Anbieter betreibt die Standardanwendung. Die Organisation konfiguriert weiterhin Konten, Rollen und Freigaben. Aufbewahrung, Export und Wiederherstellung müssen zum Bedarf passen. Eine Verfügbarkeitszusage ist kein vollständiger Backupnachweis."
+  ],
+  [
+    "see",
+    [
+      "infra-container",
+      "infra-cloud",
+      "infra-monitoring",
+      "infra-backup"
+    ]
+  ]
+]);
+;
+// content/infra/container-1.js
+AP2.page('infra-container', {
+  "b": "infra",
+  "g": "Server und Virtualisierung",
+  "t": "Container: Image, Betrieb, Volumes und sichere Bereitstellung",
+  "d": "Ein Container führt eine Anwendung isoliert aus. Container teilen den Kernel ihrer Laufzeitumgebung. Ein Image ist die Vorlage. Ein Volume speichert Daten unabhängig vom Lebenszyklus eines Containers.",
+  "m": "**Image = Vorlage. Container = laufende Instanz. Volume = dauerhafte Daten.** Ein Container ist kein Backup.",
+  "cheat": [
+    [
+      "Begriffe",
+      [
+        "Registry: Speicher für Images",
+        "Image-Digest: Kennung eines konkreten Inhalts",
+        "Port-Mapping: Host-Port an Container-Port weiterleiten",
+        "Healthcheck: Zustand des Dienstes prüfen"
+      ]
+    ],
+    [
+      "Betrieb",
+      [
+        "Prozess möglichst ohne Root-Rechte starten.",
+        "Secrets getrennt übergeben.",
+        "Datenbankdaten dauerhaft speichern.",
+        "Ressourcenlimits und Überwachung einrichten."
+      ]
+    ]
+  ],
+  "blocks": [
+    [
+      "h",
+      "Container und virtuelle Maschine"
+    ],
+    [
+      "table",
+      [
+        "Merkmal",
+        "Container",
+        "Virtuelle Maschine"
+      ],
+      [
+        [
+          "Kernel",
+          "Mit Laufzeitumgebung geteilt",
+          "Eigener Gastkernel"
+        ],
+        [
+          "Start",
+          "Oft schnell, da kein vollständiger Gaststart",
+          "Start des Gastbetriebssystems"
+        ],
+        [
+          "Isolation",
+          "Prozessisolation; gemeinsamer Kernel ist Sicherheitsgrenze",
+          "Hypervisor trennt Gastmaschinen"
+        ],
+        [
+          "Portabilität",
+          "Passende Architektur und Kernelumgebung erforderlich",
+          "Passende Virtualisierungsplattform erforderlich"
+        ],
+        [
+          "Betriebssystem",
+          "Linux-Container benötigen eine Linux-Kernelumgebung",
+          "Gastbetriebssystem kann vom Host abweichen"
+        ]
+      ]
+    ],
+    [
+      "note",
+      "Ein Desktop kann Linux-Container über eine Linux-VM ausführen. Deshalb ist „Container laufen ohne Betriebssystem“ falsch."
+    ],
+    [
+      "h",
+      "Vom Quelltext zum Betrieb"
+    ],
+    [
+      "seq",
+      {
+        "w": 760,
+        "actors": [
+          "Entwicklung",
+          "CI-Pipeline",
+          "Registry",
+          "Laufzeit"
+        ],
+        "steps": [
+          [
+            0,
+            1,
+            "Quellstand mit Tests übergeben",
+            "s"
+          ],
+          [
+            1,
+            1,
+            "Image bauen und prüfen",
+            "s"
+          ],
+          [
+            1,
+            2,
+            "Geprüftes Image veröffentlichen",
+            "s"
+          ],
+          [
+            3,
+            2,
+            "Konkreten Image-Digest laden",
+            "s"
+          ],
+          [
+            2,
+            3,
+            "Image bereitstellen",
+            "r"
+          ],
+          [
+            3,
+            3,
+            "Mit Konfiguration und Volume starten",
+            "s"
+          ]
+        ],
+        "cap": "Einmal bauen, denselben geprüften Inhalt in weitere Umgebungen übernehmen."
+      }
+    ],
+    [
+      "h",
+      "Deklarative Konfiguration lesen"
+    ],
+    [
+      "code",
+      "yaml",
+      "services:\n  web:\n    image: beispiel-web:1.4.2\n    ports:\n      - \"8080:3000\"\n    environment:\n      APP_ENV: production\n    read_only: true\n    tmpfs:\n      - /tmp\n  db:\n    image: postgres:16\n    volumes:\n      - dbdaten:/var/lib/postgresql/data\n    environment:\n      POSTGRES_PASSWORD_FILE: /run/secrets/dbpass\n    secrets:\n      - dbpass\nvolumes:\n  dbdaten:\nsecrets:\n  dbpass:\n    file: ./secrets/dbpass.txt"
+    ],
+    [
+      "p",
+      "Das Beispiel zeigt das Format. Es ist keine vollständige Produktionskonfiguration. Versionen sind Beispielwerte. Die Geheimnisdatei gehört nicht ins Repository. Datenbankname und Zugang der Webanwendung müssen zusätzlich eingerichtet werden."
+    ],
+    [
+      "table",
+      [
+        "Eintrag",
+        "Wirkung",
+        "Prüfungsfalle"
+      ],
+      [
+        [
+          "8080:3000",
+          "Host-Port 8080 führt zum Container-Port 3000",
+          "Die Reihenfolge nicht vertauschen"
+        ],
+        [
+          "Volume dbdaten",
+          "Daten überleben die Neuerstellung des DB-Containers",
+          "Ein gelöschtes Volume verliert seine Daten"
+        ],
+        [
+          "read_only",
+          "Beschreibbare Containerdateien einschränken",
+          "Anwendung benötigt eventuell definierte Schreibpfade"
+        ],
+        [
+          "Tag 1.4.2",
+          "Lesbarer Versionsname",
+          "Tags können neu zugeordnet werden; Digest ist genauer"
+        ]
+      ]
+    ],
+    [
+      "h",
+      "Ressourcen planen"
+    ],
+    [
+      "p",
+      "Ein Host bietet 16 GiB RAM. Betriebssystem und Reserve benötigen zusammen 4 GiB. Ein Dienst benötigt unter Testlast maximal 1,5 GiB. Die Rechnung betrachtet nur RAM."
+    ],
+    [
+      "walk",
+      {
+        "t": "Maximale Instanzzahl unter dieser Annahme",
+        "steps": [
+          {
+            "t": "Nutzbaren Speicher bestimmen",
+            "b": [
+              [
+                "p",
+                "16 GiB − 4 GiB = **12 GiB**."
+              ]
+            ]
+          },
+          {
+            "t": "Instanzen berechnen",
+            "b": [
+              [
+                "p",
+                "12 GiB / 1,5 GiB = **8 Instanzen**."
+              ]
+            ]
+          },
+          {
+            "t": "Ergebnis begrenzen",
+            "b": [
+              [
+                "p",
+                "CPU, I/O, Netz und Lastspitzen separat prüfen. Acht ist keine allgemeine Leistungszusage."
+              ]
+            ]
+          }
+        ]
+      }
+    ],
+    [
+      "h",
+      "Betrieb sicher gestalten"
+    ],
+    [
+      "steps",
+      [
+        "Minimales Image verwenden und unnötige Werkzeuge vermeiden.",
+        "Abhängigkeiten prüfen und Images regelmäßig neu bauen.",
+        "Mit geringsten Rechten und ohne unnötige Host-Mounts starten.",
+        "Secrets zur Laufzeit übergeben; nicht in Images einbauen.",
+        "Healthchecks, Logs, Limits und Neustartstrategie definieren.",
+        "Volumes sichern und Wiederherstellung getrennt testen."
+      ]
+    ],
+    [
+      "qa",
+      "**Erläutern** Sie drei Unterschiede zwischen Image, Container und Volume. **Begründen** Sie einen Backuptest.",
+      [
+        "Image: unveränderte Vorlage für die Ausführung. 1 Punkt.",
+        "Container: konkrete Instanz mit eigenem Laufzustand. 1 Punkt.",
+        "Volume: getrennte dauerhafte Datenablage. 1 Punkt.",
+        "Ein vorhandenes Volume schützt nicht vor Löschfehlern; Wiederherstellung muss nachgewiesen werden. 1 Punkt."
+      ],
+      4
+    ],
+    [
+      "qa",
+      "Ein Update startet korrekt. Nach zehn Minuten steigt der Speicherbedarf stark. **Nennen** Sie vier passende Maßnahmen.",
+      [
+        "- Speicherverbrauch mit Lastverlauf überwachen.",
+        "- Passende Speicherlimits und Reserve festlegen.",
+        "- Ursache wie Speicherleck oder zu großen Cache untersuchen.",
+        "- Geprüften Rückfall auf den vorherigen Stand vorbereiten.",
+        "Je Maßnahme 1 Punkt. Ein Neustart allein beseitigt die Ursache nicht."
+      ],
+      4
+    ],
+    [
+      "quiz",
+      [
+        {
+          "q": "Welche Daten überleben eine Container-Neuerstellung zuverlässig?",
+          "o": [
+            "Daten in einem weiterhin vorhandenen Volume",
+            "Alle Dateien im alten Container",
+            "Nur Daten im RAM",
+            "Keine Daten überhaupt"
+          ],
+          "a": 0,
+          "e": "Ein Volume ist vom Container getrennt. Es muss trotzdem gesichert werden."
+        },
+        {
+          "q": "Welches Kennzeichen bindet den Image-Inhalt am genauesten?",
+          "o": [
+            "Digest",
+            "latest-Tag",
+            "Containername",
+            "Host-Port"
+          ],
+          "a": 0,
+          "e": "Ein Digest identifiziert den Inhalt kryptografisch."
+        },
+        {
+          "q": "Was teilen Linux-Container einer Laufzeitumgebung?",
+          "o": [
+            "Den Kernel",
+            "Ein zwingend gemeinsames Benutzerkonto",
+            "Alle Prozessspeicher",
+            "Alle Konfigurationsdateien"
+          ],
+          "a": 0,
+          "e": "Isolation trennt Prozesse und Ressourcen. Der Kernel wird geteilt."
+        }
+      ]
+    ],
+    [
+      "see",
+      [
+        "infra-virtualisierung",
+        "infra-backup",
+        "infra-monitoring",
+        "ps-cicd"
+      ]
+    ]
+  ]
+});
+;
+// content/infra/cloud-1.js
+AP2.page('infra-cloud', {
+  "b": "infra",
+  "g": "Server und Virtualisierung",
+  "t": "Cloud-Entscheidungen: Verantwortung, Skalierung und Kosten",
+  "d": "Cloud-Dienste stellen IT-Ressourcen bedarfsgerecht bereit. Der Leistungsumfang unterscheidet sich nach Servicemodell. Technische Verantwortung und Kosten müssen vor dem Einsatz klar sein.",
+  "m": "**Auslagern ändert Aufgaben und Abhängigkeiten.** Auch bei SaaS bleiben Benutzerrechte, Daten und fachliche Kontrollen wichtig.",
+  "cheat": [
+    [
+      "Modelle",
+      [
+        "IaaS: Infrastruktur mieten",
+        "PaaS: Anwendung auf verwalteter Plattform betreiben",
+        "SaaS: fertige Anwendung nutzen"
+      ]
+    ],
+    [
+      "Entscheidung",
+      [
+        "Lastprofil und Verfügbarkeitsziel nennen.",
+        "Laufende Kosten einschließlich Datenverkehr rechnen.",
+        "Verantwortung für Updates und Wiederherstellung festlegen.",
+        "Ausstieg und Datenexport vorab planen."
+      ]
+    ]
+  ],
+  "blocks": [
+    [
+      "h",
+      "Geteilte Verantwortung"
+    ],
+    [
+      "table",
+      [
+        "Aufgabe",
+        "IaaS",
+        "PaaS",
+        "SaaS"
+      ],
+      [
+        [
+          "Physische Infrastruktur",
+          "Anbieter",
+          "Anbieter",
+          "Anbieter"
+        ],
+        [
+          "Gastbetriebssystem pflegen",
+          "Kunde",
+          "Anbieter",
+          "Anbieter"
+        ],
+        [
+          "Eigene Anwendung entwickeln und patchen",
+          "Kunde",
+          "Kunde",
+          "Anbieter bei der Standardanwendung"
+        ],
+        [
+          "Benutzerrechte und Datenfreigaben",
+          "Kunde konfiguriert",
+          "Kunde konfiguriert",
+          "Kunde konfiguriert"
+        ],
+        [
+          "Backup und Wiederherstellung",
+          "Umfang vereinbaren und prüfen",
+          "Umfang vereinbaren und prüfen",
+          "Umfang vereinbaren und prüfen"
+        ]
+      ]
+    ],
+    [
+      "p",
+      "Der konkrete Vertrag und Dienst bestimmen die genaue Zuständigkeit. „Anbieter übernimmt die Infrastruktur“ bedeutet keine vollständige Sicherung aller Kundendaten."
+    ],
+    [
+      "h",
+      "Bereitstellungsformen"
+    ],
+    [
+      "table",
+      [
+        "Form",
+        "Bedeutung",
+        "Entscheidungsfrage"
+      ],
+      [
+        [
+          "Public Cloud",
+          "Anbieter stellt Dienste mehreren Kunden bereit",
+          "Welche Isolation und Konfiguration sind nötig?"
+        ],
+        [
+          "Private Cloud",
+          "Cloud-Infrastruktur nur für eine Organisation",
+          "Wer betreibt und bezahlt die Kapazität?"
+        ],
+        [
+          "Hybrid Cloud",
+          "Private und öffentliche Umgebungen sind verbunden",
+          "Wie bleiben Identitäten, Netze und Daten konsistent?"
+        ]
+      ]
+    ],
+    [
+      "h",
+      "Skalieren"
+    ],
+    [
+      "table",
+      [
+        "Begriff",
+        "Maßnahme",
+        "Grenze"
+      ],
+      [
+        [
+          "Vertikal",
+          "Mehr CPU oder RAM pro Instanz",
+          "Maximale Größe und möglicher Neustart"
+        ],
+        [
+          "Horizontal",
+          "Weitere Instanzen ergänzen",
+          "Anwendung muss parallelen Betrieb erlauben"
+        ],
+        [
+          "Elastisch",
+          "Kapazität passend zur Last erhöhen und senken",
+          "Regeln, Startzeit und Kostenbegrenzung nötig"
+        ]
+      ]
+    ],
+    [
+      "warn",
+      "Mehr Webserver beheben keine gesperrte Datenbanktabelle. Sitzungen und lokale Dateien können horizontale Skalierung erschweren. Zustandslose Verarbeitung vereinfacht sie."
+    ],
+    [
+      "h",
+      "Monatskosten mit Anlage berechnen"
+    ],
+    [
+      "table",
+      [
+        "Position",
+        "Menge",
+        "Nettopreis"
+      ],
+      [
+        [
+          "VM-Grundlast",
+          "2 Instanzen × 720 Stunden",
+          "0,08 Euro je Instanzstunde"
+        ],
+        [
+          "Zusätzliche Spitzenlast",
+          "2 Instanzen × 60 Stunden",
+          "0,08 Euro je Instanzstunde"
+        ],
+        [
+          "Speicher",
+          "200 GB-Monate",
+          "0,10 Euro je GB-Monat"
+        ],
+        [
+          "Ausgehende Daten",
+          "300 GB",
+          "0,07 Euro je GB"
+        ],
+        [
+          "Monitoring",
+          "Pauschal",
+          "15 Euro"
+        ]
+      ]
+    ],
+    [
+      "walk",
+      {
+        "t": "Kosten ohne Umsatzsteuer",
+        "steps": [
+          {
+            "t": "Rechenleistung",
+            "b": [
+              [
+                "p",
+                "Grundlast: 2 × 720 × 0,08 = **115,20 Euro**."
+              ],
+              [
+                "p",
+                "Spitzenlast: 2 × 60 × 0,08 = **9,60 Euro**."
+              ]
+            ]
+          },
+          {
+            "t": "Weitere Kosten",
+            "b": [
+              [
+                "p",
+                "Speicher: 200 × 0,10 = **20 Euro**."
+              ],
+              [
+                "p",
+                "Datenverkehr: 300 × 0,07 = **21 Euro**."
+              ]
+            ]
+          },
+          {
+            "t": "Summe",
+            "b": [
+              [
+                "p",
+                "115,20 + 9,60 + 20 + 21 + 15 = **180,80 Euro netto**."
+              ],
+              [
+                "p",
+                "Preise sind reine Aufgabenwerte. Kosten für Support und Sicherungen sind nicht enthalten."
+              ]
+            ]
+          }
+        ]
+      }
+    ],
+    [
+      "h",
+      "Anwendungsfall beurteilen"
+    ],
+    [
+      "p",
+      "Ein Ticketsystem hat eine vorhersehbare Grundlast. Bei Veranstaltungen steigt die Last kurz stark an. Eine verwaltete Plattform reduziert Betriebsaufwand. Datenbankgrenzen und Startzeiten müssen durch Lasttests geprüft werden."
+    ],
+    [
+      "steps",
+      [
+        "Fachliche Ziele und technische Randbedingungen festhalten.",
+        "Verantwortungsmatrix für Rechte, Updates, Backups und Störungen erstellen.",
+        "Kosten bei Normalbetrieb und Spitzenlast berechnen.",
+        "Lasttest und Wiederherstellungsprobe durchführen.",
+        "Exportformat und Rückkehrplan dokumentieren."
+      ]
+    ],
+    [
+      "qa",
+      "**Beurteilen** Sie horizontale Skalierung für eine Anwendung mit lokalen Sitzungen. Nennen Sie Problem, Lösung und verbleibende Grenze.",
+      [
+        "Problem: Eine andere Instanz kennt die lokal gespeicherte Sitzung nicht. 1 Punkt.",
+        "Lösung: Sitzungszustand in einem passenden gemeinsamen Dienst speichern oder geeignete zustandslose Tokens verwenden. 1 Punkt.",
+        "Grenze: Der gemeinsame Sitzungsdienst oder die Datenbank kann selbst zum Engpass werden. 1 Punkt."
+      ],
+      3
+    ],
+    [
+      "qa",
+      "Die Spitzenlast dauert statt 60 nun 160 Stunden. Alle anderen Angaben bleiben gleich. **Berechnen** Sie Mehrkosten und neue Gesamtkosten.",
+      [
+        "Zusätzliche Dauer: 160 − 60 = **100 Stunden**. 1 Punkt.",
+        "Mehrkosten: 2 × 100 × 0,08 = **16 Euro**. 1 Punkt.",
+        "Neue Summe: 180,80 + 16 = **196,80 Euro netto**. 1 Punkt."
+      ],
+      3
+    ],
+    [
+      "quiz",
+      [
+        {
+          "q": "Was ist horizontale Skalierung?",
+          "o": [
+            "Weitere Instanzen ergänzen",
+            "Mehr RAM in eine Instanz einbauen",
+            "Nur den Tarif umbenennen",
+            "Backups löschen"
+          ],
+          "a": 0,
+          "e": "Vertikale Skalierung vergrößert eine einzelne Instanz."
+        },
+        {
+          "q": "Was bleibt auch bei SaaS eine wichtige Kundenaufgabe?",
+          "o": [
+            "Benutzerrechte passend vergeben",
+            "Serverlüfter tauschen",
+            "Anbietergebäude reinigen",
+            "Hypervisor selbst installieren"
+          ],
+          "a": 0,
+          "e": "Falsche Freigaben können auch eine sichere Plattform gefährden."
+        },
+        {
+          "q": "Was gehört in einen Cloud-Kostenvergleich?",
+          "o": [
+            "Auch Speicher, Datenverkehr und Betriebsaufwand",
+            "Nur der kleinste VM-Preis",
+            "Nur die Zahl der Benutzer",
+            "Nur ein kostenloser Probemonat"
+          ],
+          "a": 0,
+          "e": "Vergleiche den gesamten benötigten Leistungsumfang."
+        }
+      ]
+    ],
+    [
+      "see",
+      [
+        "infra-virtualisierung",
+        "infra-container",
+        "infra-verfuegbarkeit",
+        "ps-tco",
+        "ps-nutzwert"
+      ]
+    ]
+  ]
+});
+;
+// content/infra/monitoring-1.js
+AP2.page('infra-monitoring', {
+  "b": "infra",
+  "g": "Betrieb und Überwachung",
+  "t": "Monitoring: Metriken, Logs, Traces und Alarmierung",
+  "d": "Monitoring überwacht den Zustand eines Systems. Metriken zeigen Zahlen über die Zeit. Logs beschreiben einzelne Ereignisse. Traces verfolgen eine Anfrage durch mehrere Dienste.",
+  "m": "**Metrik: Wie viel? Log: Was geschah? Trace: Wo entstand die Verzögerung?** Ein Alarm braucht eine zuständige Person und eine konkrete Reaktion.",
+  "cheat": [
+    [
+      "Vier wichtige Signale",
+      [
+        "Latenz: Antwortdauer",
+        "Verkehr: Anfragen pro Zeit",
+        "Fehler: Anteil fehlgeschlagener Anfragen",
+        "Sättigung: Auslastung knapper Ressourcen"
+      ]
+    ],
+    [
+      "Betrieb",
+      [
+        "Von außen und innen messen.",
+        "Zeitstempel synchron halten.",
+        "Keine Passwörter oder Tokens protokollieren.",
+        "Alarmweg und Wiederherstellung dokumentieren."
+      ]
+    ]
+  ],
+  "blocks": [
+    [
+      "h",
+      "Die richtigen Daten auswählen"
+    ],
+    [
+      "table",
+      [
+        "Art",
+        "Beispiel",
+        "Nutzen"
+      ],
+      [
+        [
+          "Metrik",
+          "Fehlerquote alle 60 Sekunden",
+          "Trends und Schwellwerte erkennen"
+        ],
+        [
+          "Log",
+          "Fehler mit Zeit, Dienst, Code und Anfrage-ID",
+          "Einzelnes Ereignis untersuchen"
+        ],
+        [
+          "Trace",
+          "Anfrage dauert 1,2 Sekunden; Datenbankanteil 0,9 Sekunden",
+          "Verteilten Ablauf verfolgen"
+        ],
+        [
+          "Synthetischer Test",
+          "Regelmäßig Anmeldung und Suche ausführen",
+          "Nutzersicht prüfen"
+        ]
+      ]
+    ],
+    [
+      "h",
+      "Ein Dienst ist mehr als ein Prozess"
+    ],
+    [
+      "p",
+      "Ein laufender Prozess kann trotzdem falsche Ergebnisse liefern. Ein einfacher Ping prüft nur eine begrenzte Erreichbarkeit. Prüfe deshalb auch fachliche Funktionen. Ein Testkauf darf keine echte Abbuchung auslösen."
+    ],
+    [
+      "seq",
+      {
+        "w": 760,
+        "actors": [
+          "Überwachung",
+          "Portal",
+          "Datenbank",
+          "Bereitschaft"
+        ],
+        "steps": [
+          [
+            0,
+            1,
+            "Kontrollierte Suchanfrage",
+            "s"
+          ],
+          [
+            1,
+            2,
+            "Testdatensatz lesen",
+            "s"
+          ],
+          [
+            2,
+            1,
+            "Zeitüberschreitung",
+            "r"
+          ],
+          [
+            1,
+            0,
+            "503 nach drei Sekunden",
+            "r"
+          ],
+          [
+            0,
+            3,
+            "Alarm: Suche wiederholt gestört",
+            "s"
+          ]
+        ],
+        "cap": "Ein Alarm soll die Nutzerwirkung benennen und passende Diagnoseinformationen liefern."
+      }
+    ],
+    [
+      "h",
+      "Kennzahlen berechnen"
+    ],
+    [
+      "table",
+      [
+        "Messung in fünf Minuten",
+        "Wert"
+      ],
+      [
+        [
+          "Anfragen insgesamt",
+          "12.000"
+        ],
+        [
+          "Fehlgeschlagene Anfragen",
+          "180"
+        ],
+        [
+          "Dauer des Messfensters",
+          "300 Sekunden"
+        ],
+        [
+          "CPU-Spitze",
+          "92 Prozent"
+        ]
+      ]
+    ],
+    [
+      "walk",
+      {
+        "t": "Durchsatz und Fehlerquote",
+        "steps": [
+          {
+            "t": "Durchsatz",
+            "b": [
+              [
+                "p",
+                "12.000 / 300 s = **40 Anfragen pro Sekunde**."
+              ]
+            ]
+          },
+          {
+            "t": "Fehlerquote",
+            "b": [
+              [
+                "p",
+                "180 / 12.000 × 100 = **1,5 Prozent**."
+              ]
+            ]
+          },
+          {
+            "t": "Ergebnis einordnen",
+            "b": [
+              [
+                "p",
+                "Ob 1,5 Prozent akzeptabel sind, bestimmt das vereinbarte Ziel."
+              ],
+              [
+                "p",
+                "Eine CPU-Spitze allein beweist keine Ursache. Weitere Messdaten sind nötig."
+              ]
+            ]
+          }
+        ]
+      }
+    ],
+    [
+      "h",
+      "Mittelwert und Perzentil"
+    ],
+    [
+      "p",
+      "Das 95. Perzentil heißt p95. Mindestens etwa 95 Prozent der gemessenen Zeiten liegen darunter oder darauf. Der Mittelwert kann einzelne sehr langsame Anfragen verdecken. Vergleiche Messungen nur bei passenden Zeitfenstern und Lastprofilen."
+    ],
+    [
+      "h",
+      "Alarmplan"
+    ],
+    [
+      "table",
+      [
+        "Feld",
+        "Beispiel"
+      ],
+      [
+        [
+          "Bedingung",
+          "Fehlerquote über 2 Prozent für fünf Minuten"
+        ],
+        [
+          "Mindestmenge",
+          "Mindestens 100 Anfragen im Fenster"
+        ],
+        [
+          "Zuständigkeit",
+          "Betriebsbereitschaft; bei Ausbleiben Eskalation"
+        ],
+        [
+          "Information",
+          "Dienst, Beginn, Quote, Messfenster, Dashboard und Runbook"
+        ],
+        [
+          "Reaktion",
+          "Abhängigkeiten prüfen; gegebenenfalls Rückfall auslösen"
+        ],
+        [
+          "Entwarnung",
+          "Quote liegt zehn Minuten unter 1 Prozent"
+        ]
+      ]
+    ],
+    [
+      "note",
+      "Hysterese bedeutet: Alarm und Entwarnung nutzen unterschiedliche Grenzen. Das verhindert ständiges Wechseln bei schwankenden Werten. Ein Runbook beschreibt konkrete Schritte für den Störungsfall."
+    ],
+    [
+      "h",
+      "Logs sinnvoll gestalten"
+    ],
+    [
+      "code",
+      "json",
+      "{\"time\":\"2026-03-12T10:15:20Z\",\"level\":\"ERROR\",\"service\":\"auftrag\",\n \"requestId\":\"r-583\",\"code\":\"DB_TIMEOUT\",\"durationMs\":3000}"
+    ],
+    [
+      "warn",
+      "Keine Passwörter, Sitzungstokens oder vollständigen Kundendaten protokollieren. Freie Benutzereingaben können Logzeilen manipulieren. Verwende strukturierte Logs und begrenzte Felder."
+    ],
+    [
+      "qa",
+      "**Berechnen** Sie für 24.000 Anfragen in zehn Minuten den Durchsatz. 96 Anfragen scheitern. **Berechnen** Sie die Fehlerquote. Geben Sie Rechenwege und Einheiten an.",
+      [
+        "10 min × 60 = 600 s. 1 Punkt.",
+        "24.000 / 600 = **40 Anfragen/s**. 1 Punkt.",
+        "96 / 24.000 = 0,004. 1 Punkt.",
+        "0,004 × 100 = **0,4 Prozent**. 1 Punkt."
+      ],
+      4
+    ],
+    [
+      "qa",
+      "Das Team erhält jede Minute denselben Alarm. Niemand fühlt sich zuständig. **Begründen** Sie drei Verbesserungen.",
+      [
+        "- Alarme bündeln, damit dieselbe Störung nicht ständig neu gemeldet wird.",
+        "- Verantwortliche und Eskalationszeit festlegen, damit eine Person reagiert.",
+        "- Runbook und Nutzerwirkung ergänzen, damit die Bearbeitung gezielt beginnt.",
+        "Je begründeter Verbesserung 1 Punkt."
+      ],
+      3
+    ],
+    [
+      "quiz",
+      [
+        {
+          "q": "Was zeigt ein Trace?",
+          "o": [
+            "Den Weg einer Anfrage durch Dienste",
+            "Nur die Festplattenkapazität",
+            "Die Anzahl aller Benutzerkonten",
+            "Eine Datensicherung"
+          ],
+          "a": 0,
+          "e": "Traces zeigen Teilaufrufe und deren Dauer."
+        },
+        {
+          "q": "Was schützt vor Alarmflattern?",
+          "o": [
+            "Unterschiedliche Grenzen für Alarm und Entwarnung",
+            "Jede Sekunde neu alarmieren",
+            "Alle Logs löschen",
+            "Nur den Mittelwert messen"
+          ],
+          "a": 0,
+          "e": "Das nennt man Hysterese."
+        },
+        {
+          "q": "Was gilt für eine erfolgreiche Ping-Antwort?",
+          "o": [
+            "Sie beweist keine korrekte Geschäftslogik",
+            "Sie beweist einen fehlerfreien Kaufprozess",
+            "Sie prüft alle TLS-Zertifikate",
+            "Sie ersetzt Anwendungstests"
+          ],
+          "a": 0,
+          "e": "ICMP prüft keine fachlichen Ergebnisse."
+        }
+      ]
+    ],
+    [
+      "see",
+      [
+        "infra-verfuegbarkeit",
+        "infra-backup",
+        "ps-itsm",
+        "ps-cicd"
+      ]
+    ]
+  ]
 });
 ;
 // content/infra/cia-1.js
@@ -13035,11 +19734,89 @@ AP2.page('infra-tls', {
     ['steps', ['**ClientHello:** Der Client nennt unterstützte TLS-Versionen und **Cipher Suites** (Kombination aus Schlüsselaustausch, Verschlüsselung, Hash) und sendet eine Zufallszahl.', '**ServerHello:** Der Server wählt Version und Cipher Suite und schickt seine Zufallszahl und sein **Zertifikat**.', '**Authentifizierung:** Der Client prüft das Zertifikat (Kette, Gültigkeit, Hostname, Sperrung).', '**Schlüsselaustausch:** Beide tauschen ECDHE-Parameter und berechnen daraus **denselben geheimen Sitzungsschlüssel**. Dieser wurde nie übertragen.', '**Finished:** Beide bestätigen mit einem ersten verschlüsselten Datenblock, dass der Handshake nicht manipuliert wurde.', '**Daten:** Die Kommunikation läuft mit dem schnellen **symmetrischen** Sitzungsschlüssel.']],
   ],
 });
+
+
+AP2.add('infra-tls', [
+  [
+    "h",
+    "Zertifikat und private Schlüssel unterscheiden"
+  ],
+  [
+    "table",
+    [
+      "Begriff",
+      "Funktion",
+      "Geheim?"
+    ],
+    [
+      [
+        "Zertifikat",
+        "Bindet Identitätsangaben an einen öffentlichen Schlüssel",
+        "Normalerweise nein"
+      ],
+      [
+        "Privater Zertifikatsschlüssel",
+        "Belegt den Besitz des Schlüssels durch Signatur",
+        "Ja"
+      ],
+      [
+        "Öffentlicher ECDHE-Anteil",
+        "Teil der gemeinsamen Schlüsselvereinbarung",
+        "Nein"
+      ],
+      [
+        "Abgeleitete Verkehrsschlüssel",
+        "Schützen die übertragenen Daten",
+        "Ja"
+      ]
+    ]
+  ],
+  [
+    "p",
+    "Die Sitzung verwendet tatsächlich mehrere abgeleitete Schlüssel. „Sitzungsschlüssel“ ist eine vereinfachte Sammelbezeichnung. Ein Zertifikat allein beweist noch nicht den Besitz des privaten Schlüssels. Die Gegenstelle muss diesen Besitz im Handshake nachweisen."
+  ],
+  [
+    "h",
+    "Zertifikatsfehler systematisch prüfen"
+  ],
+  [
+    "steps",
+    [
+      "Stimmt der angefragte Hostname mit dem Zertifikat überein?",
+      "Ist die Gültigkeitszeit passend und die Systemzeit korrekt?",
+      "Ist die Vertrauenskette vollständig und vertrauenswürdig?",
+      "Ist ein erneuertes Zertifikat am richtigen TLS-Endpunkt installiert?",
+      "Prüft der Client weitere Vorgaben wie Sperrstatus oder Verwendungszweck?"
+    ]
+  ],
+  [
+    "warn",
+    "Zertifikatsprüfungen nicht dauerhaft abschalten. Das beseitigt die Warnung, aber auch eine wichtige Identitätskontrolle. Ein gültiges Zertifikat beweist keine fehlerfreie oder ehrliche Anwendung."
+  ],
+  [
+    "qa",
+    "Ein Browser akzeptiert ein Zertifikat für shop.beispiel.test nicht beim Aufruf von api.beispiel.test. **Erläutern** Sie die Ursache und zwei geeignete Maßnahmen.",
+    [
+      "Der angefragte Hostname ist möglicherweise nicht vom Zertifikat abgedeckt. 1 Punkt.",
+      "Zertifikat mit passendem Subject Alternative Name ausstellen und am richtigen Endpunkt installieren. 1 Punkt.",
+      "Automatisierte Erneuerung und Prüfungen für alle benötigten Namen einrichten. 1 Punkt."
+    ],
+    3
+  ],
+  [
+    "see",
+    [
+      "infra-dns",
+      "infra-http",
+      "infra-monitoring"
+    ]
+  ]
+]);
 ;
 // content/infra/tls-2.js
 AP2.add('infra-tls', [
   ['h', 'TLS 1.3: schneller und sicherer'],
-  ['table', ['Merkmal', 'TLS 1.2', 'TLS 1.3'], [['Handshake', '2 Round-Trips', '**1 Round-Trip** (Client schickt Schlüsselanteil schon im ClientHello), optional 0-RTT'], ['Cipher Suites', 'Viele, auch veraltete möglich', 'Nur wenige, **moderne** (AEAD wie AES-GCM, ChaCha20)'], ['Schlüsselaustausch', 'RSA oder (EC)DHE', '**Nur (EC)DHE** (immer Forward Secrecy)'], ['Zertifikat', 'Im Klartext übertragen', 'Verschlüsselt'], ['Veraltete Verfahren', 'Teils unterstützt (RC4, 3DES, SHA-1)', 'Entfernt']]],
+  ['table', ['Merkmal', 'TLS 1.2', 'TLS 1.3'], [['Handshake', '2 Round-Trips', '**1 Round-Trip** (Client schickt Schlüsselanteil schon im ClientHello), optional 0-RTT'], ['Cipher Suites', 'Viele, auch veraltete möglich', 'Nur wenige, **moderne** (AEAD wie AES-GCM, ChaCha20)'], ['Schlüsselaustausch', 'RSA oder (EC)DHE', '(EC)DHE oder PSK; PSK auch kombiniert mit (EC)DHE'], ['Zertifikat', 'Im Klartext übertragen', 'Verschlüsselt'], ['Veraltete Verfahren', 'Teils unterstützt (RC4, 3DES, SHA-1)', 'Entfernt']]],
   ['kv', [
     ['Perfect Forward Secrecy (PFS)', 'Für **jede Sitzung** wird ein **neuer, temporärer Schlüssel** ausgehandelt. Wird der private Schlüssel des Servers später gestohlen, lassen sich **aufgezeichnete alte Verbindungen nicht entschlüsseln**.'],
     ['Cipher Suite', 'Kombination der Verfahren, zum Beispiel `TLS_AES_256_GCM_SHA384` (TLS 1.3: AES-256 im GCM-Modus, Hash SHA-384). Bei TLS 1.2 stehen auch Schlüsselaustausch und Signatur im Namen (zum Beispiel ECDHE-RSA-AES256-GCM-SHA384).'],
@@ -13047,41 +19824,78 @@ AP2.add('infra-tls', [
     ['HSTS', 'HTTP Strict Transport Security: Der Server weist den Browser an, die Domain **nur noch per HTTPS** zu verwenden. Schützt vor Downgrade-Angriffen.'],
   ]],
   ['h', 'mTLS: Beide Seiten weisen sich aus'],
-  ['p', 'Bei normalem TLS beweist nur der **Server** seine Identität. Der Client bleibt anonym (er meldet sich später mit Benutzername/Passwort an). Bei **mTLS** (mutual TLS) sendet der Server zusätzlich eine **CertificateRequest**, und der **Client** schickt sein **Client-Zertifikat** samt Signatur. Beide prüfen die Zertifikate des anderen anhand einer vertrauenswürdigen CA.'],
+  ['p', 'Im hier beschriebenen zertifikatsbasierten TLS weist sich der Server aus. Die Anwendung kann den Client separat authentifizieren, etwa durch Token oder Anmeldung. Bei **mTLS** (mutual TLS) sendet der Server zusätzlich eine **CertificateRequest**, und der **Client** schickt sein **Client-Zertifikat** samt Signatur. Beide prüfen die Zertifikate des anderen anhand einer vertrauenswürdigen CA.'],
   ['seq', {w: 780, actors: ['Client (Dienst A)', 'Server (Dienst B)'], cap: 'mTLS: Zusätzlich zum Serverzertifikat fordert der Server ein Clientzertifikat an.', steps: [
     [0, 1, 'ClientHello', 's'], [1, 0, 'ServerHello, Serverzertifikat', 'r'], [1, 0, 'CertificateRequest (bitte Clientzertifikat)', 'r'], [0, 0, 'Serverzertifikat prüfen', 's'], [0, 1, 'Clientzertifikat + Signatur (Besitz des privaten Schlüssels)', 's'], [1, 1, 'Clientzertifikat prüfen (CA, Gültigkeit, Sperrung)', 's'], [0, 1, 'Finished', 's'], [1, 0, 'Finished', 'r'], ['sep', 'Beide Seiten sind authentifiziert, Verbindung verschlüsselt'],
   ]}],
   ['procon', 'mTLS', ['**Starke gegenseitige Authentifizierung**: Nur Geräte und Dienste mit gültigem Zertifikat kommen durch', 'Kein Passwort nötig, kaum Phishing-anfällig', 'Passt zu **Zero Trust**, Microservices, APIs, IoT-Geräten, B2B-Schnittstellen'], ['**Verwaltungsaufwand**: Zertifikate für alle Clients ausstellen, verteilen, erneuern, sperren (PKI nötig)', 'Fehlersuche komplexer (abgelaufene Zertifikate)', 'Für öffentliche Webseiten mit anonymen Besuchern ungeeignet']],
-  ['table', ['Einsatzbereich', 'Normales TLS', 'mTLS'], [['Öffentlicher Webshop (Kunden anonym)', 'Ja', 'Nein'], ['Service-zu-Service-Kommunikation (Microservices)', 'Unzureichend', 'Ja'], ['VPN und Netzwerkzugang (802.1X mit Zertifikaten)', '-', 'Ja'], ['Bank-API (B2B)', 'Als Basis', 'Ja (zusätzliche Client-Authentifizierung)']]],
+  ['table', ['Einsatzbereich', 'Normales TLS', 'mTLS'], [['Öffentlicher Webshop (Kunden anonym)', 'Ja', 'Nein'], ['Service-zu-Service-Kommunikation (Microservices)', 'Mit zusätzlicher Client-Authentifizierung möglich', 'Geeignet bei passender Zertifikatsverwaltung'], ['VPN und Netzwerkzugang (802.1X mit Zertifikaten)', '-', 'Ja'], ['Bank-API (B2B)', 'Als Basis', 'Ja (zusätzliche Client-Authentifizierung)']]],
   ['h', 'Aufgaben im Prüfungsstil'],
   ['qa', 'Beschreiben Sie in fünf Schritten den Ablauf eines TLS-Handshakes.', ['1. **ClientHello**: Client sendet unterstützte Versionen, Cipher Suites, Zufallswert.', '2. **ServerHello**: Server wählt Verfahren, sendet sein **Zertifikat**.', '3. Client **prüft das Zertifikat** (Kette, Hostname, Gültigkeit, Sperrung).', '4. **Schlüsselaustausch** (ECDHE): Beide berechnen einen gemeinsamen Sitzungsschlüssel.', '5. **Finished**-Nachrichten bestätigen den Handshake, danach werden Daten **symmetrisch verschlüsselt**.'], 5],
   ['qa', 'Warum verwendet TLS zuerst asymmetrische und dann symmetrische Verschlüsselung?', 'Asymmetrische Verfahren lösen das **Schlüsselaustausch- und Authentifizierungsproblem**, sind aber **rechenintensiv**. Symmetrische Verfahren sind **sehr schnell**. TLS nutzt deshalb asymmetrische Verfahren nur im Handshake, um einen **gemeinsamen Sitzungsschlüssel** zu vereinbaren, und verschlüsselt die Nutzdaten danach symmetrisch.', 4],
   ['qa', 'Worin unterscheidet sich mTLS von TLS und wann setzt man es ein?', 'Bei TLS authentifiziert sich nur der **Server** per Zertifikat. Bei **mTLS** muss sich zusätzlich der **Client** mit einem Zertifikat ausweisen, beide Seiten prüfen sich gegenseitig. Einsatz: Kommunikation zwischen Diensten/Microservices, API-Zugriffe, Geräteauthentifizierung, Zero-Trust-Umgebungen.', 4],
   ['qa', 'Eine HTTPS-Seite zeigt "Zertifikat abgelaufen". Nennen Sie mögliche Folgen und die Lösung.', 'Browser warnen und blockieren den Zugriff oder Nutzer verlieren das Vertrauen. API-Clients können Verbindungen verweigern (Ausfall). **Lösung:** Neues Zertifikat beantragen und installieren, künftig **automatische Erneuerung** (ACME) und Ablaufüberwachung einrichten.', 4],
   ['quiz', [
-    {q: 'Welcher Port wird für HTTPS verwendet?', o: ['443', '80', '22', '8080'], a: 0, e: 'HTTPS nutzt TCP-Port 443.'},
+    {q: 'Welcher Port wird für HTTPS verwendet?', o: ['443', '80', '22', '8080'], a: 0, e: 'HTTPS nutzt meist Port 443: HTTP/1.1 und HTTP/2 über TCP, HTTP/3 über QUIC/UDP.'},
     {q: 'Welche Verschlüsselung schützt die Nutzdaten nach dem TLS-Handshake?', o: ['Symmetrische Verschlüsselung', 'Asymmetrische Verschlüsselung', 'Gar keine', 'Hashing'], a: 0, e: 'Nach dem Handshake wird mit dem Sitzungsschlüssel symmetrisch verschlüsselt (zum Beispiel AES).'},
     {q: 'Was bedeutet mTLS?', o: ['Beide Seiten authentifizieren sich mit Zertifikaten', 'Mobile TLS', 'Multi-Thread TLS', 'Minimal TLS'], a: 0, e: 'Mutual TLS: gegenseitige Authentifizierung.'},
     {q: 'Was bewirkt Perfect Forward Secrecy?', o: ['Alte aufgezeichnete Sitzungen bleiben auch nach Schlüsseldiebstahl geschützt', 'Die Verbindung wird schneller', 'Der Server braucht kein Zertifikat', 'Es gibt keine Cipher Suites'], a: 0, e: 'Jede Sitzung hat einen eigenen temporären Schlüssel.'},
     {q: 'Welche Version gilt als aktuell und besonders sicher?', o: ['TLS 1.3', 'SSL 3.0', 'TLS 1.0', 'SSL 2.0'], a: 0, e: 'SSL und frühe TLS-Versionen sind veraltet.'},
   ]],
 ]);
+
+// Quelle: https://www.rfc-editor.org/rfc/rfc8446.html#section-2.3
+AP2.add('infra-tls', [
+  [
+    "h",
+    "TLS 1.3: PSK und frühe Daten genau unterscheiden"
+  ],
+  [
+    "p",
+    "PSK bedeutet vorab geteilter Schlüssel. TLS 1.3 erlaubt PSK auch ohne neuen Diffie-Hellman-Austausch. Diese Variante bietet nicht dieselbe Forward-Secrecy-Eigenschaft. Die pauschale Aussage „TLS 1.3 hat immer Forward Secrecy“ ist deshalb falsch."
+  ],
+  [
+    "p",
+    "0-RTT erlaubt frühe Daten bei Wiederaufnahme. Diese Daten haben schwächere Sicherheitseigenschaften und können wiederholt werden. Zustandsändernde Aktionen wie Zahlungen benötigen daher geeignete Anwendungssicherungen."
+  ],
+  [
+    "qa",
+    "Ein Team möchte Zahlungen als TLS-0-RTT-Daten senden. **Beurteilen** Sie die Idee mit zwei Sicherheitsaspekten.",
+    [
+      "Frühe Daten können wiederholt werden. Dadurch drohen doppelte Aktionen. 1 Punkt.",
+      "0-RTT-Daten bieten nicht dieselbe Forward Secrecy wie passend abgesicherte spätere Daten. 1 Punkt.",
+      "Zahlungen nur mit geeignetem Anwendungskonzept verarbeiten; frühe Verarbeitung gegebenenfalls ausschließen. 1 Punkt."
+    ],
+    3
+  ],
+  [
+    "note",
+    "Quelle: RFC 8446, Abschnitte 2.2, 2.3 und 8. Die Details ergänzen das vereinfachte Prüfungsmodell."
+  ],
+  [
+    "see",
+    [
+      "infra-http",
+      "ps-schnittstellen"
+    ]
+  ]
+]);
 ;
 // content/infra/websec-1.js
 AP2.page('infra-websec', {
   b: 'infra', g: 'IT-Sicherheit', t: 'Webanwendungen absichern: TLS, Reverse Proxy, WAF und OWASP Top 10',
-  d: 'Webanwendungen sind öffentlich erreichbar und deshalb das häufigste Angriffsziel. Absicherung geschieht in Schichten: **TLS** verschlüsselt und schützt die Integrität der Übertragung (hybrid: asymmetrischer Schlüsselaustausch, symmetrische Datenverschlüsselung, MAC/AEAD für Integrität), ein **Reverse Proxy** nimmt Anfragen stellvertretend für die Webserver entgegen (TLS-Terminierung, Lastverteilung, **Web Application Firewall**), und **sichere Programmierung** nach den **OWASP Top 10** verhindert Lücken wie SQL-Injection oder XSS.',
+  d: 'Öffentlich erreichbare Webanwendungen müssen mit fremden und manipulierten Anfragen rechnen. Absicherung geschieht in Schichten: **TLS** verschlüsselt und schützt die Integrität der Übertragung (hybrid: asymmetrischer Schlüsselaustausch, symmetrische Datenverschlüsselung, MAC/AEAD für Integrität), ein **Reverse Proxy** nimmt Anfragen stellvertretend für die Webserver entgegen (TLS-Terminierung, Lastverteilung, **Web Application Firewall**), und **sichere Programmierung** nach den **OWASP Top 10** verhindert Lücken wie SQL-Injection oder XSS.',
   m: '**TLS ist der sichere Nachfolger von SSL** (SSL 2.0/3.0 und TLS 1.0/1.1 sind veraltet; heute TLS 1.2/1.3). **Hybrid:** asymmetrisch für den Schlüssel, symmetrisch für die Daten. Über das Internet geht nur der **öffentliche Schlüssel**, nie der private. **Reverse Proxy = Türsteher vor den Webservern.**',
   cheat: [
     ['TLS', ['Vertraulichkeit: symmetrische Verschlüsselung (AES-GCM, ChaCha20)', 'Schlüsselaustausch: (EC)DHE, Server-Authentizität per Zertifikat', 'Integrität: MAC bzw. AEAD', 'Perfect Forward Secrecy durch flüchtige Schlüssel', 'HTTPS = HTTP über TLS, Port 443']],
     ['Reverse Proxy', ['Steht vor den Webservern, Clients sehen nur ihn', '**TLS-Terminierung (SSL-Offloading):** entschlüsselt, entlastet Server', 'Lastverteilung, Caching, Kompression', '**WAF** filtert Angriffe (SQLi, XSS)', 'Interne Server bleiben verborgen']],
-    ['OWASP Top 10 (Auswahl)', ['Broken Access Control', 'Cryptographic Failures', '**Injection** (SQL, Command), auch XSS', 'Insecure Design', 'Security Misconfiguration', 'Vulnerable and Outdated Components', 'Identification and Authentication Failures', 'Software and Data Integrity Failures', 'Logging and Monitoring Failures', 'SSRF']],
+    ['OWASP Top 10, Ausgabe 2021 (Auswahl)', ['Broken Access Control', 'Cryptographic Failures', '**Injection** (SQL, Command), auch XSS', 'Insecure Design', 'Security Misconfiguration', 'Vulnerable and Outdated Components', 'Identification and Authentication Failures', 'Software and Data Integrity Failures', 'Logging and Monitoring Failures', 'SSRF']],
     ['Schutzmaßnahmen im Code', ['**Prepared Statements** gegen SQL-Injection', '**Ausgabe kodieren** (escapen) gegen XSS', 'CSRF-Token und SameSite-Cookies', 'Eingaben serverseitig validieren', 'Security-Header: HSTS, CSP, X-Frame-Options']],
   ],
   blocks: [
     ['h', 'Wie TLS Vertraulichkeit und Integrität sichert'],
     ['steps', ['**Authentizität:** Der Server weist sich mit einem **Zertifikat** aus, das eine vertrauenswürdige CA signiert hat. Der Client prüft Kette, Gültigkeit und Hostnamen.', '**Schlüsselaustausch:** Beide berechnen per (EC)DHE einen gemeinsamen **Sitzungsschlüssel**, ohne ihn zu übertragen (asymmetrische Verfahren).', '**Vertraulichkeit:** Alle Nutzdaten werden mit dem Sitzungsschlüssel **symmetrisch** verschlüsselt (schnell).', '**Integrität:** Jeder Datensatz trägt einen Authentifizierungscode (MAC, heute als AEAD-Verfahren integriert); Manipulationen fallen auf.']],
-    ['table', ['Version', 'Status'], [['SSL 2.0, SSL 3.0', 'unsicher, abgeschaltet (zum Beispiel POODLE)'], ['TLS 1.0, TLS 1.1', 'veraltet, seit 2021 offiziell abgekündigt'], ['TLS 1.2', 'noch zulässig mit sicheren Cipher Suites'], ['TLS 1.3', 'aktueller Standard: schnellerer Handshake, nur sichere Verfahren, immer Forward Secrecy']]],
+    ['table', ['Version', 'Status'], [['SSL 2.0, SSL 3.0', 'unsicher, abgeschaltet (zum Beispiel POODLE)'], ['TLS 1.0, TLS 1.1', 'veraltet, seit 2021 offiziell abgekündigt'], ['TLS 1.2', 'noch zulässig mit sicheren Cipher Suites'], ['TLS 1.3', 'Moderner Handshake und AEAD; Forward Secrecy bei passendem Schlüsselaustausch']]],
     ['h', 'Reverse Proxy mit TLS-Terminierung'],
     ['diagram', {w: 780, h: 290, cap: 'Der Reverse Proxy hält Zertifikat und privaten Schlüssel. Beim SSL-Offloading läuft die Verbindung zum internen Webserver unverschlüsselt (oder neu verschlüsselt).', nodes: [
       {id: 'c', x: 80, y: 140, k: 'round', s: 'plain', t: ['Client', '(Browser)'], w: 120, h: 60},
@@ -13102,7 +19916,7 @@ AP2.page('infra-websec', {
     ['table', ['Angriff', 'So funktioniert er', 'Abwehr'], [
       ['SQL-Injection', 'Eingaben werden ungeprüft in SQL eingebaut: `admin\' --` kommentiert die Passwortprüfung aus.', '**Prepared Statements** / parametrisierte Abfragen, minimale DB-Rechte'],
       ['Cross-Site Scripting (XSS)', 'Angreifer bringt JavaScript in eine Seite (zum Beispiel über einen Kommentar), das im Browser anderer Nutzer läuft und Cookies stiehlt.', 'Ausgaben **kontextgerecht kodieren**, Content Security Policy, HttpOnly-Cookies'],
-      ['Cross-Site Request Forgery (CSRF)', 'Eine fremde Seite löst im Namen des angemeldeten Nutzers Aktionen aus (Überweisung).', '**CSRF-Token**, SameSite-Cookies, Rückfrage bei kritischen Aktionen'],
+      ['Cross-Site Request Forgery (CSRF)', 'Eine fremde Seite löst im Namen des angemeldeten Nutzers Aktionen aus (Überweisung).', '**CSRF-Token**, SameSite-Cookies, Erneute Authentifizierung bei kritischen Aktionen'],
       ['Broken Access Control', 'Nutzer ändert die ID in der URL und sieht fremde Bestellungen.', 'Berechtigung **serverseitig** bei jeder Anfrage prüfen'],
       ['Veraltete Komponenten', 'Bekannte Lücke in einer Bibliothek (zum Beispiel Log4Shell).', 'Patch-Management, Abhängigkeiten scannen (SBOM)'],
     ]],
@@ -13110,11 +19924,19 @@ AP2.page('infra-websec', {
       ['java', `// Unsicher: Eingabe wird Teil des SQL-Textes
 String sql = "SELECT * FROM benutzer WHERE name = '" + name + "' AND pwd = '" + pwd + "'";
 
-// Sicher: Prepared Statement, Eingaben sind nur Daten
-PreparedStatement ps = con.prepareStatement(
-    "SELECT * FROM benutzer WHERE name = ? AND pwd_hash = ?");
-ps.setString(1, name);
-ps.setString(2, hash(pwd));`],
+// Sicherer SQL-Zugriff: Name ist ein Wertparameter.
+// Passwort danach mit einer geeigneten Bibliothek pruefen.
+try (PreparedStatement stmt = con.prepareStatement(
+        "SELECT pwd_hash FROM benutzer WHERE name = ?")) {
+    stmt.setString(1, name);
+    try (ResultSet rs = stmt.executeQuery()) {
+        if (rs.next()) {
+            String gespeichert = rs.getString("pwd_hash");
+            // Passwortbibliothek prueft pwd gegen gespeichert.
+            // Salt und Kostenparameter aus dem Hash verwenden.
+        }
+    }
+}`],
       ['php', `// Unsicher
 $sql = "SELECT * FROM benutzer WHERE name = '$name' AND pwd = '$pwd'";
 // Sicher
@@ -13138,6 +19960,134 @@ $ok = $user && password_verify($pwd, $user['pwd_hash']);`],
     ]],
   ],
 });
+
+// Quelle: https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
+AP2.add('infra-websec', [
+  [
+    "h",
+    "Passwortprüfung gehört nicht als einfacher Hashvergleich ins SQL"
+  ],
+  [
+    "p",
+    "Lade den gespeicherten Passwort-Hash über einen eindeutigen Benutzernamen. Eine geeignete Passwortbibliothek prüft danach das eingegebene Passwort. Sie verarbeitet Salt und Kostenparameter des gespeicherten Hashs. Schnelles SHA-256 allein ist für Passwörter ungeeignet."
+  ],
+  [
+    "p",
+    "Für neue Systeme ist beispielsweise Argon2id geeignet. Wähle Parameter anhand der Sicherheitsvorgaben und Messungen. Ein Salt ist ein individueller Zufallswert pro Passwort. Er verhindert identische gespeicherte Werte bei gleichen Passwörtern."
+  ],
+  [
+    "h",
+    "Maßnahmen lösen unterschiedliche Probleme"
+  ],
+  [
+    "table",
+    [
+      "Problem",
+      "Gezielte Maßnahme",
+      "Allein nicht ausreichend"
+    ],
+    [
+      [
+        "SQL-Injection",
+        "Parameter für Werte; erlaubte Liste für dynamische Bezeichner",
+        "HTTPS"
+      ],
+      [
+        "XSS",
+        "Kontextgerechte Ausgabe; textContent für reinen Text",
+        "Nur Eingaben prüfen"
+      ],
+      [
+        "CSRF bei Cookie-Anmeldung",
+        "Token und geeignete Cookie-Regeln",
+        "HttpOnly allein"
+      ],
+      [
+        "Fremde Aufträge lesen",
+        "Objektberechtigung serverseitig prüfen",
+        "Schwer erratbare IDs"
+      ],
+      [
+        "Passwortdatenbank gestohlen",
+        "Langsames Passwortverfahren mit Salt",
+        "Allgemeiner schneller Hash"
+      ],
+      [
+        "Gestohlene Sitzung",
+        "Geschützte Cookies, Ablauf und Widerruf",
+        "Passwort-Hashing allein"
+      ]
+    ]
+  ],
+  [
+    "h",
+    "XSS ohne unsichere HTML-Erzeugung vermeiden"
+  ],
+  [
+    "code",
+    "javascript",
+    "// Für reinen Text:\nkommentar.textContent = benutzereingabe;\n\n// Wenn HTML fachlich erforderlich ist:\n// Geprüften HTML-Sanitizer mit enger Erlaubnisliste verwenden.\n// Kein eigenes Entfernen einzelner Script-Tags bauen."
+  ],
+  [
+    "p",
+    "HttpOnly erschwert das Auslesen eines Cookies durch JavaScript. XSS kann trotzdem Aktionen im Browser des Opfers auslösen. Eine Content Security Policy ist eine zusätzliche Schutzschicht. Sie ersetzt sichere Ausgabe nicht."
+  ],
+  [
+    "h",
+    "Fehlende Objektberechtigung erkennen"
+  ],
+  [
+    "qa",
+    "GET /api/auftraege/731 liefert einer angemeldeten Person einen fremden Auftrag. Die Anmeldung ist gültig. **Erläutern** Sie den Fehler und zwei Schutzmaßnahmen.",
+    [
+      "Authentifizierung bestätigt nur die Identität. Die Objektberechtigung fehlt. 1 Punkt.",
+      "Der Server prüft bei jeder Anfrage Auftragseigentum und zulässige Rollen. 1 Punkt.",
+      "Tests verwenden mindestens zwei Konten und prüfen fremde IDs sowie Schreibzugriffe. 1 Punkt."
+    ],
+    3
+  ],
+  [
+    "qa",
+    "**Ordnen** Sie zu: Prepared Statement, Passwort-Hashing, TLS und CSRF-Token. Nennen Sie je das hauptsächliche Schutzziel.",
+    [
+      "Prepared Statement: SQL-Wertparameter werden nicht als SQL-Code ausgeführt.",
+      "Passwort-Hashing: Passwortoffenlegung und Offline-Raten nach Datenbankdiebstahl erschweren.",
+      "TLS: Vertraulichkeit und Integrität des Transports sowie Gegenstellenprüfung.",
+      "CSRF-Token: Ungewollte zustandsändernde Browseranfragen abwehren.",
+      "Je Zuordnung 1 Punkt."
+    ],
+    4
+  ],
+  [
+    "quiz",
+    [
+      {
+        "q": "Was leistet HttpOnly allein nicht?",
+        "o": [
+          "Alle Auswirkungen einer XSS-Lücke verhindern",
+          "JavaScript-Zugriff auf das markierte Cookie einschränken",
+          "Eine Cookie-Eigenschaft festlegen",
+          "Das direkte Cookie-Auslesen per document.cookie verhindern"
+        ],
+        "a": 0,
+        "e": "Schadcode kann weiterhin erlaubte Anfragen aus dem Opferbrowser auslösen."
+      }
+    ]
+  ],
+  [
+    "note",
+    "Vertiefung: OWASP Password Storage Cheat Sheet. Dort werden Passwortverfahren, Salt und Kostenparameter erklärt."
+  ],
+  [
+    "see",
+    [
+      "ps-dbzugriff",
+      "ps-testentwurf",
+      "infra-http",
+      "infra-webauth"
+    ]
+  ]
+]);
 ;
 // content/infra/webauth-1.js
 AP2.page('infra-webauth', {
@@ -14365,6 +21315,111 @@ AP2.add('eua-pseudocode', [
   ]],
 ]);
 ;
+// content/eua/struktogramm-1.js
+AP2.page('eua-struktogramm', {
+  b: 'eua', g: 'Ablaufdarstellung', t: 'Struktogramm (Nassi-Shneiderman nach DIN 66261)',
+  d: 'Ein **Struktogramm (Nassi-Shneiderman-Diagramm nach DIN 66261)** stellt Algorithmen grafisch als geschachtelte Blöcke dar – **völlig ohne Pfeile**. Es erzwingt die Grundsätze der **strukturierten Programmierung**: Sequenz, Verzweigung und Schleife. Im Gegensatz zum **Programmablaufplan (PAP)** verhindert es unübersichtlichen „Spaghetti-Code“ mit unkontrollierten Sprüngen. In der IHK-Abschlussprüfung (AP2) wird regelmäßig verlangt, Struktogramme zu lesen, durch eine **Trace-Tabelle (Schreibtischtest)** zu prüfen oder Code/PAP in ein Struktogramm zu überführen.',
+  m: '**Struktogramm = Blöcke von oben nach unten, KEINE Pfeile!** **Grundelemente:** (1) **Sequenz** (Rechteck), (2) **Verzweigung / Alternative** (Dreieck mit Ja/Nein oder Wahr/Falsch), (3) **Fallauswahl** (Fächer mit case 1, 2, default), (4) **Kopfgesteuerte Schleife** (Bedingung oben im L-Balken, 0 bis n Durchläufe), (5) **Fußgesteuerte Schleife** (Bedingung unten, mindestens 1 Durchlauf), (6) **Zählschleife** (for von/bis/Schritt).',
+  cheat: [
+    ['Die Grundelemente nach DIN 66261', [
+      '**Sequenz (Anweisung):** Einfaches Rechteck für Rechenoperation oder Ein-/Ausgabe',
+      '**Zweiseitige Verzweigung (if/else):** Rechteck mit oberem Dreieck; links Ja (Wahr), rechts Nein (Falsch)',
+      '**Einseitige Verzweigung (if):** Ein Zweig enthält Anweisungen, der andere bleibt leer',
+      '**Fallauswahl (switch/case):** Fächerförmige Aufteilung nach konkreten Werten plus „sonst / default“',
+      '**Kopfgesteuerte Schleife (while):** L-förmiger Rahmen; Bedingung steht OBEN; Block wird 0 bis n Mal ausgeführt',
+      '**Fußgesteuerte Schleife (do-while / repeat):** Bedingung steht UNTEN; Block wird mindestens 1 Mal ausgeführt',
+      '**Zählschleife (for):** Schleifenkopf mit Startwert, Endwert und Schrittweite',
+      '**Abbruch (break / return):** Pfeilartiger Block zum Verlassen von Schleife oder Funktion',
+    ]],
+    ['Vergleich Struktogramm vs. PAP', [
+      '**Struktogramm:** Keine Pfeile, keine Sprünge erlaubt (GOTO unmöglich), hohe Übersichtlichkeit, direkt in Code übersetzbar',
+      '**PAP (DIN 66001):** Pfeile steuern den Fluss; erlaubt beliebige Sprünge (Spaghetti-Gefahr), braucht mehr Platz auf Papier',
+    ]],
+    ['Vorgehen beim Schreibtischtest', [
+      '1. Tabelle anlegen mit Spalten für jede Variable, Schleifenbedingung und Ausgabe',
+      '2. Startwerte eintragen (Zeile 0)',
+      '3. Block für Block durchlaufen und jeden Variablenwert bei Änderung notieren',
+      '4. Abbruchbedingung exakt prüfen (Achtung bei `<` versus `<=`)',
+    ]],
+  ],
+  blocks: [
+    ['h', 'Die Struktogramm-Elemente im Überblick'],
+    ['p', 'Ein Struktogramm besteht aus genormten geometrischen Kästen, die nahtlos ineinander geschachtelt werden. Der Kontrollfluss läuft immer von oben nach unten.'],
+    ['table', ['Konstrukt', 'Grafische Darstellung (Prinzip)', 'Entsprechung im Programmcode'], [
+      ['**Sequenz (Folge)**', 'Einfaches Rechteck:<br>`[ Anweisung: summe = 0 ]`', '`summe = 0;`<br>`i = 1;`'],
+      ['**Zweiseitige Alternative (if-else)**', 'Rechteck mit oben geteiltem Dreieck:<br>`\\ Bedingung /` (links Ja / rechts Nein)', '`if (alter >= 18) { ... } else { ... }`'],
+      ['**Einseitige Alternative (if)**', 'Dreieck oben, aber nur unter „Ja“ stehen Befehle, „Nein“ ist leer', '`if (rabatt > 0) { preis = preis - rabatt; }`'],
+      ['**Mehrfachauswahl (switch-case)**', 'Treppenförmige Dreiecke für Fälle 1, 2, 3 und „Sonst / Default“', '`switch (status) { case 1: ... default: ... }`'],
+      ['**Kopfgesteuerte Schleife (while)**', 'Großer L-Rahmen: Bedingung steht **oben**, Anweisungen darunter eingerückt', '`while (bestand > 0) { ... }` (kann 0-mal laufen)'],
+      ['**Fußgesteuerte Schleife (do-while)**', 'Umgekehrter L-Rahmen: Anweisungen oben, Bedingung steht **unten**', '`do { ... } while (eingabeFalsch);` (mind. 1-mal)'],
+      ['**Zählschleife (for)**', 'Kopfzeile mit Zählvariable: `FÜR i = 1 BIS 10 SCHRITT 1`', '`for (let i = 1; i <= 10; i++) { ... }`'],
+    ]],
+    ['h', 'Schleifenarten: Kopfgesteuert versus Fußgesteuert'],
+    ['p', 'Dieser Unterschied ist eine der beliebtesten Prüfungsfragen der IHK:'],
+    ['table', ['Merkmal', 'Kopfgesteuerte Schleife (while / for)', 'Fußgesteuerte Schleife (do-while / repeat-until)'], [
+      ['**Prüfung der Bedingung**', 'Ganz am **Anfang (im Kopf)** VOR dem ersten Durchlauf', 'Ganz am **Ende (im Fuß)** NACH jedem Durchlauf'],
+      ['**Minimale Durchläufe**', '**0 Durchläufe** (wenn Bedingung von Beginn an falsch ist)', '**Mindestens 1 Durchlauf** (wird immer einmal ausgeführt)'],
+      ['**Typischer Einsatzzweck**', 'Listen oder Arrays durchlaufen, solange Elemente vorhanden sind', 'Benutzereingaben (z. B. PIN-Eingabe: mindestens einmal abfragen)'],
+    ]],
+    ['h', 'Beispiel: Schreibtischtest (Trace-Tabelle) Schritt für Schritt'],
+    ['p', 'Gegeben ist folgender Algorithmus zur Berechnung des größten gemeinsamen Teilers (ggT nach Euklid):'],
+    ['code', 'text', `+-------------------------------------------------+
+| Eingabe: a = 12, b = 8                          |
++-------------------------------------------------+
+| WIEDERHOLE SOLANGE b != 0                       |
+|   +---------------------------------------------+
+|   | rest = a MOD b                              |
+|   +---------------------------------------------+
+|   | a = b                                       |
+|   +---------------------------------------------+
+|   | b = rest                                    |
+|   +---------------------------------------------+
++-------------------------------------------------+
+| Ausgabe: a                                      |
++-------------------------------------------------+`],
+    ['table', ['Schritt / Zeile', 'Bedingung `b != 0`', '`rest = a MOD b`', '`a = b`', '`b = rest`', 'Ausgabe / Zustand'], [
+      ['Start', '-', '-', '12', '8', 'Initialisierung'],
+      ['1. Durchlauf', 'wahr (8 != 0)', '12 MOD 8 = **4**', 'a = **8**', 'b = **4**', 'Schleifenkörper Ende'],
+      ['2. Durchlauf', 'wahr (4 != 0)', '8 MOD 4 = **0**', 'a = **4**', 'b = **0**', 'Schleifenkörper Ende'],
+      ['3. Prüfung', 'falsch (0 != 0)', '-', '-', '-', 'Schleife wird beendet'],
+      ['Ende', '-', '-', '**4**', '0', '**Ausgabe: 4** (ggT ist 4)'],
+    ]],
+    ['tip', 'Prüfungsfalle Modulo (`MOD` oder `%`): `a MOD b` berechnet den **ganzzahligen Rest** einer Division. Beispiel: `12 / 8 = 1 Rest 4`, also `12 MOD 8 = 4`. `8 / 4 = 2 Rest 0`, also `8 MOD 4 = 0`.'],
+    ['h', 'Wörter, die in der Prüfung vorkommen'],
+    ['table', ['Wort', 'Einfach erklärt'], [
+      ['Struktogramm', 'Diagramm zur Ablaufdarstellung nach DIN 66261 ohne Pfeile'],
+      ['Trace-Tabelle (Schreibtischtest)', 'Tabelle, in der man die Variablenwerte Schritt für Schritt von Hand ausrechnet'],
+      ['Kopfgesteuert', 'Die Bedingung wird geprüft, bevor die Schleife überhaupt startet'],
+      ['Fußgesteuert', 'Die Schleife läuft mindestens einmal, bevor am Ende die Bedingung geprüft wird'],
+      ['Modulo (MOD)', 'Berechnung des Restes einer Ganzzahldivision (z. B. 7 MOD 3 = 1)'],
+      ['Sequenz', 'Nacheinander folgende Anweisungen ohne Bedingungen'],
+      ['Iteration', 'Ein einzelner Wiederholungsdurchlauf einer Schleife'],
+      ['Rekursion', 'Eine Funktion ruft sich selbst mit veränderten Parametern auf'],
+    ]],
+    ['see', ['eua-pap', 'eua-pseudocode', 'eua-kontroll', 'eua-onotation']],
+    ['h', 'Aufgaben im Prüfungsstil'],
+    ['qa', 'Erklären Sie den Unterschied zwischen einer kopfgesteuerten und einer fußgesteuerten Schleife im Struktogramm. Nennen Sie jeweils die minimale Anzahl an Durchläufen.', [
+      '- Bei der **kopfgesteuerten Schleife (while)** wird die Ausführungsbedingung **vor** dem ersten Durchlauf im Schleifenkopf geprüft. Ist die Bedingung von Anfang an unwahr, wird die Schleife **0-mal** durchlaufen.',
+      '- Bei der **fußgesteuerten Schleife (do-while)** wird die Bedingung erst **am Ende (im Fuß)** geprüft. Der Schleifenrumpf wird daher **mindestens 1-mal** durchlaufen.',
+    ], 4],
+    ['qa', 'Ein Algorithmus initialisiert `x = 1` und `y = 10`. Die Schleife läuft solange `x < y`. In jedem Schritt wird gerechnet: `x = x * 2` und `y = y - 1`. Führen Sie einen Schreibtischtest durch und ermitteln Sie die Endwerte von x und y sowie die Anzahl der Schleifendurchläufe.', [
+      '- Start: x = 1, y = 10',
+      '- 1. Durchlauf: x < y (1 < 10 wahr) -> x = 1 * 2 = **2**, y = 10 - 1 = **9**',
+      '- 2. Durchlauf: x < y (2 < 9 wahr) -> x = 2 * 2 = **4**, y = 9 - 1 = **8**',
+      '- 3. Durchlauf: x < y (4 < 8 wahr) -> x = 4 * 2 = **8**, y = 8 - 1 = **7**',
+      '- 4. Prüfung: x < y (8 < 7 falsch) -> Abbruch!',
+      '- **Endergebnis:** Die Schleife läuft **3-mal**. Endwerte: **x = 8, y = 7**.',
+      'Zusammen 5 Punkte.',
+    ], 5],
+    ['quiz', [
+      {q: 'Welches Merkmal unterscheidet ein Struktogramm (DIN 66261) von einem Programmablaufplan (DIN 66001)?', o: ['Ein Struktogramm hat keinerlei Pfeile oder freie Sprunglinien', 'Ein Struktogramm darf nur für Java verwendet werden', 'Ein Struktogramm enthält keine Schleifen', 'Ein Struktogramm ist nur für Datenbanken gedacht'], a: 0, e: 'Struktogramme verbieten Pfeile und Sprünge, um strukturierte Programmierung zu erzwingen.'},
+      {q: 'Wie oft wird eine fußgesteuerte Schleife (do-while) mindestens ausgeführt?', o: ['Mindestens 1 Mal', 'Mindestens 0 Mal', 'Mindestens 2 Mal', 'Immer genau 10 Mal'], a: 0, e: 'Da die Prüfbedingung erst am Ende steht, läuft der Schleifenkörper immer mindestens einmal.'},
+      {q: 'Was ist das Ergebnis von 17 MOD 5?', o: ['2', '3', '3.4', '1'], a: 0, e: '17 geteilt durch 5 ist 3, Rest 2 (17 = 3 * 5 + 2).'},
+      {q: 'Wozu dient ein Schreibtischtest (Trace-Tabelle)?', o: ['Zur manuellen Überprüfung von Variablenwerten und Logikfehlern Schritt für Schritt', 'Zum Messen des Stromverbrauchs des Prozessors', 'Zum automatischen Kompilieren des Quellcodes', 'Zur grafischen Darstellung eines ER-Modells'], a: 0, e: 'Mit einem Schreibtischtest prüft man Algorithmen von Hand auf Papier.'},
+    ]],
+  ],
+});
+;
 // content/eua/oop-1.js
 AP2.page('eua-oop', {
   b: 'eua', g: 'Objektorientierung', t: 'Klassen, Objekte, Attribute und Methoden',
@@ -15200,6 +22255,204 @@ static class Import
   ['qa', 'Begründen Sie, auf welche Art (Push, Push-Update, Pull) die Benachrichtigungen verteilt werden, wenn das Subjekt `observer.aktualisieren(ergebnis)` aufruft.', ['Es handelt sich um eine **Push-Update Notification**: Das Subjekt informiert den Beobachter aktiv **und** übergibt die neuen Daten (das Ergebnis) direkt als Parameter. Der Beobachter muss die Daten nicht selbst abrufen.'], 5],
 ]);
 ;
+// content/eua/cleancode-1.js
+AP2.page('eua-cleancode', {
+  b: 'eua', g: 'Softwareentwicklung', t: 'Clean Code, SOLID-Prinzipien und Refactoring',
+  d: '**Clean Code** bezeichnet Programmcode, der leicht lesbar, verständlich, wartbar und erweiterbar ist („Code wird zehnmal häufiger gelesen als geschrieben“). Die **SOLID-Prinzipien** von Robert C. Martin bilden das Fundament der objektorientierten Softwarearchitektur: **Single Responsibility**, **Open/Closed**, **Liskov Substitution**, **Interface Segregation** und **Dependency Inversion**. Typische **Code Smells** (schlechte Muster wie Monsterklassen oder duplizierter Code) werden durch gezieltes **Refactoring** behoben, ohne das äußere Verhalten des Programms zu verändern.',
+  m: '**SOLID:** **S** = Single Responsibility (eine Klasse hat nur 1 Aufgabe), **O** = Open/Closed (offen für Erweiterung, geschlossen für Änderung), **L** = Liskov Substitution (Kindklasse ersetzt Elternklasse fehlerfrei), **I** = Interface Segregation (viele kleine Schnittstellen statt einer fetten), **D** = Dependency Inversion (abhänge von Abstraktionen/Interfaces, nicht von konkreten Klassen). **Prinzipien:** DRY (Don\'t Repeat Yourself), KISS (Keep It Simple), YAGNI (You Aren\'t Gonna Need It). **Refactoring:** Code verbessern, ohne Verhalten zu ändern.',
+  cheat: [
+    ['Die 5 SOLID-Prinzipien', [
+      '**S - Single Responsibility Principle (SRP):** Jede Klasse hat nur eine einzige Verantwortung (nur einen Grund, sich zu ändern)',
+      '**O - Open/Closed Principle (OCP):** Softwarebausteine sollten offen für Erweiterung, aber geschlossen für Modifikation sein (über Interfaces/Vererbung)',
+      '**L - Liskov Substitution Principle (LSP):** Unterklassen müssen sich so verhalten, dass sie überall anstelle ihrer Basisklasse eingesetzt werden können',
+      '**I - Interface Segregation Principle (ISP):** Clients sollten nicht gezwungen werden, Methoden zu implementieren, die sie gar nicht nutzen (schlanke Interfaces)',
+      '**D - Dependency Inversion Principle (DIP):** High-Level-Module dürfen nicht von Low-Level-Modulen abhängen; beide hängen von Abstraktionen (Interfaces) ab (Dependency Injection)',
+    ]],
+    ['Wichtige Entwickler-Prinzipien', [
+      '**DRY (Don\'t Repeat Yourself):** Keine doppelten Codezeilen; Logik in wiederverwendbare Funktionen/Klassen auslagern',
+      '**KISS (Keep It Simple, Stupid):** Die einfachste funktionierende Lösung ist die beste; unnötige Komplexität vermeiden',
+      '**YAGNI (You Aren\'t Gonna Need It):** Implementiere nur Features, die JETZT gebraucht werden, keine spekulativen Funktionen für die Zukunft',
+      '**Boy Scout Rule (Pfadfinder-Regel):** Hinterlasse den Code immer sauberer, als du ihn vorgefunden hast',
+    ]],
+    ['Typische Code Smells & Refactoring', [
+      '**God Object / Monsterklasse:** Klasse hat 3.000 Zeilen und macht alles -> Aufteilen nach SRP (Extract Class)',
+      '**Lange Methode (Long Method):** Methode mit 150 Zeilen -> In Teilmethoden zerlegen (**Extract Method**)',
+      '**Magic Numbers / Strings:** Unverständliche Zahlen wie `if (status == 3)` -> Durch Konstanten ersetzen (**Introduce Constant**)',
+      '**Duplizierter Code (Copy & Paste):** Gleicher Block an 4 Stellen -> In gemeinsame Hilfsfunktion auslagern',
+    ]],
+  ],
+  blocks: [
+    ['h', 'Die SOLID-Prinzipien im Detail'],
+    ['p', 'Die fünf SOLID-Prinzipien sind der Goldstandard für sauberen, testbaren und wartbaren objektorientierten Quellcode. In IHK-Prüfungen werden oft Codebeispiele vorgelegt, bei denen ein SOLID-Prinzip verletzt wird.'],
+    ['table', ['Prinzip', 'Erklärung in einfachen Worten', 'Negativ-Beispiel (Verletzung)', 'Saubere Lösung (Clean Code)'], [
+      ['**S** - Single Responsibility', 'Eine Klasse darf nur **eine einzige Aufgabe** haben.', 'Klasse `Rechnung` berechnet den Betrag, speichert ihn in MySQL und druckt das PDF aus.', 'Drei getrennte Klassen: `Rechnung` (Daten), `RechnungsRepository` (DB) und `PdfGenerator` (Druck).'],
+      ['**O** - Open/Closed', 'Code erweitern durch **neue Klassen**, ohne **bestehenden Code zu verändern**.', 'Eine `switch-case`-Anweisung in `RabattRechner`, die bei jedem neuen Kundentyp im Code geändert werden muss.', 'Interface `RabattStrategie`; neue Rabattarten werden als neue Klassen implementiert (Strategy Pattern).'],
+      ['**L** - Liskov Substitution', 'Eine Kindklasse muss sich **genauso verhalten** wie ihre Elternklasse.', 'Klasse `Quadrat` erbt von `Rechteck`, wirft aber bei `setHoehe()` einen Fehler, weil Breite = Höhe sein muss.', 'Keine fehlerhafte Vererbung; Interfaces oder getrennte Formen nutzen.'],
+      ['**I** - Interface Segregation', 'Lieber **viele kleine, spezifische Interfaces** als ein einziges riesiges.', 'Interface `Drucker` enthält `drucken()`, `scannen()`, `faxen()`. Ein einfacher Drucker muss `faxen()` mit Dummy-Code implementieren.', 'Drei schlanke Interfaces: `Druckbar`, `Scanbar`, `Faxbar`. Der Drucker implementiert nur `Druckbar`.'],
+      ['**D** - Dependency Inversion', 'Klassen sollten **von Interfaces abhängen**, nicht von konkreten Klassen.', 'Klasse `KundeService` erzeugt mit `new MySqlDatabase()` direkt eine feste Datenbankverbindung.', '`KundeService` erhält im Konstruktor ein Interface `IDatabase` übergeben (**Dependency Injection**).'],
+    ]],
+    ['h', 'Wichtige Software-Leitprinzipien: DRY, KISS und YAGNI'],
+    ['kv', [
+      ['DRY (Don\'t Repeat Yourself)', 'Vermeide redundanten Code. Wenn derselbe Algorithmus oder dieselbe Validierung an zwei Stellen steht, muss er bei Änderungen an beiden Stellen angepasst werden. Führt zu Fehlern. Lösung: In eine Funktion oder Klasse auslagern.'],
+      ['KISS (Keep It Simple, Stupid)', 'Schreibe den Code so einfach und direkt wie möglich. Vermeide übertriebene Schachtelungen, unverständliche Tricks oder unnötige Entwurfsmuster, wenn eine einfache Schleife oder Funktion ausreicht.'],
+      ['YAGNI (You Aren\'t Gonna Need It)', 'Entwickle keine Funktionen „auf Vorrat“, nur weil man sie vielleicht in zwei Jahren brauchen könnte. Unnötiger Code bindet Entwicklungszeit, erhöht die Fehleranfälligkeit und muss mitgetestet werden.'],
+      ['Sprechende Namen (Meaningful Names)', 'Variablen- und Methodennamen müssen ihren Zweck ohne Kommentar erklären. Statt `int d;` schreibt man `int elapsedDaysSinceLastLogin;`. Statt `check()` schreibt man `isValidEmailAddress()`. Keine kryptischen Abkürzungen.'],
+    ]],
+    ['h', 'Typische Refactoring-Techniken'],
+    ['p', '**Refactoring** ist die schrittweise Verbesserung der internen Struktur von Software, **ohne deren beobachtbares Verhalten nach außen zu verändern**. Vor dem Refactoring müssen **Unit-Tests** vorhanden sein, um sicherzustellen, dass keine Regressionen (neue Fehler) entstehen.'],
+    ['table', ['Refactoring-Methode', 'Problem vorher', 'Lösung nachher'], [
+      ['**Extract Method (Methode extrahieren)**', 'Eine Methode ist 100 Zeilen lang und enthält Validierung, Berechnung und Formatierung gemischt', 'Zusammenhängende Codeblöcke in kleine, gut benannte private Hilfsmethoden auslagern (z. B. `validateInput()`, `calculateTotal()`)'],
+      ['**Introduce Constant (Konstante einführen)**', 'Im Code steht an 5 Stellen die Zahl `0.19` oder der Statuscode `3` („Magic Numbers“)', 'Definiere `const MWST_SATZ = 0.19;` oder `const STATUS_BEZAHLT = 3;`'],
+      ['**Rename (Umbenennen)**', 'Variablen heißen `x`, `temp`, `data2`', 'Verständliche Namen wählen: `bruttoGesamtbetrag`, `kundenListe`'],
+      ['**Replace Conditional with Polymorphism**', 'Lange `if-else-if`- oder `switch`-Ketten zur Typunterscheidung', 'Verhalten in abgeleitete Klassen mit überschriebenen Methoden verlagern'],
+    ]],
+    ['tip', 'Prüfungsfalle bei Refactoring-Aufgaben: Refactoring bedeutet **NICHT**, neue Features hinzuzufügen oder Bugs zu fixen! Refactoring verändert **nur die Codequalität (Lesbarkeit, Wartbarkeit)**. Wenn in einer Aufgabe gefragt wird: „Geben Sie das Ziel des Refactorings an“, antworte: „Verbesserung der Wartbarkeit, Testbarkeit und Lesbarkeit des Quellcodes ohne Änderung der Funktionalität.“'],
+    ['h', 'Wörter, die in der Prüfung vorkommen'],
+    ['table', ['Wort', 'Einfach erklärt'], [
+      ['Clean Code', 'Quellcode, der so sauber geschrieben ist, dass andere ihn sofort verstehen und erweitern können'],
+      ['SOLID', 'Akronym für fünf fundamentale Prinzipien des objektorientierten Softwareentwurfs'],
+      ['Code Smell', 'Auffälligkeit im Code, die auf ein schlechtes Design oder Wartungsprobleme hinweist'],
+      ['Refactoring', 'Struktur des Codes verbessern, ohne die Funktion nach außen zu ändern'],
+      ['Dependency Injection (DI)', 'Eine Klasse erzeugt ihre Abhängigkeiten nicht selbst, sondern bekommt sie von außen übergeben'],
+      ['Magic Number', 'Feste Zahl direkt im Code ohne Erklärung ihres Zwecks'],
+      ['God Object / Monsterklasse', 'Anti-Pattern: Eine gigantische Klasse, die viel zu viele Aufgaben bündelt'],
+    ]],
+    ['see', ['eua-oop', 'eua-patterns', 'eua-saeulen', 'eua-unittest']],
+    ['h', 'Aufgaben im Prüfungsstil'],
+    ['qa', 'Gegeben ist folgende Java-Klasse: `class UserManager { void createUser(String name) {...} void deleteUser(int id) {...} void sendEmailNotification(String text) {...} void generateMonthlyPdfReport() {...} }`. Erläutern Sie, welches SOLID-Prinzip hier verletzt wird, und schlagen Sie eine saubere Architektur vor.', [
+      '- Die Klasse verletzt das **Single Responsibility Principle (SRP)**.',
+      '- **Begründung:** Die Klasse hat mehrere völlig unterschiedliche Gründe, sich zu ändern: Benutzerverwaltung in der Datenbank, Versenden von E-Mails und Generieren von PDF-Reports.',
+      '- **Saubere Lösung:** Aufteilung in drei spezialisierte Klassen: (1) `UserManager` (nur Benutzer anlegen/löschen), (2) `EmailService` (E-Mails versenden), (3) `ReportService` (PDF-Reports erstellen).',
+      'Zusammen 4 Punkte.',
+    ], 4],
+    ['qa', 'Was versteht man unter dem Prinzip „DRY“ (Don\'t Repeat Yourself) und welche Gefahren drohen bei seiner Missachtung?', [
+      '- **Bedeutung:** Jede Information oder Logik darf im System nur ein einziges Mal an einer zentralen Stelle definiert sein. Duplizierter Code durch Copy & Paste ist verboten.',
+      '- **Gefahren:** Ändern sich die Anforderungen (z. B. Steuersatz oder Berechnungsformel), muss der Code an vielen verschiedenen Stellen geändert werden. Wird eine Stelle vergessen, entstehen inkonsistente Daten und schwer auffindbare Softwarefehler (Bugs).',
+    ], 4],
+    ['qa', 'Nennen Sie drei typische Code Smells und beschreiben Sie für jeden eine geeignete Refactoring-Maßnahme.', [
+      '- **1. Magic Numbers:** Feste Zahlen im Code ohne Erklärung (z. B. `if (status == 2)`). Maßnahme: **Introduce Constant** (z. B. `STATUS_STORNIERT = 2`).',
+      '- **2. Lange Methode (Long Method):** Eine Methode mit über 100 Zeilen Code. Maßnahme: **Extract Method** (Zerlegung in mehrere kurze, selbsterklärende Methoden).',
+      '- **3. Duplizierter Quellcode (Duplicate Code):** Identischer Codeblock an mehreren Stellen. Maßnahme: Auslagern in eine gemeinsame Hilfsmethode oder Basisklasse.',
+    ], 6],
+    ['quiz', [
+      {q: 'Was besagt das Single Responsibility Principle (SRP)?', o: ['Eine Klasse sollte nur eine einzige Verantwortung / Aufgabe haben', 'Jede Methode darf nur eine einzige Codezeile haben', 'Es darf im ganzen Programm nur eine Klasse geben', 'Jede Variable muss privat sein'], a: 0, e: 'SRP fordert, dass eine Klasse nur einen einzigen Grund haben darf, sich zu ändern.'},
+      {q: 'Was ist das Hauptziel von Refactoring?', o: ['Die interne Struktur des Codes verbessern, ohne das funktionale Verhalten zu ändern', 'Neue Features für den Kunden implementieren', 'Fehler in der Datenbank beheben', 'Den Quellcode automatisch verschlüsseln'], a: 0, e: 'Refactoring optimiert Lesbarkeit, Wartbarkeit und Struktur, lässt die Funktion aber identisch.'},
+      {q: 'Was bedeutet das Akronym YAGNI?', o: ['You Aren\'t Gonna Need It (baue keine Features auf Vorrat)', 'You Always Get New Instructions', 'Your Algorithm Generates No Issues', 'Yield All Global Namespaces Instantly'], a: 0, e: 'YAGNI warnt davor, spekulativen Code für die Zukunft zu schreiben, der aktuell nicht gebraucht wird.'},
+      {q: 'Was versteht man unter Dependency Injection (DI)?', o: ['Abhängigkeiten werden einer Klasse von außen übergeben (z. B. über den Konstruktor)', 'Eine Klasse erzeugt alle benötigten Datenbanktreiber fest mit new', 'Ein Virus schleust Code in eine fremde Anwendung ein', 'Variablen werden global definiert'], a: 0, e: 'DI entkoppelt Klassen und unterstützt das Dependency Inversion Principle.'},
+    ]],
+  ],
+});
+;
+// content/eua/git-1.js
+AP2.page('eua-git', {
+  b: 'eua', g: 'Softwareentwicklung', t: 'Versionsverwaltung mit Git: Branches, Merging und Konflikte',
+  d: '**Git** ist das weltweit führende **verteilte Versionsverwaltungssystem (DVCS)** für Softwareentwicklung. Jeder Entwickler besitzt eine vollständige Kopie des gesamten Projektverlaufs auf seinem Rechner. Git unterscheidet drei lokale Arbeitsbereiche: **Working Directory** (Arbeitsverzeichnis mit unversionierten Dateien), **Staging Area / Index** (vorgemerkte Änderungen via `git add`) und das **lokale Repository** (dauerhafte Schnappschüsse via `git commit`). Über **Branches (Zweige)** wird parallel an Features gearbeitet, die später per **Merge** oder **Rebase** zusammengeführt werden.',
+  m: '**Die 3 Zonen:** Working Tree (Datei ändern) -> **`git add`** -> Staging Area -> **`git commit -m "..."`** -> Lokales Repo -> **`git push`** -> Remote Repo (GitHub/GitLab). **Branching:** `git switch -c feature` oder `git checkout -b feature`. **Merge:** Fast-Forward (linear) versus 3-Way-Merge (mit Merge-Commit). **Merge-Konflikt:** Wenn dieselbe Zeile auf zwei Branches unterschiedlich geändert wurde; muss manuell aufgelöst und committet werden.',
+  cheat: [
+    ['Wichtigste Git-Befehle', [
+      '**`git init` / `git clone <url>`:** Neues Repo anlegen oder bestehendes aus dem Netz klonen',
+      '**`git status`:** Zeigt geänderte, gestagte und unversionierte Dateien an',
+      '**`git add <datei>` / `git add .`:** Änderungen in die Staging Area (Index) übernehmen',
+      '**`git commit -m "Nachricht"`:** Gestagte Änderungen dauerhaft als Version festschreiben',
+      '**`git log --oneline --graph`:** Historie der Commits visualisieren',
+      '**`git diff`:** Unterschiede zwischen Arbeitsverzeichnis und Staging Area anzeigen',
+    ]],
+    ['Branching & Merging', [
+      '**`git branch <name>`:** Neuen Zweig erstellen',
+      '**`git switch <name>` (oder `git checkout <name>`):** Auf einen anderen Zweig wechseln',
+      '**`git switch -c <name>`:** Neuen Branch erstellen und sofort darauf wechseln',
+      '**`git merge <feature>`:** Bringt die Änderungen aus dem Feature-Branch in den aktuellen Branch',
+      '**`git branch -d <name>`:** Fertig gemergten Branch löschen',
+    ]],
+    ['Arbeiten mit Remote Repositories', [
+      '**`git remote -v`:** Verknüpfte Online-Server (z. B. origin) anzeigen',
+      '**`git fetch`:** Neue Commits vom Server herunterladen, aber noch nicht in lokale Dateien einbinden',
+      '**`git pull`:** `fetch` und `merge` in einem Schritt (aktualisiert den lokalen Branch)',
+      '**`git push -u origin <branch>`:** Lokale Commits auf den Server hochladen',
+    ]],
+    ['Konfliktlösung (Merge Conflict)', [
+      '1. Git meldet: `CONFLICT (content): Merge conflict in datei.js`',
+      '2. Datei öffnen und Konfliktmarker suchen: `<<<<<<< HEAD` (lokaler Stand) vs `>>>>>>> feature` (Zweig-Stand)',
+      '3. Gewünschten Code behalten, Konfliktmarker vollständig löschen',
+      '4. `git add datei.js` und `git commit` zum Abschließen des Merges',
+    ]],
+  ],
+  blocks: [
+    ['h', 'Die drei Zonen von Git: Vom Code zum Commit'],
+    ['p', 'Im Gegensatz zu älteren Systemen wie SVN arbeitet Git mit drei lokalen Stufen, bevor Daten auf einen Server übertragen werden:'],
+    ['table', ['Zone / Zustand', 'Bedeutung & Befehl', 'Zustand der Dateien'], [
+      ['**1. Working Tree (Arbeitsverzeichnis)**', 'Der normale Dateiordner auf deiner Festplatte, in dem du Code schreibst und Dateien anlegst', 'Dateien sind **untracked** (neu) oder **modified** (geändert)'],
+      ['**2. Staging Area (Index)**', 'Vorbereitungsbereich: Hier legst du fest, welche Änderungen in den nächsten Commit gehören (`git add datei.js`)', 'Dateien sind **staged** (vorgemerkt)'],
+      ['**3. Local Repository (HEAD)**', 'Die lokale Git-Datenbank (`.git`), in der alle Schnappschüsse manipulationssicher gespeichert sind (`git commit -m "feat: login"`)', 'Dateien sind **committed** (festgeschrieben)'],
+      ['**4. Remote Repository**', 'Zentraler Server im Netz (GitHub, GitLab, Bitbucket), auf den das Team pusht (`git push`)', 'Synchronisiert mit anderen Entwicklern'],
+    ]],
+    ['h', 'Fast-Forward-Merge versus 3-Way-Merge'],
+    ['p', 'Wenn zwei Branches zusammengeführt werden, entscheidet Git je nach Historie über die Merge-Strategie:'],
+    ['table', ['Merge-Art', 'Wann tritt sie auf?', 'Was macht Git?', 'Gibt es einen Merge-Commit?'], [
+      ['**Fast-Forward-Merge**', 'Auf dem Zielbranch (z. B. `main`) gab es seit dem Abzweigen des Feature-Branches **keine neuen Commits**.', 'Git schiebt den Zeiger von `main` einfach linear nach vorne auf die Spitze des Feature-Branches.', '**Nein**, kein zusätzlicher Commit nötig; die Historie bleibt schnurgerade.'],
+      ['**3-Way-Merge (Drei-Wege-Merge)**', 'Auf `main` und auf dem `feature`-Branch wurden **beide gleichzeitig neue Commits** erstellt (die Historie hat sich gegabelt).', 'Git vergleicht drei Stände: Den gemeinsamen Ahnen (Base), den aktuellen Stand von `main` und den Stand von `feature`.', '**Ja**, Git erzeugt automatisch einen neuen **Merge-Commit**, der zwei Eltern-Commits hat.'],
+    ]],
+    ['h', 'Wie entsteht ein Merge-Konflikt und wie löst man ihn?'],
+    ['p', 'Ein **Merge-Konflikt** entsteht, wenn Entwickler A auf Branch `main` und Entwickler B auf Branch `feature` **dieselbe Zeile in derselben Datei unterschiedlich geändert haben**. Git kann nicht erraten, welche Zeile die richtige ist, und bricht den automatischen Merge ab.'],
+    ['code', 'text', `// In der betroffenen Datei entstehen Konfliktmarker:
+<<<<<<< HEAD
+const apiUrl = "https://api.produktiv-server.de/v1";
+=======
+const apiUrl = "https://staging-api.testserver.de/v2";
+>>>>>>> feature-backend-v2`],
+    ['steps', [
+      '**Konflikt erkennen:** Die Git-Konsole meldet `Automatic merge failed; fix conflicts and then commit the result.`.',
+      '**Dateien öffnen:** Die betroffenen Dateien im Editor öffnen und nach `<<<<<<< HEAD` suchen.',
+      '**Entscheiden:** Mit dem Team abstimmen, welcher Code gültig ist (oder beide Stände kombinieren).',
+      '**Marker löschen:** Alle Steuerzeilen (`<<<<<<<`, `=======`, `>>>>>>>`) restlos aus der Datei entfernen.',
+      '**Stagen und Committen:** `git add <datei>` ausführen und mit `git commit` den Konfliktlösungs-Commit abschließen.',
+    ]],
+    ['h', 'Gitflow: Der bewährte Branching-Workflow'],
+    ['p', 'In professionellen Entwicklerteams wird meist nach festen Regeln verzweigt (z. B. Gitflow-Workflow):'],
+    ['table', ['Branch-Name', 'Aufgabe und Lebensdauer', 'Wer darf direkt darauf committen?'], [
+      ['**`main` (oder `master`)**', 'Enthält ausschließlich **produktionsreifen, getesteten Live-Code**. Jeder Commit hier entspricht einem Release.', 'Niemand direkt! Änderungen fließen nur über geprüfte Pull Requests (PRs) ein.'],
+      ['**`develop`**', 'Integrationszweig: Hier fließen alle neuen Features für die nächste Version zusammen.', 'Entwickler mergen ihre fertigen Features hierhin.'],
+      ['**`feature/<name>`**', 'Wird von `develop` abgezweigt für ein einzelnes Feature (z. B. `feature/warenkorb`). Wird nach Fertigstellung gelöscht.', 'Der/die zuständige/n Entwickler.'],
+      ['**`hotfix/<name>`**', 'Dringender Bugfix für einen kritischen Fehler in der Produktion; wird direkt von `main` abgezweigt und nach Reparatur in `main` und `develop` gemergt.', 'Schnelle Fehlerbehebung für Notfälle.'],
+    ]],
+    ['tip', 'Prüfungsfrage „Was ist ein Pull Request (PR) bzw. Merge Request?“: Ein Pull Request ist eine Aufforderung an andere Teammitglieder, den Code eines Feature-Branches vor dem Mergen zu prüfen (**Code Review**). Dabei werden automatische Tests (CI/CD) ausgeführt und Kollegen können Kommentare und Verbesserungsvorschläge direkt an den Codezeilen hinterlassen.'],
+    ['h', 'Wörter, die in der Prüfung vorkommen'],
+    ['table', ['Wort', 'Einfach erklärt'], [
+      ['Commit', 'Ein dauerhaft gespeicherter Schnappschuss (Version) des Projekts mit Autor und Zeitstempel'],
+      ['Staging Area (Index)', 'Vorbereitungsbereich, um festzulegen, welche Änderungen in den nächsten Commit kommen'],
+      ['Branch (Zweig)', 'Abspaltung vom Hauptcode, um isoliert an einem Feature zu arbeiten'],
+      ['Merge', 'Zusammenführen von zwei Zweigen zu einem gemeinsamen Stand'],
+      ['Fast-Forward', 'Einfaches Vorrücken des Branch-Zeigers ohne separaten Merge-Commit'],
+      ['Merge-Konflikt', 'Widerspruch, wenn zwei Entwickler dieselben Codezeilen unterschiedlich geändert haben'],
+      ['Repository (Repo)', 'Das Verzeichnis, das alle Projektdateien inklusive der gesamten Versionshistorie enthält'],
+      ['Pull Request (Code Review)', 'Prüfung und Freigabe von Quellcode durch Teammitglieder vor dem Einfügen in den Hauptzweig'],
+    ]],
+    ['see', ['eua-cleancode', 'eua-unittest', 'eua-debugging', 'ps-vorgehen']],
+    ['h', 'Aufgaben im Prüfungsstil'],
+    ['qa', 'Ein Auszubildender möchte ein neues Modul für die Benutzerregistrierung programmieren. Nennen Sie die Git-Befehle, um: a) einen neuen Branch namens „feature-register“ anzulegen und darauf zu wechseln, b) die geänderte Datei „RegisterForm.js“ für den Commit vorzumerken, c) den Commit mit der Nachricht „feat: registration form added“ zu speichern, und d) den neuen Branch auf den Remote-Server origin hochzuladen.', [
+      '- a) `git switch -c feature-register` (oder `git checkout -b feature-register`)',
+      '- b) `git add RegisterForm.js`',
+      '- c) `git commit -m "feat: registration form added"`',
+      '- d) `git push -u origin feature-register`',
+      'Je Teilaufgabe 1 Punkt, zusammen 4 Punkte.',
+    ], 4],
+    ['qa', 'Erklären Sie den Unterschied zwischen einem Fast-Forward-Merge und einem 3-Way-Merge. Wann kann Git keinen Fast-Forward-Merge durchführen?', [
+      '- Ein **Fast-Forward-Merge** ist möglich, wenn auf dem Zielzweig (z. B. `main`) seit dem Abzweigen des Feature-Branches keine neuen Commits hinzugekommen sind. Git verschiebt einfach den Zeiger von `main` auf den letzten Commit des Feature-Branches, ohne einen neuen Merge-Commit zu erzeugen.',
+      '- Ein **3-Way-Merge** wird nötig, wenn auf **beiden Branches parallel neue Commits** entstanden sind. Git vergleicht den gemeinsamen Ursprungs-Commit mit den beiden Spitzen und erstellt automatisch einen neuen **Merge-Commit**, der zwei Eltern hat.',
+    ], 4],
+    ['qa', 'Was ist ein Merge-Konflikt in Git, wie entsteht er und welche Schritte sind zu seiner Behebung erforderlich?', [
+      '- **Entstehung:** Ein Merge-Konflikt entsteht, wenn in zwei Branches dieselbe Zeile in derselben Datei unterschiedlich modifiziert wurde und Git die Änderungen nicht automatisch zusammenführen kann.',
+      '- **Lösungsschritte:** (1) Betroffene Dateien öffnen, (2) Konfliktmarker (`<<<<<<<`, `=======`, `>>>>>>>`) lokalisieren und den korrekten Code manuell auswählen, (3) alle Markierungszeichen entfernen, (4) Datei mit `git add` stagen und (5) den Merge mit `git commit` abschließen.',
+    ], 5],
+    ['quiz', [
+      {q: 'Mit welchem Befehl übernimmt man Änderungen aus dem Arbeitsverzeichnis in die Staging Area?', o: ['git add', 'git commit', 'git push', 'git checkout'], a: 0, e: '`git add <datei>` markiert Änderungen für den nächsten Commit.'},
+      {q: 'Was zeichnet einen Fast-Forward-Merge aus?', o: ['Es wird kein neuer Merge-Commit erstellt, sondern nur der Branch-Zeiger verschoben', 'Er löscht alle Commits des Feature-Branches', 'Er tritt nur bei Merge-Konflikten auf', 'Er funktioniert nur mit GitHub Enterprise'], a: 0, e: 'Bei linearer Historie rückt Git den Zeiger einfach vor (Fast-Forward).'},
+      {q: 'Was bedeuten die Marker <<<<<<< HEAD und >>>>>>> in einer Datei?', o: ['Ein Merge-Konflikt, der manuell aufgelöst werden muss', 'Ein Syntaxfehler des Compilers', 'Ein automatischer Backup-Kommentar', 'Ein HTML-Kommentar'], a: 0, e: 'Git markiert so die widersprüchlichen Codezeilen beider Branches.'},
+      {q: 'Was bewirkt der Befehl git pull?', o: ['Er lädt neue Commits vom Remote-Server herunter und führt sie sofort mit dem lokalen Branch zusammen (fetch + merge)', 'Er lädt nur Dateien hoch', 'Er löscht das lokale Repository', 'Er erzeugt einen neuen Branch'], a: 0, e: '`git pull` ist die Abkürzung für `git fetch` gefolgt von `git merge`.'},
+    ]],
+  ],
+});
+;
 // content/eua/listen-1.js
 (function () {
   const cells = (vals, prefix, y, x0, w, style) => vals.map((v, i) => ({id: prefix + i, k: 'box', x: x0 + i * w, y, w: w - 4, h: 40, t: String(v), s: style || 'accent'}));
@@ -15435,24 +22688,65 @@ print(q.popleft())        # A (dequeue)`],
 (function () {
   const bst = {t: '8', c: [{t: '3', c: [{t: '1'}, {t: '6', c: [{t: '4'}, {t: '7'}]}]}, {t: '10', c: [{e: 1}, {t: '14', c: [{t: '13'}, {e: 1}]}]}]};
   AP2.page('eua-baeume', {
-    b: 'eua', g: 'Datenstrukturen', t: 'Bäume: Binärbaum und binärer Suchbaum',
-    d: 'Ein **Baum** ist eine **hierarchische Datenstruktur** aus **Knoten** und **Kanten** mit genau einer **Wurzel** und ohne Zyklen. Ein **Binärbaum** hat pro Knoten **höchstens zwei Kinder** (links, rechts). Ein **binärer Suchbaum (BST)** ist ein Binärbaum, bei dem für jeden Knoten gilt: **linker Teilbaum < Knoten < rechter Teilbaum**. Dadurch sind Suchen, Einfügen und Löschen im Mittel in **O(log n)** möglich.',
-    m: '**Wurzel oben, Blätter unten. BST-Regel: Kleiner nach LINKS, größer nach RECHTS.** Traversierung: **Preorder = Wurzel zuerst, Inorder = links, Wurzel, rechts (BST: sortiert!), Postorder = Wurzel zuletzt.** Balanciert: O(log n), entartet (Liste): O(n).',
+    b: 'eua', g: 'Datenstrukturen', t: 'Bäume: Binärbaum und binärer Suchbaum (BST)',
+    d: 'Ein **Baum** ist eine nicht-lineare, **hierarchische Datenstruktur** aus **Knoten** und **Kanten** mit genau einer **Wurzel (Root)** und ohne Zyklen. Ein **Binärbaum** hat pro Knoten **höchstens zwei Kinder** (linker und rechter Nachfolger). Ein **binärer Suchbaum (Binary Search Tree - BST)** ordnet die Werte nach einer festen Regel: **Alle Werte im linken Teilbaum sind kleiner als der Knoten, alle Werte im rechten Teilbaum sind größer**. Dadurch sinkt die Suchzeit bei balancierten Bäumen auf **O(log n)**.',
+    m: '**Wurzel ganz oben, Blätter ganz unten ohne Kinder.** **BST-Grundregel: Kleiner = nach LINKS, Größer = nach RECHTS.** **Traversierung:** Preorder (W-L-R, Wurzel zuerst), Inorder (L-W-R, beim BST **exakt sortierte Reihenfolge!**), Postorder (L-R-W, Wurzel zuletzt). Balanciert = O(log n); entartet zur Kette = O(n).',
     cheat: [
-      ['Begriffe', ['**Wurzel (root):** oberster Knoten', '**Blatt (leaf):** Knoten ohne Kinder', '**Elternknoten / Kind**', '**Höhe:** längster Pfad Wurzel zu Blatt (in Kanten)', '**Tiefe/Ebene:** Abstand zur Wurzel', '**Grad:** Anzahl Kinder']],
-      ['Binärer Suchbaum', ['**Links kleiner, rechts größer**', 'Suchen/Einfügen/Löschen: **O(log n)** (balanciert), **O(n)** (entartet)', '**Inorder** liefert **sortierte** Reihenfolge', 'Löschen: Blatt, 1 Kind, 2 Kinder (Inorder-Nachfolger)']],
-      ['Traversierung', ['**Preorder (WLR):** Wurzel, links, rechts', '**Inorder (LWR):** links, Wurzel, rechts', '**Postorder (LRW):** links, rechts, Wurzel', '**Level-Order:** Ebene für Ebene (mit Queue)']],
-      ['Weitere Bäume', ['**AVL / Rot-Schwarz:** selbstbalancierend', '**Heap:** Eltern größer/kleiner als Kinder (Priority Queue)', '**B-Baum:** Datenbankindizes', '**Trie, Entscheidungsbaum, DOM**']],
+      ['Baum-Begriffe', [
+        '**Wurzel (Root):** Der oberste Ausgangsknoten ohne Elternknoten (genau 1 pro Baum)',
+        '**Blatt (Leaf):** Ein Endknoten ohne Kinder (Grad = 0)',
+        '**Innerer Knoten:** Jeder Knoten mit mindestens einem Kind',
+        '**Kante (Edge):** Verbindungslinie zwischen Eltern- und Kindknoten',
+        '**Höhe des Baums:** Maximale Anzahl von Kanten auf dem längsten Pfad von Wurzel zu Blatt',
+        '**Tiefe / Ebene:** Distanz eines Knotens zur Wurzel (Wurzel hat Tiefe 0)',
+      ]],
+      ['Binärer Suchbaum (BST)', [
+        '**Ordnungsbedingung:** `linker_teilbaum < knoten < rechter_teilbaum`',
+        '**Suchen / Einfügen:** Durchschnittlich **O(log n)**; Worst-Case (entartet): **O(n)**',
+        '**Inorder-Traversierung (L-W-R):** Gibt die Elemente immer **aufsteigend sortiert** aus',
+        '**Löschen:** 3 Fälle: Blatt löschen, 1 Kind hochziehen, 2 Kinder durch Inorder-Nachfolger ersetzen',
+      ]],
+      ['Baumarten in der Praxis', [
+        '**Binärbaum:** Max. 2 Kinder pro Knoten',
+        '**Vollständiger Binärbaum:** Alle Ebenen sind maximal gefüllt',
+        '**AVL-Baum / Rot-Schwarz-Baum:** Selbstbalancierend; Höhe bleibt garantiert O(log n)',
+        '**B-Baum:** Mehrwegbaum für Datenbankindizes und Dateisysteme (NTFS, ext4)',
+      ]],
     ],
     blocks: [
-      ['h', 'Was ist ein Baum?'],
-      ['p', 'Bäume bilden **Hierarchien** ab: Ordnerstruktur im Dateisystem, Organigramm, HTML-Dokument (DOM), Stammbaum. Anders als bei Liste und Array gibt es **kein Davor und Danach**, sondern **Über- und Unterordnung**. Ein Baum hat **genau eine Wurzel** und von dort führt zu jedem Knoten **genau ein Pfad**.'],
+      ['h', 'Grundlagen: Was ist ein Baum?'],
+      ['p', 'Im Gegensatz zu linearen Listen oder Arrays bilden Bäume **hierarchische Beziehungen** ab. Praktische Beispiele sind das **Dateisystem** (Ordner und Dateien), das **HTML Document Object Model (DOM)** im Webbrowser oder die **Organisationsstruktur** eines Unternehmens. Ein Baum ist kreisfrei (zyklenfrei): Von der Wurzel führt zu jedem Knoten genau ein einziger Pfad.'],
       ['diagram', AP2.dg.tree({t: 'A', s: 'solid', c: [{t: 'B', s: 'accent', c: [{t: 'D', s: 'ok'}, {t: 'E', s: 'ok'}]}, {t: 'C', s: 'accent', c: [{e: 1}, {t: 'F', s: 'ok'}]}]}, {gx: 90, gy: 74, k: 'circle', cap: 'Ein Binärbaum: A ist die Wurzel, B und C sind innere Knoten, D, E, F sind Blätter (grün). Höhe = 2.'})],
-      ['table', ['Begriff', 'Bedeutung', 'Im Beispiel'], [['Wurzel', 'Oberster Knoten ohne Elternknoten', 'A'], ['Blatt', 'Knoten ohne Kinder', 'D, E, F'], ['Innerer Knoten', 'Knoten mit mindestens einem Kind', 'A, B, C'], ['Eltern / Kind', 'Direkte Verbindung nach oben / unten', 'B ist Elternknoten von D und E'], ['Geschwister', 'Knoten mit gleichem Elternknoten', 'D und E'], ['Höhe des Baums', 'Länge des längsten Pfades von der Wurzel zu einem Blatt', '2 (A zu B zu D)'], ['Tiefe / Ebene eines Knotens', 'Abstand zur Wurzel', 'D hat Tiefe 2'], ['Teilbaum', 'Ein Knoten mit allen Nachfolgern', 'Teilbaum ab B: B, D, E']]],
-      ['h', 'Binärer Suchbaum (BST)'],
-      ['p', 'Ein **BST** hält die Werte **sortiert**. Für jeden Knoten gilt: **Alle Werte im linken Teilbaum sind kleiner, alle im rechten größer.** Suchen funktioniert wie das Zahlenraten: Vergleiche mit dem aktuellen Knoten, gehe nach links oder rechts und halbiere (im günstigen Fall) den Suchraum.'],
-      ['diagram', AP2.dg.tree(bst, {gx: 58, gy: 70, k: 'circle', cap: 'BST nach dem Einfügen von 8, 3, 10, 1, 6, 14, 4, 7, 13. Links stehen kleinere, rechts größere Werte.'})],
-      ['steps', ['**Suchen (z. B. 7):** Start bei 8: 7 < 8, also links. 3: 7 > 3, also rechts. 6: 7 > 6, also rechts. 7: **gefunden** (4 Vergleiche statt bis zu 9 bei einer Liste).', '**Einfügen (z. B. 5):** Suche die Stelle wie beim Suchen: 8 links, 3 rechts, 6 links, 4 rechts. 4 hat kein rechtes Kind: **5 wird dort als neues Blatt eingehängt**.', '**Min / Max:** Das Minimum ist der **linkeste** Knoten (1), das Maximum der **rechteste** (14).']],
+      ['table', ['Begriff', 'Bedeutung', 'Beispiel im Diagramm oben'], [
+        ['**Wurzel (Root)**', 'Der oberste Einstiegsknoten ohne Vorgänger', 'Knoten **A**'],
+        ['**Blatt (Leaf)**', 'Knoten ohne Nachfolger (hat keine Kinder)', 'Knoten **D, E, F**'],
+        ['**Innerer Knoten**', 'Knoten, der mindestens ein Kind hat', 'Knoten **A, B, C**'],
+        ['**Elternknoten / Kind**', 'Übergeordneter Knoten / untergeordneter Knoten', '**B** ist Elternknoten von **D** und **E**'],
+        ['**Geschwister (Siblings)**', 'Knoten mit demselben gemeinsamen Elternknoten', '**D** und **E** sind Geschwister (Eltern: B)'],
+        ['**Höhe des Baums**', 'Anzahl der Kanten vom Startknoten zum tiefsten Blatt', '**2 Kanten** (A -> B -> D)'],
+        ['**Tiefe eines Knotens**', 'Anzahl der Kanten von der Wurzel bis zu diesem Knoten', 'Knoten D hat Tiefe 2; Knoten B hat Tiefe 1'],
+      ]],
+      ['h', 'Der binäre Suchbaum (Binary Search Tree - BST)'],
+      ['p', 'Ein **BST** ist ein Binärbaum, der eine strikte Sortierung erzwingt. Für **jeden Knoten** gilt ausnahmslos: **Alle Werte links sind kleiner, alle Werte rechts sind größer**.'],
+      ['diagram', AP2.dg.tree(bst, {gx: 58, gy: 70, k: 'circle', cap: 'BST nach dem Einfügen der Zahlen: 8, 3, 10, 1, 6, 14, 4, 7, 13. Links stehen kleinere, rechts größere Werte.'})],
+      ['steps', [
+        '**Suchen im BST (z. B. nach 7):** Wir beginnen an der Wurzel **8**. Da `7 < 8`, gehen wir nach links zu **3**. Da `7 > 3`, gehen wir nach rechts zu **6**. Da `7 > 6`, gehen wir nach rechts zu **7**. Treffer nach nur **4 Vergleichen**!',
+        '**Einfügen (z. B. Wert 5):** Suche wie oben den Weg: 8 (links) -> 3 (rechts) -> 6 (links) -> 4. Bei 4 ist `5 > 4`, aber 4 hat noch kein rechtes Kind. **5 wird als neues rechtes Blatt an 4 angehängt**.',
+        '**Minimum finden:** Gehe von der Wurzel aus immer nur nach **links**, bis kein linker Zeiger mehr existiert (hier Knoten **1**).',
+        '**Maximum finden:** Gehe von der Wurzel aus immer nur nach **rechts**, bis kein rechter Zeiger mehr existiert (hier Knoten **14**).',
+      ]],
+      ['warn', 'Achtung bei doppelten Werten: In der reinen Informatik-Theorie sind im BST **keine Duplikate** erlaubt (Duplikate werden beim Einfügen ignoriert oder über einen Zähler im Knoten verwaltet). Werden doppelte Werte erlaubt, muss eine feste Konvention festgelegt werden (z. B. „kleiner-gleich nach links“).'],
+      ['h', 'Wörter, die in der Prüfung vorkommen'],
+      ['table', ['Wort', 'Einfach erklärt'], [
+        ['Binärbaum', 'Baumstruktur, bei der jeder Knoten maximal 2 Kindknoten besitzt'],
+        ['BST (Binary Search Tree)', 'Binärer Suchbaum mit der Eigenschaft: links kleiner, rechts größer'],
+        ['Wurzel (Root)', 'Der allererste Knoten ganz oben im Baum'],
+        ['Blatt (Leaf)', 'Ein Knoten am Ende des Baums ohne jegliche Kindknoten'],
+        ['Höhe des Baums', 'Längster Abstand von der Wurzel zu einem Blatt'],
+        ['Traversierung', 'Systematisches Besuchen aller Knoten eines Baums in einer bestimmten Reihenfolge'],
+        ['Inorder', 'Reihenfolge links - Wurzel - rechts (liefert beim BST sortierte Werte)'],
+      ]],
+      ['see', ['eua-listen', 'eua-mengen', 'eua-onotation', 'eua-sortieren']],
     ],
   });
 })();
@@ -15533,33 +22827,64 @@ class Suchbaum {
 ;
 // content/eua/hash-1.js
 AP2.page('eua-hash', {
-  b: 'eua', g: 'Datenstrukturen', t: 'Hashtabellen',
-  d: 'Eine **Hashtabelle** speichert **Schlüssel-Wert-Paare** und findet einen Eintrag über eine **Hashfunktion**, die aus dem Schlüssel direkt den **Index** (die Position) in einem Array berechnet. Zugriff, Einfügen und Löschen sind im Mittel in **O(1)** möglich. Wenn zwei Schlüssel denselben Index ergeben, spricht man von einer **Kollision**, die man mit **Verkettung (Chaining)** oder **offener Adressierung (Probing)** löst.',
-  m: '**Hashfunktion = Schrank-Nummer aus dem Namen berechnen.** Typisch: **index = schluessel mod m**. **Kollision** = zwei Schlüssel, derselbe Index. Chaining: pro Fach eine **Liste**. Probing: **nächstes freies Fach suchen**. Laufzeit **O(1)** im Mittel, **O(n)** im schlechtesten Fall.',
+  b: 'eua', g: 'Datenstrukturen', t: 'Hashtabellen: Hashfunktionen, Kollisionen und Performance',
+  d: 'Eine **Hashtabelle (Hash Map / Dictionary)** speichert **Schlüssel-Wert-Paare (Key-Value)** und ermöglicht den Zugriff auf Daten in durchschnittlich **konstanter Zeit O(1)**. Anstatt eine Liste aufwendig von vorne bis hinten zu durchsuchen (O(n)), berechnet eine mathematische **Hashfunktion** aus dem Suchschlüssel direkt den exakten **Array-Index** (die Speicherposition). Wenn zwei unterschiedliche Schlüssel denselben Index erhalten, entsteht eine **Kollision**. Diese wird entweder durch **Verkettung (Chaining)** mit Listen oder durch **offene Adressierung (Probing)** gelöst.',
+  m: '**Indexberechnung: `index = hash(schluessel) MOD tabellengroesse`.** **Durchschnittliche Laufzeit: O(1)** für Einfügen, Suchen und Löschen! **Kollision:** Zwei verschiedene Schlüssel landen auf demselben Index. **Chaining:** Im Tabellenfeld liegt eine verkettete Liste aller Kollisionen. **Offene Adressierung (lineares Sondieren):** Weiterspringen zum nächsten freien Feld (`+1, +2...`). **Ladefaktor (Load Factor):** Verhältnis von belegten Plätzen zur Tabellengröße (bei ca. 0,75 erfolgt **Rehashing**).',
   cheat: [
-    ['Prinzip', ['**Schlüssel** in **Hashfunktion** ergibt **Index**', 'Wert in Array-Feld `tabelle[index]`', 'Suche: gleicher Weg, **kein Durchsuchen**', 'Mittel **O(1)** für put, get, remove']],
-    ['Hashfunktion', ['Einfach: `h(k) = k mod m`', 'Soll **gleichmäßig verteilen**', 'Gleicher Schlüssel, **gleicher Hash**', 'm oft Primzahl']],
-    ['Kollisionsbehandlung', ['**Chaining:** verkettete Liste je Feld', '**Open Addressing:** nächstes freies Feld (lineares Sondieren: +1, +2, ...)', '**Füllgrad (Load Factor)** = Einträge / Felder, bei ca. 0,7 vergrößern (Rehashing)']],
-    ['Eigenschaften', ['**Keine Ordnung** der Einträge', 'Gut für **Suche nach Schlüssel**', 'Java `HashMap`, C# `Dictionary`, Python `dict`, `set`', 'Schlechter Fall: viele Kollisionen: **O(n)**']],
+    ['Funktionsprinzip', [
+      '**1. Schlüssel übergeben:** z. B. String `"kundenId_9482"`',
+      '**2. Hashfunktion berechnen:** Erzeugt einen 32-Bit-Integer (z. B. `38291048`)',
+      '**3. Modulo-Operation:** `38291048 MOD 1000 = Index 48`',
+      '**4. Array-Zugriff:** Der Datensatz liegt direkt an `array[48]` ohne jegliches Suchen!',
+    ]],
+    ['Kollisionsstrategien', [
+      '**Separate Chaining (Verkettung):** Jedes Tabellenfeld („Bucket“) ist der Kopf einer verketteten Liste. Kollidierende Elemente werden einfach an die Liste angehängt (einfach, überfüllungssicher).',
+      '**Open Addressing (Offene Adressierung):** Alle Elemente liegen direkt im Array. Ist das berechnete Feld belegt, wird nach einer festen Folge (linear: +1, quadratisch: +1, +4, +9...) das nächste freie Feld gesucht.',
+    ]],
+    ['Performance & Worst-Case', [
+      '**Best / Average Case:** **O(1)** (sofortiger Zugriff über den Hashcode)',
+      '**Worst Case:** **O(n)** (wenn eine schlechte Hashfunktion alle Schlüssel in denselben Bucket wirft – die Hashtabelle degeneriert zur verknüpften Liste!)',
+    ]],
   ],
   blocks: [
-    ['h', 'Die Idee'],
-    ['p', 'In einem Telefonbuch suchst du einen Namen, indem du **durchblätterst** (O(n)) oder **halbierst** (sortiert, O(log n)). Eine Hashtabelle **berechnet** dagegen direkt aus dem Namen, **wo** der Eintrag liegt, wie eine **Garderobe**: Aus deiner Marke ergibt sich dein Haken. Dadurch ist der Zugriff **unabhängig von der Anzahl** der gespeicherten Daten (O(1)).'],
-    ['diagram', AP2.dg.flow(['Schlüssel "Mia"', 'Hashfunktion h(k)', 'Index 3', 'tabelle[3]', 'Wert (Eintrag)'], {w: 780, h: 100, styles: ['accent', 'solid', 'soft', 'ok', 'ok'], cap: 'Aus dem Schlüssel wird mit der Hashfunktion direkt der Speicherplatz berechnet.'})],
-    ['h', 'Hashfunktion'],
-    ['p', 'Eine einfache Hashfunktion für ganze Zahlen ist der **Divisionsrest**: `index = schluessel mod m` (m = Größe der Tabelle). Für Texte berechnet man aus den Zeichencodes eine Zahl (zum Beispiel Summe oder Polynom über die Zeichen) und nimmt dann `mod m`. Eine **gute** Hashfunktion ist **schnell**, **deterministisch** (gleicher Schlüssel, gleicher Hash) und verteilt die Schlüssel **gleichmäßig**.'],
-    ['h', 'Kollisionen'],
-    ['p', 'Es gibt mehr mögliche Schlüssel als Felder. Deshalb können **zwei verschiedene Schlüssel denselben Index** bekommen: eine **Kollision**. Das lässt sich nicht verhindern, nur behandeln. Beispiel: Tabelle mit **m = 7** Feldern, Einfügen der Schlüssel **10, 25, 3, 18, 31**. Indizes: 10 mod 7 = 3, 25 mod 7 = 4, 3 mod 7 = 3 (Kollision!), 18 mod 7 = 4 (Kollision!), 31 mod 7 = 3 (Kollision!).'],
-    ['h3', 'Verfahren 1: Verkettung (Chaining)'],
-    ['p', 'Jedes Feld enthält eine **Liste** aller Einträge mit diesem Index. Bei einer Kollision wird einfach **an die Liste angehängt**.'],
+    ['h', 'Die Grundidee: Suchen ohne Durchblättern'],
+    ['p', 'In einem Array oder einer Liste muss man im Schnitt die Hälfte aller Elemente ansehen (**O(n)**), um einen Wert zu finden. Eine Hashtabelle funktioniert wie eine **Garderobe mit nummerierten Haken**: Aus deinem Namen wird sofort berechnet, an welchem Haken deine Jacke hängt. Der Zugriff dauert immer gleich lang (**O(1)**), egal ob 100 oder 10 Millionen Datensätze gespeichert sind.'],
+    ['diagram', AP2.dg.flow(['Schlüssel "Mia"', 'Hashfunktion h(k)', 'Index 3', 'tabelle[3]', 'Wert {alter: 24}'], {w: 780, h: 100, styles: ['accent', 'solid', 'soft', 'ok', 'ok'], cap: 'Aus dem Schlüssel wird mit der Hashfunktion direkt der Speicherplatz berechnet.'})],
+    ['h', 'Anforderungen an eine gute Hashfunktion'],
+    ['p', 'Die Hashfunktion ist das Herzstück jeder Hashtabelle. Sie muss drei Bedingungen erfüllen:'],
+    ['table', ['Kriterium', 'Bedeutung', 'Warum unverzichtbar?'], [
+      ['**Deterministisch**', 'Derselbe Schlüssel muss bei jedem Aufruf zwingend **denselben Hashwert** liefern', 'Sonst kann ein einmal gespeicherter Wert nie wiedergefunden werden'],
+      ['**Gleichmäßige Verteilung (Uniformität)**', 'Schlüssel müssen gleichmäßig über alle Array-Indizes gestreut werden', 'Verhindert Klumpenbildung (Clustering) und minimiert Kollisionen'],
+      ['**Hohe Geschwindigkeit**', 'Die Berechnung des Hashwerts muss extrem schnell in O(1) erfolgen', 'Lange Berechnungen würden den Geschwindigkeitsvorteil zunichtemachen'],
+    ]],
+    ['h', 'Kollisionen und deren Lösung'],
+    ['p', 'Da es unendlich viele Texte oder Zahlen gibt, aber eine Hashtabelle nur eine begrenzte Anzahl an Speicherfeldern besitzt (Taubenschlagprinzip), lassen sich **Kollisionen niemals vollständig vermeiden**. Zwei Methoden dominieren in der Praxis:'],
+    ['h3', 'Methode 1: Verkettung (Separate Chaining)'],
+    ['p', 'Jedes Tabellenfeld enthält eine Referenz auf eine **einfach verkettete Liste** (oder ab Java 8 bei vielen Kollisionen einen balancierten Rot-Schwarz-Baum). Bei einer Kollision wird das neue Element einfach in die Liste am berechneten Index eingefügt.'],
     ['diagram', {w: 760, h: 330, keep: 560, cap: 'Chaining: Jedes Feld der Tabelle verweist auf eine verkettete Liste.', nodes: [0, 1, 2, 3, 4, 5, 6].map((i) => ({id: 'f' + i, k: 'box', x: 60, y: 30 + i * 42, w: 70, h: 36, t: String(i), s: [3, 4].includes(i) ? 'accent' : 'soft'})).concat([
       {id: 'a1', k: 'box', x: 190, y: 156, w: 60, h: 34, t: '10', s: 'ok'}, {id: 'a2', k: 'box', x: 280, y: 156, w: 60, h: 34, t: '3', s: 'ok'}, {id: 'a3', k: 'box', x: 370, y: 156, w: 60, h: 34, t: '31', s: 'ok'},
       {id: 'b1', k: 'box', x: 190, y: 198, w: 60, h: 34, t: '25', s: 'ok'}, {id: 'b2', k: 'box', x: 280, y: 198, w: 60, h: 34, t: '18', s: 'ok'},
     ]), edges: [{a: 'f3', b: 'a1'}, {a: 'a1', b: 'a2'}, {a: 'a2', b: 'a3'}, {a: 'f4', b: 'b1'}, {a: 'b1', b: 'b2'}]}],
-    ['h3', 'Verfahren 2: Offene Adressierung (lineares Sondieren)'],
-    ['p', 'Ist das berechnete Feld **belegt**, probiert man das **nächste** (Index + 1, + 2, ... mit Umlauf am Ende). Beim Suchen folgt man derselben Folge, bis man den Schlüssel oder ein **leeres Feld** findet.'],
-    ['steps', ['**10:** Index 3 frei, also Feld 3.', '**25:** Index 4 frei, also Feld 4.', '**3:** Index 3 belegt, 4 belegt, **5 frei**, also Feld 5.', '**18:** Index 4 belegt, 5 belegt, **6 frei**, also Feld 6.', '**31:** Index 3 belegt, 4, 5, 6 belegt, Umlauf zu **0 frei**, also Feld 0.']],
-    ['table', ['Feld', '0', '1', '2', '3', '4', '5', '6'], [['Inhalt', '31', '-', '-', '10', '25', '3', '18']], {first: true}],
+    ['h3', 'Methode 2: Offene Adressierung mit linearem Sondieren'],
+    ['p', 'Ist das berechnete Feld belegt, prüft der Algorithmus sequenziell das nächste Feld: `(Index + 1) MOD m`, dann `(Index + 2) MOD m`, bis ein freier Platz gefunden wird.'],
+    ['table', ['Schritt beim Einfügen', 'Berechneter Index', 'Kollision?', 'Tatsächlich belegtes Feld'], [
+      ['Schlüssel 10 einfügen (10 MOD 7)', 'Index 3', 'Nein (Feld 3 war leer)', 'Feld 3 belegt mit 10'],
+      ['Schlüssel 25 einfügen (25 MOD 7)', 'Index 4', 'Nein (Feld 4 war leer)', 'Feld 4 belegt mit 25'],
+      ['Schlüssel 3 einfügen (3 MOD 7)', 'Index 3', '**Kollision!** (Feld 3 belegt)', 'Feld 4 belegt, **Feld 5 frei -> 3 in Feld 5**'],
+      ['Schlüssel 18 einfügen (18 MOD 7)', 'Index 4', '**Kollision!** (Feld 4, 5 belegt)', '**Feld 6 frei -> 18 in Feld 6**'],
+      ['Schlüssel 31 einfügen (31 MOD 7)', 'Index 3', '**Kollision!** (Feld 3, 4, 5, 6 belegt)', 'Umlauf zum Anfang: **Feld 0 frei -> 31 in Feld 0**'],
+    ]],
+    ['h', 'Wörter, die in der Prüfung vorkommen'],
+    ['table', ['Wort', 'Einfach erklärt'], [
+      ['Hashtabelle', 'Datenstruktur zur Speicherung von Key-Value-Paaren mit O(1) Zugriffszeit'],
+      ['Hashwert / Hashcode', 'Aus dem Schlüssel errechnete ganzzahlige Kennzahl'],
+      ['Kollision', 'Zwei unterschiedliche Schlüssel erzeugen denselben Tabellenindex'],
+      ['Chaining (Verkettung)', 'Kollisionsbehandlung über verkettete Listen in jedem Tabellenfach'],
+      ['Sondieren (Probing)', 'Weitersuchen nach dem nächsten freien Arrayplatz bei Kollisionen'],
+      ['Ladefaktor (Load Factor)', 'Verhältnis der gespeicherten Datensätze zur Gesamtgröße der Tabelle (n / m)'],
+      ['Rehashing', 'Automatisches Vergrößern der Tabelle und Neuberechnung aller Indizes bei Überfüllung'],
+    ]],
+    ['see', ['eua-mengen', 'eua-listen', 'eua-baeume', 'eua-onotation']],
   ],
 });
 ;
@@ -15617,6 +22942,99 @@ menge = {1, 2, 3}                       # set = Hashtabelle nur mit Schlüsseln`
     {q: 'Was passiert beim Rehashing?', o: ['Die Tabelle wird vergrößert und alle Einträge neu verteilt', 'Alle Einträge werden gelöscht', 'Die Hashfunktion wird entfernt', 'Es wird ein Backup erstellt'], a: 0, e: 'Bei hohem Füllgrad wird die Tabelle vergrößert.'},
   ]],
 ]);
+;
+// content/eua/mengen-1.js
+AP2.page('eua-mengen', {
+  b: 'eua', g: 'Datenstrukturen', t: 'Mengen (Set) und Maps (Key-Value) im Vergleich zu Listen',
+  d: 'In der Softwareentwicklung ist die Wahl der passenden **Collection (Datenstruktur)** entscheidend für Speicherbedarf und Performance. Während eine **Liste (List / ArrayList)** Elemente nach einem **numerischen Index** ordnet und **Duplikate erlaubt**, speichert eine **Menge (Set / HashSet)** jedes Element **garantiert nur einmal (Eindeutigkeit)** ohne Duplikate. Eine **Map (HashMap / Dictionary)** speichert **Schlüssel-Wert-Paare (Key-Value)**, wobei jeder Schlüssel eindeutig ist. Bei **HashSet** und **HashMap** erfolgt das Suchen und Einfügen im Durchschnitt in **konstanter Zeit O(1)** über Hashing.',
+  m: '**List: Geordnet nach Index (0, 1, 2...), Duplikate erlaubt, Suche O(n).** **Set (Menge): Keine Duplikate (jedes Element eindeutig), keine Indexe, Suche O(1) bei HashSet.** **Map (Wörterbuch): Speichert Key -> Value, Keys sind eindeutig, Suche per Key O(1).** **Mengenoperationen:** Vereinigung (Union), Schnittmenge (Intersection), Differenzmenge (Minus). **Voraussetzung für HashSet/HashMap:** Saubere Überschreibung von `equals()` und `hashCode()`.',
+  cheat: [
+    ['Vergleich List vs. Set vs. Map', [
+      '**List (ArrayList / LinkedList):** Zugriff per Index `list.get(i)`; Duplikate erlaubt; Reihenfolge bleibt erhalten',
+      '**Set (HashSet / TreeSet):** Keine doppelten Werte; ideal für Eindeutigkeitsprüfungen (z. B. eindeutige Benutzer-IDs, besuchte URLs)',
+      '**Map (HashMap / TreeMap):** Nachschlagen nach Schlüssel `map.get(key)`; Key ist eindeutig, Value darf doppelt vorkommen',
+    ]],
+    ['Zeitkomplexität im Durchschnitt (Big-O)', [
+      '**Element suchen (contains):** List = **O(n)** (muss alles durchsuchen); HashSet = **O(1)** (direkte Hash-Berechnung!)',
+      '**Element per Schlüssel holen:** Map = **O(1)** (sofortiger Zugriff über Key)',
+      '**Einfügen am Ende:** List = **O(1)**; HashSet = **O(1)**',
+    ]],
+    ['Die 4 Mengenoperationen', [
+      '**Vereinigung (Union / addAll):** Alle Elemente aus A und B zusammen (ohne Dopplungen)',
+      '**Schnittmenge (Intersection / retainAll):** Nur die Elemente, die sowohl in A als auch in B vorkommen',
+      '**Differenzmenge (Difference / removeAll):** Alle Elemente aus A, die NICHT in B vorkommen',
+      '**Teilmenge (Subset / containsAll):** Prüft, ob alle Elemente von B vollständig in A enthalten sind',
+    ]],
+  ],
+  blocks: [
+    ['h', 'Die drei Kern-Collections im direkten Vergleich'],
+    ['p', 'Die IHK-Prüfung fragt häufig, welche Datenstruktur für ein konkretes Szenario gewählt werden soll (z. B. Sommer 2024 PB2 1.3). Die Entscheidung hängt von drei Fragen ab: Brauchen wir Indexe? Dürfen Werte doppelt vorkommen? Suchen wir über einen Schlüssel?'],
+    ['table', ['Eigenschaft', 'Liste (z. B. ArrayList)', 'Menge (z. B. HashSet)', 'Map (z. B. HashMap)'], [
+      ['**Datenformat**', 'Einzelne Werte: `[A, B, C, A]`', 'Eindeutige Werte: `{A, B, C}`', 'Schlüssel-Wert-Paare: `{K1: V1, K2: V2}`'],
+      ['**Duplikate erlaubt?**', '**Ja** (mehrfach gleicher Wert möglich)', '**Nein** (Duplikate werden ignoriert)', '**Keys: Nein** (eindeutig), **Values: Ja**'],
+      ['**Zugriff über...**', 'Numerischen Index (`list[0]`)', 'Kein Index (nur Durchlaufen oder `contains`)', 'Schlüssel (`map.get("user123")`)'],
+      ['**Reihenfolge**', 'Feste Einfügereihenfolge', 'Keine feste Reihenfolge (außer TreeSet)', 'Keine feste Reihenfolge (außer TreeMap)'],
+      ['**Prüfung `contains()`**', '**O(n)** (langsam bei großen Datenmengen)', '**O(1)** (extrem schnell dank Hashwert)', '`containsKey()`: **O(1)**'],
+      ['**Typischer Einsatzzweck**', 'Einkaufsliste, Verlauf von Aktionen, Tabellenzeilen', 'Teilnehmerliste ohne Doppelungen, Tags, Blacklist', 'Benutzerverwaltung (ID -> User), Cache, Wörterbuch'],
+    ]],
+    ['h', 'Die vier mathematischen Mengenoperationen'],
+    ['p', 'Mengenoperationen werden in der Anwendungsentwicklung für Filterungen, Auswertungen und Berechtigungsprüfungen eingesetzt:'],
+    ['table', ['Operation', 'Mathematisch', 'Java / Methoden-Äquivalent', 'Beispiel mit Mengen {1, 2, 3} und {3, 4, 5}'], [
+      ['**Vereinigungsmenge (Union)**', 'A ∪ B', '`setA.addAll(setB);`', '**{1, 2, 3, 4, 5}** (alle Elemente aus beiden)'],
+      ['**Schnittmenge (Intersection)**', 'A ∩ B', '`setA.retainAll(setB);`', '**{3}** (nur gemeinsame Elemente)'],
+      ['**Differenzmenge (Minus)**', 'A \\ B', '`setA.removeAll(setB);`', '**{1, 2}** (Elemente aus A ohne die aus B)'],
+      ['**Teilmenge (Subset)**', 'B ⊆ A', '`setA.containsAll(setB);`', '`false` (da 4 und 5 fehlen)'],
+    ]],
+    ['h', 'Praxisbeispiel in JavaScript / Pseudocode'],
+    ['code', 'javascript', `// 1. Set: Automatische Entfernung von Duplikaten
+const bestellungen = ['KundeA', 'KundeB', 'KundeA', 'KundeC', 'KundeB'];
+const eindeutigeKunden = new Set(bestellungen);
+console.log(eindeutigeKunden); // Set(3) { 'KundeA', 'KundeB', 'KundeC' }
+
+// Schnelle Prüfung in O(1):
+if (eindeutigeKunden.has('KundeA')) {
+  console.log('Kunde ist bereits registriert!');
+}
+
+// 2. Map: Schnelles Nachschlagen (Key -> Value)
+const artikelPreise = new Map();
+artikelPreise.set('A100', 19.90);
+artikelPreise.set('A200', 49.00);
+
+console.log(artikelPreise.get('A100')); // 19.90 (sofortiger Zugriff in O(1))`],
+    ['warn', 'Der Vertrag von `equals()` und `hashCode()`: Wenn eigene Klassen (z. B. `Kunde` oder `Artikel`) in einem HashSet oder als Map-Key verwendet werden, **müssen beide Methoden überschrieben werden**! Wenn zwei Objekte laut `equals()` gleich sind, **müssen sie zwingend denselben `hashCode()` liefern**. Wird das vergessen, werden doppelte Objekte nicht erkannt und im Set fälschlicherweise mehrfach gespeichert!'],
+    ['h', 'Wörter, die in der Prüfung vorkommen'],
+    ['table', ['Wort', 'Einfach erklärt'], [
+      ['Collection', 'Überbegriff für Datenstrukturen zur Speicherung von Objektsammlungen'],
+      ['Set (Menge)', 'Datenstruktur, die garantiert keine doppelten Elemente speichert'],
+      ['Map (Dictionary)', 'Datenstruktur zur Speicherung von eindeutigen Schlüsseln mit zugeordneten Werten'],
+      ['Duplikat', 'Mehrfach vorkommender identischer Wert'],
+      ['Hashfunktion', 'Mathematische Funktion, die aus einem Objekt eine Zahl (den Hashcode) berechnet'],
+      ['Konstante Laufzeit O(1)', 'Der Vorgang dauert immer gleich kurz, egal ob 10 oder 10 Millionen Elemente gespeichert sind'],
+      ['Schnittmenge', 'Gemeinsame Elemente zweier Mengen'],
+    ]],
+    ['see', ['eua-listen', 'eua-hash', 'eua-onotation', 'eua-baeume']],
+    ['h', 'Aufgaben im Prüfungsstil'],
+    ['qa', 'In einem Online-Shop sollen für eine Rabattaktion alle Kunden ermittelt werden, die sowohl im Januar als auch im Februar mindestens eine Bestellung aufgegeben haben. Die Kunden-IDs beider Monate liegen als zwei Listen vor (Liste_Januar mit 50.000 IDs, Liste_Februar mit 60.000 IDs). Begründen Sie, warum die Umwandlung in Sets und die Bildung der Schnittmenge performanter ist als der Vergleich über zwei geschachtelte Schleifen.', [
+      '- Zwei geschachtelte Schleifen über die Listen haben eine Zeitkomplexität von **O(n * m)** (50.000 * 60.000 = 3 Milliarden Vergleiche). Das führt zu massiven Performance-Problemen.',
+      '- Wandelt man die Listen in **HashSets** um, können Duplikate sofort entfernt werden.',
+      '- Die Prüfung `setJanuar.contains(id)` für jedes Element aus Februar dauert im HashSet im Durchschnitt nur **O(1)** (konstante Zeit).',
+      '- Die Gesamtlaufzeit der Schnittmengenbildung sinkt dadurch drastisch auf **lineare Zeit O(n + m)**.',
+      'Zusammen 4 Punkte.',
+    ], 4],
+    ['qa', 'Nennen Sie jeweils ein konkretes Anwendungsbeispiel aus der Softwareentwicklung für eine List, ein Set und eine Map.', [
+      '- **List:** Verlauf der letzten 10 Suchanfragen eines Nutzers (Reihenfolge ist wichtig, doppelte Suchbegriffe sind erlaubt).',
+      '- **Set:** Speicherung aller IP-Adressen, die wegen zu vieler fehlerhafter Login-Versuche gesperrt sind (Blacklist: Eindeutigkeit wichtig, blitzschnelle Abfrage über `contains()`).',
+      '- **Map:** Benutzerkatalog in einer Webanwendung (Schlüssel: eindeutige Kundennummer `KundenID` -> Wert: `Kundenobjekt` mit Name, Adresse, E-Mail).',
+    ], 6],
+    ['quiz', [
+      {q: 'Welche Eigenschaft zeichnet ein Set (Menge) im Vergleich zu einer List aus?', o: ['Ein Set speichert keine Duplikate (jedes Element ist eindeutig)', 'Ein Set erlaubt schnellen Zugriff über einen Zahlenindex wie set[0]', 'Ein Set ist immer nach dem Alphabet sortiert', 'Ein Set kann nur Zahlen speichern'], a: 0, e: 'Das Hauptmerkmal eines Sets ist die garantierte Eindeutigkeit aller enthaltenen Elemente.'},
+      {q: 'Welche Zeitkomplexität hat das Suchen eines Elements in einem HashSet im Durchschnitt?', o: ['O(1) - konstante Zeit', 'O(n) - lineare Zeit', 'O(n²) - quadratische Zeit', 'O(log n)'], a: 0, e: 'Über den Hashwert springt das HashSet direkt zum Speicherort; die Suche dauert O(1).'},
+      {q: 'Welche Mengenoperation liefert nur die Elemente zurück, die in BEIDEN Mengen gleichzeitig vorkommen?', o: ['Schnittmenge (Intersection)', 'Vereinigungsmenge (Union)', 'Differenzmenge (Minus)', 'Teilmenge'], a: 0, e: 'Die Schnittmenge (A ∩ B) enthält genau die gemeinsamen Schnittpunkte.'},
+      {q: 'Was passiert, wenn man in eine Map einen Eintrag mit einem Schlüssel einfügt, der bereits existiert?', o: ['Der alte Wert wird mit dem neuen Wert überschrieben', 'Es wird eine Fehlermeldung geworfen', 'Der Eintrag wird ignoriert', 'Der Schlüssel wird verdoppelt'], a: 0, e: 'Da Schlüssel eindeutig sind, überschreibt `map.put(key, newValue)` den bisherigen Wert.'},
+    ]],
+  ],
+});
 ;
 // content/eua/sortieren-1.js
 AP2.page('eua-sortieren', {
@@ -15914,41 +23332,59 @@ AP2.add('eua-suchen', [
 // content/eua/onotation-1.js
 AP2.page('eua-onotation', {
   b: 'eua', g: 'Algorithmen', t: 'Komplexität und O-Notation (Best, Average, Worst Case)',
-  d: 'Die **O-Notation (Landau-Notation)** beschreibt, **wie stark der Aufwand** (Laufzeit oder Speicher) eines Algorithmus **mit der Eingabegröße n wächst**. Sie nennt nur den **dominierenden Term** und ignoriert Konstanten: Zum Beispiel ist 3n² + 5n + 7 gleich **O(n²)**. Man unterscheidet **Best Case** (günstigster Fall), **Average Case** (Durchschnitt) und **Worst Case** (ungünstigster Fall).',
-  m: '**O(1) < O(log n) < O(n) < O(n log n) < O(n²) < O(2^n).** Regeln: **Konstanten weglassen, nur den stärksten Term behalten.** Eine Schleife über n = O(n), eine Schleife in einer Schleife = O(n²), Halbieren = O(log n).',
+  d: 'Die **O-Notation (Landau-Notation)** beschreibt mathematisch das **asymptotische Wachstumsverhalten** (Laufzeit- oder Speicheraufwand) eines Algorithmus bei steigender Eingabegröße **n**. Sie betrachtet das Verhalten für sehr große Eingaben (**Worst-Case-Abschätzung**), ignoriert konstante Vorfaktoren und behält nur den **dominierenden Term** (z. B. `O(3n² + 5n + 10) = O(n²)`). Man unterscheidet drei Fälle: **Best Case** (Idealfall), **Average Case** (Durchschnittsfall) und **Worst Case** (schlechtester Fall / obere Schranke).',
+  m: '**Rangfolge:** **O(1) < O(log n) < O(n) < O(n log n) < O(n²) < O(2^n) < O(n!).** **Rechenregeln:** Konstanten streichen, kleinerwertige Terme streichen. Schleifen nacheinander = addieren (nur Maximum zählt). Schleifen ineinander = multiplizieren. Halbierung des Suchraums pro Schritt = O(log n).',
   cheat: [
-    ['Wichtige Klassen', ['**O(1)** konstant: Array-Zugriff, Hash-Zugriff', '**O(log n)** logarithmisch: binäre Suche, BST (balanciert)', '**O(n)** linear: lineare Suche, eine Schleife', '**O(n log n)**: Mergesort, Quicksort (Mittel)', '**O(n²)** quadratisch: Bubble-, Insertion-, Selectionsort, verschachtelte Schleifen', '**O(2^n)** exponentiell: naive Fibonacci-Rekursion, Brute Force']],
-    ['Regeln', ['Konstanten weglassen: O(3n) = O(n)', 'Nur dominanten Term: O(n² + n) = O(n²)', 'Hintereinander: **addieren** (dann größten nehmen)', 'Verschachtelt: **multiplizieren**', 'Halbieren pro Schritt: **log n**']],
-    ['Fälle', ['**Best Case:** günstigste Eingabe (zum Beispiel Treffer sofort)', '**Worst Case:** ungünstigste Eingabe (**in der Prüfung meist gefragt**)', '**Average Case:** typische Eingabe']],
-    ['Begriffe', ['**Zeitkomplexität:** Anzahl Schritte', '**Speicherkomplexität (Platz):** zusätzlicher Speicher', '**Skalierung:** Verhalten bei wachsendem n']],
+    ['Wichtige Komplexitätsklassen', [
+      '**O(1) - Konstant:** Array-Zugriff `arr[i]`, Hash-Lookup `map.get(k)`, Push/Pop auf Stack',
+      '**O(log n) - Logarithmisch:** Binäre Suche, Suche im balancierten BST (halbiert pro Schritt)',
+      '**O(n) - Linear:** Lineare Suche, einfaches Durchlaufen eines Arrays / einer Liste mit einer Schleife',
+      '**O(n log n) - Linearithmisch:** Optimale Sortieralgorithmen (Mergesort, Heapsort, Quicksort Average)',
+      '**O(n²) - Quadratisch:** Einfache Sortierer (Bubblesort, Insertionsort, Selectionsort), doppelt geschachtelte Schleifen',
+      '**O(2^n) - Exponentiell:** Naive rekursive Fibonacci-Berechnung, Rucksackproblem per Brute-Force',
+    ]],
+    ['Rechenregeln für die Prüfung', [
+      '**Regel 1 (Konstanten weglassen):** `O(5 * n) -> O(n)`, `O(1000) -> O(1)`',
+      '**Regel 2 (Dominanter Term):** `O(n² + 100n + 5000) -> O(n²)`',
+      '**Regel 3 (Hintereinander):** `O(n) + O(n²) -> O(n²)` (nur das Maximum gewinnt)',
+      '**Regel 4 (Verschachtelt):** Äußere Schleife (n) * Innere Schleife (n) -> `O(n²)`',
+    ]],
+    ['Die 3 Betrachtungsfälle', [
+      '**Best Case (Ω):** Günstigste Eingabedaten (z. B. gesuchtes Element steht ganz am Anfang)',
+      '**Average Case (Θ):** Durchschnittliche Laufzeit über alle typischen Eingaben',
+      '**Worst Case (O):** Schlechtester Fall (Garantierte Obergrenze; in Prüfungen fast immer gefordert)',
+    ]],
   ],
   blocks: [
-    ['h', 'Warum messen wir Komplexität?'],
-    ['p', 'Ein Algorithmus kann bei 100 Elementen schnell sein und bei 100.000 Elementen unbrauchbar. Die **Laufzeit in Sekunden** hängt vom Rechner ab. Die O-Notation misst deshalb **nicht Sekunden**, sondern **wie viele Schritte** in Abhängigkeit von n nötig sind. So kann man Algorithmen **unabhängig von der Hardware** vergleichen.'],
+    ['h', 'Warum messen wir Komplexität statt Sekunden?'],
+    ['p', 'Die absolute Laufzeit eines Programms in Millisekunden hängt von der CPU-Geschwindigkeit, dem Arbeitsspeicher und der Programmiersprache ab. Die **O-Notation** misst hingegen die **Anzahl der elementaren Rechenschritte in Abhängigkeit von der Eingabemenge n**. Dadurch können Algorithmen objektiv und unabhängig von Hardware verglichen werden.'],
     ['chart', {kind: 'line', w: 720, h: 340, labels: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'], series: [{n: 'O(log n)', d: [0, 1, 1.6, 2, 2.3, 2.6, 2.8, 3, 3.2, 3.3], k: 'ok'}, {n: 'O(n)', d: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], k: 'accent'}, {n: 'O(n log n)', d: [0, 2, 4.8, 8, 11.6, 15.5, 19.7, 24, 28.5, 33.2], k: 'text'}, {n: 'O(n²)', d: [1, 4, 9, 16, 25, 36, 49, 64, 81, 100], k: 'text3'}, {n: 'O(2^n)', d: [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024], k: 'bad'}], ymax: 100, yl: 'Schritte (bei n = 1 bis 10)', cap: 'Wachstum der wichtigsten Klassen. Die rote Kurve (2^n) schießt schon bei kleinem n aus dem Diagramm.'}],
-    ['table', ['Klasse', 'Name', 'n = 10', 'n = 100', 'n = 1.000', 'Beispiel'], [
-      ['O(1)', 'konstant', '1', '1', '1', 'Zugriff auf `a[i]`, Hash-Lookup'],
-      ['O(log n)', 'logarithmisch', '3', '7', '10', 'Binäre Suche'],
-      ['O(n)', 'linear', '10', '100', '1.000', 'Lineare Suche, Summe eines Arrays'],
-      ['O(n log n)', 'linearithmisch', '33', '664', '9.966', 'Mergesort, Quicksort (Mittel)'],
-      ['O(n²)', 'quadratisch', '100', '10.000', '1.000.000', 'Bubblesort, doppelte Schleife'],
-      ['O(n³)', 'kubisch', '1.000', '1.000.000', '10^9', 'Naive Matrixmultiplikation'],
-      ['O(2^n)', 'exponentiell', '1.024', '10^30', 'unbrauchbar', 'Naives Fibonacci, alle Teilmengen'],
-      ['O(n!)', 'faktoriell', '3.628.800', 'unbrauchbar', 'unbrauchbar', 'Alle Permutationen (Traveling Salesman, Brute Force)'],
+    ['table', ['Klasse', 'Name', 'Schritte bei n = 10', 'Schritte bei n = 100', 'Schritte bei n = 10.000', 'Praxisbeispiel'], [
+      ['**O(1)**', 'konstant', '1', '1', '1', 'Index-Zugriff `array[i]`, Push auf Stack, Hash-Zugriff'],
+      ['**O(log n)**', 'logarithmisch', '3', '7', '14', 'Binäre Suche in sortiertem Array'],
+      ['**O(n)**', 'linear', '10', '100', '10.000', 'Lineare Suche, Maximum in Liste finden'],
+      ['**O(n log n)**', 'linearithmisch', '33', '664', '133.000', 'Mergesort, Quicksort (Durchschnitt)'],
+      ['**O(n²)**', 'quadratisch', '100', '10.000', '100.000.000 (100 Mio.)', 'Bubblesort, einfache Duplikatprüfung'],
+      ['**O(2^n)**', 'exponentiell', '1.024', '1,27 * 10^30', 'Unendlich (nicht berechenbar)', 'Brute-Force Knacken von Passwörtern, Traveling Salesman'],
     ]],
-    ['h', 'Regeln für die Berechnung'],
-    ['steps', ['**Konstanten weglassen:** O(5n) = O(n), O(100) = O(1). Wachstum, nicht Faktor.', '**Nur den größten Term behalten:** O(n² + 3n + 7) = O(n²), O(n + log n) = O(n).', '**Hintereinander ausgeführte Teile addieren:** erst O(n), dann O(n²) ergibt O(n + n²) = O(n²).', '**Verschachtelte Schleifen multiplizieren:** n mal n = O(n²).', '**Wird bei jedem Schritt halbiert**, ergibt das O(log n).', '**Teile und herrsche** mit Halbieren und linearer Arbeit pro Ebene: O(n log n).']],
-    ['h', 'Code analysieren'],
-    ['table', ['Code', 'Analyse', 'Komplexität'], [
-      ['`x = a[5];`', 'Eine Anweisung, unabhängig von n', '**O(1)**'],
-      ['`for (i = 0; i < n; i++) summe += a[i];`', 'Eine Schleife mit n Durchläufen', '**O(n)**'],
-      ['`for (i...n) for (j...n) tue();`', 'n mal n Durchläufe', '**O(n²)**'],
-      ['`for (i...n) for (j = i; j < n; j++)`', 'n + (n-1) + ... + 1 = n(n+1)/2, also O(n²)', '**O(n²)**'],
-      ['`for (i = 1; i < n; i *= 2)`', 'i verdoppelt sich: etwa log2(n) Durchläufe', '**O(log n)**'],
-      ['`for (i...n) { for (j = 1; j < n; j *= 2) }`', 'n mal log n', '**O(n log n)**'],
-      ['`for (i...n) tue(); for (j...n) tue();`', 'Zwei Schleifen hintereinander: n + n = 2n', '**O(n)**'],
-      ['`fib(n-1) + fib(n-2)` (naiv)', 'Zwei Aufrufe je Ebene, n Ebenen', '**O(2^n)**'],
+    ['h', 'Code-Analyse: So ermittelst du die Komplexität'],
+    ['table', ['Codebeispiel', 'Erklärung der Ausführungsschritte', 'Komplexität'], [
+      ['`let wert = liste[0];`', 'Genau ein Rechenschritt, völlig unabhängig von der Arraygröße', '**O(1)**'],
+      ['`for (let i = 0; i < n; i++) { summe += a[i]; }`', 'Die Schleife durchläuft das Array genau n-mal', '**O(n)**'],
+      ['`for (let i = 0; i < n; i++) { for (let j = 0; j < n; j++) { ... } }`', 'Äußere Schleife (n) multipliziert mit innerer Schleife (n)', '**O(n²)**'],
+      ['`for (let i = 1; i < n; i *= 2) { ... }`', 'Die Zählvariable verdoppelt sich in jedem Schritt -> log2(n) Durchläufe', '**O(log n)**'],
+      ['`for (let i = 0; i < n; i++) { for (let j = 1; j < n; j *= 2) { ... } }`', 'Lineare Schleife (n) kombiniert mit Verdopplungsschleife (log n)', '**O(n log n)**'],
     ]],
+    ['h', 'Wörter, die in der Prüfung vorkommen'],
+    ['table', ['Wort', 'Einfach erklärt'], [
+      ['O-Notation', 'Mathematische Schreibweise für die Obergrenze des Rechen- oder Speicheraufwands'],
+      ['Eingabegröße n', 'Anzahl der Datensätze oder Elemente, die der Algorithmus verarbeiten muss'],
+      ['Worst Case', 'Der ungünstigste Fall für einen Algorithmus (maximale Laufzeit)'],
+      ['Best Case', 'Der günstigste Fall für einen Algorithmus (minimale Laufzeit)'],
+      ['Logarithmische Laufzeit', 'Die Laufzeit wächst extrem langsam, weil der Suchbereich in jedem Schritt halbiert wird'],
+      ['Skalierbarkeit', 'Fähigkeit eines Systems oder Algorithmus, auch bei stark steigender Datenmenge stabil zu laufen'],
+    ]],
+    ['see', ['eua-sortieren', 'eua-suchen', 'eua-hash', 'eua-baeume']],
   ],
 });
 ;
@@ -15988,28 +23424,68 @@ AP2.add('eua-onotation', [
 // content/eua/testfaelle-1.js
 AP2.page('eua-testfaelle', {
   b: 'eua', g: 'Testen', t: 'Testfallermittlung: Äquivalenzklassen und Grenzwertanalyse',
-  d: 'Man kann nicht alle möglichen Eingaben testen. Deshalb teilt man die Eingaben in **Äquivalenzklassen** ein: Gruppen, bei denen man **dasselbe Verhalten** erwartet. Aus **jeder Klasse** testet man **einen Vertreter**. Fehler treten besonders oft **an den Grenzen** auf, deshalb prüft die **Grenzwertanalyse** zusätzlich die Werte **direkt an und neben den Grenzen**.',
-  m: '**Äquivalenzklassen: ein Test pro Gruppe (gültig UND ungültig!). Grenzwerte: Grenze, kurz darunter, kurz darüber.** Für den Bereich **von 18 bis 65**: 17, **18**, 19 ... 64, **65**, 66. Merke: **"Fehler lieben Grenzen."**',
+  d: 'Man kann ein Softwareprogramm unmöglich mit allen denkbaren Eingabewerten testen (vollständiger Test ist unmöglich). Die **Äquivalenzklassenbildung (Equivalence Partitioning)** teilt den Eingabebereich in Klassen ein, bei denen das Programm dasselbe Verhalten zeigen soll. Pro Klasse genügt **ein einziger repräsentativer Testwert**. Da erfahrungsgemäß die meisten Programmierfehler an den Bereichsrändern auftreten (z. B. `<` statt `<=`), prüft die **Grenzwertanalyse (Boundary Value Analysis)** gezielt die Werte **direkt auf der Grenze**, **knapp darunter** und **knapp darüber**.',
+  m: '**Äquivalenzklassen: Mindestens ein Test pro Klasse (immer gültige UND ungültige Klassen testen!).** **Grenzwertanalyse: Grenze selbst, Grenze - 1, Grenze + 1.** Bereich 1 bis 100: Grenzwerte sind 0, **1**, 2 und 99, **100**, 101. Merksatz: **„Fehler lieben Grenzen.“** Black-Box-Test = Test gegen Spezifikation ohne Blick in den Code.',
   cheat: [
-    ['Äquivalenzklassen', ['Eingabebereich in **Klassen** teilen', '**Gültige** Klassen (erlaubte Werte)', '**Ungültige** Klassen (zu klein, zu groß, falscher Typ, leer)', '**Ein** Wert pro Klasse genügt']],
-    ['Grenzwertanalyse', ['An jeder Grenze testen: **Grenzwert, knapp darunter, knapp darüber**', 'Bereich 1..10: **0, 1, 2, 9, 10, 11**', 'Sehr fehleranfällig: `<` statt `<=`', 'Ergänzt die Äquivalenzklassen']],
-    ['Vorgehen', ['1. Anforderung lesen, Eingaben und Bereiche bestimmen', '2. Äquivalenzklassen bilden', '3. Grenzwerte bestimmen', '4. Testfälle mit **erwartetem Ergebnis** notieren', '5. Ausführen und vergleichen']],
-    ['Weitere Verfahren', ['**Entscheidungstabelle:** Bedingungskombinationen', '**Zustandsbasiert:** Zustandsübergänge', '**Anwendungsfallbasiert**', '**Fehlererwartung (Error Guessing):** typische Fehler testen (0, leer, negativ, null)']],
+    ['Black-Box vs. White-Box', [
+      '**Black-Box-Test:** Testfallermittlung rein aus der **Spezifikation / Anforderung** (kein Blick in den Quellcode; z. B. Äquivalenzklassen, Grenzwerte, Entscheidungstabellen)',
+      '**White-Box-Test:** Testfallermittlung anhand der **inneren Struktur des Quellcodes** (z. B. Anweisungsüberdeckung, Zweigüberdeckung, Pfadüberdeckung)',
+    ]],
+    ['Äquivalenzklassen (ÄK)', [
+      '**Gültige ÄK:** Werte, die das System regulär verarbeiten muss (z. B. Alter 18 bis 65)',
+      '**Ungültige ÄK:** Werte, die das System abfangen und mit einer Fehlermeldung ablehnen muss (z. B. Alter < 18, Alter > 65, Text, leere Eingabe)',
+      'Aus jeder Äquivalenzklasse muss mindestens ein Repräsentant getestet werden',
+    ]],
+    ['Grenzwertanalyse (GWA)', [
+      'Ergänzt die ÄK an den Intervallgrenzen',
+      '**3-Punkte-Grenzwertanalyse:** Der Grenzwert selbst, der minimale Wert darunter, der minimale Wert darüber',
+      'Typische Fehlerursachen: Verwechslung von `<` mit `<=`, Off-by-One-Fehler bei Arrays (`i < length` vs `i <= length`)',
+    ]],
   ],
   blocks: [
-    ['h', 'Das Problem: unendlich viele Eingaben'],
-    ['p', 'Eine Funktion, die ein Alter (0 bis 150) prüft, hat 151 gültige Eingaben, dazu unendlich viele ungültige (negative Zahlen, Text, leer). **Alles zu testen ist unmöglich.** Deshalb braucht man Methoden, mit **wenigen** Tests **möglichst viele Fehler** zu finden. Das sind **Black-Box-Verfahren**: Man leitet die Tests aus der **Spezifikation** ab, nicht aus dem Code.'],
-    ['h', 'Äquivalenzklassenbildung'],
-    ['p', 'Alle Eingaben einer **Äquivalenzklasse** werden vom Programm **gleich behandelt**. Wenn ein Wert der Klasse funktioniert, funktionieren (nach Annahme) alle. Es gibt **gültige** Klassen (erwünschte Eingaben) und **ungültige** Klassen (Fehlerfälle, die abgewiesen werden müssen). **Beide** müssen getestet werden.'],
-    ['ex', ['**Aufgabe:** Ein Formular nimmt das **Alter für eine Mitgliedschaft** an. Gültig sind **18 bis 65 Jahre**.', '**Klasse 1 (ungültig):** Alter **kleiner als 18** (zum Beispiel 10)', '**Klasse 2 (gültig):** Alter **18 bis 65** (zum Beispiel 40)', '**Klasse 3 (ungültig):** Alter **größer als 65** (zum Beispiel 80)', '**Klasse 4 (ungültig):** **keine Zahl** (zum Beispiel "abc") und **leere Eingabe**']],
+    ['h', 'Das Problem: Vollständiges Testen ist unmöglich'],
+    ['p', 'Ein einfaches Eingabefeld für eine Monatszahl (1 bis 12) hat 12 gültige Eingaben, aber Milliarden ungültige Integer-Werte, dazu Sonderzeichen, Kommazahlen und leere Eingaben. Ein vollständiger Test aller Kombinationen ist zeitlich und wirtschaftlich ausgeschlossen. Das systematische **Black-Box-Testen** wählt daher eine minimale Anzahl an Testfällen mit maximaler Fehlerfindungsquote aus.'],
+    ['table', ['Testmethode', 'Worauf basiert der Test?', 'Typische Techniken', 'Wer führt ihn durch?'], [
+      ['**Black-Box-Testing**', 'Spezifikation, Pflichtenheft, User Stories (ohne Code-Einsicht)', 'Äquivalenzklassenbildung, Grenzwertanalyse, Entscheidungstabellen, Zustandsübergangstests', 'Tester, Fachtester, Entwickler, Endanwender (UAT)'],
+      ['**White-Box-Testing**', 'Innerer Aufbau, Kontrollfluss und Quellcode der Anwendung', 'Anweisungsüberdeckung (C0), Zweigüberdeckung (C1), Pfadüberdeckung (C2), Bedingungsüberdeckung', 'Softwareentwickler (Unit-Tests, Code-Reviews)'],
+    ]],
+    ['h', 'Äquivalenzklassenbildung Schritt für Schritt'],
+    ['p', 'Eine **Äquivalenzklasse** umfasst eine Gruppe von Eingabewerten, für die angenommen wird, dass das Programm sie auf dieselbe Weise verarbeitet. Entdeckt ein Testwert aus der Klasse einen Fehler, tun es voraussichtlich alle anderen Werte der Klasse auch. Funktioniert ein Wert, funktionieren alle.'],
+    ['table', ['Klassentyp', 'Bedeutung', 'Verhalten des Systems', 'Beispiel: Passwortlänge 8 bis 16 Zeichen'], [
+      ['**Gültige ÄK (GÄK)**', 'Erlaubter Wertebereich laut Spezifikation', 'Eingabe wird akzeptiert und regulär verarbeitet', 'Länge = 12 Zeichen (gültig)'],
+      ['**Ungültige ÄK 1 (UÄK)**', 'Unterschreitung des zulässigen Bereichs', 'Eingabe wird abgewiesen, Fehlermeldung', 'Länge = 5 Zeichen (zu kurz)'],
+      ['**Ungültige ÄK 2 (UÄK)**', 'Überschreitung des zulässigen Bereichs', 'Eingabe wird abgewiesen, Fehlermeldung', 'Länge = 25 Zeichen (zu lang)'],
+      ['**Ungültige ÄK 3 (UÄK)**', 'Falscher Datentyp oder Format', 'Eingabe wird abgewiesen, Validierungsfehler', 'Leere Eingabe (`null` oder `""`)'],
+    ]],
+    ['h', 'Grenzwertanalyse: „Fehler lieben Grenzen“'],
+    ['p', 'Die meiste Software stürzt nicht bei Werten in der Mitte eines Bereichs ab, sondern exakt an den Übergängen zwischen gültigen und ungültigen Klassen. An jeder Grenze werden drei Werte getestet:'],
+    ['table', ['Grenze', 'Testwert', 'Erwartetes Verhalten', 'Getesteter Fehler'], [
+      ['**Unterer Grenzwert**', 'Min. gültiger Wert (z. B. `18`)', 'Erfolgreich akzeptiert', 'Entwickler hat `alter > 18` statt `>= 18` geschrieben'],
+      ['**Knapp darunter**', 'Knapp ungültig (z. B. `17`)', 'Fehlermeldung ausgegeben', 'Entwickler hat keine untere Schranke gesetzt'],
+      ['**Knapp darüber**', 'Knapp gültig (z. B. `19`)', 'Erfolgreich akzeptiert', 'Prüft normalen Bereich'],
+      ['**Oberer Grenzwert**', 'Max. gültiger Wert (z. B. `65`)', 'Erfolgreich akzeptiert', 'Entwickler hat `alter < 65` statt `<= 65` geschrieben'],
+      ['**Knapp darüber**', 'Knapp ungültig (z. B. `66`)', 'Fehlermeldung ausgegeben', 'Entwickler hat oberen Grenzwert vergessen'],
+    ]],
     ['diagram', {w: 760, h: 200, keep: 600, cap: 'Zahlenstrahl mit den Äquivalenzklassen und den Grenzwerten (grün: gültig, rot: ungültig).', nodes: [
-      {id: 'k1', k: 'box', x: 150, y: 90, w: 260, h: 56, t: ['kleiner 18', 'ungültig'], s: 'bad'}, {id: 'k2', k: 'box', x: 380, y: 90, w: 200, h: 56, t: ['18 bis 65', 'gültig'], s: 'ok'}, {id: 'k3', k: 'box', x: 610, y: 90, w: 260, h: 56, t: ['größer 65', 'ungültig'], s: 'bad'},
-      {id: 't1', k: 'text', x: 280, y: 150, t: '17 | 18', fs: 12, b: true}, {id: 't2', k: 'text', x: 480, y: 150, t: '65 | 66', fs: 12, b: true}, {id: 'l1', k: 'text', x: 150, y: 40, t: 'Test: 10', fs: 12, tc: 'text2'}, {id: 'l2', k: 'text', x: 380, y: 40, t: 'Test: 40', fs: 12, tc: 'text2'}, {id: 'l3', k: 'text', x: 610, y: 40, t: 'Test: 80', fs: 12, tc: 'text2'},
+      {id: 'k1', k: 'box', x: 150, y: 90, w: 260, h: 56, t: ['kleiner 18', 'ungültig'], s: 'bad'},
+      {id: 'k2', k: 'box', x: 380, y: 90, w: 200, h: 56, t: ['18 bis 65', 'gültig'], s: 'ok'},
+      {id: 'k3', k: 'box', x: 610, y: 90, w: 260, h: 56, t: ['größer 65', 'ungültig'], s: 'bad'},
+      {id: 't1', k: 'text', x: 280, y: 150, t: '17 | 18', fs: 12, b: true},
+      {id: 't2', k: 'text', x: 480, y: 150, t: '65 | 66', fs: 12, b: true},
+      {id: 'l1', k: 'text', x: 150, y: 40, t: 'Test: 10', fs: 12, tc: 'text2'},
+      {id: 'l2', k: 'text', x: 380, y: 40, t: 'Test: 40', fs: 12, tc: 'text2'},
+      {id: 'l3', k: 'text', x: 610, y: 40, t: 'Test: 80', fs: 12, tc: 'text2'},
     ], edges: []}],
-    ['h', 'Grenzwertanalyse'],
-    ['p', 'Erfahrungsgemäß passieren Fehler **an den Rändern**: `alter > 18` statt `alter >= 18`, `<` statt `<=`. Deshalb testet man an **jeder Grenze** drei Werte: den **Grenzwert selbst**, den Wert **direkt darunter** und den Wert **direkt darüber**.'],
-    ['table', ['Grenze', 'Testwert', 'Erwartetes Ergebnis'], [['Untere Grenze 18', '17', 'abgelehnt (knapp ungültig)'], ['', '**18**', 'akzeptiert (Grenzwert, gültig)'], ['', '19', 'akzeptiert'], ['Obere Grenze 65', '64', 'akzeptiert'], ['', '**65**', 'akzeptiert (Grenzwert, gültig)'], ['', '66', 'abgelehnt (knapp ungültig)']]],
-    ['p', 'Dazu kommen **typische Sonderfälle**: **0**, **negative Zahl**, **leere Eingabe**, **sehr große Zahl**, **Text**, **Sonderzeichen**, **null**.'],
+    ['h', 'Wörter, die in der Prüfung vorkommen'],
+    ['table', ['Wort', 'Einfach erklärt'], [
+      ['Äquivalenzklasse', 'Zusammenfassung von Eingabewerten, die vom Programm gleich behandelt werden'],
+      ['Grenzwertanalyse', 'Testverfahren zur Prüfung von Werten direkt an und neben den Bereichsgrenzen'],
+      ['Black-Box-Test', 'Testverfahren ohne Kenntnis des inneren Quellcodes (nur Spezifikation)'],
+      ['White-Box-Test', 'Testverfahren auf Basis der Code-Struktur (z. B. Pfad- und Zweigüberdeckung)'],
+      ['Off-by-One-Error', 'Typischer Zählfehler um genau 1 (z. B. `<=` mit `<` vertauscht)'],
+      ['Erwartetes Ergebnis', 'Vorab definierter Soll-Zustand, gegen den das Testergebnis verglichen wird'],
+    ]],
+    ['see', ['eua-unittest', 'eua-debugging', 'eua-exceptions', 'ps-testen']],
   ],
 });
 ;
@@ -16322,39 +23798,70 @@ def abheben(self, betrag):
 ;
 // content/eua/debugging-1.js
 AP2.page('eua-debugging', {
-  b: 'eua', g: 'Fehlerbehandlung', t: 'Debugging-Grundlagen',
-  d: '**Debugging** ist das **systematische Suchen und Beseitigen von Fehlern (Bugs)**. Man unterscheidet **Syntaxfehler** (Code ist falsch geschrieben, Compiler meldet), **Laufzeitfehler** (Programm bricht beim Ausführen ab) und **Logikfehler** (Programm läuft, liefert aber ein falsches Ergebnis). Werkzeuge: **Debugger** (Haltepunkte, Einzelschritt, Variablen beobachten), **Logging**, **Schreibtischtest**, **Stack Trace**.',
-  m: '**Reproduzieren - Eingrenzen - Ursache finden - Beheben - Testen.** Debugger: **Haltepunkt** (anhalten), **Step Over** (Zeile ausführen), **Step Into** (in Methode hineingehen), **Step Out** (Methode verlassen), **Watch** (Variable beobachten). Das **Rubber-Duck-Prinzip:** Erkläre das Problem laut einer Gummiente.',
+  b: 'eua', g: 'Fehlerbehandlung', t: 'Debugging-Grundlagen: Fehlerarten, Debugger und Stack Trace',
+  d: '**Debugging** ist das systematische Identifizieren, Lokalisieren und Beheben von Softwarefehlern (Bugs). In der Softwareentwicklung unterscheidet man drei Fehlerkategorien: **Syntaxfehler** (vom Compiler/Linter sofort erkannt), **Laufzeitfehler** (Exceptions führen zum Absturz während der Ausführung) und **Logikfehler** (das Programm läuft ohne Absturz durch, berechnet aber falsche Ergebnisse). Wichtigstes Werkzeug ist der **interaktive Debugger** mit **Breakpoints (Haltepunkten)**, **Einzelschritt-Steuerung** und **Variableninspektion**.',
+  m: '**Fehlerarten:** Syntaxfehler (Compiler meckert) vs. Laufzeitfehler (Absturz / Exception) vs. Logikfehler (falsches Ergebnis, am schwersten zu finden!). **Debugger-Steuerung:** Breakpoint = Anhalten; Step Over = Zeile ausführen; Step Into = in Funktion hineinspringen; Step Out = aus Funktion herausspringen; Watch = Variable beobachten. **Stack Trace:** Von unten nach oben lesen; die oberste eigene Codezeile zeigt den Fehlerort.',
   cheat: [
-    ['Fehlerarten', ['**Syntaxfehler:** Compiler/Interpreter meldet (Semikolon, Klammer)', '**Laufzeitfehler:** Absturz/Exception (null, Division durch 0, Index)', '**Logikfehler:** falsches Ergebnis, am schwersten zu finden']],
-    ['Debugger-Befehle', ['**Haltepunkt (Breakpoint)** setzen', '**Step Over** (F10): Zeile ausführen', '**Step Into** (F11): in Aufruf hineingehen', '**Step Out:** Methode verlassen', '**Continue:** bis nächster Haltepunkt', '**Watch / Variablenfenster**, **Call Stack**']],
-    ['Methodik', ['**Reproduzierbar** machen', '**Hypothese** aufstellen und prüfen', '**Eingrenzen** (Halbieren, "Binärsuche" im Code)', 'Eine Änderung nach der anderen', 'Nach dem Fix: **Regressionstest** schreiben']],
-    ['Weitere Mittel', ['**Logging / Ausgaben**', '**Schreibtischtest**', '**Stack Trace** lesen', '**Unit-Tests**', '**Code-Review**, Rubber Duck']],
+    ['Die 3 Fehlerarten', [
+      '**Syntaxfehler:** Grammatikfehler in der Programmiersprache (fehlende Semikolons, falsche Klammern); wird vor der Ausführung vom Compiler gemeldet',
+      '**Laufzeitfehler (Runtime Error):** Unerwarteter Zustand führt zum Abbruch (`NullPointerException`, `IndexOutOfBoundsException`, Division durch Null)',
+      '**Logikfehler:** Programm läuft fehlerfrei durch, verhält sich aber fachlich falsch (`<` statt `<=`, falsche Berechnungsformel)',
+    ]],
+    ['Debugger-Funktionen', [
+      '**Breakpoint (Haltepunkt):** Hält die Programmausführung an einer bestimmten Zeile an',
+      '**Conditional Breakpoint:** Hält nur an, wenn eine Bedingung erfüllt ist (z. B. `kundenId == 99`)',
+      '**Step Over (F10):** Führt die aktuelle Zeile aus, ohne in Methoden hineinzuspringen',
+      '**Step Into (F11):** Verzweigt direkt in den Rumpf der aufgerufenen Methode',
+      '**Step Out (Shift+F11):** Führt den Rest der aktuellen Methode aus und springt zum Aufrufer zurück',
+      '**Call Stack (Aufrufstapel):** Zeigt die Kette aller aktiven Funktionsaufrufe',
+    ]],
+    ['Systematischer Debugging-Zyklus', [
+      '1. **Reproduzieren:** Genaue Schritte und Testdaten ermitteln, die den Bug verlässlich auslösen',
+      '2. **Eingrenzen:** Relevante Code-Stelle über Stack Trace, Logging oder Breakpoints finden',
+      '3. **Hypothese aufstellen:** Ursache vermuten („Warum weicht der Wert ab?“)',
+      '4. **Beheben:** Gezielte Codekorrektur (immer nur eine Änderung gleichzeitig)',
+      '5. **Automatisieren:** Regressionstest (Unit-Test) schreiben, damit der Fehler nie wiederkehrt',
+    ]],
   ],
   blocks: [
-    ['h', 'Fehlerarten'],
-    ['table', ['Fehlerart', 'Wann bemerkt?', 'Beispiel', 'Gefunden durch'], [
-      ['**Syntaxfehler**', 'Beim Übersetzen/Start', 'fehlendes Semikolon, Klammer vergessen, falsch geschriebenes Schlüsselwort', 'Compiler, IDE-Markierung'],
-      ['**Laufzeitfehler**', 'Beim Ausführen (Absturz)', 'Division durch 0, Zugriff auf `null`, Index außerhalb des Arrays, Datei nicht vorhanden', 'Exception, Stack Trace'],
-      ['**Logikfehler**', 'Programm läuft, Ergebnis stimmt nicht', '`<` statt `<=`, falsche Formel, Schleife startet bei 1 statt 0', 'Tests, Schreibtischtest, Debugger'],
+    ['h', 'Die drei Fehlerarten im Vergleich'],
+    ['p', 'Jeder Softwareentwickler begegnet täglich unterschiedlichen Fehlerarten. Die Behebungsmethoden unterscheiden sich fundamental:'],
+    ['table', ['Fehlerart', 'Wann bemerkt?', 'Typische Ursache', 'Behebung'], [
+      ['**Syntaxfehler**', 'Vor der Ausführung (beim Kompilieren oder Speichern)', 'Tippfehler bei Schlüsselwörtern, fehlende geschweifte Klammern, unvollständige Anweisungen', 'Fehlermeldung des Compilers / IDE-Linter lesen und Syntax korrigieren'],
+      ['**Laufzeitfehler (Exception)**', 'Während der Programmausführung (plötzlicher Absturz)', 'Zugriff auf `null` (NullPointer), Division durch 0, Datei existiert nicht, ungültiger Array-Index', 'Defensive Programmierung (`if (obj != null)`), Ausnahmebehandlung (`try-catch`)'],
+      ['**Logikfehler (Semantikfehler)**', 'Erst durch Testfälle oder Beschwerden von Fachanwendern', 'Falscher Algorithmus, falsche Zählgrenzen (Off-by-One), Operatorverwechslung (`AND` statt `OR`)', 'Debugger, Schreibtischtest, Unit-Tests mit Grenzwerten'],
     ]],
-    ['code', 'java', `// Logikfehler: Durchschnitt wird falsch berechnet
-int summe = 0;
-for (int i = 0; i < zahlen.length; i++) summe += zahlen[i];
-double durchschnitt = summe / zahlen.length;      // BUG: Ganzzahldivision! 7 / 2 = 3
-// Richtig: (double) summe / zahlen.length;`],
-    ['h', 'Der Debugger'],
-    ['p', 'Ein **Debugger** (in jeder IDE) führt das Programm **kontrolliert** aus. Man setzt einen **Haltepunkt (Breakpoint)** in eine Zeile. Das Programm **stoppt dort**, und man kann **alle Variablen ansehen**, Schritt für Schritt weitergehen und den **Aufrufstack** betrachten. So sieht man, **wo** die Werte von der Erwartung abweichen.'],
-    ['table', ['Befehl', 'Wirkung', 'Wann nutzen?'], [
-      ['**Breakpoint**', 'Programm hält an dieser Zeile an', 'Dort, wo man den Zustand prüfen will'],
-      ['**Step Over**', 'Zeile ausführen, Methodenaufrufe **als Ganzes** überspringen', 'Methode ist unverdächtig'],
-      ['**Step Into**', 'In die aufgerufene Methode **hineinspringen**', 'Fehler wird in der Methode vermutet'],
-      ['**Step Out**', 'Aktuelle Methode zu Ende ausführen und zum Aufrufer zurück', 'Man ist zu tief gegangen'],
-      ['**Continue / Resume**', 'Bis zum nächsten Breakpoint weiterlaufen', 'Schleifen überspringen'],
-      ['**Watch / Variablen**', 'Werte und Ausdrücke beobachten', 'Wert einer Variable verfolgen'],
-      ['**Conditional Breakpoint**', 'Hält nur an, wenn Bedingung wahr (`i == 500`)', 'Fehler tritt erst bei bestimmtem Wert auf'],
-      ['**Call Stack**', 'Zeigt, wer wen aufgerufen hat', 'Herkunft eines Aufrufs klären'],
+    ['h', 'Der Stack Trace: Die Spur des Fehlers'],
+    ['p', 'Stürzt ein Programm durch eine Exception ab, gibt die Laufzeitumgebung einen **Stack Trace (Aufrufstapel)** aus. Er zeigt genau, welche Methodenaufrufe zum Fehler geführt haben:'],
+    ['code', 'text', `Exception in thread "main" java.lang.NullPointerException: Cannot invoke "Kunde.getName()" because "k" is null
+    at de.ihk.shop.RechnungService.druckeRechnung(RechnungService.java:42)
+    at de.ihk.shop.BestellController.abschliessen(BestellController.java:18)
+    at de.ihk.shop.Main.main(Main.java:10)`],
+    ['steps', [
+      '**Exception-Typ lesen:** `NullPointerException` bedeutet: Eine Variable war `null`, es wurde aber eine Methode darauf aufgerufen.',
+      '**Fehlerzeile lokalisieren:** Die oberste eigene Zeile ist `RechnungService.java:42`. Genau in Zeile 42 steht der auslösende Methodenaufruf.',
+      '**Aufrufkette zurückverfolgen:** Zeile 42 wurde aufgerufen aus `BestellController.java:18`, und dieser aus `Main.java:10`.',
+      '**Ursache klären:** Warum war `k` in Zeile 42 `null`? Woher stammte das Objekt?',
     ]],
+    ['h', 'Die Werkzeuge des Debuggers'],
+    ['table', ['Werkzeug', 'Funktionsweise', 'Wann wird es eingesetzt?'], [
+      ['**Breakpoint**', 'Pausiert den Thread an der Codezeile; Speicherzustand wird eingefroren', 'Direkt vor dem vermuteten Fehlercode'],
+      ['**Conditional Breakpoint**', 'Hält nur an, wenn eine Bedingung wahr ist (z. B. `i == 1000` oder `name.equals("Meier")`)', 'In Schleifen mit tausenden Durchläufen, wenn der Bug nur bei einem bestimmten Element auftritt'],
+      ['**Step Over**', 'Führt die Zeile aus; Methodenaufrufe laufen im Hintergrund durch', 'Wenn man weiß, dass die aufgerufene Methode fehlerfrei ist'],
+      ['**Step Into**', 'Springt in die erste Anweisung der aufgerufenen Methode', 'Wenn man den Verdacht hat, dass der Fehler innerhalb der Unterfunktion liegt'],
+      ['**Step Out**', 'Führt die aktuelle Methode fertig aus und springt zum Aufrufer zurück', 'Wenn man versehentlich in eine fremde Framework-Methode hineingesprungen ist'],
+      ['**Watch Expression**', 'Ermöglicht das Überwachen komplexer Ausdrücke (z. B. `kunden.size()`) in Echtzeit', 'Verfolgen von Statusänderungen über mehrere Schritte hinweg'],
+    ]],
+    ['h', 'Wörter, die in der Prüfung vorkommen'],
+    ['table', ['Wort', 'Einfach erklärt'], [
+      ['Bug', 'Umgangssprachlich für einen Programmierfehler'],
+      ['Breakpoint (Haltepunkt)', 'Markierung im Quellcode, an der der Debugger die Ausführung anhält'],
+      ['Stack Trace', 'Protokoll der verschachtelten Methodenaufrufe zum Zeitpunkt eines Absturzes'],
+      ['Call Stack', 'Der Speicherstapel, der alle aktuell aktiven Funktionsaufrufe verwaltet'],
+      ['Step Over / Step Into', 'Befehle zur kontrollierten Einzelschrittausführung im Debugger'],
+      ['Regressionstest', 'Test, der sicherstellt, dass ein behobener Fehler in späteren Versionen nicht wieder auftritt'],
+    ]],
+    ['see', ['eua-exceptions', 'eua-unittest', 'eua-testfaelle', 'eua-cleancode']],
   ],
 });
 ;
@@ -16509,39 +24016,89 @@ WHERE (kategorie = 'Zubehör' AND preis < 30)
 // content/eua/sqljoin-1.js
 AP2.page('eua-sqljoin', {
   b: 'eua', g: 'Datenbanken und SQL', t: 'SQL: JOIN (Tabellen verknüpfen)',
-  d: 'Ein **JOIN** verknüpft Zeilen aus **mehreren Tabellen** anhand einer **Bedingung** (meist **Fremdschlüssel = Primärschlüssel**). **INNER JOIN** liefert nur Zeilen mit **Treffer in beiden** Tabellen. **LEFT JOIN** liefert **alle Zeilen der linken Tabelle** und passende der rechten (sonst NULL). **RIGHT JOIN** entsprechend umgekehrt. **FULL JOIN** liefert alle Zeilen beider Seiten.',
-  m: '**INNER = nur Paare. LEFT = alle von links, rechts oder NULL. RIGHT = alle von rechts. FULL = alle von beiden.** Immer eine **ON-Bedingung** schreiben (sonst entsteht das Kreuzprodukt!). Bei Alias: `k.kunden_id = b.kunden_id`.',
+  d: 'Ein **JOIN** verknüpft Datensätze aus **zwei oder mehr Tabellen** anhand einer logischen Verknüpfungsbedingung (**ON-Klausel**), meist über **Fremdschlüssel = Primärschlüssel**. **INNER JOIN** liefert nur Zeilen, die in **beiden** Tabellen eine Übereinstimmung haben. **LEFT (OUTER) JOIN** liefert **ausnahmslos alle Zeilen der linken Tabelle**; gibt es rechts keinen Partner, werden die rechten Spalten mit **NULL** aufgefüllt. **RIGHT JOIN** verhält sich spiegelverkehrt. **FULL OUTER JOIN** liefert alle Datensätze beider Tabellen.',
+  m: '**INNER JOIN = nur Paare mit Treffer auf beiden Seiten.** **LEFT JOIN = alle Datensätze links, passende rechts (sonst NULL).** **Anti-Join (Fehlende finden):** `LEFT JOIN ... WHERE rechts.pk IS NULL`. **ON-Bedingung niemals vergessen**, sonst entsteht das **kartesische Produkt (CROSS JOIN)**, das alle Zeilen mit allen Zeilen multipliziert!',
   cheat: [
-    ['Syntax', ['`SELECT ... FROM a`', '`INNER JOIN b ON a.fk = b.pk`', '`LEFT JOIN c ON ...`', '`WHERE ...`', 'Spalten mit **Alias.spalte** eindeutig machen']],
-    ['JOIN-Arten', ['**INNER JOIN:** nur Treffer beidseitig', '**LEFT (OUTER) JOIN:** alle links + Treffer rechts', '**RIGHT (OUTER) JOIN:** alle rechts + Treffer links', '**FULL (OUTER) JOIN:** alle beider Seiten', '**CROSS JOIN:** jede Zeile mit jeder (Kreuzprodukt)']],
-    ['Typische Aufgaben', ['Kunde mit seinen Bestellungen: **INNER**', 'Kunden **ohne** Bestellung: **LEFT JOIN ... WHERE rechts.pk IS NULL**', 'Bestellpositionen mit Artikelnamen: **mehrere JOINs**', 'Alle Artikel, auch unverkaufte: **LEFT JOIN**']],
-    ['Fehlerquellen', ['**ON vergessen:** Kreuzprodukt (n mal m Zeilen)', 'Mehrdeutige Spalte ohne Alias', 'LEFT vs RIGHT verwechselt', 'Filter in **WHERE** statt in **ON** bei LEFT JOIN (verliert Nullzeilen)']],
+    ['Syntax-Grundgerüst', [
+      '`SELECT k.name, b.datum, a.bezeichnung`',
+      '`FROM kunde k`',
+      '`INNER JOIN bestellung b ON k.kunden_id = b.kunden_id`',
+      '`INNER JOIN position p ON b.bestell_id = p.bestell_id`',
+      '`INNER JOIN artikel a ON p.artikel_id = a.artikel_id`',
+      '`WHERE k.ort = \'Ulm\';`',
+      'Tabellen-Aliase (`k`, `b`, `p`, `a`) machen Spaltennamen eindeutig',
+    ]],
+    ['Die 4 JOIN-Arten im Überblick', [
+      '**INNER JOIN:** Schnittmenge beider Tabellen (nur vollständige Paare)',
+      '**LEFT (OUTER) JOIN:** 100 % der linken Tabelle + passende rechte Spalten (oder NULL)',
+      '**RIGHT (OUTER) JOIN:** 100 % der rechten Tabelle + passende linke Spalten (oder NULL)',
+      '**FULL (OUTER) JOIN:** Vollständige Vereinigung beider Tabellen inklusive aller NULL-Zeilen',
+      '**CROSS JOIN (Kreuzprodukt):** Jede Zeile links mit jeder Zeile rechts (n * m Zeilen)',
+    ]],
+    ['Häufige Aufgabenmuster der IHK', [
+      'Alle Kunden mit ihren getätigten Bestellungen: **INNER JOIN**',
+      'Alle Kunden anzeigen, auch solche, die noch nie bestellt haben: **LEFT JOIN**',
+      'Kunden finden, die noch KEINE Bestellung getätigt haben: **LEFT JOIN ... WHERE b.bestell_id IS NULL**',
+      'Umsatz pro Kunde ermitteln: **LEFT JOIN + GROUP BY + SUM(menge * preis)**',
+    ]],
   ],
   blocks: [
-    ['h', 'Warum JOIN?'],
-    ['p', 'Durch die **Normalisierung** stehen zusammengehörige Daten in **verschiedenen Tabellen** (Kunde, Bestellung, Position, Artikel). Um sie gemeinsam anzuzeigen ("Welche Bestellungen hat Meier?"), **verknüpft** man die Tabellen über die Schlüssel. Genau das macht der **JOIN**.'],
+    ['h', 'Warum werden Tabellen verknüpft?'],
+    ['p', 'Aufgrund der **Normalisierung relationaler Datenbanken** werden redundante Daten auf getrennte Tabellen aufgeteilt (z. B. Kunde, Bestellung, Artikel). Ein **JOIN** führt diese getrennten Daten zur Laufzeit einer Abfrage wieder zusammen. Die Verknüpfung erfolgt über die Beziehung zwischen dem **Fremdschlüssel (FK)** der einen Tabelle und dem **Primärschlüssel (PK)** der anderen Tabelle.'],
     ...AP2.sqlBlocks.schema,
     ['h', 'Die JOIN-Arten als Mengenbild'],
-    ['p', 'Stell dir zwei Tabellen als **Mengen A (links) und B (rechts)** vor. Der überlappende Bereich enthält Zeilen mit **Treffer in beiden** Tabellen. Die Farbe zeigt, welche Zeilen im Ergebnis stehen:'],
-    ['venn', [['inner', 'INNER JOIN', 'nur Zeilen mit Treffer in A und B'], ['left', 'LEFT JOIN', 'alle aus A, dazu passende aus B (sonst NULL)'], ['right', 'RIGHT JOIN', 'alle aus B, dazu passende aus A (sonst NULL)'], ['full', 'FULL OUTER JOIN', 'alle aus A und B'], ['leftOnly', 'LEFT JOIN ... WHERE B.key IS NULL', 'nur A ohne Treffer in B'], ['outer', 'FULL JOIN ... WHERE A.key IS NULL OR B.key IS NULL', 'alle ohne Treffer auf der anderen Seite']]],
-    ['h', 'INNER JOIN'],
-    ['code', 'sql', `SELECT k.name, b.bestell_id, b.datum
+    ['p', 'Stell dir zwei Tabellen als **Mengen A (links) und B (rechts)** vor. Die Schnittmenge enthält Zeilen mit **Treffern in beiden** Tabellen:'],
+    ['venn', [
+      ['inner', 'INNER JOIN', 'nur Zeilen mit Treffer in A und B'],
+      ['left', 'LEFT JOIN', 'alle aus A, dazu passende aus B (sonst NULL)'],
+      ['right', 'RIGHT JOIN', 'alle aus B, dazu passende aus A (sonst NULL)'],
+      ['full', 'FULL OUTER JOIN', 'alle aus A und B'],
+      ['leftOnly', 'LEFT JOIN ... WHERE B.key IS NULL', 'nur A ohne Treffer in B (Anti-Join)'],
+      ['outer', 'FULL JOIN ... WHERE A.key IS NULL OR B.key IS NULL', 'alle ohne Treffer auf der Gegenseite'],
+    ]],
+    ['h', 'INNER JOIN: Nur vollständige Datensatzpaare'],
+    ['p', 'Der `INNER JOIN` (oder einfach `JOIN`) filtert alle Datensätze heraus, die auf der Gegenseite keinen Partner haben:'],
+    ['code', 'sql', `SELECT k.name, k.ort, b.bestell_id, b.datum
 FROM kunde k
 INNER JOIN bestellung b ON k.kunden_id = b.kunden_id;`],
-    ['table', ['name', 'bestell_id', 'datum'], [['Meier', '101', '2026-03-02'], ['Meier', '102', '2026-03-05'], ['Schulz', '103', '2026-03-06'], ['Yilmaz', '104', '2026-03-09']], {first: false}],
-    ['p', 'Brandt hat **keine** Bestellung und taucht daher im INNER JOIN **nicht** auf. Meier erscheint **zweimal**, weil er zwei Bestellungen hat: Pro passendem Paar entsteht eine Zeile.'],
-    ['h', 'LEFT JOIN'],
-    ['code', 'sql', `SELECT k.name, b.bestell_id
+    ['table', ['k.name', 'k.ort', 'b.bestell_id', 'b.datum'], [
+      ['Meier', 'Göppingen', '101', '2026-03-02'],
+      ['Meier', 'Göppingen', '102', '2026-03-05'],
+      ['Schulz', 'Ulm', '103', '2026-03-06'],
+      ['Yilmaz', 'Stuttgart', '104', '2026-03-09'],
+    ], {first: false}],
+    ['note', 'Beachte: Kunde **Brandt** (kunden_id = 4) taucht im Ergebnis **nicht auf**, da er noch keine Bestellung aufgegeben hat. Kunde **Meier** erscheint **zweimal**, weil er zwei verschiedene Bestellungen getätigt hat.'],
+    ['h', 'LEFT JOIN: Alle Datensätze der linken Tabelle behalten'],
+    ['p', 'Der `LEFT OUTER JOIN` stellt sicher, dass kein Datensatz der linken Tabelle verloren geht, selbst wenn rechts kein Eintrag existiert:'],
+    ['code', 'sql', `SELECT k.name, k.ort, b.bestell_id, b.datum
 FROM kunde k
 LEFT JOIN bestellung b ON k.kunden_id = b.kunden_id;`],
-    ['table', ['name', 'bestell_id'], [['Meier', '101'], ['Meier', '102'], ['Schulz', '103'], ['Yilmaz', '104'], ['Brandt', 'NULL']], {first: false, mark: [4]}],
-    ['p', '**Alle Kunden** stehen im Ergebnis. Für Brandt, der nie bestellt hat, sind die Spalten der Bestellung **NULL**.'],
-    ['h3', 'Anwendung: Kunden ohne Bestellung finden (Anti-Join)'],
-    ['code', 'sql', `SELECT k.name
+    ['table', ['k.name', 'k.ort', 'b.bestell_id', 'b.datum'], [
+      ['Meier', 'Göppingen', '101', '2026-03-02'],
+      ['Meier', 'Göppingen', '102', '2026-03-05'],
+      ['Schulz', 'Ulm', '103', '2026-03-06'],
+      ['Yilmaz', 'Stuttgart', '104', '2026-03-09'],
+      ['Brandt', 'Ulm', 'NULL', 'NULL'],
+    ], {first: false, mark: [4]}],
+    ['h', 'Der Anti-Join: Datensätze OHNE Verknüpfung aufspüren'],
+    ['p', 'Eine der beliebtesten IHK-Aufgaben: „Ermitteln Sie alle Kunden, die bisher noch keine einzige Bestellung getätigt haben.“ Lösung mit `LEFT JOIN` und Filter auf `IS NULL`:'],
+    ['code', 'sql', `SELECT k.kunden_id, k.name, k.ort
 FROM kunde k
 LEFT JOIN bestellung b ON k.kunden_id = b.kunden_id
-WHERE b.bestell_id IS NULL;      -- nur die Zeilen OHNE Treffer rechts`],
-    ['table', ['name'], [['Brandt']], {first: false}],
+WHERE b.bestell_id IS NULL;`],
+    ['table', ['k.kunden_id', 'k.name', 'k.ort'], [
+      ['4', 'Brandt', 'Ulm'],
+    ], {first: false}],
+    ['h', 'Wörter, die in der Prüfung vorkommen'],
+    ['table', ['Wort', 'Einfach erklärt'], [
+      ['JOIN', 'SQL-Klausel zum Verknüpfen zweier Tabellen über eine gemeinsame Spalte'],
+      ['ON-Klausel', 'Bedingung, die festlegt, welche Zeilen zusammengehören (meist Fremdschlüssel = Primärschlüssel)'],
+      ['Kartesisches Produkt (CROSS JOIN)', 'Jede Zeile von Tabelle A wird mit jeder Zeile von Tabelle B kombiniert'],
+      ['Anti-Join', 'Technik (LEFT JOIN + IS NULL), um Datensätze zu finden, die keine Beziehung haben'],
+      ['Mehrdeutiger Spaltenname (ambiguous)', 'Fehler, wenn zwei Tabellen denselben Spaltennamen haben und kein Tabellen-Alias vorangestellt wurde'],
+      ['Self-Join', 'Eine Tabelle wird mit sich selbst verknüpft (z. B. Mitarbeiter mit Vorgesetztem aus derselben Tabelle)'],
+    ]],
+    ['see', ['eua-sqlselect', 'eua-sqlgroup', 'eua-sqldml', 'eua-normalisierung']],
   ],
 });
 ;
@@ -16701,36 +24258,102 @@ WHERE NOT EXISTS (SELECT 1 FROM position p WHERE p.artikel_id = a.artikel_id);`]
 // content/eua/sqldml-1.js
 AP2.page('eua-sqldml', {
   b: 'eua', g: 'Datenbanken und SQL', t: 'SQL: INSERT, UPDATE, DELETE und Tabellen anlegen (DDL)',
-  d: 'Mit **DML** (Data Manipulation Language) ändert man **Daten**: **`INSERT`** fügt Zeilen ein, **`UPDATE`** ändert Zeilen, **`DELETE`** löscht Zeilen. Mit **DDL** (Data Definition Language) ändert man die **Struktur**: **`CREATE TABLE`**, **`ALTER TABLE`**, **`DROP TABLE`**. **Wichtig:** `UPDATE` und `DELETE` **immer mit WHERE**, sonst sind **alle Zeilen** betroffen!',
-  m: '**INSERT INTO ... VALUES (...)**, **UPDATE ... SET ... WHERE ...**, **DELETE FROM ... WHERE ...**. Ohne WHERE: **ALLES**! Vor dem Ändern erst mit **SELECT** (gleiche WHERE-Bedingung) prüfen. **DDL:** CREATE, ALTER, DROP. **DROP löscht auch die Struktur, DELETE nur die Zeilen.**',
+  d: 'Mit **DML** (Data Manipulation Language) ändert man **Datenbestände**: **`INSERT`** fügt neue Datensätze ein, **`UPDATE`** ändert bestehende Werte, **`DELETE`** löscht Zeilen. Mit **DDL** (Data Definition Language) definiert man die **Struktur**: **`CREATE TABLE`**, **`ALTER TABLE`**, **`DROP TABLE`**. **Zentrale Prüfungsregel:** `UPDATE` und `DELETE` benötigen **immer eine WHERE-Klausel**, sonst werden unwiderruflich **alle Zeilen der gesamten Tabelle** manipuliert oder gelöscht! Bei Fremdschlüsseln schützt die **referenzielle Integrität** vor Datenmüll.',
+  m: '**INSERT INTO tabelle (spalten) VALUES (werte).** **UPDATE tabelle SET spalte = wert WHERE bedingung.** **DELETE FROM tabelle WHERE bedingung.** Ohne WHERE: **Katastrophe (alle Zeilen betroffen)!** **Referenzielle Integrität:** Erst Kindzeilen löschen, dann Elternzeile (oder `ON DELETE CASCADE`). **DELETE** löscht Zeilen (Struktur bleibt). **DROP TABLE** vernichtet die ganze Tabelle samt Struktur!',
   cheat: [
-    ['INSERT', ['`INSERT INTO kunde (kunden_id, name, ort) VALUES (5, \'Kaya\', \'Heidenheim\');`', 'Spaltenliste angeben (robust gegen Strukturänderung)', 'Mehrere Zeilen: `VALUES (...), (...)`', '`INSERT INTO t SELECT ...` aus Abfrage']],
-    ['UPDATE', ['`UPDATE artikel SET preis = preis * 1.1 WHERE kategorie = \'Zubehör\';`', 'Mehrere Spalten: `SET a = 1, b = 2`', '**WHERE nicht vergessen!**']],
-    ['DELETE', ['`DELETE FROM bestellung WHERE bestell_id = 104;`', '**WHERE nicht vergessen!**', 'Fremdschlüssel: abhängige Zeilen zuerst löschen oder `ON DELETE CASCADE`', '`TRUNCATE TABLE t` leert die ganze Tabelle schnell']],
-    ['DDL', ['`CREATE TABLE ... (spalte typ constraint, ...)`', '`ALTER TABLE ... ADD / DROP / MODIFY`', '`DROP TABLE ...` (Tabelle weg!)', 'Constraints: **PRIMARY KEY, FOREIGN KEY, NOT NULL, UNIQUE, CHECK, DEFAULT**']],
+    ['INSERT (Daten einfügen)', [
+      '**Einzelne Zeile:** `INSERT INTO kunde (kunden_id, name, ort) VALUES (5, \'Kaya\', \'Heidenheim\');`',
+      '**Mehrere Zeilen (Bulk):** `INSERT INTO artikel (...) VALUES (10, \'Maus\', 15.00), (11, \'Pad\', 5.00);`',
+      '**Aus Abfrage einfügen:** `INSERT INTO archiv_bestellung SELECT * FROM bestellung WHERE datum < \'2025-01-01\';`',
+      'Spaltenliste immer explizit angeben (Schutz vor Fehlern bei späteren Tabellenänderungen)',
+    ]],
+    ['UPDATE (Daten ändern)', [
+      '**Einzelne Spalte:** `UPDATE artikel SET preis = preis * 1.10 WHERE kategorie = \'Hardware\';`',
+      '**Mehrere Spalten gleichzeitig:** `UPDATE kunde SET name = \'Müller\', ort = \'Berlin\' WHERE kunden_id = 3;`',
+      '**Bedingte Werte:** `UPDATE mitarbeiter SET bonus = CASE WHEN leistung > 90 THEN 500 ELSE 100 END;`',
+      '**Niemals ohne WHERE!** Vorher mit `SELECT ... WHERE ...` die Treffermenge prüfen!',
+    ]],
+    ['DELETE (Daten löschen)', [
+      '**Gezieltes Löschen:** `DELETE FROM bestellung WHERE bestell_id = 104;`',
+      '**Löschen mit Verknüpfung:** `DELETE FROM position WHERE bestell_id IN (SELECT bestell_id FROM bestellung WHERE kunden_id = 2);`',
+      '**Alle Zeilen löschen:** `DELETE FROM log_events;` (langsam, zeilenweise, Transaktion möglich) vs. `TRUNCATE TABLE log_events;` (blitzschnell, leert Speicherseite)',
+    ]],
+    ['Referenzielle Integrität (Foreign Key Aktionen)', [
+      '**ON DELETE RESTRICT / NO ACTION:** Löschen verboten, solange abhängige Kinddatensätze existieren (Standard)',
+      '**ON DELETE CASCADE:** Löscht beim Entfernen des Kunden automatisch alle seine Bestellungen und Positionen mit',
+      '**ON DELETE SET NULL:** Setzt den Fremdschlüssel in der abhängigen Tabelle auf NULL',
+    ]],
   ],
   blocks: [
-    ['h', 'INSERT: Daten einfügen'],
-    ['code', 'sql', `INSERT INTO kunde (kunden_id, name, ort)
+    ['h', 'INSERT: Daten sauber und fehlerfrei einfügen'],
+    ['p', 'Beim Einfügen von Daten muss die Reihenfolge und der Datentyp der Werte exakt zur angegebenen Spaltenliste passen. Text- und Datumswerte stehen immer in einfachen Anführungszeichen (`\'...\'`). Zahlen werden ohne Anführungszeichen geschrieben.'],
+    ['code', 'sql', `-- Einzelner Datensatz mit expliziter Spaltenliste
+INSERT INTO kunde (kunden_id, name, ort)
 VALUES (5, 'Kaya', 'Heidenheim');
 
--- mehrere Zeilen auf einmal
+-- Mehrere Zeilen in einem einzigen Befehl (effizient für Massendaten)
 INSERT INTO artikel (artikel_id, bezeichnung, preis, kategorie)
-VALUES (7, 'Headset', 59.00, 'Zubehör'),
-       (8, 'Dockingstation', 129.00, 'Hardware');`],
-    ['list', ['**Textwerte** und **Datum** stehen in einfachen Anführungszeichen (`\'Kaya\'`, `\'2026-03-10\'`), **Zahlen** ohne.', 'Die **Reihenfolge** der Werte muss zur **Spaltenliste** passen.', 'Spalten, die nicht genannt werden, bekommen **DEFAULT** oder **NULL** (wenn erlaubt).', 'Verletzt ein Wert eine **Regel** (doppelter Primärschlüssel, fehlender Pflichtwert, ungültiger Fremdschlüssel), wird die Anweisung **abgelehnt**.']],
-    ['h', 'UPDATE: Daten ändern'],
-    ['code', 'sql', `-- Alle Zubehör-Artikel um 10 % teurer
+VALUES (7, 'Headset Pro', 59.90, 'Zubehör'),
+       (8, 'USB-C Dock', 129.00, 'Hardware'),
+       (9, 'Mauspad XL', 14.50, 'Zubehör');
+
+-- Daten aus einer anderen Tabelle kopieren (z. B. Backup / Archivierung)
+INSERT INTO kunde_archiv (kunden_id, name, ort)
+SELECT kunden_id, name, ort
+FROM kunde
+WHERE kunden_id NOT IN (SELECT DISTINCT kunden_id FROM bestellung);`],
+    ['table', ['Regel beim Einfügen', 'Was passiert bei Missachtung?', 'Beispiel'], [
+      ['**Primärschlüssel-Eindeutigkeit**', 'Datenbank verweigert den Insert (`Duplicate entry for key PRIMARY`)', 'Einfügen von `kunden_id = 1`, obwohl ID 1 schon existiert'],
+      ['**NOT NULL Constraint**', 'Fehler: Pflichtfeld darf nicht leer sein', 'Einfügen eines Kunden ohne Namen'],
+      ['**Fremdschlüssel-Existenz**', 'Fehler: Referenzierter Wert existiert in der Elterntabelle nicht', 'Bestellung anlegen mit `kunden_id = 999` (Kunde gibt es nicht)'],
+      ['**Datentyp-Konformität**', 'Typkonvertierungsfehler', 'Buchstaben in ein `DECIMAL`- oder `INT`-Feld eintragen'],
+    ]],
+    ['h', 'UPDATE: Bestehende Daten modifizieren'],
+    ['p', 'Mit `UPDATE` werden Werte in existierenden Zeilen geändert. Die `WHERE`-Klausel bestimmt, welche Zeilen aktualisiert werden.'],
+    ['code', 'sql', `-- Beispiel 1: Gezieltes Ändern einer Adresse
+UPDATE kunde
+SET ort = 'Stuttgart'
+WHERE kunden_id = 2;
+
+-- Beispiel 2: Prozentuale Preiserhöhung für eine ganze Kategorie
 UPDATE artikel
-SET preis = preis * 1.10
-WHERE kategorie = 'Zubehör';`],
-    ['table', ['bezeichnung', 'alter Preis', 'neuer Preis'], [['Maus', '19.90', '21.89'], ['Tastatur', '39.90', '43.89'], ['Kabel', '4.90', '5.39'], ['Webcam', '49.00', '53.90']], {first: false}],
-    ['warn', 'Ohne `WHERE` würden **alle Artikel** (auch die Hardware) geändert! Gute Gewohnheit: **Erst `SELECT ... WHERE ...`** ausführen, um zu sehen, welche Zeilen betroffen sind, dann denselben WHERE-Teil im UPDATE verwenden.'],
-    ['h', 'DELETE: Daten löschen'],
-    ['code', 'sql', `DELETE FROM position  WHERE bestell_id = 104;   -- zuerst die abhängigen Positionen
-DELETE FROM bestellung WHERE bestell_id = 104;   -- dann die Bestellung`],
-    ['p', 'Wegen der **Fremdschlüssel** (referentielle Integrität) lässt sich die Bestellung nicht löschen, solange Positionen auf sie verweisen. Entweder **zuerst die abhängigen Zeilen** löschen oder beim Fremdschlüssel **`ON DELETE CASCADE`** festlegen: Dann werden abhängige Zeilen automatisch mitgelöscht.'],
-    ['table', ['Befehl', 'Wirkung', 'Rückgängig?'], [['`DELETE FROM t WHERE ...`', 'Löscht ausgewählte Zeilen, Struktur bleibt', 'In einer Transaktion per ROLLBACK'], ['`DELETE FROM t`', 'Löscht **alle** Zeilen, Struktur bleibt', 'In einer Transaktion per ROLLBACK'], ['`TRUNCATE TABLE t`', 'Leert die Tabelle sehr schnell, Struktur bleibt', 'Meist nicht (DDL)'], ['`DROP TABLE t`', 'Löscht **Tabelle samt Struktur und Daten**', 'Nein (nur über Backup)']]],
+SET preis = ROUND(preis * 1.05, 2)
+WHERE kategorie = 'Zubehör';
+
+-- Beispiel 3: Mehrere Spalten in einem Schritt anpassen
+UPDATE bestellung
+SET datum = CURRENT_DATE,
+    kunden_id = 3
+WHERE bestell_id = 101;`],
+    ['warn', 'Die größte Gefahr im Datenbankalltag: Führst du `UPDATE artikel SET preis = 0;` ohne `WHERE` aus, setzt die Datenbank den Preis **ALLER** Artikel im System auf 0 Euro! Prüfungs-Faustregel: Schreibe die WHERE-Bedingung immer zuerst als `SELECT * FROM ... WHERE ...`. Erst wenn das SELECT genau die gewünschten Zeilen liefert, wandelst du es in ein UPDATE um.'],
+    ['h', 'DELETE: Datensätze gezielt löschen'],
+    ['p', 'Mit `DELETE FROM tabelle WHERE bedingung;` werden Datensätze entfernt. Die Tabellenstruktur selbst bleibt vollständig erhalten.'],
+    ['code', 'sql', `-- Gezieltes Löschen einer Position
+DELETE FROM position
+WHERE bestell_id = 104 AND artikel_id = 4;
+
+-- Löschen aller Bestellungen aus dem Vorjahr
+DELETE FROM bestellung
+WHERE datum < '2025-01-01';`],
+    ['h', 'Vergleich: DELETE versus TRUNCATE versus DROP'],
+    ['table', ['Kriterium', '`DELETE FROM t WHERE ...`', '`TRUNCATE TABLE t`', '`DROP TABLE t`'], [
+      ['**Was wird gelöscht?**', 'Bestimmte Zeilen (oder alle Zeilen)', 'Alle Zeilen der gesamten Tabelle', 'Die gesamte Tabelle (Struktur + Daten + Rechte)'],
+      ['**WHERE erlaubt?**', '**Ja** (selektives Löschen)', '**Nein** (leert immer alles)', '**Nein**'],
+      ['**Geschwindigkeit**', 'Langsamer (löscht jede Zeile einzeln und loggt sie)', 'Extrem schnell (gibt Speicherseiten direkt frei)', 'Sofortige Löschung aus dem Datenwörterbuch'],
+      ['**Kategorie**', '**DML** (Data Manipulation Language)', '**DDL** (Data Definition Language)', '**DDL** (Data Definition Language)'],
+      ['**Rollback möglich?**', '**Ja** (innerhalb einer Transaktion)', 'Meist **nein** (impliziter Commit)', '**Nein** (außer über Datenbank-Backup)'],
+      ['**Auto-Increment Zähler**', 'Bleibt beim letzten Wert stehen', 'Wird auf den Startwert (1) zurückgesetzt', 'Wird komplett vernichtet'],
+    ]],
+    ['h', 'Wörter, die in der Prüfung vorkommen'],
+    ['table', ['Wort', 'Einfach erklärt'], [
+      ['DML', 'Data Manipulation Language: SQL-Befehle zum Bearbeiten von Daten (INSERT, UPDATE, DELETE)'],
+      ['DDL', 'Data Definition Language: SQL-Befehle zum Definieren von Tabellenstrukturen (CREATE, ALTER, DROP)'],
+      ['Referenzielle Integrität', 'Regel: Ein Fremdschlüssel darf nur auf tatsächlich existierende Primärschlüssel verweisen'],
+      ['ON DELETE CASCADE', 'Automatisches Mitlöschen abhängiger Kindzeilen beim Löschen der Elternzeile'],
+      ['TRUNCATE', 'Schnelles vollständiges Leeren einer Tabelle ohne Löschung der Tabellendefinition'],
+      ['Kardinalität', 'Mengenverhältnis zwischen zwei Tabellen im ER-Modell (1:1, 1:n, n:m)'],
+    ]],
+    ['see', ['eua-sqlselect', 'eua-sqljoin', 'eua-transaktionen', 'eua-sqler']],
   ],
 });
 ;
@@ -17967,6 +25590,189 @@ query {
       {q: 'Welcher Port wird standardmäßig für HTTPS verwendet?', o: ['443', '80', '21', '8080'], a: 0, e: 'HTTP = 80.'},
     ]],
     ['see', ['eua-formate', 'eua-js', 'infra-tls', 'infra-ports']],
+  ],
+});
+;
+// content/eua/architektur-1.js
+AP2.page('eua-architektur', {
+  b: 'eua', g: 'Web und Schnittstellen', t: 'Softwarearchitektur: Schichten, Microservices und API-Stile (REST, GraphQL, gRPC)',
+  d: 'Die **Softwarearchitektur** beschreibt die grundlegende Struktur und das Zusammenspiel der Komponenten eines Softwaresystems. Klassische Ansätze nutzen die **Schichtenarchitektur (3-Tier)** mit strikter Trennung von **Präsentation (UI)**, **Geschäftslogik (Business Layer)** und **Datenzugriff (Persistence)** sowie Entwurfsmuster wie **MVC (Model-View-Controller)**. In modernen verteilten Systemen lösen **Microservices** den monolithischen Ansatz ab. Für die Kommunikation zwischen Services und Frontends stehen verschiedene API-Architekturen zur Verfügung: **REST**, **GraphQL**, **gRPC** und **WebSocket**.',
+  m: '**3-Schichten-Modell:** Presentation Layer (Frontend) -> Logic Layer (Geschäftsregeln) -> Data Layer (Datenbank). **MVC:** Model (Daten), View (Anzeige), Controller (Steuerung/Eingabe). **Monolith:** Alles in einer Anwendung (einfach, aber schwer skalierbar). **Microservices:** Viele kleine, unabhängige Services (skalierbar, aber hohe Netzwerkkomplexität). **APIs:** REST (HTTP-Verben, zustandslos, JSON), GraphQL (1 Endpunkt, Client bestimmt Felder genau), gRPC (HTTP/2, Protocol Buffers, extrem schnell), WebSocket (Echtzeit, bidirektional).',
+  cheat: [
+    ['Schichtenarchitektur (3-Tier)', [
+      '**Präsentationsschicht (Presentation / GUI):** Benutzeroberfläche, Ein-/Ausgabe, HTML/CSS/App',
+      '**Logikschicht (Business Logic / Service):** Geschäftsregeln, Berechnungen, Validierung, Rechteprüfung',
+      '**Datenzugriffsschicht (Data Access / Persistence):** Verbindung zur Datenbank, SQL-Queries, ORM (Hibernate, Prisma)',
+      '**Vorteil:** Austauschbarkeit (z. B. neues Web-Frontend ohne Änderung der Datenbank)',
+    ]],
+    ['Monolith vs. Microservices', [
+      '**Monolith:** Eine einzige zusammenhängende Codebasis; einfaches Deployment, aber bei großen Teams unübersichtlich',
+      '**Microservices:** Zerlegung in kleine, fachlich abgegrenzte Services (z. B. Auth-Service, Bezahl-Service); unabhängig deploybar, fehlertolerant, aber aufwendiges API-Management und verteiltes Logging',
+    ]],
+    ['Die 4 großen API-Architekturen', [
+      '**REST:** Standard für Web-APIs; HTTP-Methoden (GET, POST, PUT, DELETE); zustandslos; nutzt JSON',
+      '**GraphQL:** Ein einziger Endpunkt (`/graphql`); Client fordert exakt die gewünschten Daten an (verhindert Overfetching/Underfetching)',
+      '**gRPC:** Google RPC über HTTP/2; binäre Protocol Buffers; extrem schnell; ideal für interne Microservice-Kommunikation',
+      '**WebSocket:** Dauerhafte, bidirektionale TCP-Verbindung für Echtzeitanwendungen (Chat, Börsenkurse)',
+    ]],
+  ],
+  blocks: [
+    ['h', 'Die klassische Schichtenarchitektur (3-Tier Architecture)'],
+    ['p', 'Die Schichtenarchitektur trennt Zuständigkeiten (**Separation of Concerns**). Jede Schicht hat eine klar definierte Aufgabe und darf nur mit der direkt darunterliegenden Schicht kommunizieren:'],
+    ['table', ['Schicht', 'Verantwortung', 'Typische Technologien'], [
+      ['**1. Präsentationsschicht (Presentation Layer)**', 'Interaktion mit dem Benutzer: Darstellung von Daten, Entgegennahme von Eingaben, Benutzerführung', 'React, Vue, Angular, HTML5/CSS, Flutter, Android/iOS Native'],
+      ['**2. Logikschicht (Business Logic Layer)**', 'Kern der Anwendung: Geschäftsregeln, Berechnungen (z. B. Rabattprüfung, Steuerkalkulation), Workflows', 'Java (Spring Boot), C# (.NET Core), Python (FastAPI/Django), Node.js'],
+      ['**3. Datenzugriffsschicht (Data Access / Persistence)**', 'Speichern, Laden und Abfragen von Daten; Abstraktion der konkreten Datenbank', 'JPA/Hibernate, Entity Framework, Prisma, Repository-Klassen, SQL'],
+      ['**Datenbank (Database Tier)**', 'Physische Persistenz der Datensätze', 'PostgreSQL, MySQL, Oracle, MongoDB'],
+    ]],
+    ['h', 'Monolithische Architektur versus Microservices'],
+    ['p', 'Eine der wichtigsten Architekturentscheidungen betrifft den Schnitt der Anwendung:'],
+    ['table', ['Kriterium', 'Monolithische Architektur', 'Microservices-Architektur'], [
+      ['**Struktur**', 'Ein einziges großes Softwareprojekt mit einer gemeinsamen Codebasis und Datenbank', 'Viele kleine, eigenständige Services, jeder mit eigener Datenbank (**Database-per-Service**)'],
+      ['**Bereitstellung (Deployment)**', 'Alles muss als Ganzes neu kompiliert und bereitgestellt werden', 'Jeder Service kann unabhängig und ohne Ausfallzeiten aktualisiert werden'],
+      ['**Technologiewahl**', 'Das gesamte Team ist an einen Technologie-Stack gebunden', 'Freie Technologiewahl pro Service (z. B. Auth in Go, KI in Python, Web in Node.js)'],
+      ['**Skalierbarkeit**', 'Nur die gesamte Anwendung kann auf mehreren Servern geklont werden', 'Gezielte Skalierung nur der stark belasteten Services (z. B. Suchservice)'],
+      ['**Komplexität**', 'Lokal einfach zu entwickeln und zu debuggen', 'Hohe Komplexität: Netzwerk-Latenzen, Service Discovery, verteilte Fehlerdiagnose'],
+    ]],
+    ['h', 'Vergleich moderner API-Architekturen (Prüfungsschwerpunkt!)'],
+    ['p', 'In der Abschlussprüfung (z. B. Winter 2025/2026 PB2 1.4) werden Alternativen zur klassischen REST-API abgefragt:'],
+    ['table', ['Architektur-Stil', 'Protokoll / Format', 'Hauptmerkmale & Vorteile', 'Typischer Einsatzzweck'], [
+      ['**REST (Representational State Transfer)**', 'HTTP/1.1 oder HTTP/2<br>Format: **JSON** oder XML', 'Standardisiert über HTTP-Verben (`GET`, `POST`, `PUT`, `DELETE`). Zustandslos, einfach zu cachen, von jedem Browser nativ unterstützt.', 'Öffentliche Web-APIs, Standard-Webshops, mobile Apps'],
+      ['**GraphQL (von Meta / Facebook)**', 'HTTP (`POST`)<br>Format: **JSON**', 'Client schickt eine Query und bestimmt **exakt die benötigten Felder**. Verhindert **Overfetching** (zu viele Daten) und **Underfetching** (zu viele Einzelanfragen).', 'Komplexe Frontends mit vielen verschachtelten Daten (z. B. Social Media, Dashboards)'],
+      ['**gRPC (Google Remote Procedure Call)**', 'HTTP/2<br>Format: **Protocol Buffers (binär)**', 'Extrem schnell und kompakt, da Daten binär übertragen werden. Strikte Typisierung durch `.proto`-Dateien. Unterstützt echtes bidirektionales Streaming.', 'Interne Kommunikation zwischen Microservices im Backend, rechenintensive IT-Systeme'],
+      ['**WebSocket**', 'WS / WSS (TCP-basiert)<br>Format: Text/Binär', 'Dauerhafte Vollduplex-Verbindung (beide Seiten können jederzeit unaufgefordert Daten senden). Sehr geringer Protokoll-Overhead.', 'Echtzeitanwendungen: Chat-Systeme, Börsen-Ticker, Multiplayer-Games, IoT-Dashboards'],
+    ]],
+    ['warn', 'Typische Prüfungsfrage zu REST-Problemen: Was bedeuten **Overfetching** und **Underfetching**? (1) **Overfetching:** Ein REST-Endpunkt `/api/users/1` liefert 50 Felder (Adresse, Telefon, Historie) zurück, obwohl das Smartphone-Frontend nur den `username` braucht (Bandbreitenverschwendung). (2) **Underfetching:** Ein REST-Endpunkt liefert zu wenig Daten. Der Client muss z. B. zuerst `/api/posts`, dann 10-mal `/api/authors/{id}` und dann `/api/comments` aufrufen (**N+1-Problem**). **GraphQL löst beide Probleme mit einer einzigen gezielten Anfrage!**'],
+    ['h', 'Wörter, die in der Prüfung vorkommen'],
+    ['table', ['Wort', 'Einfach erklärt'], [
+      ['Microservices', 'Architekturstil, bei dem eine App aus vielen kleinen, unabhängigen Diensten besteht'],
+      ['Monolith', 'Softwarearchitektur, bei der die gesamte Anwendung in einem einzigen Block gebaut ist'],
+      ['Separation of Concerns', 'Trennungsprinzip: Jedes Modul kümmert sich nur um seine eigene Aufgabe'],
+      ['Overfetching', 'Das Abrufen von mehr Daten über eine API, als die Benutzeroberfläche eigentlich benötigt'],
+      ['Underfetching', 'Ein API-Endpunkt liefert zu wenige Daten, sodass mehrere Anfragen hintereinander nötig sind'],
+      ['Protocol Buffers (Protobuf)', 'Binäres Serialisierungsformat von Google für extrem schnelle Datenübertragung'],
+      ['Vollduplex (Full Duplex)', 'Gleichzeitige Datenübertragung in beide Richtungen (wie beim Telefonieren oder WebSocket)'],
+      ['Service Discovery', 'Automatisches Finden von Netzwerkadressen anderer Microservices im Cluster'],
+    ]],
+    ['see', ['eua-webapi', 'eua-iot', 'eua-cleancode', 'ps-architektur']],
+    ['h', 'Aufgaben im Prüfungsstil'],
+    ['qa', 'Eine Webanwendung kommuniziert bisher über eine REST-API mit dem Server. Beschreiben Sie zwei weitere Architektur-APIs sowie deren wesentliche Unterschiede zur REST-API.', [
+      '- **1. GraphQL:** Im Gegensatz zu REST mit vielen starren URLs (`/kunden`, `/bestellungen`) gibt es bei GraphQL nur **einen einzigen Endpunkt** (`/graphql`). Der Client sendet eine genaue Abfragebeschreibung und erhält **exakt die gewünschten Datenfelder** zurück. Dadurch werden Overfetching und Underfetching vermieden.',
+      '- **2. gRPC:** Basiert auf **HTTP/2** und überträgt Daten im **binären Format (Protocol Buffers)** statt in lesbarem JSON. gRPC ist um ein Vielfaches schneller und kompakter als REST und eignet sich ideal für die hochperformante interne Kommunikation zwischen Microservices.',
+    ], 5],
+    ['qa', 'Nennen Sie jeweils zwei Vorteile und zwei Nachteile einer Microservices-Architektur gegenüber einem Monolithen.', [
+      '- **Vorteile:** (1) **Unabhängiges Deployment:** Einzelne Services können aktualisiert werden, ohne das Gesamtsystem neu zu starten. (2) **Gezielte Skalierbarkeit:** Nur hochbelastete Services müssen auf zusätzliche Server verteilt werden. (3) **Freie Technologiewahl:** Jeder Service kann mit der dafür am besten geeigneten Programmiersprache entwickelt werden.',
+      '- **Nachteile:** (1) **Hohe Komplexität:** Verteilte Systeme erfordern aufwendige Netzwerk-Infrastruktur und Service Discovery. (2) **Fehlersuche erschwert:** Verteilte Transaktionen und Logging über Netzwerkgrenzen hinweg sind schwer nachzuvollziehen.',
+    ], 6],
+    ['qa', 'Erklären Sie die Schichten einer klassischen 3-Tier-Architektur und begründen Sie, warum die Präsentationsschicht nicht direkt auf die Datenbank zugreifen sollte.', [
+      '- **Die drei Schichten:** (1) **Präsentationsschicht** (UI/Frontend), (2) **Logikschicht** (Geschäftsregeln/Berechnungen), (3) **Datenzugriffsschicht** (Persistenz/Datenbank).',
+      '- **Begründung:** Greift die UI direkt auf die Datenbank zu, fehlen die Validierungs- und Sicherheitsprüfungen der Geschäftslogik. Zudem führt jede Änderung an der Datenbankstruktur zu Fehlern im Frontend. Durch die Kapselung bleibt das System modular und wartbar.',
+    ], 4],
+    ['quiz', [
+      {q: 'Welches Problem wird durch den Einsatz von GraphQL gegenüber REST gelöst?', o: ['Overfetching (zu viele Daten) und Underfetching (zu viele Einzelanfragen)', 'Das Problem der Datenverschlüsselung', 'Die Abhängigkeit von CSS-Klassen', 'Die maximale Dateigröße von Bildern'], a: 0, e: 'GraphQL erlaubt es dem Client, exakt die benötigten Attribute mit einer Anfrage abzufragen.'},
+      {q: 'Welches Datenübertragungsformat nutzt gRPC standardmäßig?', o: ['Protocol Buffers (binär)', 'JSON', 'XML', 'CSV'], a: 0, e: 'gRPC setzt auf das stark typisierte, binäre Format Protocol Buffers (Protobuf).'},
+      {q: 'Welche Eigenschaft zeichnet WebSockets gegenüber klassischen HTTP-GET-Requests aus?', o: ['Echte bidirektionale Vollduplex-Verbindung in Echtzeit', 'WebSockets funktionieren ohne Internet', 'WebSockets können nur Bilder übertragen', 'WebSockets benötigen kein TCP'], a: 0, e: 'Über einen WebSocket können Client und Server jederzeit ohne neue Anfrage Daten austauschen.'},
+      {q: 'In welcher Schicht einer 3-Tier-Architektur werden Rabattberechnungen und Geschäftsregeln ausgeführt?', o: ['In der Logikschicht (Business Logic Layer)', 'In der Präsentationsschicht (UI)', 'In der Datenbankschicht', 'Im Betriebssystem'], a: 0, e: 'Geschäftsregeln und Berechnungen gehören in die Logikschicht.'},
+    ]],
+  ],
+});
+;
+// content/eua/security-1.js
+AP2.page('eua-security', {
+  b: 'eua', g: 'Web und Schnittstellen', t: 'Web Application Security: OWASP Top 10, SQL-Injection und XSS',
+  d: 'Sicherheit (**Security**) muss von Beginn an in Software eingeplant werden (**Security by Design**). Das **OWASP-Projekt (Open Worldwide Application Security Project)** listet die gefährlichsten Schwachstellen von Webanwendungen (OWASP Top 10). Die häufigsten Angriffsvektoren für Fachinformatiker Anwendungsentwicklung sind **SQL-Injection (SQLi)**, **Cross-Site Scripting (XSS)** und **Cross-Site Request Forgery (CSRF)**. Passwörter dürfen **niemals im Klartext** oder mit veralteten Verfahren (MD5/SHA-1) gespeichert werden, sondern erfordern **kryptografische adaptive Hashverfahren (bcrypt, Argon2)** mit **individuellem Salt**.',
+  m: '**SQL-Injection Abwehr: IMMER Prepared Statements (parametrisierte Abfragen) verwenden!** **XSS Abwehr: HTML-Escaping (Output Encoding), Content Security Policy (CSP), Cookies mit `HttpOnly`.** **CSRF Abwehr: Anti-CSRF-Tokens und Cookies mit `SameSite=Strict`.** **Passwörter: Niemals im Klartext! Hashverfahren mit Salt: bcrypt oder Argon2 (kein MD5/SHA-1).** **Authentifizierung = Wer bist du? Autorisierung = Was darfst du?**',
+  cheat: [
+    ['SQL-Injection (SQLi)', [
+      '**Angriff:** Bösartiger SQL-Code wird über Eingabefelder eingeschleust (z. B. `\' OR \'1\'=\'1`)',
+      '**Folge:** Unbefugter Lesezugriff auf fremde Daten, Löschen von Tabellen (`DROP TABLE`), Login-Bypass',
+      '**Gegenmaßnahme #1:** **Prepared Statements (Parametrisierte Queries)**; Eingabedaten werden niemals als Code interpretiert',
+      '**Gegenmaßnahme #2:** ORM-Frameworks, Least-Privilege-Prinzip bei DB-Benutzerrechten',
+    ]],
+    ['Cross-Site Scripting (XSS)', [
+      '**Stored XSS (Persistent):** Bösartiges JavaScript wird in der Datenbank gespeichert (z. B. Gästebucheintrag) und bei jedem Seitenaufruf ausgeführt',
+      '**Reflected XSS:** Skript steckt in der URL und wird vom Server direkt in die Antwortseite eingebettet',
+      '**Schaden:** Diebstahl von Session-Cookies (Session Hijacking), Identitätsdiebstahl, Keylogging',
+      '**Gegenmaßnahmen:** **Output Encoding / HTML-Escaping** (`&lt;`, `&gt;`), **`HttpOnly`-Flag** bei Cookies, **Content Security Policy (CSP)**',
+    ]],
+    ['Passwort-Sicherheit & Hashing', [
+      '**Veraltet & unsicher:** Klartext, MD5, SHA-1, SHA-256 ohne Salt (anfällig für **Rainbow-Tables** und GPU-Brute-Force)',
+      '**Sicherer Standard:** **bcrypt**, **Argon2** oder **PBKDF2**',
+      '**Salt (Zufallswert):** Eindeutiger Zufallsstring pro Nutzer; verhindert Rainbow-Table-Angriffe',
+      '**Work-Factor (Cost):** Künstliche Verlangsamung des Hashvorgangs gegen Brute-Force-Angriffe',
+    ]],
+    ['CSRF (Cross-Site Request Forgery)', [
+      '**Angriff:** Ein manipulierter Link auf einer fremden Webseite löst im Browser des Opfers eine unerwünschte Aktion auf einer Zielseite aus (z. B. Geldüberweisung)',
+      '**Abwehr:** Zufälliges, geheimes **Anti-CSRF-Token** in Formularen; **SameSite-Attribut** für Session-Cookies',
+    ]],
+  ],
+  blocks: [
+    ['h', '1. SQL-Injection: Gefahr und Gegenmaßnahmen'],
+    ['p', 'Eine SQL-Injection entsteht, wenn Benutzereingaben ungesichert per String-Verkettung direkt in eine SQL-Abfrage eingefügt werden.'],
+    ['table', ['Code-Beispiel', 'Sicherheit', 'Erklärung'], [
+      ['`query = "SELECT * FROM user WHERE name = \'" + input + "\'";`', '**EXTREM UNSICHER!**', 'Gibt der Angreifer `admin\' --` ein, wird die Passwortprüfung komplett auskommentiert!'],
+      ['`stmt = db.prepare("SELECT * FROM user WHERE name = ?");`<br>`stmt.execute([input]);`', '**100 % SICHER (Prepared Statement)**', 'Datenbank trennt SQL-Befehl und Daten strikt. Die Eingabe wird rein als String-Inhalt behandelt.'],
+    ]],
+    ['h', '2. Cross-Site Scripting (XSS): Angriffsarten und Schutz'],
+    ['p', 'Bei XSS schleust der Angreifer bösartigen HTML- oder JavaScript-Code in eine Webanwendung ein, der im Browser anderer Nutzer ausgeführt wird.'],
+    ['table', ['XSS-Art', 'Ablauf des Angriffs', 'Beispiel aus der Praxis'], [
+      ['**Stored / Persistent XSS**', 'Der Angreifer speichert `<script>stealCookies()</script>` in der Datenbank (z. B. als Forenbeitrag, Kundenrezension). Jeder Besucher der Seite führt den Code aus.', 'Besucher verlieren ihre Session-Cookies; der Angreifer kann sich ohne Passwort einloggen.'],
+      ['**Reflected XSS**', 'Der Schadcode steckt in einem Link (z. B. in einem Suchparameter: `shop.de/search?q=<script>...`). Klickt ein Opfer auf den Phishing-Link, reflektiert der Server den Code in die Seite.', 'Phishing-Mails verleiten Nutzer zum Klick auf manipulierte Links legitimer Webseiten.'],
+      ['**DOM-based XSS**', 'Die Schwachstelle liegt rein im clientseitigen JavaScript, das unsichere Methoden wie `innerHTML` oder `eval()` auf ungeprüfte Daten anwendet.', 'Client-Skript liest URL-Fragment `location.hash` aus und schreibt es direkt in `document.write()`.']]],
+    ['kv', [
+      ['HTML-Escaping (Output Encoding)', 'Alle Sonderzeichen in Benutzereingaben werden vor der HTML-Ausgabe in harmlose HTML-Entities umgewandelt: `<` wird zu `&lt;`, `>` wird zu `&gt;`, `"` wird zu `&quot;`, `&` wird zu `&amp;`.'],
+      ['Cookie-Flag `HttpOnly`', 'Verhindert, dass JavaScript (über `document.cookie`) auf das Session-Cookie zugreifen kann. Selbst bei erfolgreichem XSS kann der Angreifer das Session-Cookie nicht stehlen.'],
+      ['Content Security Policy (CSP)', 'Ein HTTP-Header, der dem Browser genau vorschreibt, von welchen Servern JavaScript und andere Ressourcen geladen und ausgeführt werden dürfen (verbietet z. B. Inline-Skripte).'],
+    ]],
+    ['h', '3. Sichere Passwort-Speicherung'],
+    ['p', 'Passwörter dürfen niemals reversibel (z. B. symmetrisch verschlüsselt) gespeichert werden, sondern müssen durch Einweg-Hashfunktionen geschützt werden.'],
+    ['steps', [
+      '**Niemals Klartext:** Wer Passwörter im Klartext speichert, haftet bei jedem Datenleck massiv nach DSGVO.',
+      '**Keine schnellen Hashes (MD5, SHA-1, SHA-256):** Schnelle Algorithmen wurden für Prüfsummen entwickelt. Moderne Grafikkarten (GPUs) können Milliarden MD5-Hashes pro Sekunde testen und vorberechnete **Rainbow Tables** (Wörterbücher mit fertigen Hashes) knacken.',
+      '**Verwendung von Salt:** Vor dem Hashen wird jedem Passwort ein **kryptografisch zufälliger String (Salt)** angehängt. Dadurch ist der Hashwert für dasselbe Passwort bei zwei Nutzern völlig unterschiedlich. Rainbow Tables werden dadurch nutzlos.',
+      '**Adaptive Algorithmen (bcrypt / Argon2):** Diese Algorithmen besitzen einen konfigurierbaren Rechenaufwand (**Cost Factor / Iterationen**). Eine Passwortprüfung dauert absichtlich z. B. 100 Millisekunden. Für einen echten Nutzer unbemerkt, für einen Hacker-Brute-Force-Angriff jedoch unüberwindbar langsam.',
+    ]],
+    ['h', 'Authentifizierung versus Autorisierung'],
+    ['table', ['Begriff', 'Fragestellung', 'Verfahren / Beispiele'], [
+      ['**Authentifizierung (Authentication - AuthN)**', '„Wer bist du?“ (Identitätsprüfung)', 'Passwort + Benutzername, Zwei-Faktor-Authentifizierung (2FA mit TOTP/SMS), Fingerabdruck/FaceID, Client-Zertifikat'],
+      ['**Autorisierung (Authorization - AuthZ)**', '„Was darfst du?“ (Rechteprüfung)', 'Rollenbasierte Zugriffskontrolle (RBAC): Darf der angemeldete Nutzer Rechnungen löschen oder nur ansehen?'],
+    ]],
+    ['tip', 'Prüfungsfrage JSON Web Token (JWT): Ein JWT besteht aus drei Base64-codierten Teilen, getrennt durch Punkte: **Header** (Algorithmus), **Payload** (Daten wie Benutzer-ID und Ablaufzeit) und **Signature** (digitale Signatur mit dem geheimen Server-Schlüssel). Der Server kann ohne Datenbankabfrage prüfen, ob das Token manipuliert wurde.'],
+    ['h', 'Wörter, die in der Prüfung vorkommen'],
+    ['table', ['Wort', 'Einfach erklärt'], [
+      ['OWASP Top 10', 'Liste der zehn kritischsten Sicherheitsrisiken für Webanwendungen weltweit'],
+      ['SQL-Injection', 'Einschleusen bösartiger SQL-Befehle über Formulare oder Parameter in eine Datenbank'],
+      ['Prepared Statement', 'Vorkompilierte parametrisierte SQL-Abfrage, die SQL-Injections technisch unmöglich macht'],
+      ['Cross-Site Scripting (XSS)', 'Einschleusen von Schadcode (meist JavaScript), der im Browser des Opfers läuft'],
+      ['Session Hijacking', 'Übernahme einer aktiven Benutzersitzung durch gestohlene Session-IDs/Cookies'],
+      ['Salt', 'Zufällige Zeichenfolge, die vor dem Hashen an ein Passwort gehängt wird'],
+      ['Rainbow Table', 'Vorberechnete Tabelle zum blitzschnellen Knacken unsicherer Passwort-Hashes'],
+      ['CSRF', 'Ausnutzung einer bestehenden Authentifizierung des Opfers für ungewollte Aktionen auf einer fremden Website'],
+    ]],
+    ['see', ['eua-webapi', 'eua-sqldml', 'wiso-datenschutz']],
+    ['h', 'Aufgaben im Prüfungsstil'],
+    ['qa', 'Gegeben ist folgender PHP-Code: `$sql = "SELECT * FROM kunden WHERE email = \'" . $_POST["email"] . "\'";`. Erläutern Sie, welche Sicherheitslücke vorliegt, welcher Schaden entstehen kann und wie der Code sicher umgeschrieben werden muss.', [
+      '- **Sicherheitslücke:** Es liegt eine **SQL-Injection (SQLi)** vor, da die Benutzereingabe `$_POST["email"]` ungefiltert per String-Verkettung in den SQL-Befehl eingefügt wird.',
+      '- **Möglicher Schaden:** Ein Angreifer kann durch Eingabe von z. B. `\' OR \'1\'=\'1` alle Kundendaten auslesen, Passwörter abgreifen oder über gestapelte Befehle Tabellen löschen.',
+      '- **Sichere Lösung:** Verwendung von **Prepared Statements (Parametrisierten Queries)** mit Platzhaltern (`?` oder `:email`). Dadurch wird die Eingabe strikt als Datenwert interpretiert und nicht als SQL-Syntax ausgeführt.',
+      'Zusammen 5 Punkte.',
+    ], 5],
+    ['qa', 'Erklären Sie den Unterschied zwischen Reflected XSS und Stored (Persistent) XSS. Welche Variante ist gefährlicher und warum?', [
+      '- **Reflected XSS:** Der bösartige Code wird nicht auf dem Server gespeichert, sondern steckt in einem manipulierten Link (z. B. URL-Parameter). Er wirkt nur bei Nutzern, die diesen Link anklicken.',
+      '- **Stored XSS:** Der Angreifer speichert den Schadcode dauerhaft in der Datenbank der Webanwendung (z. B. in einem Blogkommentar).',
+      '- **Gefährlichkeit:** **Stored XSS ist wesentlich gefährlicher**, da jeder reguläre Besucher der Webseite automatisch und ohne Klick auf dubiose Links infiziert wird.',
+    ], 5],
+    ['qa', 'Warum reicht es nicht aus, Passwörter einfach mit dem Algorithmus SHA-256 zu hashen? Nennen Sie zwei Anforderungen an ein sicheres Passwort-Speicherverfahren.', [
+      '- SHA-256 ist extrem schnell berechenbar. Angreifer können mit modernen GPUs Milliarden Hashes pro Sekunde durchprobieren oder vorgefertigte **Rainbow Tables** nutzen.',
+      '- **Anforderung 1:** Verwendung eines kryptografischen **Salts** (individuelle Zufallszeichenkette pro Benutzer), um Rainbow Tables wirkungslos zu machen.',
+      '- **Anforderung 2:** Verwendung eines **langsamen, adaptiven Algorithmus** wie **bcrypt**, **Argon2** oder **PBKDF2**, dessen Rechenaufwand (Work Factor) gegen Brute-Force-Angriffe skaliert werden kann.',
+    ], 4],
+    ['quiz', [
+      {q: 'Welche Maßnahme verhindert SQL-Injections am effektivsten?', o: ['Verwendung von Prepared Statements (parametrisierte Abfragen)', 'Eingaben mit base64 verschlüsseln', 'Verwendung von JavaScript im Frontend', 'Erhöhung des Arbeitsspeichers der Datenbank'], a: 0, e: 'Prepared Statements trennen SQL-Logik und Daten strikt voneinander.'},
+      {q: 'Welches Cookie-Attribut verhindert, dass JavaScript das Session-Cookie auslesen kann?', o: ['HttpOnly', 'Secure', 'SameSite=Lax', 'Domain'], a: 0, e: 'Das `HttpOnly`-Flag schützt Cookies vor Diebstahl durch Cross-Site Scripting (XSS).'},
+      {q: 'Wozu dient ein Salt beim Hashen von Passwörtern?', o: ['Es verhindert den Einsatz vorberechneter Rainbow Tables gegen gleiche Passwörter', 'Es macht das Passwort kürzer', 'Es verschlüsselt das Passwort symmetrisch', 'Es ersetzt das Passwort durch eine Zufallszahl'], a: 0, e: 'Das Salt sorgt dafür, dass gleiche Passwörter völlig unterschiedliche Hashwerte erzeugen.'},
+      {q: 'Was ist der Unterschied zwischen Authentifizierung und Autorisierung?', o: ['Authentifizierung prüft die Identität („Wer?“), Autorisierung prüft die Zugriffsrechte („Was darf er?“)', 'Beide Begriffe bedeuten genau dasselbe', 'Autorisierung erfolgt immer vor der Authentifizierung', 'Authentifizierung wird nur bei Hardware verwendet'], a: 0, e: 'Zuerst meldet man sich an (Authentifizierung), dann werden die Rechte geprüft (Autorisierung).'},
+    ]],
   ],
 });
 ;
@@ -19459,6 +27265,107 @@ ORDER BY Monat;`]], 5],
   ['see', ['eua-sqlselect', 'eua-sqljoin', 'eua-sqlgroup', 'eua-sqldml', 'ps-normalisierung', 'course-sql-01']],
 ]);
 ;
+// content/eua/breakeven-1.js
+AP2.page('eua-breakeven', {
+  b: 'eua', g: 'Softwareentwicklung', t: 'Kostenrechnung & Break-Even-Analyse für Softwareprojekte',
+  d: 'In der AP2 (insbesondere Prüfungsteil 2 / Algorithmen, z. B. Sommer 2025) verlangt die IHK regelmäßig die betriebswirtschaftliche Kalkulation von Software- und IT-Dienstleistungen. Die **Break-Even-Analyse (Gewinnschwellenanalyse)** ermittelt die genaue Absatzmenge, ab der die Erlöse (Umsatz) die Gesamtkosten decken. Ab diesem Punkt macht das Projekt **weder Gewinn noch Verlust (Gewinn = 0)**. Jeder darüber hinaus verkaufte Softwareplatz oder Monat erwirtschaftet Gewinn. Kernbegriffe sind **Fixkosten**, **variable Kosten** und der **Deckungsbeitrag**.',
+  m: '**Gesamtkosten: K_ges = K_fix + k_var * x.** **Erlös (Umsatz): E = p * x.** **Stückdeckungsbeitrag: db = p - k_var.** **Gesamtdeckungsbeitrag: DB = E - K_var = (p - k_var) * x.** **Break-Even-Point (Gewinnschwelle): x_BEP = K_fix / (p - k_var) = K_fix / db.** **Gewinn: G = E - K_ges = DB - K_fix.** Vor dem BEP = Verlustzone. Nach dem BEP = Gewinnzone.',
+  cheat: [
+    ['Wichtige Formeln im Überblick', [
+      '**Fixkosten (K_fix):** Fallen unabhängig von der Nutzungsmenge an (z. B. Server-Grundgebühr, Entwicklergehälter, Miete)',
+      '**Variable Stückkosten (k_var):** Fallen pro Einheit an (z. B. Lizenzgebühr pro User, Cloud-Speicher pro GB)',
+      '**Gesamtkosten (K_ges):** `K_ges = K_fix + (k_var * x)`',
+      '**Erlös / Umsatz (E):** `E = p * x` (Verkaufspreis mal Absatzmenge)',
+      '**Stückdeckungsbeitrag (db):** `db = p - k_var` (wieviel bleibt vom Preis zur Deckung der Fixkosten übrig)',
+      '**Break-Even-Menge (x_BEP):** `x_BEP = K_fix / db = K_fix / (p - k_var)`',
+      '**Gewinn (G):** `G = E - K_ges = (p - k_var) * x - K_fix`',
+    ]],
+    ['Interpretation der Gewinnschwelle', [
+      '**Absatzmenge x < x_BEP:** **Verlustzone** (Fixkosten sind noch nicht vollständig gedeckt; G < 0)',
+      '**Absatzmenge x = x_BEP:** **Gewinnschwelle / Break-Even-Point** (Erlöse = Kosten; Gewinn = 0)',
+      '**Absatzmenge x > x_BEP:** **Gewinnzone** (Fixkosten sind voll gedeckt; jeder Verkauf bringt reinen Gewinn; G > 0)',
+    ]],
+    ['Häufige Szenarien in der AP2', [
+      'Berechnung der Break-Even-Menge aus gegebenen Kosten und Preisen',
+      'Berechnung des benötigten Verkaufspreises bei vorgegebener Zielmenge',
+      'Berechnung des Gewinns bei einer konkreten Monatsauslastung',
+      'Grafische Bestimmung des Schnittpunkts von Erlöskurve und Gesamtkostenkurve',
+    ]],
+  ],
+  blocks: [
+    ['h', 'Kostenarten in der IT: Fixe versus variable Kosten'],
+    ['p', 'Um die Wirtschaftlichkeit eines Softwareprodukts (z. B. SaaS-Lösung oder Schulsoftware) zu bewerten, müssen alle anfallenden Kosten getrennt werden:'],
+    ['table', ['Kostenart', 'Definition', 'Beispiele aus einem Softwareprojekt'], [
+      ['**Fixe Kosten (K_fix)**', 'Kosten, die in einer bestimmten Periode **konstant bleiben**, egal wie viele Kunden oder Lizenzen die Software nutzen', 'Büromiete, Gehälter der fest angestellten Softwareentwickler, Grundgebühren für dedizierte Server, Abschreibung auf Hardware, Versicherungen'],
+      ['**Variable Kosten (K_var)**', 'Kosten, die sich **mit der Menge (x) direkt verändern** (steigen bei mehr Nutzern)', 'Cloud-Traffic-Kosten pro Gigabyte, Gebühren für SMS-Versand bei 2FA, Lizenzkosten für Fremd-APIs pro Aufruf, variable Provisionen'],
+      ['**Gesamtkosten (K_ges)**', 'Summe aus allen fixen und allen variablen Kosten', '`K_ges = K_fix + (k_var * x)`'],
+    ]],
+    ['h', 'Der Deckungsbeitrag: Was bleibt für die Fixkosten?'],
+    ['p', 'Der **Stückdeckungsbeitrag (db)** ist der Betrag, den der Verkauf einer einzelnen Einheit (z. B. einer Softwarelizenz) nach Abzug der variablen Kosten zur Deckung der Fixkosten beisteuert.'],
+    ['kv', [
+      ['Stückdeckungsbeitrag (db)', '`db = Verkaufspreis (p) - variable Stückkosten (k_var)`. Wenn eine Softwarelizenz 50 Euro kostet und pro Lizenz 10 Euro variable Cloud-Kosten anfallen, beträgt der Deckungsbeitrag `db = 50 - 10 = 40 Euro`.'],
+      ['Gesamtdeckungsbeitrag (DB)', '`DB = db * x = Erlöse (E) - variable Gesamtkosten (K_var)`. Er gibt an, wie viel Geld insgesamt zur Deckung der Fixkosten erwirtschaftet wurde.'],
+      ['Bedeutung für die Gewinnschwelle', 'Die Fixkosten müssen durch den Deckungsbeitrag vollständig „abbezahlt“ werden. Teilt man die gesamten Fixkosten durch den Stückdeckungsbeitrag, erhält man genau die Menge, die verkauft werden muss: `x_BEP = K_fix / db`.'],
+    ]],
+    ['h', 'Ausführliches Prüfungsbeispiel Schritt für Schritt'],
+    ['p', 'Aufgabenstellung im Stil von Sommer 2025 PB2: Ein IT-Unternehmen betreibt eine modulare Cloud-Software für Schulen. Folgende monatliche Plandaten liegen vor:'],
+    ['list', [
+      'Monatliche Fixkosten für Betrieb, Server und Support: **K_fix = 6.000,00 Euro**',
+      'Variable Kosten pro registriertem Schüler und Monat: **k_var = 1,50 Euro** (Hosting, Datenbank-I/O)',
+      'Monatlicher Verkaufspreis pro Schülerlizenz: **p = 4,00 Euro**',
+    ]],
+    ['walk', {t: 'Kalkulation der Gewinnschwelle und des Gewinns', steps: [
+      {t: '**1. Stückdeckungsbeitrag berechnen:** `db = p - k_var` = 4,00 € - 1,50 € = **2,50 Euro pro Schülerlizenz**.', b: [['note', 'Jede Lizenz erwirtschaftet 2,50 Euro zur Deckung der 6.000 Euro Fixkosten.']]},
+      {t: '**2. Break-Even-Menge (Gewinnschwelle) berechnen:** Formel: `x_BEP = K_fix / db` = 6.000 € / 2,50 € = **2.400 Schüler**.', b: [['tip', 'Ab genau 2.400 verkauften Lizenzen arbeitet das Projekt kostendeckend. Bei 2.399 Lizenzen entsteht Verlust, ab 2.401 Lizenzen entsteht Gewinn.']]},
+      {t: '**3. Break-Even-Umsatz berechnen:** `U_BEP = x_BEP * p` = 2.400 * 4,00 € = **9.600,00 Euro**.', b: [['note', 'Bei 9.600 Euro Monatsumsatz sind alle Kosten (6.000 € Fixkosten + 3.600 € variable Kosten) exakt gedeckt.']]},
+      {t: '**4. Gewinn bei einer Auslastung von 4.000 Schülern berechnen:**', b: [['table', ['Position', 'Rechenweg', 'Betrag in Euro'], [
+        ['Gesamterlös (E)', '4.000 Schüler * 4,00 Euro', '16.000,00'],
+        ['- Variable Kosten (K_var)', '4.000 Schüler * 1,50 Euro', '- 6.000,00'],
+        ['= Gesamtdeckungsbeitrag (DB)', '16.000,00 - 6.000,00 (oder 4.000 * 2,50)', '10.000,00'],
+        ['- Fixkosten (K_fix)', 'Gegeben', '- 6.000,00'],
+        ['= **Monatlicher Gewinn (G)**', 'DB minus K_fix', '**4.000,00 Euro**'],
+      ]]]},
+    ]}],
+    ['h', 'Grafische Darstellung im Koordinatensystem'],
+    ['p', 'Wird in der Prüfung eine grafische Darstellung verlangt, zeichnet man ein Koordinatensystem:'],
+    ['list', [
+      '**X-Achse (Abszisse):** Menge x (z. B. Anzahl Schüler / Lizenzen von 0 bis 5.000).',
+      '**Y-Achse (Ordinate):** Kosten und Erlöse in Euro (von 0 bis 20.000 €).',
+      '**Fixkostenkurve K_fix:** Waagerechte Linie parallel zur X-Achse bei y = 6.000 €.',
+      '**Gesamtkostenkurve K_ges:** Startet auf der Y-Achse bei den Fixkosten (0, 6.000) und steigt mit Steigung k_var (1,50) an.',
+      '**Erlöskurve E:** Startet im Koordinatenursprung (0, 0) und steigt mit Steigung p (4,00) an.',
+      '**Schnittpunkt:** Der Punkt, an dem die Erlöskurve die Gesamtkostenkurve schneidet, ist der **Break-Even-Point** bei x = 2.400 und y = 9.600 €.',
+    ]],
+    ['tip', 'Prüfungsfalle bei Break-Even-Berechnungen: Achte immer auf die **Zeiteinheiten**! Werden die Fixkosten als **Jahreswert** angegeben, die variablen Kosten und Preise aber **pro Monat**, müssen die Fixkosten zuerst durch 12 geteilt werden (oder die Monatswerte mit 12 multipliziert werden)!'],
+    ['h', 'Wörter, die in der Prüfung vorkommen'],
+    ['table', ['Wort', 'Einfach erklärt'], [
+      ['Fixkosten', 'Kosten, die unabhängig von der produzierten oder verkauften Menge immer anfallen'],
+      ['Variable Kosten', 'Kosten, die sich proportional mit der Menge verändern'],
+      ['Deckungsbeitrag', 'Betrag vom Verkaufspreis, der nach Abzug der variablen Kosten übrig bleibt'],
+      ['Break-Even-Point (BEP)', 'Gewinnschwelle: Punkt, an dem Erlöse und Gesamtkosten genau gleich groß sind'],
+      ['Verlustzone', 'Mengenbereich unterhalb der Gewinnschwelle, in dem das Unternehmen Minus macht'],
+      ['Gewinnzone', 'Mengenbereich oberhalb der Gewinnschwelle, in dem Überschüsse erwirtschaftet werden'],
+      ['Stückkosten', 'Gesamtkosten geteilt durch die Menge (sinken bei steigender Menge durch Fixkostendegression)'],
+    ]],
+    ['see', ['wiso-kennzahlen', 'wiso-angebotsvergleich', 'ps-kalkulation']],
+    ['h', 'Aufgaben im Prüfungsstil'],
+    ['qa', 'Ein Software-Startup plant ein Cloud-Backup-Tool für kleine Firmen. Die monatlichen Fixkosten (Server, Lizenzen, Gehälter) betragen 12.000,00 Euro. Die variablen Kosten pro Firmenkunde liegen bei 5,00 Euro monatlich. Das Tool soll für 25,00 Euro netto pro Monat angeboten werden. Berechnen Sie: a) den Stückdeckungsbeitrag, b) die monatliche Absatzmenge, bei der die Gewinnschwelle erreicht wird, c) den Break-Even-Umsatz, und d) den Gewinn bei 800 Kunden.', [
+      '- a) **Stückdeckungsbeitrag:** db = p - k_var = 25,00 € - 5,00 € = **20,00 Euro**.',
+      '- b) **Break-Even-Menge:** x_BEP = K_fix / db = 12.000 € / 20,00 € = **600 Kunden**.',
+      '- c) **Break-Even-Umsatz:** U_BEP = 600 Kunden * 25,00 € = **15.000,00 Euro**.',
+      '- d) **Gewinn bei 800 Kunden:** G = (db * x) - K_fix = (20,00 € * 800) - 12.000 € = 16.000 € - 12.000 € = **4.000,00 Euro Gewinn**.',
+      'Je Zwischenschritt 1 Punkt, zusammen 4 Punkte.',
+    ], 4],
+    ['qa', 'Erläutern Sie, warum die Stückkosten einer Software sinken, wenn mehr Lizenzen verkauft werden (Fixkostendegression).', 'Die Gesamtkosten bestehen aus Fixkosten und variablen Kosten. Während die variablen Stückkosten pro Lizenz konstant bleiben, **verteilen sich die fixen Gesamtkosten (z. B. Entwicklungskosten, Miete) auf immer mehr verkaufte Einheiten**. Die fixen Kosten pro Stück sinken mathematisch (`K_fix / x`). Dadurch sinken die gesamten Stückkosten kontinuierlich. Dieser Effekt heißt **Fixkostendegression** oder Skaleneffekt.', 4],
+    ['quiz', [
+      {q: 'Wie berechnet sich der Stückdeckungsbeitrag (db)?', o: ['Verkaufspreis minus variable Stückkosten (p - k_var)', 'Fixkosten geteilt durch Verkaufspreis', 'Gesamtkosten minus Gewinn', 'Erlös geteilt durch Menge'], a: 0, e: 'Der Deckungsbeitrag ist der Verkaufspreis abzüglich der variablen Kosten.'},
+      {q: 'Welche Formel liefert die Break-Even-Menge (Gewinnschwelle)?', o: ['K_fix / (p - k_var)', 'K_fix * k_var', 'p / K_fix', 'K_ges / p'], a: 0, e: 'x_BEP = Fixkosten geteilt durch den Stückdeckungsbeitrag.'},
+      {q: 'Wie hoch ist der Gewinn am Break-Even-Point?', o: ['Genau 0 Euro (Erlöse = Kosten)', 'Genau so hoch wie die Fixkosten', 'Maximaler Gewinn', 'Hängt von den Steuern ab'], a: 0, e: 'An der Gewinnschwelle sind Erlöse und Kosten exakt gleich hoch; Gewinn = 0.'},
+      {q: 'Zu welcher Kostenart gehören die monatlichen Mietkosten für die Serverräume?', o: ['Fixkosten', 'Variable Kosten', 'Stückkosten', 'Einzelkosten'], a: 0, e: 'Die Miete fällt unabhängig von der Anzahl der Kunden oder Anfragen in fester Höhe an.'},
+    ]],
+  ],
+});
+;
 // content/wiso/bbig-1.js
 AP2.page('wiso-bbig', {
   b: 'wiso', g: 'Ausbildung und Beruf', t: 'Berufsbildungsgesetz (BBiG): Rechte und Pflichten',
@@ -20110,6 +28017,107 @@ AP2.add('wiso-krank', [
   ]],
 ]);
 ;
+// content/wiso/arbeitsgericht-1.js
+AP2.page('wiso-arbeitsgericht', {
+  b: 'wiso', g: 'Arbeitsrecht', t: 'Arbeitsgerichtsbarkeit und Arbeitszeugnis',
+  d: 'Bei Streitigkeiten zwischen Arbeitnehmer und Arbeitgeber (z. B. nach Kündigung oder über Lohn) ist die **Arbeitsgerichtsbarkeit** zuständig. Sie hat **drei Instanzen**: **Arbeitsgericht (ArbG)**, **Landesarbeitsgericht (LAG)** und das **Bundesarbeitsgericht (BAG)** in Erfurt. Das Verfahren beginnt immer mit einer **Güteverhandlung**. In der 1. Instanz besteht **kein Anwaltszwang** und jede Partei zahlt ihren Anwalt nach **§ 12a ArbGG** selbst. Bei Beendigung des Arbeitsverhältnisses hat jeder Beschäftigte Anspruch auf ein schriftliches **Arbeitszeugnis** (einfach oder qualifiziert). Es gelten **Wahrheitspflicht** und **Wohlwollensgebot**.',
+  m: '**Instanzenzug: ArbG -> LAG -> BAG (Erfurt).** **Besonderheiten 1. Instanz:** Kammer mit 1 Berufsrichter + 2 ehrenamtlichen Richtern (1 AN, 1 AG). **Kein Anwaltszwang.** **§ 12a ArbGG:** Jeder trägt seine eigenen Anwaltskosten selbst (auch der Gewinner!). **Güteverhandlung immer zuerst.** **Zeugnis:** Einfach = nur Fakten/Tätigkeiten. Qualifiziert = Fakten + Leistung + Führung. **Codes:** „stets zur vollsten Zufriedenheit“ = Note 1, „zur Zufriedenheit“ = Note 4.',
+  cheat: [
+    ['Instanzen der Arbeitsgerichtsbarkeit', [
+      '**1. Instanz: Arbeitsgericht (ArbG)** (Kammer: 1 Berufsrichter, 2 ehrenamtliche Richter: 1 AN-Vertreter, 1 AG-Vertreter)',
+      '**2. Instanz: Landesarbeitsgericht (LAG)** (Berufung/Beschwerde bei Streitwert über 600 Euro oder Zulassung)',
+      '**3. Instanz: Bundesarbeitsgericht (BAG)** in Erfurt (Revision bei Rechtsfragen)',
+    ]],
+    ['Verfahrens-Besonderheiten', [
+      '**Güteverhandlung vor dem Vorsitzenden:** Versuch der gütlichen Einigung (Vergleich); scheitert dies, folgt der Kammertermin',
+      '**Kein Anwaltszwang vor dem Arbeitsgericht (1. Instanz):** Selbstvertretung oder Vertretung durch Gewerkschaft/Arbeitgeberverband möglich',
+      '**Kostenregelung § 12a ArbGG:** In der 1. Instanz gibt es **keine Erstattung der außergerichtlichen Kosten (Anwaltskosten)** – jeder zahlt seinen Anwalt selbst!',
+      '**Klagefrist Kündigung:** Exakt **3 Wochen** nach Zugang der Kündigung (§ 4 KSchG)',
+    ]],
+    ['Arbeitszeugnis Arten', [
+      '**Einfaches Arbeitszeugnis:** Art und Dauer der Beschäftigung, Tätigkeitsbeschreibung (ohne Leistungs- und Verhaltensbeurteilung)',
+      '**Qualifiziertes Arbeitszeugnis:** Art und Dauer PLUS **Leistungsbeurteilung** (Arbeitsbereitschaft, Befähigung, Fachwissen, Arbeitsweise, Erfolg) PLUS **Verhaltensbeurteilung** (Führung gegenüber Vorgesetzten, Kollegen, Kunden)',
+      '**Zwischenzeugnis:** Bei berechtigtem Interesse (z. B. Vorgesetztenwechsel, Versetzung, Bewerbung)',
+    ]],
+    ['Zeugnisgrundsätze & Codes', [
+      '**Wahrheitspflicht:** Zeugnis muss wahr sein',
+      '**Wohlwollensgebot:** Darf das weitere berufliche Fortkommen nicht unbillig erschweren',
+      '**Note 1 (sehr gut):** „stets zu unserer vollsten Zufriedenheit“',
+      '**Note 2 (gut):** „stets zu unserer vollen Zufriedenheit“ / „zu unserer vollsten Zufriedenheit“',
+      '**Note 3 (befriedigend):** „zu unserer vollen Zufriedenheit“',
+      '**Note 4 (ausreichend):** „zu unserer Zufriedenheit“',
+      '**Note 5 (mangelhaft):** „hat sich bemüht“ / „im Großen und Ganzen zu unserer Zufriedenheit“',
+    ]],
+  ],
+  blocks: [
+    ['h', 'Der Aufbau der Arbeitsgerichtsbarkeit'],
+    ['p', 'Arbeitsgerichte sind besondere Fachgerichte für Streitigkeiten aus dem Arbeitsverhältnis. Das Gerichtsverfahren unterscheidet sich grundlegend von normalen Zivilprozessen vor dem Amtsgericht.'],
+    ['table', ['Instanz', 'Gericht & Sitz', 'Besetzung', 'Rechtsmittel'], [
+      ['**1. Instanz**', '**Arbeitsgericht (ArbG)**<br>(örtlich zuständig am Betriebssitz)', '**Kammer:** 1 Berufsrichter (Vorsitzender) und **2 ehrenamtliche Richter** (je 1 Arbeitnehmer- und 1 Arbeitgebervertreter)', 'Urteil kann mit der **Berufung** zum LAG angefochten werden (ab 600 Euro Streitwert)'],
+      ['**2. Instanz**', '**Landesarbeitsgericht (LAG)**<br>(auf Landesebene)', 'Kammer mit 1 Berufsrichter und 2 ehrenamtlichen Richtern; hier gilt **Anwaltszwang**', 'Urteil kann mit der **Revision** zum BAG angefochten werden'],
+      ['**3. Instanz**', '**Bundesarbeitsgericht (BAG)**<br>in Erfurt', '**Senat:** 3 Berufsrichter und 2 ehrenamtliche Richter (oberster Gerichtshof des Bundes)', 'Letztinstanzliche Entscheidung (nur noch Verfassungsbeschwerde zum BVerfG möglich)'],
+    ]],
+    ['h', 'Die Güteverhandlung und die Kostenfalle (§ 12a ArbGG)'],
+    ['p', 'Um langwierige Streitigkeiten schnell und kostengünstig zu beenden, schreibt das Arbeitsgerichtsgesetz (ArbGG) einen zweistufigen Ablauf vor:'],
+    ['steps', [
+      '**Klageerhebung:** Zum Beispiel Kündigungsschutzklage binnen 3 Wochen nach Erhalt der Kündigung.',
+      '**Güteverhandlung:** Findet meist schon nach 2 bis 4 Wochen vor dem Kammervorsitzenden allein (ohne ehrenamtliche Richter) statt. Ziel: Einen **Vergleich** aushandeln (z. B. Beendigung gegen Zahlung einer Abfindung). Kommt ein Vergleich zustande, fallen **keine Gerichtskosten** an!',
+      '**Kammertermin:** Scheitert die Güteverhandlung, verhandelt die volle Kammer mit den beiden ehrenamtlichen Richtern. Am Ende steht ein Urteil.',
+    ]],
+    ['warn', 'Prüfungsfalle **Anwaltskosten nach § 12a ArbGG**: Im Zivilrecht muss der Verlierer dem Gewinner die Anwaltskosten erstatten. **Nicht so vor dem Arbeitsgericht in der 1. Instanz!** Nach § 12a Abs. 1 ArbGG besteht kein Anspruch auf Erstattung der Anwaltskosten. Das bedeutet: **Selbst wenn der Arbeitnehmer den Prozess zu 100 % gewinnt, muss er seinen eigenen Anwalt selbst bezahlen!** Dies soll verhindern, dass ein Arbeitnehmer aus Angst vor hohen gegnerischen Anwaltskosten auf seine Rechte verzichtet.'],
+    ['h', 'Das Arbeitszeugnis: Einfach oder Qualifiziert?'],
+    ['p', 'Nach § 109 Gewerbeordnung (GewO) und § 16 BBiG hat jeder Arbeitnehmer und Auszubildende bei Beendigung Anspruch auf ein schriftliches Arbeitszeugnis. Es muss auf offiziellem Geschäftspapier verfasst und handschriftlich unterschrieben sein. Eine elektronische Form (E-Mail, PDF) ist gesetzlich unzulässig.'],
+    ['table', ['Merkmal', 'Einfaches Zeugnis', 'Qualifiziertes Zeugnis'], [
+      ['**Inhalt**', 'Personalien, genaue Berufsbezeichnung, Beginn und Ende des Arbeitsverhältnisses, detaillierte Beschreibung der ausgeübten Tätigkeiten', 'Alle Inhalte des einfachen Zeugnisses **PLUS** ausführliche Beurteilung von **Leistung** und **Verhalten**'],
+      ['**Wann sinnvoll?**', 'Bei sehr kurzen Beschäftigungen (unter ein paar Wochen) oder wenn die Beurteilung schlecht ausfallen würde', 'Standard bei regulärer Beendigung von Ausbildung und Arbeitsverhältnis'],
+      ['**Bestandteile Leistung**', 'Keine', 'Arbeitsbereitschaft (Motivation), Arbeitsbefähigung (Können), Fachwissen, Arbeitsweise (Sorgfalt), Arbeitserfolg'],
+      ['**Bestandteile Verhalten**', 'Keine', 'Führung gegenüber Vorgesetzten, Kollegen und externen Dritten (Kunden, Partnern)'],
+      ['**Schlussformel**', 'Nicht zwingend', 'Dank für die Zusammenarbeit, Bedauern über den Fortgang, gute Wünsche für den weiteren Berufs- und Lebensweg'],
+    ]],
+    ['h', 'Die Zeugnissprache: Der geheime Notenschlüssel'],
+    ['p', 'Da das Gesetz vorschreibt, dass ein Zeugnis **wohlwollend** formuliert sein muss und keine offenen Beleidigungen enthalten darf, hat sich eine standardisierte Zeugnissprache entwickelt:'],
+    ['table', ['Schulnote', 'Zufriedenheitsformel (Leistung)', 'Verhaltensformel (Sozialverhalten)'], [
+      ['**Note 1 (sehr gut)**', '„erledigte die Aufgaben **stets zu unserer vollsten Zufriedenheit**“', '„Sein Verhalten gegenüber Vorgesetzten und Kollegen war **stets vorbildlich**“'],
+      ['**Note 2 (gut)**', '„erledigte die Aufgaben **stets zu unserer vollen Zufriedenheit**“ oder „**zu unserer vollsten Zufriedenheit**“', '„Sein Verhalten gegenüber Vorgesetzten und Kollegen war **stets einwandfrei**“'],
+      ['**Note 3 (befriedigend)**', '„erledigte die Aufgaben **zu unserer vollen Zufriedenheit**“', '„Sein Verhalten gegenüber Vorgesetzten und Kollegen war **einwandfrei**“'],
+      ['**Note 4 (ausreichend)**', '„erledigte die Aufgaben **zu unserer Zufriedenheit**“', '„Sein Verhalten gab **zu keinen Klagen Anlass**“'],
+      ['**Note 5 (mangelhaft)**', '„hat sich **stets bemüht**, die Aufgaben zu unserer Zufriedenheit zu erledigen“', '„Er war stets um ein gutes Verhältnis zu den Kollegen bemüht“'],
+    ]],
+    ['tip', 'Prüfungsfalle bei der Verhaltensbeurteilung: Achte genau auf die **Reihenfolge der Personen**: Richtig ist **„gegenüber Vorgesetzten und Kollegen“**. Heißt es dagegen „gegenüber Kollegen und Vorgesetzten“ oder werden Vorgesetzte gar nicht erwähnt, bedeutet das im Zeugniscode: Es gab schwere Konflikte mit der Chefetage!'],
+    ['h', 'Wörter, die in der Prüfung vorkommen'],
+    ['table', ['Wort', 'Einfach erklärt'], [
+      ['Arbeitsgerichtsbarkeit', 'Eigenständige Fachgerichtsbarkeit für Arbeitsrecht mit ArbG, LAG und BAG'],
+      ['Güteverhandlung', 'Erster Termin vor Gericht, bei dem der Richter eine friedliche Einigung (Vergleich) sucht'],
+      ['Ehrenamtlicher Richter', 'Laienrichter aus der Praxis (Vertreter von Arbeitnehmern oder Arbeitgebern)'],
+      ['§ 12a ArbGG', 'Gesetzesvorschrift: In der 1. Instanz trägt jede Partei ihre Anwaltskosten selbst'],
+      ['Qualifiziertes Zeugnis', 'Arbeitszeugnis mit Leistungs- und Verhaltensbeurteilung'],
+      ['Wohlwollensgebot', 'Das Zeugnis muss wohlwollend formuliert sein, um neue Bewerbungen nicht zu verbauen'],
+      ['Zeugniscode', 'Höfliche Formulierungen, hinter denen sich klare Schulnoten verbergen'],
+      ['Schlussformel', 'Dank, Bedauern und Zukunftswünsche am Ende eines Arbeitszeugnisses'],
+    ]],
+    ['see', ['wiso-kuendigung', 'wiso-arbeitsvertrag', 'wiso-vertrag', 'wiso-betriebsrat']],
+    ['h', 'Aufgaben im Prüfungsstil'],
+    ['qa', 'Ein gekündigter Arbeitnehmer klagt mit Hilfe eines Fachanwalts vor dem Arbeitsgericht gegen seine Entlassung. Vor Gericht gewinnt er den Prozess vollständig: Die Kündigung wird für unwirksam erklärt. Verlangt der Arbeitnehmer vom Arbeitgeber die Erstattung seiner Anwaltskosten (1.800 Euro), lehnt dieser ab. Wie ist die Rechtslage?', [
+      '- Die Ablehnung des Arbeitgebers ist **rechtmäßig**.',
+      '- Nach **§ 12a Abs. 1 ArbGG** besteht in der ersten Instanz vor dem Arbeitsgericht **kein Kostenerstattungsanspruch** für die Beauftragung eines Rechtsanwalts.',
+      '- Jede Partei muss ihre außergerichtlichen Kosten (Anwaltskosten) in der 1. Instanz **selbst tragen**, unabhängig vom Ausgang des Verfahrens.',
+      'Zusammen 4 Punkte.',
+    ], 4],
+    ['qa', 'Erläutern Sie den Unterschied zwischen einem einfachen und einem qualifizierten Arbeitszeugnis.', 'Das **einfache Arbeitszeugnis** enthält lediglich sachliche Angaben zur Person, die genaue Dauer des Arbeitsverhältnisses und eine präzise Beschreibung der ausgeübten Tätigkeiten. Das **qualifizierte Arbeitszeugnis** enthält darüber hinaus eine ausführliche Bewertung der **Leistung** (Arbeitsbereitschaft, Befähigung, Fachwissen, Arbeitserfolg) und des persönlichen **Sozialverhaltens** (Verhalten gegenüber Vorgesetzten, Kollegen und Kunden).', 4],
+    ['qa', 'Entschlüsseln Sie folgende Zeugnisformulierungen und ordnen Sie die entsprechende Schulnote zu: a) „Frau M. erledigte die ihr übertragenen Aufgaben stets zu unserer vollsten Zufriedenheit.“ b) „Er war stets bemüht, den Anforderungen gerecht zu werden.“', [
+      '- a) **Note 1 (sehr gut):** Die Kombination aus dem Zeitwort „stets“ und dem Superlativ „vollsten Zufriedenheit“ drückt die Bestnote aus.',
+      '- b) **Note 5 (mangelhaft):** „Er war bemüht“ ist der bekannte Zeugniscode für Misserfolg; der Mitarbeiter hat den Anforderungen in Wirklichkeit nicht genügt.',
+    ], 4],
+    ['quiz', [
+      {q: 'Welches Gericht ist die oberste Instanz der Arbeitsgerichtsbarkeit in Deutschland?', o: ['Bundesarbeitsgericht (BAG) in Erfurt', 'Bundesgerichtshof (BGH) in Karlsruhe', 'Bundesverfassungsgericht', 'Europäischer Gerichtshof'], a: 0, e: 'Das Bundesarbeitsgericht (BAG) mit Sitz in Erfurt ist das oberste Fachgericht für Arbeitsrecht.'},
+      {q: 'Was besagt § 12a ArbGG bezüglich der Anwaltskosten in der 1. Instanz?', o: ['Jede Partei zahlt ihren Anwalt selbst, egal wer gewinnt', 'Der Verlierer zahlt alle Anwaltskosten', 'Der Staat übernimmt alle Kosten', 'Der Arbeitgeber zahlt immer'], a: 0, e: 'Vor dem Arbeitsgericht trägt jede Partei in der 1. Instanz ihre eigenen Anwaltskosten selbst.'},
+      {q: 'Welche Note entspricht der Zeugnisformulierung: „erledigte die Aufgaben zu unserer vollen Zufriedenheit“?', o: ['Note 3 (befriedigend)', 'Note 1 (sehr gut)', 'Note 2 (gut)', 'Note 4 (ausreichend)'], a: 0, e: 'Ohne das Wort „stets“ entspricht „zu unserer vollen Zufriedenheit“ der Note 3 (befriedigend).'},
+      {q: 'Was findet vor dem Arbeitsgericht immer vor dem Kammertermin statt?', o: ['Eine Güteverhandlung vor dem Vorsitzenden', 'Eine Hausdurchsuchung', 'Ein Schlichtungsverfahren der IHK', 'Eine schriftliche Prüfung'], a: 0, e: 'Die Güteverhandlung versucht eine schnelle gütliche Beilegung des Rechtsstreits (Vergleich).'},
+      {q: 'Welche Form muss ein Arbeitszeugnis zwingend haben?', o: ['Schriftform auf Papier mit eigenhändiger Unterschrift', 'PDF per E-Mail', 'Mündliche Erklärung vor Zeugen', 'Eintrag im LinkedIn-Profil'], a: 0, e: '§ 109 Abs. 3 GewO schließt die elektronische Form ausdrücklich aus; Schriftform ist Pflicht.'},
+    ]],
+  ],
+});
+;
 // content/wiso/arbeitsschutz-1.js
 AP2.page('wiso-arbeitsschutz', {
   b: 'wiso', g: 'Sicherheit und Gesundheit', t: 'Arbeitsschutz, Sicherheitszeichen, Brandschutz und Bildschirmarbeit',
@@ -20160,6 +28168,98 @@ AP2.page('wiso-arbeitsschutz', {
       {q: 'Wer zahlt die Beiträge zur gesetzlichen Unfallversicherung?', o: ['Allein der Arbeitgeber', 'Arbeitgeber und Arbeitnehmer je zur Hälfte', 'Allein der Arbeitnehmer', 'Der Staat'], a: 0, e: 'Die Berufsgenossenschaft wird vom Arbeitgeber finanziert.'},
       {q: 'Welches Zeichen kennzeichnet einen Notausgang?', o: ['Grünes Rettungszeichen', 'Rotes Brandschutzzeichen', 'Blaues Gebotszeichen', 'Gelbes Warnzeichen'], a: 0, e: 'Rettungswege und Erste Hilfe sind grün.'},
       {q: 'Wie sollte ein Bildschirmarbeitsplatz zum Fenster stehen?', o: ['Blickrichtung parallel zum Fenster', 'Mit dem Rücken zum Fenster', 'Direkt mit Blick ins Fenster', 'Egal'], a: 0, e: 'So entstehen weder Blendung noch Spiegelungen.'},
+    ]],
+  ],
+});
+;
+// content/wiso/datenschutz-1.js
+AP2.page('wiso-datenschutz', {
+  b: 'wiso', g: 'Recht und Sicherheit', t: 'Datenschutz: DSGVO, BDSG, TOM und Betroffenenrechte',
+  d: 'Die **Datenschutz-Grundverordnung (DSGVO)** und das **Bundesdatenschutzgesetz (BDSG)** schützen **personenbezogene Daten** natürlicher Personen vor Missbrauch. Es gilt das **Verbot mit Erlaubnisvorbehalt**: Jede Verarbeitung ist verboten, es sei denn, ein Gesetz erlaubt sie (z. B. **Vertragserfüllung**, gesetzliche Pflicht) oder die Person hat **eingewilligt**. Unternehmen müssen **technische und organisatorische Maßnahmen (TOM)** zum Schutz der Daten ergreifen. Bei Datenschutzverletzungen (Datenpannen) besteht eine **Meldepflicht binnen 72 Stunden** an die Aufsichtsbehörde.',
+  m: '**Grundsatz: Verbot mit Erlaubnisvorbehalt (Einwilligung oder gesetzliche Erlaubnis wie Vertrag nach Art. 6 DSGVO).** **Grundsätze Art. 5:** Rechtmäßigkeit, Zweckbindung, Datenminimierung, Richtigkeit, Speicherbegrenzung, Integrität & Vertraulichkeit. **Rechte:** Auskunft, Berichtigung, Löschung („Vergessenwerden“), Datenübertragbarkeit, Widerspruch. **TOM:** Zutritt, Zugang, Zugriff, Weitergabe, Eingabe, Verfügbarkeit, Trennung. **Meldepflicht bei Panne: 72 Stunden.**',
+  cheat: [
+    ['Personenbezogene Daten', [
+      '**Allgemeine Daten:** Name, Geburtsdatum, Anschrift, E-Mail-Adresse, IP-Adresse, Standortdaten, Kfz-Kennzeichen, Personalnummer',
+      '**Besondere Kategorien (Art. 9 DSGVO, besonders sensibel):** Gesundheitsdaten, biometrische Daten zur Identifizierung, genetische Daten, Religionszugehörigkeit, ethnische Herkunft, Gewerkschaftszugehörigkeit (unterliegen strengstem Schutz!)',
+    ]],
+    ['7 Grundsätze (Art. 5 DSGVO)', [
+      '**1. Rechtmäßigkeit, Treu und Glauben, Transparenz:** Offen und ehrlich verarbeiten',
+      '**2. Zweckbindung:** Daten nur für den vorher festgelegten Zweck erheben',
+      '**3. Datenminimierung:** Nur so viele Daten wie unbedingt nötig („sparsam“)',
+      '**4. Richtigkeit:** Daten müssen aktuell und sachlich korrekt sein',
+      '**5. Speicherbegrenzung:** Daten löschen, sobald der Zweck erfüllt ist',
+      '**6. Integrität und Vertraulichkeit:** Schutz vor Verlust, Diebstahl, Hackerangriffen',
+      '**7. Rechenschaftspflicht:** Das Unternehmen muss die Einhaltung nachweisen können',
+    ]],
+    ['Rechte der Betroffenen (Art. 15-21)', [
+      '**Auskunftsrecht (Art. 15):** Welche Daten sind über mich gespeichert?',
+      '**Recht auf Berichtigung (Art. 16):** Falsche Daten müssen korrigiert werden',
+      '**Recht auf Löschung („Recht auf Vergessenwerden“, Art. 17):** Daten löschen bei Wegfall des Zwecks oder Widerruf',
+      '**Recht auf Datenübertragbarkeit (Art. 20):** Daten im maschinenlesbaren Format (z. B. JSON/CSV) mitnehmen',
+      '**Widerspruchsrecht (Art. 21):** Widerspruch z. B. gegen Direktwerbung',
+    ]],
+    ['Datenschutzbeauftragter (DSB)', [
+      '**Pflicht zur Benennung:** Wenn im Betrieb in der Regel mindestens **20 Personen ständig mit der automatisierten Verarbeitung personenbezogener Daten** beschäftigt sind (§ 38 BDSG)',
+      'Unabhängig, weisungsfrei bei der Ausübung, besonderer Kündigungsschutz',
+    ]],
+  ],
+  blocks: [
+    ['h', 'Rechtsgrundlagen der Datenverarbeitung (Art. 6 DSGVO)'],
+    ['p', 'Im Datenschutz gilt das **Verbotsprinzip mit Erlaubnisvorbehalt**: Die Verarbeitung personenbezogener Daten ist grundsätzlich verboten, außer es liegt mindestens einer der folgenden gesetzlichen Erlaubnistatbestände vor:'],
+    ['table', ['Rechtsgrundlage', 'Bedeutung', 'Beispiel aus der IT-Praxis'], [
+      ['**Einwilligung (Art. 6 Abs. 1 a)**', 'Die Person hat freiwillig, informiert und unmissverständlich zugestimmt', 'Nutzer aktiviert Checkbox für den Marketing-Newsletter'],
+      ['**Vertragserfüllung (Art. 6 Abs. 1 b)**', 'Die Verarbeitung ist zur Erfüllung eines Vertrags oder vorvertraglicher Maßnahmen nötig', 'Lieferadresse des Kunden für den Paketversand speichern; Kontodaten für Gehaltszahlung'],
+      ['**Rechtliche Verpflichtung (Art. 6 Abs. 1 c)**', 'Ein Gesetz schreibt die Speicherung zwingend vor', 'Aufbewahrung von Buchhaltungsbelegen und Rechnungen für 10 Jahre nach HGB/AO'],
+      ['**Berechtigtes Interesse (Art. 6 Abs. 1 f)**', 'Interessen des Unternehmens überwiegen nach sorgfältiger Güterabwägung', 'Speichern von Server-Logfiles (IP-Adresse) zur Abwehr von Cyberangriffen und Betrug'],
+    ]],
+    ['h', 'Technische und organisatorische Maßnahmen (TOM nach Art. 32 DSGVO)'],
+    ['p', 'Unternehmen müssen durch geeignete technische und organisatorische Maßnahmen ein angemessenes Schutzniveau für Daten gewährleisten. Die TOMs werden in sieben Kontrollbereiche unterteilt:'],
+    ['table', ['Kontrolle', 'Was wird geregelt?', 'Konkrete Maßnahmen (Technisch / Organisatorisch)'], [
+      ['**Zutrittskontrolle**', 'Unbefugten den physischen Zutritt zu Räumen mit Daten verwehren', 'Chipkarten-Schließsystem, Pförtner, Alarmanlage, Videoüberwachung der Serverräume'],
+      ['**Zugangskontrolle**', 'Unbefugte Nutzung von IT-Systemen verhindern', 'Sichere Passwörter, Multi-Faktor-Authentifizierung (MFA), automatische Bildschirmsperre'],
+      ['**Zugriffskontrolle**', 'Berechtigte Nutzer dürfen nur auf die Daten zugreifen, die sie für ihre Arbeit brauchen', 'Rollen- und Rechtekonzept (Least Privilege), Verschlüsselung von Festplatten und Datenbanken'],
+      ['**Weitergabekontrolle**', 'Daten dürfen bei der Übertragung nicht gelesen oder verändert werden', 'Transportverschlüsselung (HTTPS, TLS, SSH, VPN), verschlüsselte E-Mails, sichere USB-Sticks'],
+      ['**Eingabekontrolle**', 'Nachträglich prüfen, wer wann welche Daten eingegeben oder verändert hat', 'System-Logging, Audit-Trails, unveränderbare Revisionsprotokolle'],
+      ['**Verfügbarkeitskontrolle**', 'Daten vor versehentlicher Zerstörung oder Verlust schützen', 'Regelmäßige Backups (3-2-1-Regel), USV (unterbrechungsfreie Stromversorgung), Brandschutz'],
+      ['**Trennungskontrolle**', 'Zu unterschiedlichen Zwecken erhobene Daten getrennt verarbeiten', 'Strikte Trennung von Entwicklungs-, Test- und Produktivsystemen (anonymisierte Testdaten!)'],
+    ]],
+    ['warn', 'Prüfungsfalle bei Datenpannen (Art. 33 DSGVO): Kommt es zu einer Verletzung des Schutzes personenbezogener Daten (z. B. Ransomware-Befall, verlorener unverschlüsselter USB-Stick mit Kundendaten), muss der Verantwortliche die Panne **unverzüglich, spätestens binnen 72 Stunden**, der zuständigen Landesdatenschutzbehörde melden! Droht ein hohes Risiko für die Betroffenen, müssen auch die Betroffenen selbst informiert werden.'],
+    ['h', 'Wörter, die in der Prüfung vorkommen'],
+    ['table', ['Wort', 'Einfach erklärt'], [
+      ['Personenbezogene Daten', 'Alle Informationen, die sich auf eine identifizierte oder identifizierbare Person beziehen'],
+      ['Verbot mit Erlaubnisvorbehalt', 'Verarbeitung ist verboten, solange kein Gesetz oder eine Einwilligung sie erlaubt'],
+      ['Zweckbindung', 'Daten dürfen nur für den Zweck genutzt werden, für den sie ursprünglich erhoben wurden'],
+      ['Datenminimierung', 'Verarbeitung auf das für den Zweck absolut notwendige Maß beschränken'],
+      ['TOM', 'Technische und organisatorische Maßnahmen zur Sicherung von Daten'],
+      ['Auftragsverarbeitungsvertrag (AVV)', 'Vertrag nach Art. 28 DSGVO, wenn ein externer Dienstleister (z. B. Cloud-Host) Daten verarbeitet'],
+      ['Datenschutz-Folgenabschätzung (DSFA)', 'Risikoanalyse vor Einführung besonders risikoreicher IT-Systeme (z. B. KI-Kameraüberwachung)'],
+      ['Rechenschaftspflicht', 'Das Unternehmen muss jederzeit durch Dokumentation beweisen können, dass die DSGVO eingehalten wird'],
+    ]],
+    ['see', ['eua-security', 'wiso-arbeitsvertrag', 'wiso-betriebsrat', 'gk-grundordnung']],
+    ['h', 'Aufgaben im Prüfungsstil'],
+    ['qa', 'Ein Softwareunternehmen entwickelt eine neue Webanwendung für eine Krankenkasse. Für Entwicklungs- und Lasttests fordert ein Programmierer einen aktuellen Dump der Produktivdatenbank mit echten Patientendaten an. Bewerten Sie dieses Vorhaben datenschutzrechtlich und nennen Sie eine gesetzeskonforme Lösung.', [
+      '- Die Verwendung von echten Patientendaten für Tests verstößt gegen die Grundsätze der **Zweckbindung (Art. 5 Abs. 1 b DSGVO)** und der **Datenminimierung (Art. 5 Abs. 1 c DSGVO)** sowie gegen die **Trennungskontrolle (Art. 32 DSGVO)**.',
+      '- Gesundheitsdaten sind **besondere Kategorien personenbezogener Daten (Art. 9 DSGVO)** und besonders geschützt.',
+      '- **Gesetzeskonforme Lösung:** Für die Testumgebung müssen **synthetische (künstlich erzeugte)** Testdaten oder vollständig **anonymisierte Daten** verwendet werden, bei denen kein Personenbezug mehr hergestellt werden kann.',
+      'Zusammen 4 Punkte.',
+    ], 4],
+    ['qa', 'Nennen Sie vier Rechte, die einer betroffenen Person nach der DSGVO gegenüber einem Unternehmen zustehen.', [
+      '- **Auskunftsrecht (Art. 15):** Recht zu erfahren, welche Daten zu welchem Zweck gespeichert sind.',
+      '- **Recht auf Berichtigung (Art. 16):** Unverzügliche Korrektur unrichtiger Daten verlangen.',
+      '- **Recht auf Löschung / „Vergessenwerden“ (Art. 17):** Löschung verlangen, wenn der Speicherzweck entfällt.',
+      '- **Recht auf Datenübertragbarkeit (Art. 20):** Herausgabe der Daten in einem strukturierten, gängigen Format.',
+    ], 4],
+    ['qa', 'Erklären Sie den Unterschied zwischen Zutrittskontrolle, Zugangskontrolle und Zugriffskontrolle mit je einem konkreten Beispiel.', [
+      '- **Zutrittskontrolle:** Verhindert das körperliche Betreten von Räumen durch Unbefugte (z. B. Serverraum nur mit elektronischer Chipkarte und PIN betretbar).',
+      '- **Zugangskontrolle:** Verhindert, dass unbefugte Personen IT-Systeme starten oder nutzen können (z. B. Windows-Login mit komplexem Passwort und 2-Faktor-Authentifizierung).',
+      '- **Zugriffskontrolle:** Stellt sicher, dass berechtigte Systemnutzer nur die Daten sehen und bearbeiten können, für die sie zuständig sind (z. B. Rollen- und Rechtekonzept: Entwickler sieht keine Gehaltsdaten der Buchhaltung).',
+    ], 6],
+    ['quiz', [
+      {q: 'Was besagt das Prinzip des „Verbots mit Erlaubnisvorbehalt“?', o: ['Jede Datenverarbeitung ist verboten, außer ein Gesetz oder eine Einwilligung erlaubt sie', 'Jede Datenverarbeitung ist erlaubt, außer die Person widerspricht', 'Nur Behörden dürfen Daten verarbeiten', 'Datenschutz gilt erst ab 100 Mitarbeitern'], a: 0, e: 'Ohne rechtliche Erlaubnis (Art. 6 DSGVO) ist jede Verarbeitung personenbezogener Daten unzulässig.'},
+      {q: 'Binnen welcher Frist muss eine schwere Datenpanne der Datenschutzbehörde gemeldet werden?', o: ['Binnen 72 Stunden', 'Binnen 24 Stunden', 'Binnen 14 Tagen', 'Binnen 1 Monat'], a: 0, e: 'Art. 33 DSGVO schreibt die Meldung unverzüglich, möglichst binnen 72 Stunden nach Bekanntwerden vor.'},
+      {q: 'Ab welcher Mitarbeiterzahl muss ein Betrieb nach § 38 BDSG in der Regel einen Datenschutzbeauftragten benennen?', o: ['Ab 20 Personen, die ständig mit automatisierter Datenverarbeitung beschäftigt sind', 'Ab 5 Mitarbeitern', 'Ab 50 Mitarbeitern', 'Erst ab 250 Mitarbeitern'], a: 0, e: 'In Deutschland gilt die Schwelle von in der Regel mindestens 20 Personen.'},
+      {q: 'Welche Daten gehören zu den besonderen Kategorien nach Art. 9 DSGVO?', o: ['Gesundheitsdaten und biometrische Daten', 'Wohnadresse und Postleitzahl', 'IP-Adresse des Computers', 'Kfz-Kennzeichen'], a: 0, e: 'Gesundheits-, genetische und biometrische Daten unterliegen dem höchsten Schutzniveau.'},
+      {q: 'Zu welchem TOM-Bereich gehört die regelmäßige Erstellung von Backups?', o: ['Verfügbarkeitskontrolle', 'Zutrittskontrolle', 'Trennungskontrolle', 'Weitergabekontrolle'], a: 0, e: 'Backups sichern die Verfügbarkeit und Wiederherstellbarkeit von Daten nach Störfällen.'},
     ]],
   ],
 });
@@ -20765,37 +28865,413 @@ AP2.add('wiso-uv', [
   ]],
 ]);
 ;
+// content/wiso/kaufvertrag-1.js
+AP2.page('wiso-kaufvertrag', {
+  b: 'wiso', g: 'Vertrag und Recht', t: 'Kaufvertrag: Zustandekommen, Geschäftsfähigkeit, Nichtigkeit',
+  d: 'Ein **Kaufvertrag (§ 433 BGB)** kommt durch **zwei übereinstimmende Willenserklärungen** zustande: **Antrag (Angebot)** und **Annahme**. Voraussetzung ist die **Geschäftsfähigkeit** der Vertragspartner. Das BGB unterscheidet drei Stufen: **geschäftsunfähig** (0 bis 6 Jahre), **beschränkt geschäftsfähig** (7 bis 17 Jahre) und **voll geschäftsfähig** (ab 18 Jahre). Fehlerhafte Rechtsgeschäfte sind entweder von Anfang an **nichtig** (ungültig) oder durch Erklärung **anfechtbar**.',
+  m: '**Kaufvertrag = Antrag + Annahme.** **Geschäftsfähigkeit:** 0 bis 6 = **geschäftsunfähig** (nichtig); 7 bis 17 = **beschränkt geschäftsfähig** (schwebend unwirksam bis Zustimmung der Eltern, Ausnahme: **Taschengeldparagraph § 110 BGB**); ab 18 = **voll geschäftsfähig**. **Nichtig = von Anfang an unwirksam.** **Anfechtbar = zunächst wirksam, wird durch Anfechtung rückwirkend nichtig.**',
+  cheat: [
+    ['Zustandekommen', ['**Antrag (Angebot):** Bestimmte Willenserklärung (Preis, Ware, Menge)', '**Annahme:** Rechtzeitige Zustimmung ohne Änderungen', 'Schaufenster, Prospekt, Webshop = **kein** Antrag, sondern unverbindliche **Aufforderung zur Abgabe eines Angebots (invitatio ad offerendum)**']],
+    ['Geschäftsfähigkeit', ['**0 bis 6 Jahre:** Geschäftsunfähig (§ 104 BGB); Willenserklärung ist **nichtig**', '**7 bis 17 Jahre:** Beschränkt geschäftsfähig (§ 106 BGB); Verträge sind **schwebend unwirksam** bis Eltern genehmigen', '**§ 110 BGB (Taschengeldparagraph):** Wirksam, wenn mit eigenen Mitteln (Taschengeld) **sofort vollständig bezahlt** (keine Ratenkäufe!)', '**ab 18 Jahre:** Voll geschäftsfähig (§ 2 BGB); alle Verträge eigenständig wirksam']],
+    ['Nichtige Rechtsgeschäfte', ['Geschäftsunfähige Personen (§ 105)', 'Vorübergehende Sinnesverwirrung / Volltrunkenheit', 'Verstoß gegen gesetzliches Verbot (§ 134, z. B. Schwarzarbeit)', 'Sittenwidrigkeit und Wucher (§ 138, z. B. extreme Zinsen)', 'Formmangel (§ 125, z. B. Kündigung per E-Mail)', 'Scheingeschäft (§ 117), Scherzgeschäft (§ 118)']]],
+  blocks: [
+    ['h', 'Wie kommt ein Kaufvertrag zustande?'],
+    ['p', 'Ein Vertrag entsteht durch zwei inhaltlich übereinstimmende Willenserklärungen: den **Antrag** (erstes Angebot) und die **Annahme** (Zustimmung). Der Antrag muss so konkret sein, dass der andere mit einem einfachen „Ja“ zustimmen kann. Wer ein Angebot abgibt, ist daran gebunden (§ 145 BGB), es sei denn, die Bindung wurde ausdrücklich ausgeschlossen (z. B. durch „freibleibend“ oder „solange der Vorrat reicht“).'],
+    ['table', ['Situation', 'Rechtliche Bewertung', 'Folge'], [
+      ['Ware im Schaufenster mit Preisschild', '**invitatio ad offerendum** (Aufforderung zur Abgabe eines Angebots)', 'Kein Antrag des Händlers; der Kunde macht an der Kasse den Antrag'],
+      ['Artikel im Online-Shop / Prospekt', '**invitatio ad offerendum**', 'Der Händler bindet sich nicht; er könnte ausverkauft sein oder einen Tippfehler haben'],
+      ['Kunde klickt im Webshop auf „Zahlungspflichtig bestellen“', '**Antrag des Kunden**', 'Der Kunde bietet dem Shopbetreiber den Kaufvertrag an'],
+      ['Händler sendet automatische Eingangsbestätigung', 'Reine Empfangsbestätigung (Bestelleingang)', 'Noch **keine** Annahme (außer die AGB regeln es anders)'],
+      ['Händler versendet die Ware oder Auftragsbestätigung', '**Annahme des Händlers**', 'Der Kaufvertrag ist damit **rechtswirksam geschlossen**'],
+    ]],
+    ['h', 'Die drei Stufen der Geschäftsfähigkeit'],
+    ['p', 'Geschäftsfähigkeit ist die Fähigkeit, selbstständig und rechtswirksam Rechtsgeschäfte (Verträge) abzuschließen. Sie hängt vom Alter und geistigen Zustand ab.'],
+    ['table', ['Stufe', 'Altersgruppe', 'Rechtliche Wirkung von Verträgen', 'Ausnahmen / Besonderheiten'], [
+      ['**Geschäftsunfähig**', '**0 bis 6 Jahre** (bis zum vollendeten 7. Lebensjahr) sowie dauerhaft Geisteskranke', 'Willenserklärungen sind **nichtig** (von Anfang an ungültig). Handeln kann nur der gesetzliche Vertreter.', 'Botengänge für die Eltern sind möglich (z. B. 6-Jähriger holt Brötchen als Bote mit Zettel)'],
+      ['**Beschränkt geschäftsfähig**', '**7 bis 17 Jahre** (vom vollendeten 7. bis zum 18. Geburtstag)', 'Verträge sind **schwebend unwirksam**. Sie werden erst mit Zustimmung (Einwilligung vorher oder Genehmigung nachher) der Eltern wirksam.', '1. **Rechtlich lediglich vorteilhafte Geschäfte** (z. B. reine Schenkung an den Jugendlichen).<br>2. **Taschengeldparagraph (§ 110 BGB):** Sofortige Barzahlung mit eigenen Mitteln.<br>3. Dienst- oder Arbeitsverhältnis mit Genehmigung der Eltern (§ 113 BGB).'],
+      ['**Voll geschäftsfähig**', '**ab 18 Jahren** (Volljährigkeit)', 'Alle Willenserklärungen sind **voll wirksam**. Die Person haftet für ihre Verträge selbst.', 'Ausnahme: Vorübergehende Bewusstlosigkeit oder Trunkenheit macht eine konkrete Erklärung nichtig (§ 105 Abs. 2 BGB).'],
+    ]],
+    ['warn', 'Achtung beim **Taschengeldparagrafen (§ 110 BGB)**: Er gilt **nicht für Ratenkäufe**, Handyverträge mit monatlicher Grundgebühr, Abonnements oder Kredite! Auch wenn die erste Rate aus dem Taschengeld bezahlt wird, ist der gesamte Ratenvertrag schwebend unwirksam, solange die Eltern nicht ausdrücklich zustimmen.'],
+    ['h', 'Nichtigkeit versus Anfechtbarkeit'],
+    ['p', 'Ein fehlerhafter Vertrag kann entweder von vornherein **nichtig** sein oder erst durch eine **Anfechtung** rückwirkend vernichtet werden.'],
+    ['table', ['Merkmal', 'Nichtige Rechtsgeschäfte', 'Anfechtbare Rechtsgeschäfte'], [
+      ['**Wirkung**', 'Von Anfang an (**ex tunc**) rechtlich unwirksam, als ob der Vertrag nie existiert hätte', 'Zunächst **voll wirksam**; wird durch erfolgreiche Anfechtungserklärung rückwirkend nichtig'],
+      ['**Muss man aktiv werden?**', '**Nein**, die Nichtigkeit gilt automatisch kraft Gesetzes', '**Ja**, der Anfechtende muss dem Vertragspartner gegenüber die Anfechtung erklären'],
+      ['**Gesetzliche Gründe**', '1. Geschäftsunfähigkeit (§ 105)<br>2. Formmangel (§ 125, z. B. Kündigung ohne Unterschrift)<br>3. Verstoß gegen gesetzliches Verbot (§ 134)<br>4. Sittenwidrigkeit / Wucher (§ 138)<br>5. Scheingeschäft (§ 117), Scherzgeschäft (§ 118)', '1. **Erklärungsirrtum** (§ 119 Abs. 1, z. B. Versprechen, Vertippen bei der Preisangabe)<br>2. **Inhaltsirrtum** (§ 119 Abs. 1, z. B. Bedeutung eines Fachbegriffs verkannt)<br>3. **Eigenschaftsirrtum** (§ 119 Abs. 2, wesentliche Eigenschaft einer Sache/Person)<br>4. **Arglistige Täuschung** oder **widerrechtliche Drohung** (§ 123)'],
+      ['**Fristen für Anfechtung**', 'Keine Frist (bleibt für immer nichtig)', 'Bei Irrtum: **unverzüglich** (ohne schuldhaftes Zögern) nach Entdeckung (§ 121).<br>Bei Täuschung/Drohung: **binnen 1 Jahres** (§ 124).'],
+      ['**Schadensersatz**', 'Kein Vertrauensschaden', 'Bei Irrtumsanfechtung muss der Anfechtende dem Partner den **Vertrauensschaden** ersetzen (§ 122).'],
+    ]],
+    ['h', 'Pflichten aus dem Kaufvertrag (§ 433 BGB)'],
+    ['p', 'Der Kaufvertrag ist ein gegenseitiger Vertrag (Verpflichtungsgeschäft). Beide Seiten übernehmen klare rechtliche Hauptpflichten:'],
+    ['table', ['Vertragspartner', 'Hauptpflichten laut Gesetz (§ 433 BGB)', 'Nebenpflichten'], [
+      ['**Verkäufer**', '1. Die Sache dem Käufer **übergeben**.<br>2. Dem Käufer das **Eigentum an der Sache verschaffen**.<br>3. Die Sache **frei von Sach- und Rechtsmängeln** liefern.', 'Sache sorgfältig verpacken, Montageanleitung beilegen, Auskunft erteilen'],
+      ['**Käufer**', '1. Dem Verkäufer den vereinbarten **Kaufpreis zahlen**.<br>2. Die gekaufte Sache **abnehmen** (Empfang nehmen).', 'Prüf- und Rügepflicht beim Handelskauf (§ 377 HGB)'],
+    ]],
+    ['note', 'Trennungs- und Abstraktionsprinzip im deutschen Recht: Der **Kaufvertrag** begründet nur die Pflicht zum Handeln (**Verpflichtungsgeschäft**). Erst durch die tatsächliche Übergabe der Sache und die Einigung über den Eigentumsübergang wird der Käufer Eigentümer (**Verfügungsgeschäft / Erfüllungsgeschäft** nach § 929 BGB). Beide Geschäfte sind rechtlich streng getrennt.'],
+    ['h', 'Wörter, die in der Prüfung vorkommen'],
+    ['table', ['Wort', 'Einfach erklärt'], [
+      ['Willenserklärung', 'Rechtlich verbindliche Äußerung eines Menschen, die eine Rechtsfolge herbeiführen soll'],
+      ['invitatio ad offerendum', 'Rechtlich unverbindliche Aufforderung an andere, ihrerseits ein Angebot abzugeben'],
+      ['Schwebend unwirksam', 'Der Vertrag gilt vorläufig nicht; erst die Genehmigung der Eltern macht ihn gültig'],
+      ['Nichtig', 'Rechtlich vollkommen bedeutungslos von Anfang an (ungültig wie ein leeres Blatt Papier)'],
+      ['Anfechtung', 'Einseitige Erklärung, mit der ein fehlerhafter Vertrag rückwirkend aufgelöst wird'],
+      ['Arglistige Täuschung', 'Absichtliches Verschweigen wichtiger Tatsachen oder Vorspiegeln falscher Tatsachen'],
+      ['Vertrauensschaden', 'Kosten, die dem Partner entstanden sind, weil er auf die Gültigkeit des Vertrags vertraut hat'],
+      ['Verpflichtungsgeschäft', 'Der Vertrag selbst: Beide Partner verpflichten sich zu einer Leistung'],
+    ]],
+    ['see', ['wiso-kaufvertragsstoerungen', 'wiso-angebotsvergleich', 'wiso-vertrag', 'wiso-arbeitsvertrag']],
+    ['h', 'Aufgaben im Prüfungsstil'],
+    ['qa', 'Ein 16-jähriger Auszubildender kauft in einem Elektronikmarkt ohne Wissen seiner Eltern ein Smartphone für 800 Euro auf Raten (24 Monatsraten à 35 Euro). Er leistet die erste Rate aus seinem Taschengeld. Ist der Kaufvertrag wirksam?', [
+      '- Der Azubi ist mit 16 Jahren **beschränkt geschäftsfähig** (§ 106 BGB).',
+      '- Der Vertrag ist zunächst **schwebend unwirksam** (§ 108 BGB), da die Eltern nicht vorab eingewilligt haben.',
+      '- Der **Taschengeldparagraph (§ 110 BGB) greift hier nicht**: Er gilt nur, wenn die Leistung mit den Mitteln **vollständig bewirkt (bar bezahlt)** wird. Bei Ratenkreditgeschäften gilt § 110 BGB nicht.',
+      '- Der Vertrag wird erst wirksam, wenn die Eltern ihn nachträglich **genehmigen**. Verweigern sie die Genehmigung, ist der Vertrag endgültig **unwirksam (nichtig)**.',
+      'Zusammen 4 Punkte.',
+    ], 4],
+    ['qa', 'Auf der Webseite eines Softwarehauses wird eine Entwicklerlizenz versehentlich für 9,90 Euro statt 990,00 Euro ausgewiesen. Ein Kunde bestellt die Software sofort per Mausklick. Das Softwarehaus bemerkt den Fehler am nächsten Morgen. Was kann das Softwarehaus tun?', 'Das Softwarehaus kann den Vertrag wegen eines **Erklärungsirrtums (§ 119 Abs. 1 BGB)** anfechten (Tippfehler beim Einstellen des Preises). Die Anfechtung muss dem Kunden gegenüber **unverzüglich** nach Entdeckung des Fehlers erklärt werden. Durch die Anfechtung wird der Kaufvertrag rückwirkend **nichtig (§ 142 BGB)**. Das Softwarehaus muss die Software nicht für 9,90 Euro liefern.', 4],
+    ['qa', 'Nennen Sie jeweils zwei gesetzliche Pflichten des Verkäufers und des Käufers bei einem Kaufvertrag nach § 433 BGB.', [
+      '- **Pflichten des Verkäufers:** (1) Übergabe der Sache, (2) Verschaffung des Eigentums frei von Sach- und Rechtsmängeln.',
+      '- **Pflichten des Käufers:** (1) Zahlung des vereinbarten Kaufpreises, (2) Abnahme der gekauften Sache.',
+    ], 4],
+    ['quiz', [
+      {q: 'Ab welchem Alter ist ein Mensch voll geschäftsfähig?', o: ['Ab 18 Jahren', 'Ab 16 Jahren', 'Ab 21 Jahren', 'Ab 14 Jahren'], a: 0, e: 'Mit Vollendung des 18. Lebensjahres tritt die volle Geschäftsfähigkeit ein.'},
+      {q: 'Wie ist ein Vertrag zu beurteilen, den ein 6-jähriges Kind alleine abschließt?', o: ['Nichtig (vollkommen ungültig)', 'Schwebend unwirksam', 'Gültig nach Taschengeldparagraph', 'Anfechtbar'], a: 0, e: 'Kinder unter 7 Jahren sind geschäftsunfähig (§ 104 BGB); ihre Willenserklärungen sind nichtig.'},
+      {q: 'Welcher Kauf fällt unter den Taschengeldparagrafen (§ 110 BGB)?', o: ['Ein Buch für 20 Euro, sofort bar vom Taschengeld bezahlt', 'Ein Smartphone auf 24 Monatsraten', 'Ein 2-Jahres-Mobilfunkvertrag mit 15 Euro Grundgebühr', 'Ein Ratenkauf für ein Fahrrad'], a: 0, e: '§ 110 BGB verlangt die vollständige Bewirkung mit eigenen Mitteln (keine Ratenkäufe).'},
+      {q: 'Was ist die rechtliche Folge einer erfolgreichen Anfechtung?', o: ['Der Vertrag gilt von Anfang an als nichtig (ex tunc)', 'Der Vertrag gilt erst ab dem Tag der Anfechtung nicht mehr', 'Der Vertrag wird automatisch geändert', 'Der Käufer muss eine Strafe zahlen'], a: 0, e: '§ 142 Abs. 1 BGB: Das Rechtsgeschäft ist als von Anfang an nichtig anzusehen.'},
+      {q: 'Was bedeutet invitatio ad offerendum?', o: ['Unverbindliche Aufforderung zur Abgabe eines Kaufangebots', 'Ein verbindliches Angebot des Händlers', 'Ein schriftlicher Kaufvertrag', 'Die Zahlungsaufforderung des Finanzamts'], a: 0, e: 'Schaufensterauslagen oder Kataloge sind nur rechtlich unverbindliche Einladungen an Kunden.'},
+    ]],
+  ],
+});
+;
+// content/wiso/kaufvertragsstoerungen-1.js
+AP2.page('wiso-kaufvertragsstoerungen', {
+  b: 'wiso', g: 'Vertrag und Recht', t: 'Kaufvertragsstörungen: Mängel, Handelskauf und Verzug',
+  d: 'Wird ein Kaufvertrag nicht wie vereinbart erfüllt, liegt eine **Kaufvertragsstörung (Leistungsstörung)** vor. Hauptfälle: **Lieferungsverzug** (Ware kommt zu spät), **mangelhafte Lieferung / Sachmangel** (Ware ist defekt, falsch oder unvollständig) und **Zahlungsverzug** (Geld kommt nicht rechtzeitig). Bei Sachmängeln hat der Käufer ein **zweistufiges Rechtssystem**: Vorrangig gilt die **Nacherfüllung** (Nachbesserung oder Ersatzlieferung). Erst nach Fristablauf greifen nachrangige Rechte wie **Rücktritt**, **Minderung** und **Schadensersatz**. Beim **Handelskauf (B2B)** gilt nach **§ 377 HGB** eine strenge **unverzügliche Prüf- und Rügepflicht**.',
+  m: '**Störungen: Lieferverzug, Zahlungsverzug, Sachmangel, Annahmeverzug.** **Sachmangel: 1. Stufe Vorrang = Nacherfüllung (Käufer wählt Nachbesserung oder Neulieferung). 2. Stufe Nachrang = Rücktritt oder Minderung plus Schadensersatz.** **Handelskauf § 377 HGB:** Offene Mängel **sofort/unverzüglich** rügen, sonst gilt die Ware als genehmigt! **Gewährleistung (gesetzlich, 2 Jahre) ungleich Garantie (freiwillig).**',
+  cheat: [
+    ['Sachmängel (§ 434 BGB)', ['**Beschaffenheitsmangel:** Fehlerhaft, beschädigt, weicht von Beschreibung ab', '**Montagemangel:** Falsch montiert durch Verkäufer oder fehlerhafte Anleitung („IKEA-Klausel“)', '**Falschlieferung (Aliud):** Ein völlig anderes Produkt wurde geliefert', '**Zu-Wenig-Lieferung (Minderlieferung):** 8 statt bestellter 10 Notebooks geliefert']],
+    ['Rechte bei Mängeln', ['**Vorrangige Rechte (1. Stufe): Nacherfüllung**', 'Käufer wählt: **Nachbesserung** (Reparatur) ODER **Nachlieferung** (neue Ware)', 'Verkäufer trägt alle Kosten (Transport, Wege-, Arbeits- und Materialkosten)', '**Nachrangige Rechte (2. Stufe):** nach Frist oder 2 Fehlversuchen', '**Rücktritt:** Vertrag rückabwickeln (Ware zurück, Geld zurück)', '**Minderung:** Kaufpreis herabsetzen und Ware behalten', '**Schadensersatz:** statt der Leistung oder neben der Leistung']],
+    ['Handelskauf (§ 377 HGB)', ['Gilt beim **zweiseitigen Handelskauf** (beide Partner sind Kaufleute, B2B)', '**Prüfpflicht:** Ware unverzüglich nach Ablieferung untersuchen', '**Offene Mängel:** **Unverzüglich** (ohne schuldhaftes Zögern, ca. 1-2 Tage) rügen!', '**Versteckte Mängel:** Unverzüglich nach Entdeckung rügen (Verjährung 2 Jahre)', '**Folge bei Versäumnis:** Ware gilt als **genehmigt**; alle Gewährleistungsrechte sind verloren!']],
+    ['Lieferungsverzug', ['Voraussetzungen: **Fälligkeit** der Lieferung, **Mahnung** (außer Termin kalendermäßig bestimmt = Fixkauf/Terminkauf), **Verschulden** des Verkäufers', 'Rechte ohne Nachfrist: Bestehen auf Lieferung + Verzugsschaden', 'Rechte nach angemessener Nachfrist: Rücktritt vom Vertrag + Schadensersatz statt der Leistung (Deckungskauf)']]],
+  blocks: [
+    ['h', 'Arten von Sachmängeln (§ 434 BGB)'],
+    ['p', 'Eine Ware ist frei von Sachmängeln, wenn sie bei Gefahrenübergang (Übergabe an den Käufer) die vereinbarte Beschaffenheit hat. Das Gesetz unterscheidet verschiedene Mängelarten:'],
+    ['table', ['Mangelart', 'Erklärung nach § 434 BGB', 'Beispiel aus der IT-Praxis'], [
+      ['**Mangel in der Beschaffenheit**', 'Ware hat nicht die vereinbarte Eigenschaft oder eignet sich nicht für die gewöhnliche Verwendung', 'Der gelieferte Server stürzt nach 10 Minuten ab (Hardwaredefekt)'],
+      ['**Montagemangel**', 'Unsachgemäße Montage durch den Verkäufer oder dessen Gehilfen', 'Techniker des Anbieters baut Netzwerkkabel falsch in den Serverschrank ein'],
+      ['**Mangelhafte Montageanleitung**', 'Die Anleitung ist fehlerhaft oder unverständlich („IKEA-Klausel“)', 'Die englische Anleitung des Switches enthält falsche IP-Konfigurationsschritte'],
+      ['**Falschlieferung (Aliud)**', 'Der Verkäufer liefert einen ganz anderen Gegenstand', 'Statt 10 Enterprise-SSDs werden Standard-Festplatten für Privatanwender geliefert'],
+      ['**Minderlieferung (Zu-Wenig-Lieferung)**', 'Der Verkäufer liefert eine zu geringe Menge als volle Lieferung', 'Im Paket liegen nur 8 Monitore, auf dem Lieferschein stehen 10'],
+    ]],
+    ['h', 'Rechte des Käufers bei mangelhafter Lieferung: Das 2-Stufen-System'],
+    ['p', 'Das deutsche Kaufrecht gibt dem Verkäufer zunächst das **Recht zur zweiten Andienung**. Der Käufer kann nicht sofort vom Vertrag zurücktreten.'],
+    ['table', ['Stufe', 'Rechte des Käufers', 'Bedingungen & Details'], [
+      ['**1. Stufe: Vorrangige Rechte (Nacherfüllung)**', '**Wahlrecht des Käufers (§ 439 BGB):**<br>a) **Nachbesserung** (Reparatur der Sache)<br>b) **Ersatzlieferung** (Lieferung einer neuen, mangelfreien Sache)', 'Der Käufer muss dem Verkäufer eine **angemessene Frist** zur Nacherfüllung setzen.<br>Der Verkäufer trägt sämtliche Transport-, Wege-, Arbeits- und Materialkosten.<br>Verkäufer darf Neulieferung nur verweigern, wenn sie unverhältnismäßig teuer wäre.'],
+      ['**2. Stufe: Nachrangige Rechte** (erst nach Fristablauf)', 'a) **Rücktritt vom Kaufvertrag:** Rückgabe der Ware gegen volle Kaufpreiserstattung.<br>b) **Minderung:** Käufer behält Ware und verlangt einen Preisnachlass.<br>c) **Schadensersatz statt der Leistung:** z. B. Mehrkosten durch Kauf bei anderem Händler.<br>d) **Ersatz vergeblicher Aufwendungen.**', 'Greift erst, wenn:<br>- Die angemessene Nachfrist erfolglos verstrichen ist,<br>- Der Verkäufer die Nacherfüllung ernsthaft verweigert,<br>- Die Nachbesserung **zweimal fehlgeschlagen** ist (§ 440 BGB), oder<br>- Die Nacherfüllung für den Käufer unzumutbar ist.<br>Bei nur **unerheblichem Mangel** ist der Rücktritt ausgeschlossen (nur Minderung möglich)!'],
+    ]],
+    ['warn', 'Unterschied **Gewährleistung** versus **Garantie**: Die **gesetzliche Sachmängelhaftung (Gewährleistung)** ist gesetzlich vorgeschrieben und beträgt **2 Jahre** ab Übergabe. Sie haftet dafür, dass die Sache **beim Kauf** fehlerfrei war. Beim Verbrauchsgüterkauf gilt 12 Monate eine **Beweislastumkehr**: Tritt ein Mangel im ersten Jahr auf, wird vermutet, dass er schon beim Kauf vorlag. Die **Garantie** ist dagegen eine **freiwillige vertragliche Zusage** (meist des Herstellers), dass die Sache für eine bestimmte Zeit funktioniert.'],
+    ['h', 'Die Rügepflicht beim Handelskauf (§ 377 HGB)'],
+    ['p', 'Kaufen zwei Kaufleute füreinander Waren ein (B2B, zweiseitiger Handelskauf), verlangt das HGB schnelle Rechtssicherheit. Es gelten strenge Pflichten für den Käufer:'],
+    ['table', ['Art des Mangels', 'Erkennbarkeit', 'Rügefrist beim Handelskauf (§ 377 HGB)'], [
+      ['**Offener Mangel**', 'Bei ordnungsgemäßer Prüfung sofort erkennbar (z. B. Gehäuse zerbrochen, falsches Modell, falsche Stückzahl)', '**Unverzüglich** nach Ablieferung (ohne schuldhaftes Zögern; Faustregel: binnen 1 bis maximal 2 Tagen) rügen'],
+      ['**Versteckter Mangel**', 'Bei normaler Sichtprüfung nicht sofort erkennbar (z. B. Speicherriegel fällt erst nach Stunden unter Volllast aus)', '**Unverzüglich nach Entdeckung** des Mangels rügen; Verjährungsfrist: 2 Jahre'],
+      ['**Arglistig verschwiegener Mangel**', 'Der Verkäufer wusste vom Mangel und hat ihn verheimlicht', 'Keine Rügefrist nötig; Verjährung 3 Jahre ab Jahresende'],
+    ]],
+    ['tip', 'Prüfungsfalle Handelskauf: Versäumt der kaufmännische Käufer die unverzügliche Rüge eines offenen Mangels, **gilt die Ware als genehmigt (§ 377 Abs. 2 HGB)**! Der Käufer verliert **alle** Rechte auf Nachbesserung, Neulieferung, Minderung oder Rücktritt und muss den vollen Kaufpreis zahlen!'],
+    ['h', 'Lieferungsverzug (Nicht-Rechtzeitig-Lieferung)'],
+    ['p', 'Liefert der Verkäufer nicht pünktlich, gerät er unter bestimmten Voraussetzungen in Lieferungsverzug (§ 286 BGB):'],
+    ['steps', [
+      '**Fälligkeit:** Die Lieferzeit muss fällig sein. Wurde kein Termin vereinbart, ist die Lieferung sofort fällig.',
+      '**Mahnung:** Grundsätzlich muss der Käufer mahnen. **Ausnahmen (keine Mahnung nötig):** (a) Der Liefertermin ist nach dem Kalender bestimmt („Lieferung am 15. Oktober“ – Terminkauf), (b) Zweckkauf („Brautkleid bis zur Hochzeit“), (c) Fixkauf („Lieferung fix am 10. Mai“), (d) Verkäufer verweigert die Lieferung endgültig.',
+      '**Verschulden:** Der Verkäufer muss die Verzögerung zu vertreten haben (Vorsatz oder Fahrlässigkeit). Streik oder höhere Gewalt (z. B. Erdbeben) schließen Verzug meist aus.',
+      '**Rechte des Käufers:** (1) Ohne Nachfrist: Erfüllung verlangen und Schadensersatz wegen Verzögerung. (2) Nach Setzen einer angemessenen Nachfrist: Rücktritt vom Vertrag und Schadensersatz statt der Leistung (z. B. Mehrkosten für einen Deckungskauf bei einem teureren Ersatzlieferanten).',
+    ]],
+    ['h', 'Wörter, die in der Prüfung vorkommen'],
+    ['table', ['Wort', 'Einfach erklärt'], [
+      ['Leistungsstörung', 'Ein Vertrag wird von einer Seite nicht so erfüllt, wie es vereinbart war'],
+      ['Gefahrenübergang', 'Der Moment der Übergabe der Ware, ab dem der Käufer das Risiko für Schäden trägt'],
+      ['Nacherfüllung', 'Recht des Verkäufers, den Mangel zuerst durch Reparatur oder Neulieferung zu beheben'],
+      ['Minderung', 'Herabsetzung des Kaufpreises wegen eines bestehenden Mangels'],
+      ['Rücktritt', 'Vollständige Auflösung des Vertrags: Ware zurück gegen Rückzahlung des Geldes'],
+      ['Deckungskauf', 'Kauf der Ware bei einem anderen Lieferanten; die Mehrkosten zahlt der säumige Erstlieferant'],
+      ['Zweiseitiger Handelskauf', 'Kaufvertrag zwischen zwei Kaufleuten im Rahmen ihres Handelsgewerbes (B2B)'],
+      ['Unverzüglich', 'Rechtssprache für: ohne schuldhaftes Zögern (so schnell wie betrieblich möglich)'],
+    ]],
+    ['see', ['wiso-kaufvertrag', 'wiso-angebotsvergleich', 'wiso-unternehmen', 'wiso-firma']],
+    ['h', 'Aufgaben im Prüfungsstil'],
+    ['qa', 'Ein IT-Systemhaus (Kaufmann e. K.) bestellt bei einem Großhändler 20 Notebooks für ein Kundenprojekt. Bei der Lieferung am Dienstag stellt der Wareneingang fest, dass bei 3 Geräten das Display gebrochen ist. Am Freitag der Folgewoche reklamiert das Systemhaus den Schaden beim Großhändler. Wie ist die Rechtslage?', [
+      '- Es handelt sich um einen **zweiseitigen Handelskauf (§ 377 HGB)** zwischen Kaufleuten.',
+      '- Das gebrochene Display ist ein **offener Mangel**, der bei ordnungsgemäßer Eingangskontrolle sofort erkennbar war.',
+      '- Das IT-Systemhaus war verpflichtet, den Mangel **unverzüglich** (binnen 1 bis 2 Tagen) zu rügen.',
+      '- Eine Rüge nach über einer Woche ist **verspätet**. Die Ware gilt nach **§ 377 Abs. 2 HGB als genehmigt**.',
+      '- Das Systemhaus verliert alle Gewährleistungsansprüche und muss die Notebooks voll bezahlen.',
+      'Zusammen 5 Punkte.',
+    ], 5],
+    ['qa', 'Welche Rechte hat ein Kunde bei Lieferung mangelhafter Ware auf der 1. Stufe und auf der 2. Stufe?', [
+      '- **1. Stufe (Vorrang):** Der Käufer hat Anspruch auf **Nacherfüllung** (§ 439 BGB). Er kann wählen zwischen **Nachbesserung** (Reparatur) und **Ersatzlieferung** (Lieferung einer neuen, mangelfreien Sache).',
+      '- **2. Stufe (Nachrang):** Nach fruchtlosem Ablauf einer angemessenen Nachfrist oder nach 2 fehlgeschlagenen Nachbesserungsversuchen kann der Käufer **vom Vertrag zurücktreten** ODER den **Kaufpreis mindern**. Daneben kann er **Schadensersatz statt der Leistung** verlangen.',
+    ], 4],
+    ['qa', 'Erklären Sie den Unterschied zwischen der gesetzlichen Gewährleistung und einer Garantie.', 'Die **Gewährleistung** ist gesetzlich vorgeschrieben (§ 437 BGB, 2 Jahre ab Übergabe). Sie haftet dafür, dass die Kaufsache **bereits zum Zeitpunkt der Übergabe** frei von Mängeln war. Die **Garantie** ist eine **freiwillige vertragliche Zusage** des Verkäufers oder Herstellers, die garantiert, dass die Sache für eine bestimmte Frist (z. B. 3 Jahre) funktionsfähig bleibt. Eine Garantie darf die gesetzliche Gewährleistung niemals einschränken.', 4],
+    ['quiz', [
+      {q: 'Welches Recht hat der Käufer bei einem Sachmangel vorrangig?', o: ['Nacherfüllung (Reparatur oder Neulieferung)', 'Sofortiger Rücktritt vom Vertrag', 'Sofortige Minderung des Kaufpreises', 'Schadensersatz fordern'], a: 0, e: 'Vorrangig gilt die Nacherfüllung nach § 439 BGB (Recht der zweiten Andienung).'},
+      {q: 'Nach wie vielen fehlgeschlagenen Nachbesserungsversuchen gilt die Reparatur gesetzlich als fehlgeschlagen?', o: ['Nach dem 2. Versuch', 'Nach dem 1. Versuch', 'Nach dem 3. Versuch', 'Erst nach 5 Versuchen'], a: 0, e: '§ 440 Satz 2 BGB: Eine Nachbesserung gilt nach dem erfolglosen zweiten Versuch als fehlgeschlagen.'},
+      {q: 'Was passiert beim Handelskauf, wenn ein offener Mangel nicht unverzüglich gerügt wird?', o: ['Die Ware gilt als genehmigt und alle Mängelrechte gehen verloren', 'Der Verkäufer muss automatisch den halben Preis erstatten', 'Die Verjährungsfrist verlängert sich auf 5 Jahre', 'Nichts, man hat immer 2 Jahre Zeit'], a: 0, e: '§ 377 Abs. 2 HGB: Unterbleibt die Rüge, gilt die Ware als genehmigt.'},
+      {q: 'Wie lange dauert die gesetzliche Verjährungsfrist für Sachmängel bei neu hergestellten Sachen?', o: ['2 Jahre', '6 Monate', '1 Jahr', '5 Jahre'], a: 0, e: 'Die gesetzliche Verjährungsfrist beträgt 2 Jahre ab Ablieferung der Sache (§ 438 BGB).'},
+      {q: 'Wann ist eine Mahnung bei Lieferungsverzug entbehrlich?', o: ['Wenn der Liefertermin kalendermäßig genau bestimmt war (z. B. Lieferung am 15. Mai)', 'Wenn der Verkäufer Urlaub hat', 'Wenn der Rechnungsbetrag unter 100 Euro liegt', 'Eine Mahnung ist immer zwingend erforderlich'], a: 0, e: 'Bei Terminkauf und Fixkauf gerät der Verkäufer ohne Mahnung mit Ablauf des Tages in Verzug.'},
+    ]],
+  ],
+});
+;
+// content/wiso/angebotsvergleich-1.js
+AP2.page('wiso-angebotsvergleich', {
+  b: 'wiso', g: 'Unternehmen und Steuern', t: 'Angebotsvergleich: Rechnerisch (Bezugspreis) und Qualitativ (Nutzwertanalyse)',
+  d: 'Vor größeren Einkäufen (z. B. 10 neue Entwickler-Notebooks oder Server-Hardware) vergleicht ein Betrieb mehrere Angebote. Der **rechnerische (quantitative) Angebotsvergleich** ermittelt den **Bezugspreis (Einstandspreis)** nach dem Kalkulationsschema: **Listeneinkaufspreis minus Lieferrabatt = Zieleinkaufspreis minus Lieferskonto = Bareinkaufspreis plus Bezugskosten = Bezugspreis**. Der **qualitative Angebotsvergleich (Nutzwertanalyse)** bewertet weiche Faktoren wie **Qualität**, **Lieferzeit**, **Service** und **Umweltfreundlichkeit** über eine gewichtete Punktematrix.',
+  m: '**Kalkulationsschema:** **LEP - Rabatt = ZEP; ZEP - Skonto = BEP; BEP + Bezugskosten = Bezugspreis (Einstandspreis).** **Rabatt wird immer vom Listeneinkaufspreis abgezogen. Skonto wird immer vom Zieleinkaufspreis abgezogen!** Bezugskosten (Fracht, Verpackung, Versicherung) erhöhen den Preis. **Qualitativer Vergleich = Nutzwertanalyse (Gewichtung in % mal Bewertungspunkte = Teilnutzwert; Summe = Gesamtnutzwert).**',
+  cheat: [
+    ['Rechnerisches Kalkulationsschema', [
+      '**Listeneinkaufspreis (LEP)** (netto, ohne USt)',
+      '- **Lieferrabatt** (in % vom LEP)',
+      '= **Zieleinkaufspreis (ZEP)**',
+      '- **Lieferskonto** (in % vom ZEP)',
+      '= **Bareinkaufspreis (BEP)**',
+      '+ **Bezugskosten** (Verpackung, Fracht, Transportversicherung, Zoll)',
+      '= **Bezugspreis (Einstandspreis)**',
+    ]],
+    ['Qualitative Kriterien', [
+      '**Produktqualität:** Zuverlässigkeit, Leistungsdaten, Verarbeitung',
+      '**Lieferzeit:** Termintreue, Liefergeschwindigkeit, Expressoption',
+      '**Service & Support:** Reaktionszeit bei Störungen, Vor-Ort-Garantie, Hotline',
+      '**Nachhaltigkeit:** Energieeffizienz, Recycling, Reparaturfähigkeit',
+      '**Zahlungskonditionen:** Zahlungsziel, Kulanz, Skontofrist',
+    ]],
+    ['Nutzwertanalyse (Formel)', [
+      '1. **Kriterien festlegen** und **gewichten** (Summe der Gewichte = **100 %** bzw. 1,0)',
+      '2. **Punkte vergeben** für jeden Anbieter (z. B. Skala 1 bis 10 Punkte)',
+      '3. **Teilnutzwert berechnen:** `Gewichtung * Punktzahl`',
+      '4. **Gesamtnutzwert:** Summe aller Teilnutzwerte',
+      '5. **Entscheidung:** Der Anbieter mit der höchsten Gesamtpunktzahl gewinnt',
+    ]],
+  ],
+  blocks: [
+    ['h', 'Der rechnerische Angebotsvergleich (Kalkulationsschema)'],
+    ['p', 'Der rechnerische Angebotsvergleich zeigt, welcher Lieferant die Waren am günstigsten beschaffen kann. Alle Preise werden **netto** (ohne Umsatzsteuer) berechnet.'],
+    ['table', ['Kalkulationsschritt', 'Rechenoperation', 'Erklärung'], [
+      ['**Listeneinkaufspreis (LEP)**', 'Katalogpreis netto', 'Der vom Lieferanten im Angebot genannte Grundpreis je Stück oder Gesamtmenge'],
+      ['- **Lieferrabatt**', 'Abzug in Prozent vom LEP', 'Mengenrabatt, Treuerabatt, Sonderrabatt (wird vom LEP abgezogen)'],
+      ['= **Zieleinkaufspreis (ZEP)**', 'LEP minus Rabatt', 'Der Rechnungsbetrag, der bei Zahlung bis zum regulären Zahlungsziel fällig wäre'],
+      ['- **Lieferskonto**', 'Abzug in Prozent vom ZEP', 'Preisnachlass bei schneller Barzahlung / Überweisung innerhalb der Skontofrist'],
+      ['= **Bareinkaufspreis (BEP)**', 'ZEP minus Skonto', 'Der tatsächliche Überweisungsbetrag an den Lieferanten bei prompter Zahlung'],
+      ['+ **Bezugskosten**', 'Zuschlag in Euro', 'Transportkosten: Verpackung, Fracht, Porto, Rollgeld, Transportversicherung'],
+      ['= **Bezugspreis (Einstandspreis)**', 'BEP plus Bezugskosten', 'Die tatsächlichen Gesamtkosten der beschafften Ware bis zum eigenen Betrieb'],
+    ]],
+    ['warn', 'Häufiger Rechenfehler in IHK-Prüfungen: Das **Skonto** darf **niemals vom Listeneinkaufspreis** berechnet werden! Skonto wird **immer vom rabattierten Zieleinkaufspreis (ZEP)** abgezogen. Und die **Bezugskosten** werden **hinzugerechnet**, nicht abgezogen!'],
+    ['h', 'Beispielrechnung: Einkauf von 10 Entwickler-Notebooks'],
+    ['p', 'Ein Softwarehaus vergleicht zwei Angebote für 10 Arbeitsplatz-Notebooks. Welcher Anbieter ist rechnerisch günstiger?'],
+    ['table', ['Position', 'Lieferant Alpha', 'Lieferant Beta'], [
+      ['Listeneinkaufspreis (10 Notebooks)', '10 * 1.200,00 = **12.000,00 Euro**', '10 * 1.250,00 = **12.500,00 Euro**'],
+      ['- Lieferrabatt', '10 % Rabatt = **- 1.200,00 Euro**', '15 % Rabatt = **- 1.875,00 Euro**'],
+      ['= Zieleinkaufspreis (ZEP)', '**10.800,00 Euro**', '**10.625,00 Euro**'],
+      ['- Lieferskonto', '2 % Skonto (von 10.800) = **- 216,00 Euro**', '3 % Skonto (von 10.625) = **- 318,75 Euro**'],
+      ['= Bareinkaufspreis (BEP)', '**10.584,00 Euro**', '**10.306,25 Euro**'],
+      ['+ Bezugskosten (Fracht/Versand)', 'Frei Haus = **0,00 Euro**', 'Frachtpauschale = **+ 150,00 Euro**'],
+      ['= **Bezugspreis (Einstandspreis)**', '**10.584,00 Euro** (1.058,40 €/Stück)', '**10.456,25 Euro** (1.045,63 €/Stück)'],
+    ]],
+    ['note', 'Ergebnis: **Lieferant Beta ist rechnerisch um 127,75 Euro günstiger** (10.456,25 Euro gegenüber 10.584,00 Euro), obwohl sein Grundpreis (LEP) höher war. Höherer Rabatt und besseres Skonto haben den Unterschied ausgeglichen.'],
+    ['h', 'Der qualitative Angebotsvergleich (Nutzwertanalyse)'],
+    ['p', 'Der billigste Anbieter ist in der IT oft nicht die beste Wahl: Was nützt ein billigerer Server, wenn er 6 Wochen Lieferzeit hat oder der Support tagelang nicht erreichbar ist? Die **Nutzwertanalyse** verbindet quantitative und qualitative Kriterien zu einer objektiven Entscheidung.'],
+    ['table', ['Kriterium', 'Gewichtung', 'Lieferant Alpha (Punkte 1-10)', 'Teilwert Alpha', 'Lieferant Beta (Punkte 1-10)', 'Teilwert Beta'], [
+      ['Bezugspreis', '30 % (0,30)', '7 Punkte', '0,30 * 7 = **2,10**', '9 Punkte', '0,30 * 9 = **2,70**'],
+      ['Lieferzeit (Tage)', '25 % (0,25)', '9 Punkte (sofort ab Lager)', '0,25 * 9 = **2,25**', '4 Punkte (4 Wochen Lieferzeit)', '0,25 * 4 = **1,00**'],
+      ['Garantie & Support', '25 % (0,25)', '9 Punkte (3 Jahre Vor-Ort)', '0,25 * 9 = **2,25**', '6 Punkte (Bring-In-Service)', '0,25 * 6 = **1,50**'],
+      ['Umwelt & Energie', '20 % (0,20)', '8 Punkte (Energy Star, TCO)', '0,20 * 8 = **1,60**', '7 Punkte', '0,20 * 7 = **1,40**'],
+      ['**Gesamtsumme**', '**100 % (1,00)**', '-', '**8,20 Punkte**', '-', '**6,60 Punkte**'],
+    ]],
+    ['ex', [
+      '**Auswertung der Nutzwertanalyse:**',
+      '- Obwohl **Lieferant Beta** beim reinen Preis führt (2,70 vs. 2,10 Teilpunkte), gewinnt im Gesamtergebnis **Lieferant Alpha mit 8,20 zu 6,60 Punkten**.',
+      '- **Begründung für die Geschäftsleitung:** Lieferant Alpha garantiert sofortige Verfügbarkeit und einen 3-jährigen Vor-Ort-Service. Da die Notebooks dringend für ein neues Kundenprojekt benötigt werden, überwiegen diese Vorteile die geringen Mehrkosten von 127,75 Euro deutlich.',
+    ]],
+    ['h', 'Wörter, die in der Prüfung vorkommen'],
+    ['table', ['Wort', 'Einfach erklärt'], [
+      ['Listeneinkaufspreis (LEP)', 'Katalogpreis des Herstellers/Lieferanten ohne Mehrwertsteuer'],
+      ['Lieferrabatt', 'Prozentualer Nachlass auf den Katalogpreis (z. B. wegen hoher Bestellmenge)'],
+      ['Zieleinkaufspreis (ZEP)', 'Rechnungsbetrag, fällig bei normalem Zahlungsziel (meist 30 Tage)'],
+      ['Lieferskonto', 'Belohnung für schnelle Überweisung (z. B. 2 % bei Zahlung binnen 10 Tagen)'],
+      ['Bareinkaufspreis (BEP)', 'Rechnungsbetrag nach Abzug des Skontos'],
+      ['Bezugskosten', 'Kosten für Transport, Verpackung, Zoll und Transportversicherung'],
+      ['Einstandspreis / Bezugspreis', 'Die tatsächlichen Endkosten der Ware, bis sie im Betrieb ankommt'],
+      ['Nutzwertanalyse', 'Bewertungsverfahren für Entscheidungen anhand gewichteter Kriterien'],
+    ]],
+    ['see', ['wiso-kaufvertrag', 'wiso-kaufvertragsstoerungen', 'wiso-kennzahlen', 'eua-breakeven']],
+    ['h', 'Aufgaben im Prüfungsstil'],
+    ['qa', 'Führen Sie den rechnerischen Angebotsvergleich für die Anschaffung eines Datenbank-Servers durch: Listeneinkaufspreis: 8.000,00 Euro netto; Lieferantenrabatt: 12 %; Skonto: 3 %; Verpackungs- und Frachtkosten: 180,00 Euro netto. Berechnen Sie Zieleinkaufspreis, Bareinkaufspreis und Bezugspreis.', [
+      '- Listeneinkaufspreis: 8.000,00 Euro',
+      '- minus 12 % Rabatt (8.000 * 0,12 = 960,00 Euro) = **Zieleinkaufspreis: 7.040,00 Euro**',
+      '- minus 3 % Skonto (7.040 * 0,03 = 211,20 Euro) = **Bareinkaufspreis: 6.828,80 Euro**',
+      '- plus Bezugskosten: 180,00 Euro = **Bezugspreis (Einstandspreis): 7.008,80 Euro**',
+      'Je Zwischenschritt 1 Punkt, zusammen 4 Punkte.',
+    ], 4],
+    ['qa', 'Nennen Sie neben dem Bezugspreis vier qualitative Kriterien, die bei der Auswahl eines Hardware-Lieferanten berücksichtigt werden sollten.', [
+      '- **Lieferzeit / Lieferzuverlässigkeit:** Schnelligkeit und Einhaltung von Lieferterminen.',
+      '- **Qualität und Zuverlässigkeit der Produkte:** Fehlerrate, Verarbeitungsqualität, Zertifizierungen.',
+      '- **Service und technischer Support:** Reaktionszeiten bei Defekten, Hotline-Verfügbarkeit, Vor-Ort-Reparatur.',
+      '- **Ökologische Kriterien / Nachhaltigkeit:** Energieeffizienz, Reparierbarkeit, umweltfreundliche Verpackung.',
+    ], 4],
+    ['qa', 'Erklären Sie, warum ein Lieferant mit einem höheren Listeneinkaufspreis am Ende dennoch den günstigsten Bezugspreis bieten kann.', 'Ein Lieferant mit höherem Grundpreis kann durch **höhere Rabatte** (z. B. Großkundenrabatt) und ein **attraktiveres Skonto** den Bareinkaufspreis deutlich senken. Wenn dieser Lieferant zudem **kostenfreie Lieferung (frei Haus)** anbietet, während der Konkurrent hohe Bezugskosten für Fracht und Spezialverpackung berechnet, kann der finale Bezugspreis niedriger ausfallen.', 3],
+    ['quiz', [
+      {q: 'Von welchem Betrag wird das Skonto im Kalkulationsschema berechnet?', o: ['Vom Zieleinkaufspreis (nach Rabatt)', 'Vom Listeneinkaufspreis', 'Vom Bareinkaufspreis', 'Vom Bruttobetrag inkl. USt'], a: 0, e: 'Skonto wird immer vom bereits rabattierten Zieleinkaufspreis (ZEP) abgezogen.'},
+      {q: 'Was passiert mit den Bezugskosten im Kalkulationsschema?', o: ['Sie werden zum Bareinkaufspreis addiert', 'Sie werden vom Listeneinkaufspreis abgezogen', 'Sie werden mit dem Skonto verrechnet', 'Sie spielen keine Rolle'], a: 0, e: 'Bezugskosten (Fracht, Verpackung) erhöhen den Bezugspreis (Einstandspreis).'},
+      {q: 'Was ist das Ziel einer Nutzwertanalyse?', o: ['Ein mehrdimensionaler Vergleich anhand gewichteter qualitativer Kriterien', 'Die reine Berechnung des günstigsten Preises', 'Die Ermittlung der Körperschaftsteuer', 'Die Berechnung des Urlaubsanspruchs'], a: 0, e: 'Die Nutzwertanalyse berücksichtigt weiche Faktoren wie Qualität, Service und Lieferzeit.'},
+      {q: 'Was ergibt der Listeneinkaufspreis abzüglich des Lieferrabatts?', o: ['Zieleinkaufspreis', 'Bareinkaufspreis', 'Bezugspreis', 'Deckungsbeitrag'], a: 0, e: 'LEP - Rabatt = Zieleinkaufspreis (ZEP).'},
+      {q: 'Was bedeutet die Lieferbedingung „frei Haus“ für die Bezugskosten?', o: ['Die Bezugskosten für den Käufer betragen 0 Euro (Verkäufer zahlt Transport)', 'Der Käufer muss die Fracht ab Werk selbst bezahlen', 'Die Ware ist umsonst', 'Die Ware muss abgeholt werden'], a: 0, e: '„Frei Haus“ bedeutet, dass der Verkäufer alle Transportkosten bis zum Käufer übernimmt.'},
+    ]],
+  ],
+});
+;
+// content/wiso/zahlungsverkehr-1.js
+AP2.page('wiso-zahlungsverkehr', {
+  b: 'wiso', g: 'Wirtschaft und Geld', t: 'Zahlungsverkehr: SEPA, Lastschrift, Karten und Online-Zahlung',
+  d: 'Im Wirtschaftsleben gibt es drei Formen der Zahlung: **Barzahlung** (Scheine und Münzen), **halbare Zahlung** (eine Seite bar, z. B. Bareinzahlung auf fremdes Konto) und **bargeldlose Zahlung** (Geld fließt von Konto zu Konto). Im europäischen **SEPA-Raum** läuft der bargeldlose Verkehr über **IBAN** und **BIC**. Wichtige Instrumente sind **SEPA-Überweisung**, **Dauerauftrag** und **SEPA-Lastschrift**. Bei der **SEPA-Basislastschrift** kann der Zahler **innerhalb von 8 Wochen** ohne Begründung widersprechen (bei unberechtigter Buchung sogar **13 Monate**). Bei der **SEPA-Firmenlastschrift (B2B)** gibt es **kein Rückgaberecht**.',
+  m: '**Bar = Scheine/Münzen. Halhbar = Zahlschein/Bareinzahlung auf fremdes Konto. Bargeldlos = Überweisung, Lastschrift, Karte.** **IBAN Deutschland = 22 Stellen (DE + 2 Prüfziffern + 8 Bankleitzahl + 10 Kontonummer).** **Basislastschrift: 8 Wochen Widerspruchsfrist** (ohne Grund), **13 Monate** bei fehlendem Mandat. **Firmenlastschrift: 0 Tage (kein Widerspruch!).** Dauerauftrag = fixer Termin + fixer Betrag. Lastschrift = Gläubiger bucht ab.',
+  cheat: [
+    ['Formen des Zahlungsverkehrs', [
+      '**Barzahlung:** Übergabe von gesetzlichen Zahlungsmitteln (Euro-Banknoten und Münzen)',
+      '**Halbbare Zahlung:** Nur ein Partner nutzt ein Konto (Bareinzahlung auf fremdes Konto, Barabhebung per Scheck)',
+      '**Bargeldlose Zahlung:** Buchgeld wird zwischen Girokonten übertragen (Überweisung, Lastschrift, Kartenzahlung, Online-Zahlung)',
+    ]],
+    ['SEPA-Überweisung & Dauerauftrag', [
+      '**SEPA-Überweisung:** Schuldner beauftragt seine Bank aktiv; Ausführungsfrist: max. **1 Bankarbeitstag** (bei Online-Banking)',
+      '**SEPA Instant Payment (Echtzeitüberweisung):** Geld ist binnen **10 Sekunden** beim Empfänger (24/7/365)',
+      '**Dauerauftrag:** Wiederkehrende Zahlung zu **festem Termin** und in **fester Höhe** (z. B. Büromiete, Gehälter)',
+    ]],
+    ['SEPA-Lastschriften im Vergleich', [
+      '**SEPA-Basislastschrift (Core):** Für Verbraucher (B2C) und Betriebe; **Widerrufsfrist 8 Wochen** ab Belastung ohne Angabe von Gründen; bei unautorisierter Abbuchung (kein Mandat): **13 Monate**',
+      '**SEPA-Firmenlastschrift (B2B):** Nur zwischen Unternehmen; **KEIN Erstattungsanspruch** / kein Widerruf nach Belastung!',
+    ]],
+    ['Kartenzahlungen', [
+      '**Girocard (Debitkarte):** Direkte, sofortige Abbuchung vom Girokonto (mit PIN oder kontaktlos über NFC)',
+      '**Kreditkarte (Mastercard, Visa):** Kreditinstitut gewährt Kredit; Abrechnung einmal monatlich gesammelt',
+      '**Prepaid-Karte:** Funktioniert nur auf Guthabenbasis (kein Kreditrisiko)',
+    ]],
+  ],
+  blocks: [
+    ['h', 'Die drei Formen der Zahlung im Überblick'],
+    ['p', 'Je nachdem, ob Bargeld im Spiel ist, unterscheidet das Wirtschaftsrecht drei Zahlungsarten:'],
+    ['table', ['Zahlungsform', 'Beteiligte und Ablauf', 'Typische Beispiele aus der Praxis'], [
+      ['**Barzahlung**', 'Zahler und Empfänger wickeln das Geschäft mit Banknoten und Münzen ab', 'Kauf von Büromaterial im Fachgeschäft mit Quittung; Kasse im Einzelhandel'],
+      ['**Halbbare Zahlung**', 'Entweder der Zahler ODER der Empfänger nutzt Bargeld, der andere ein Bankkonto', 'Bareinzahlung am Schalter auf ein fremdes Bankkonto (Zahlschein); Nachnahmesendung beim Paketdienst'],
+      ['**Bargeldlose Zahlung**', 'Geld wird rein elektronisch als **Buchgeld** von einem Girokonto auf ein anderes übertragen', 'SEPA-Überweisung der Monatsgehälter; SEPA-Lastschrift für Software-Abos; Kreditkartenzahlung'],
+    ]],
+    ['h', 'Der SEPA-Zahlungsverkehr und die IBAN'],
+    ['p', 'SEPA (Single Euro Payments Area) vereinheitlicht den bargeldlosen Zahlungsverkehr in allen EU-Staaten sowie weiteren Teilnehmerländern (wie der Schweiz, Norwegen und Großbritannien).'],
+    ['kv', [
+      ['IBAN (International Bank Account Number)', 'Internationale Kontonummer. In Deutschland hat sie **immer genau 22 Stellen**: **DE** (Ländercode) + **2 Prüfziffern** (z. B. 89) + **8 Stellen Bankleitzahl (BLZ)** + **10 Stellen Kontonummer** (kürzere Nummern werden mit führenden Nullen auf 10 Stellen aufgefüllt).'],
+      ['BIC (Business Identifier Code)', 'Weltweiter SWIFT-Code zur eindeutigen Identifizierung des Kreditinstituts (8 oder 11 Zeichen). Bei Inlands- und EWR-Zahlungen in Euro heute meist nicht mehr zwingend nötig („IBAN-only“).'],
+      ['SEPA-Überweisung', 'Der Kontoinhaber beauftragt seine Bank aktiv, Geld an einen Empfänger zu senden. Gesetzliche Ausführungsfrist: **1 Geschäftstag** bei elektronischer Übermittlung (Online-Banking), 2 Geschäftstage bei Papier-Überweisungsträger.'],
+      ['Echtzeitüberweisung (SEPA Instant Payment)', 'Gutschrift auf dem Empfängerkonto innerhalb von **maximal 10 Sekunden**, an jedem Kalendertag rund um die Uhr.'],
+    ]],
+    ['h', 'SEPA-Basislastschrift versus SEPA-Firmenlastschrift'],
+    ['p', 'Bei einer Lastschrift ermächtigt der Zahlungspflichtige den Gläubiger über ein **SEPA-Lastschriftmandat**, Geld von seinem Konto einzuziehen. Das BGB und das Bankenrecht unterscheiden streng zwei Lastschriftarten:'],
+    ['table', ['Kriterium', 'SEPA-Basislastschrift (SEPA Core)', 'SEPA-Firmenlastschrift (SEPA B2B)'], [
+      ['**Zielgruppe**', 'Verbraucher (B2C) und Geschäftskunden', '**Ausschließlich Unternehmen / Kaufleute** (B2B); keine Verbraucher!'],
+      ['**Mandat**', 'Wird dem Gläubiger erteilt; Gläubiger reicht es ein', 'Muss dem Gläubiger **UND der eigenen Hausbank** vorab vorgelegt werden'],
+      ['**Widerrufsfrist (autorisiert)**', '**8 Wochen** ab Buchungstag (ohne jede Begründung erhält der Kunde das Geld sofort zurück)', '**KEIN Rückgaberecht!** Sobald das Konto belastet ist, ist kein Widerspruch mehr möglich.'],
+      ['**Widerrufsfrist (unautorisiert)**', '**13 Monate** (wenn überhaupt kein gültiges Lastschriftmandat vorlag)', '**13 Monate** (wenn die eigene Bank kein registriertes Mandat hatte)'],
+      ['**Vorteil für Gläubiger**', 'Bequem für Kunden', '**Höchste Zahlungssicherheit**, da der Schuldner die Lastschrift nicht grundlos stornieren kann'],
+    ]],
+    ['warn', 'Prüfungsfalle bei Lastschriften: Verwechsle nicht Dauerauftrag und Lastschrift! Ein **Dauerauftrag** wird vom **Zahler selbst** eingerichtet und eignet sich nur für **regelmäßige, gleichbleibende Beträge** (z. B. Miete). Bei der **Lastschrift** wird der Zahlungsvorgang vom **Gläubiger (Empfänger)** ausgelöst; sie eignet sich ideal für **unterschiedliche Rechnungsbeträge** (z. B. Cloud-Hosting-Rechnung nach tatsächlichem Datenverbrauch).'],
+    ['h', 'Moderne Online- und Kartenzahlungen'],
+    ['table', ['Zahlungsart', 'Funktionsweise', 'Vorteile für Käufer / Verkäufer', 'Risiken'], [
+      ['**Girocard (Debitkarte)**', 'Geld wird sofort (binnen weniger Tage) vom Girokonto abgebucht', 'Hohe Akzeptanz im Inland, geringe Gebühren, PIN-Sicherheit', 'Bei Verlust PIN-Sperrung nötig (Notruf 116 116)'],
+      ['**Kreditkarte**', 'Kreditinstitut gewährt Kreditrahmen; Sammelabrechnung am Monatsende', 'Weltweite Akzeptanz, Chargeback-Möglichkeit bei Betrug', 'Dispozinsen bei Teilzahlung; Händler zahlt 1-3 % Transaktionsgebühr'],
+      ['**Kauf auf Rechnung**', 'Kunde erhält zuerst die Ware und überweist den Betrag binnen z. B. 14 Tagen', '**Sicherste Methode für den Käufer** (kein finanzielles Vorleistungsrisiko)', 'Ausfallrisiko liegt voll beim Verkäufer (Lieferantenkredit)'],
+      ['**Online-Bezahldienste (z. B. PayPal)**', 'Zahlung über zwischengeschalteten Zahlungsdienstleister per E-Mail/App', 'Sofortige Zahlungsbestätigung für Händler; Käuferschutz für Kunden', 'Gebühren für Händler; Datenschutz (Datenweitergabe ins Ausland)'],
+    ]],
+    ['h', 'Wörter, die in der Prüfung vorkommen'],
+    ['table', ['Wort', 'Einfach erklärt'], [
+      ['Buchgeld (Giralgeld)', 'Guthaben auf einem Girokonto, das für bargeldlose Zahlungen verwendet werden kann'],
+      ['SEPA', 'Single Euro Payments Area: einheitlicher europäischer Zahlungsverkehrsraum'],
+      ['IBAN', 'International Bank Account Number: 22-stellige Kontonummer in Deutschland'],
+      ['SEPA-Lastschriftmandat', 'Schriftliche Ermächtigung des Kontoinhabers, Beträge per Lastschrift abzubuchen'],
+      ['Gläubiger-Identifikationsnummer', 'Eindeutige Kennung des abbuchenden Unternehmens bei Lastschriften (Gläubiger-ID)'],
+      ['Debitkarte', 'Bankkarte (z. B. Girocard), bei der das Konto sofort belastet wird (kein Kredit)'],
+      ['Chargeback', 'Rückbuchung einer unberechtigten oder fehlerhaften Kreditkartenzahlung'],
+      ['Lieferantenkredit', 'Gewährung eines Zahlungsziels (z. B. 30 Tage) durch den Verkäufer beim Kauf auf Rechnung'],
+    ]],
+    ['see', ['wiso-kaufvertrag', 'wiso-kaufvertragsstoerungen', 'wiso-kennzahlen', 'wiso-gehalt']],
+    ['h', 'Aufgaben im Prüfungsstil'],
+    ['qa', 'Ein Softwareentwickler entdeckt auf seinem privaten Girokonto eine Lastschrift über 129,00 Euro von einem Online-Versandhändler. Er hat bei diesem Händler zwar eingekauft und ein Lastschriftmandat erteilt, der Betrag ist jedoch um 50 Euro zu hoch. Welche Rechte hat der Kontoinhaber und welche Frist gilt?', [
+      '- Es handelt sich um eine **autorisierte SEPA-Basislastschrift**.',
+      '- Der Kontoinhaber kann die Lastschrift **innerhalb von 8 Wochen ab dem Tag der Kontobelastung** bei seiner Bank **ohne Angabe von Gründen widerrufen (zurückbuchen lassen)**.',
+      '- Die Bank erstattet den gesamten abgebuchten Betrag (129,00 Euro) sofort wieder auf dem Girokonto.',
+      '- Anschließend überweist der Entwickler den tatsächlich geschuldeten Betrag (79,00 Euro) an den Händler.',
+      'Zusammen 4 Punkte.',
+    ], 4],
+    ['qa', 'Warum verlangen viele IT-Lieferanten bei Geschäftskunden (B2B) eine SEPA-Firmenlastschrift statt einer Basislastschrift?', 'Bei der **SEPA-Firmenlastschrift (B2B)** hat der Zahlungspflichtige nach der Kontobelastung **keinerlei Recht auf Rückgabe oder Widerruf** (im Gegensatz zur 8-Wochen-Frist bei der Basislastschrift). Dies gibt dem liefernden IT-Unternehmen absolute **Zahlungssicherheit**, da ein Kunde die Abbuchung nicht willkürlich stornieren kann.', 3],
+    ['qa', 'Aus welchen Bestandteilen setzt sich eine deutsche IBAN zusammen und wie viele Stellen hat sie?', [
+      '- Eine deutsche IBAN hat **immer genau 22 Stellen**.',
+      '- Bestandteile von links nach rechts: (1) **Länderkennzeichen DE** (2 Buchstaben), (2) **Prüfziffer** (2 Stellen), (3) **Bankleitzahl** (8 Stellen), (4) **Kontonummer** (10 Stellen, bei kürzeren Nummern mit Nullen aufgefüllt).',
+    ], 3],
+    ['quiz', [
+      {q: 'Wie viele Stellen hat eine deutsche IBAN immer?', o: ['22 Stellen', '20 Stellen', '18 Stellen', '24 Stellen'], a: 0, e: 'DE + 2 Prüfziffern + 8 Bankleitzahl + 10 Kontonummer = 22 Stellen.'},
+      {q: 'Welche Frist gilt für den grundlosen Widerruf einer autorisierten SEPA-Basislastschrift?', o: ['8 Wochen ab Kontobelastung', '2 Wochen ab Kontobelastung', '13 Monate', 'Es gibt kein Widerrufsrecht'], a: 0, e: 'Bei einer autorisierten Basislastschrift hat der Zahler 8 Wochen Zeit zum Widerruf.'},
+      {q: 'Welche Aussage zur SEPA-Firmenlastschrift (B2B) ist korrekt?', o: ['Nach der Abbuchung besteht kein Rückgaberecht mehr', 'Sie kann 8 Wochen lang widerrufen werden', 'Sie gilt nur für Privatkunden', 'Sie ist auf 1.000 Euro begrenzt'], a: 0, e: 'Die Firmenlastschrift schließt ein Erstattungsrecht nach Belastung aus.'},
+      {q: 'Wofür eignet sich ein Dauerauftrag am besten?', o: ['Regelmäßige Zahlungen zu festem Termin in fester Höhe (z. B. Miete)', 'Rechnungen mit schwankendem monatlichen Betrag', 'Einmalige Einkäufe im Supermarkt', 'Spontane Überweisungen an Freunde'], a: 0, e: 'Daueraufträge sind optimal für fixe Beträge zu festen Terminen.'},
+      {q: 'Was ist ein Vorteil des Kaufs auf Rechnung für den Käufer?', o: ['Kein Vorleistungsrisiko: Ware prüfen, erst dann bezahlen', 'Man muss die Ware nie bezahlen', 'Der Händler gewährt immer 20 % Rabatt', 'Keine Lieferkosten'], a: 0, e: 'Beim Rechnungskauf zahlt der Käufer erst, nachdem er die Ware erhalten und geprüft hat.'},
+    ]],
+  ],
+});
+;
 // content/wiso/unternehmen-1.js
 AP2.page('wiso-unternehmen', {
   b: 'wiso', g: 'Unternehmen und Steuern', t: 'Unternehmensformen (Rechtsformen)',
-  d: 'Die **Rechtsform** bestimmt, **wer haftet**, **wer entscheidet**, **wie viel Kapital** nötig ist und **wie Gewinne versteuert** werden. **Einzelunternehmen**, **GbR**, **OHG** und **KG** sind **Personengesellschaften** (Gesellschafter **haften persönlich**, mit Ausnahme der Kommanditisten). **GmbH**, **UG** und **AG** sind **Kapitalgesellschaften** (**Haftung nur mit dem Gesellschaftsvermögen**, eigene Rechtspersönlichkeit).',
-  m: '**Personengesellschaft = Person haftet (unbeschränkt, mit Privatvermögen). Kapitalgesellschaft = Kapital haftet (beschränkt, nur Gesellschaftsvermögen).** GmbH: **25.000 Euro** Stammkapital, AG: **50.000 Euro** Grundkapital, UG: ab **1 Euro**. KG: **Komplementär** haftet voll, **Kommanditist** nur mit der Einlage.',
+  d: 'Die **Rechtsform** bestimmt, **wer haftet**, **wer entscheidet**, **wie viel Mindestkapital** nötig ist und **wer Steuern zahlt**. **Einzelunternehmen**, **GbR**, **OHG** und **KG** sind **Personengesellschaften**: Die Gesellschafter **haften persönlich und unbeschränkt** mit ihrem Privatvermögen (Ausnahme: Kommanditist bei der KG). **GmbH**, **UG (haftungsbeschränkt)** und **AG** sind **Kapitalgesellschaften**: Sie sind **juristische Personen**, die **Haftung ist auf das Gesellschaftsvermögen beschränkt**.',
+  m: '**Personengesellschaft = Person haftet voll mit Privatvermögen.** **Kapitalgesellschaft = nur das Gesellschaftsvermögen haftet.** GmbH: **25.000 Euro** Stammkapital (mind. 12.500 Euro bei Gründung bar). AG: **50.000 Euro** Grundkapital. UG: ab **1 Euro** (25 % Gewinn in Rücklage). KG: **Komplementär haftet voll, Kommanditist nur bis zur Einlage.**',
   cheat: [
-    ['Personengesellschaften', ['**e. K.** (Einzelunternehmen): 1 Person, voll haftend', '**GbR:** 2+ Gesellschafter, kein Mindestkapital, voll haftend', '**OHG:** Kaufleute, alle voll haftend (solidarisch), Handelsregister', '**KG:** Komplementär (voll) + Kommanditist (Einlage)']],
-    ['Kapitalgesellschaften', ['**GmbH:** Stammkapital **25.000 Euro** (mind. 12.500 bei Gründung), Geschäftsführer', '**UG (haftungsbeschränkt):** ab **1 Euro**, Rücklage 25 % des Gewinns', '**AG:** Grundkapital **50.000 Euro**, Vorstand, Aufsichtsrat, Hauptversammlung', 'Haftung nur mit **Gesellschaftsvermögen**']],
-    ['Mischformen', ['**GmbH & Co. KG:** GmbH ist Komplementär (Haftung beschränkt)', '**eG** (Genossenschaft): Mitglieder, ein Mitglied eine Stimme', '**KGaA, SE** (Europäische AG)']],
-    ['Entscheidungskriterien', ['**Haftung**', '**Kapitalbedarf**', '**Gründungsaufwand** (notariell, Handelsregister)', '**Steuern** (Einkommen- vs. Körperschaftsteuer)', '**Mitbestimmung, Publizität**']],
-  ],
+    ['Personengesellschaften', ['**Einzelunternehmen (e. K.):** 1 Person, unbeschränkte persönliche Haftung', '**GbR (Gesellschaft bürgerlichen Rechts):** min. 2 Personen, kein Mindestkapital, unbeschränkt solidarisch', '**OHG (Offene Handelsgesellschaft):** Kaufleute, Handelsregister Abt. A, unbeschränkt, unmittelbar, solidarisch', '**KG (Kommanditgesellschaft):** Komplementär (Vollhafter, führt Geschäft) + Kommanditist (Teilhafter, nur Einlage)']],
+    ['Kapitalgesellschaften', ['**GmbH:** Stammkapital **25.000 Euro**, Geschäftsführer leitet, Gesellschafterversammlung', '**UG (haftungsbeschränkt):** Start ab **1 Euro**, Pflicht zur gesetzlichen Rücklage (25 % des Jahresüberschusses)', '**AG:** Grundkapital **50.000 Euro**, Vorstand (Leitung), Aufsichtsrat (Kontrolle), Hauptversammlung (Aktionäre)', 'Haftung immer **beschränkt auf das Gesellschaftsvermögen**']],
+    ['Kaufmannsarten nach HGB', ['**Istkaufmann (§ 1 HGB):** Gewerbe erfordert kaufmännischen Geschäftsbetrieb; Eintragung ins Handelsregister ist **deklaratorisch** (nur bestätigend)', '**Kannkaufmann (§ 2 HGB):** Kleingewerbetreibender lässt sich freiwillig eintragen; Eintragung ist **konstitutiv** (rechtsbegründend)', '**Formkaufmann (§ 6 HGB):** Kapitalgesellschaften (GmbH, AG) sind kraft Rechtsform immer Kaufleute']],
+    ['Handelsregister', ['Geführt beim **Amtsgericht**; öffentlich einsehbar (**Öffentlicher Glaube**)', '**Abteilung A (HRA):** Einzelkaufleute (e. K.) und Personengesellschaften (OHG, KG)', '**Abteilung B (HRB):** Kapitalgesellschaften (GmbH, UG, AG)']]],
   blocks: [
-    ['h', 'Warum ist die Rechtsform wichtig?'],
-    ['p', 'Wer ein Unternehmen gründet, muss entscheiden: **Wer haftet mit seinem Privatvermögen**, wenn das Unternehmen Schulden macht? **Wie viel Geld** muss man einbringen? **Wer darf Entscheidungen treffen**? Das Recht bietet verschiedene **Rechtsformen** mit unterschiedlichen Antworten. Für IT-Gründer ist oft die **GmbH** (oder **UG**) interessant, weil sie das **Privatvermögen schützt**.'],
+    ['h', 'Warum ist die Wahl der Rechtsform so wichtig?'],
+    ['p', 'Wer ein IT-Unternehmen gründet, muss grundlegende Fragen klären: **Wer haftet mit seinem privaten Vermögen**, wenn Rechnungen oder Schadensersatzansprüche nicht bezahlt werden können? **Wie viel Startkapital** ist vorhanden? **Wer darf im Betrieb entscheiden**? Für Softwareentwickler ist die Haftungsbeschränkung meist der Hauptgrund für eine **GmbH** oder **UG**, weil Programmierfehler teure Schäden bei Kunden anrichten können.'],
     ['diagram', {w: 760, h: 270, keep: 640, cap: 'Übersicht der wichtigsten Rechtsformen', nodes: [
-      {id: 'r', k: 'round', x: 380, y: 30, t: 'Rechtsformen', w: 160, h: 38, s: 'solid'}, {id: 'e', k: 'round', x: 130, y: 100, t: 'Einzelunternehmen (e. K.)', w: 200, h: 40, s: 'accent', fs: 12}, {id: 'p', k: 'round', x: 380, y: 100, t: 'Personengesellschaften', w: 200, h: 40, s: 'accent', fs: 12}, {id: 'k', k: 'round', x: 630, y: 100, t: 'Kapitalgesellschaften', w: 200, h: 40, s: 'accent', fs: 12},
-      {id: 'p1', k: 'round', x: 290, y: 190, t: 'GbR, OHG, KG', w: 140, h: 38, s: 'soft'}, {id: 'p2', k: 'round', x: 440, y: 190, t: 'GmbH & Co. KG', w: 150, h: 38, s: 'soft'}, {id: 'k1', k: 'round', x: 600, y: 190, t: 'GmbH, UG', w: 110, h: 38, s: 'soft'}, {id: 'k2', k: 'round', x: 700, y: 190, t: 'AG, SE', w: 80, h: 38, s: 'soft'}, {id: 'g', k: 'round', x: 380, y: 245, t: 'Genossenschaft (eG), Verein', w: 220, h: 34, s: 'soft', fs: 12},
+      {id: 'r', k: 'round', x: 380, y: 30, t: 'Rechtsformen', w: 160, h: 38, s: 'solid'},
+      {id: 'e', k: 'round', x: 130, y: 100, t: 'Einzelunternehmen (e. K.)', w: 200, h: 40, s: 'accent', fs: 12},
+      {id: 'p', k: 'round', x: 380, y: 100, t: 'Personengesellschaften', w: 200, h: 40, s: 'accent', fs: 12},
+      {id: 'k', k: 'round', x: 630, y: 100, t: 'Kapitalgesellschaften', w: 200, h: 40, s: 'accent', fs: 12},
+      {id: 'p1', k: 'round', x: 290, y: 190, t: 'GbR, OHG, KG', w: 140, h: 38, s: 'soft'},
+      {id: 'p2', k: 'round', x: 440, y: 190, t: 'GmbH & Co. KG', w: 150, h: 38, s: 'soft'},
+      {id: 'k1', k: 'round', x: 600, y: 190, t: 'GmbH, UG', w: 110, h: 38, s: 'soft'},
+      {id: 'k2', k: 'round', x: 700, y: 190, t: 'AG, SE', w: 80, h: 38, s: 'soft'},
+      {id: 'g', k: 'round', x: 380, y: 245, t: 'Genossenschaft (eG), Verein', w: 220, h: 34, s: 'soft', fs: 12},
     ], edges: [{a: 'r', b: 'e', ea: 'none'}, {a: 'r', b: 'p', ea: 'none'}, {a: 'r', b: 'k', ea: 'none'}, {a: 'p', b: 'p1', ea: 'none'}, {a: 'p', b: 'p2', ea: 'none'}, {a: 'k', b: 'k1', ea: 'none'}, {a: 'k', b: 'k2', ea: 'none'}]}],
-    ['h', 'Personengesellschaften und Einzelunternehmen'],
-    ['table', ['Rechtsform', 'Gründung', 'Mindestkapital', 'Haftung', 'Geschäftsführung', 'Besonderheit'], [
-      ['**Einzelunternehmen** (e. K., eingetragener Kaufmann)', 'Eine Person, Gewerbeanmeldung, bei kaufmännischem Umfang **Handelsregister**', 'keines', '**Unbeschränkt** mit dem **gesamten Privatvermögen**', 'Inhaber allein', 'Einfach, **Alleinentscheidung**, **volles Risiko**; Gewinn wird versteuert wie persönliches Einkommen'],
-      ['**GbR** (Gesellschaft bürgerlichen Rechts)', '**Formlos** (auch mündlich), mindestens **2 Gesellschafter**', 'keines', '**Unbeschränkt, gesamtschuldnerisch** (jeder haftet für alles)', 'Alle gemeinsam', 'Einfachste Gesellschaftsform, für kleine Projekte (Praxisgemeinschaft); keine Eintragung nötig'],
-      ['**OHG** (Offene Handelsgesellschaft)', 'Mind. **2 Gesellschafter**, **Handelsregister**, Gesellschaftsvertrag', 'keines', '**Alle Gesellschafter unbeschränkt, unmittelbar und solidarisch**', 'Jeder einzeln', 'Kaufmännisches Gewerbe, **Firma** mit Zusatz "OHG"'],
-      ['**KG** (Kommanditgesellschaft)', 'Mind. 2: **Komplementär** + **Kommanditist**, **Handelsregister**', 'Einlage des Kommanditisten (Hafteinlage)', '**Komplementär: unbeschränkt**. **Kommanditist: nur mit der Einlage**', 'Komplementär führt, Kommanditisten **ohne** Geschäftsführung', 'Kapitalgeber ohne Haftung und ohne Führung'],
+    ['h', 'Personengesellschaften und Einzelunternehmen im Detail'],
+    ['table', ['Rechtsform', 'Gründung & Kapital', 'Haftung der Gesellschafter', 'Geschäftsführung & Vertretung', 'Besonderheit'], [
+      ['**Einzelunternehmen** (e. K.)', '1 Person; kein Mindestkapital; Gewerbeanmeldung', '**Unbeschränkt** mit Betriebs- und **Privatvermögen**', 'Inhaber allein', 'Schnelle Entscheidungen, hohes persönliches Risiko, Einkommensteuer des Inhabers'],
+      ['**GbR** (Gesellschaft bürgerlichen Rechts)', 'Mindestens 2 Personen; formloser Vertrag; kein Mindestkapital', '**Unbeschränkt und solidarisch** (gesamtschuldnerisch)', 'Alle Gesellschafter gemeinsam (sofern nicht anders vereinbart)', 'Kein Handelsregister; gut für Arbeitsgemeinschaften oder kleine Bürogemeinschaften'],
+      ['**OHG** (Offene Handelsgesellschaft)', 'Mindestens 2 Kaufleute; kein Mindestkapital; Handelsregister Abteilung A', '**Unbeschränkt, unmittelbar und solidarisch** für alle', 'Jeder Gesellschafter einzeln zur Geschäftsführung berechtigt', 'Kaufmännisches Handelsgewerbe; hohes Vertrauen bei Lieferanten'],
+      ['**KG** (Kommanditgesellschaft)', 'Mind. 1 **Komplementär** + mind. 1 **Kommanditist**; Handelsregister Abt. A', '**Komplementär: unbeschränkt** mit Privatvermögen. **Kommanditist: nur mit Einlage**', 'Nur der Komplementär führt die Geschäfte; Kommanditist hat Kontrollrechte', 'Ideal für Kapitalanleger, die nicht im Alltag mitarbeiten und nicht privat haften wollen'],
     ]],
-    ['h', 'Kapitalgesellschaften'],
-    ['table', ['Rechtsform', 'Gründung', 'Mindestkapital', 'Haftung', 'Organe', 'Besonderheit'], [
-      ['**GmbH** (Gesellschaft mit beschränkter Haftung)', '**Notarieller** Gesellschaftsvertrag, **Handelsregister**; Mindestens 1 Gründer', '**25.000 Euro** Stammkapital (bei Gründung mindestens **12.500 Euro** einzahlen)', '**Nur Gesellschaftsvermögen**; Gesellschafter haften mit **Einlage**', '**Geschäftsführer**, Gesellschafterversammlung, Aufsichtsrat ab 500 AN', '**Häufigste Rechtsform** für Mittelstand und IT; Firma mit "GmbH"; Körperschaftsteuer'],
-      ['**UG (haftungsbeschränkt)** ("Mini-GmbH")', 'Wie GmbH, Musterprotokoll möglich', '**ab 1 Euro** (Stammkapital), **25 % des Jahresgewinns** in die Rücklage bis 25.000 Euro', 'Nur Gesellschaftsvermögen', 'Wie GmbH', 'Einstieg für Gründer mit wenig Kapital; später in GmbH umwandelbar'],
-      ['**AG** (Aktiengesellschaft)', '**Notarielle Satzung**, Handelsregister, ab 1 Gründer', '**50.000 Euro** Grundkapital, aufgeteilt in **Aktien** (Nennbetrag mind. 1 Euro)', 'Nur Gesellschaftsvermögen; Aktionäre riskieren ihren Einsatz', '**Vorstand** (leitet), **Aufsichtsrat** (überwacht, bestellt Vorstand), **Hauptversammlung** (Aktionäre)', 'Kapitalbeschaffung über die **Börse**; strenge Publizität; große Unternehmen'],
+    ['h', 'Kapitalgesellschaften im Detail'],
+    ['table', ['Rechtsform', 'Gründung & Mindestkapital', 'Haftung', 'Organe', 'Besonderheit'], [
+      ['**GmbH** (Gesellschaft mit beschränkter Haftung)', 'Notarieller Vertrag, Handelsregister Abt. B; **25.000 Euro** Stammkapital (mind. 12.500 bar)', '**Nur das Gesellschaftsvermögen** (beschränkte Haftung)', '**Geschäftsführer** (Leitung), Gesellschafterversammlung (Eigentümer)', 'Eigene juristische Person; zahlt **Körperschaftsteuer** (15 %) + Gewerbesteuer; Bilanzpflicht'],
+      ['**UG (haftungsbeschränkt)** („Mini-GmbH“)', 'Notarielles Musterprotokoll; Stammkapital **ab 1 Euro**', '**Nur das Gesellschaftsvermögen**', 'Wie GmbH (Geschäftsführer)', '25 % des Jahresgewinns müssen als **gesetzliche Rücklage** gespart werden, bis 25.000 Euro erreicht sind'],
+      ['**AG** (Aktiengesellschaft)', 'Notarielle Satzung, Handelsregister Abt. B; **50.000 Euro** Grundkapital', '**Nur das Gesellschaftsvermögen**; Aktionäre riskieren den Kurswert ihrer Aktien', '**Vorstand** (Leitung), **Aufsichtsrat** (Kontrolle), **Hauptversammlung** (Aktionäre)', 'Anteile werden als Aktien an der Börse gehandelt; strenge Publizitäts- und Prüfpflichten'],
     ]],
+    ['warn', 'Typische Prüfungsfallen: (1) **Komplementär und Kommanditist verwechseln:** Der Komplementär haftet **komplett** (voll), der Kommanditist haftet nur mit seiner Einlage. (2) Bei der OHG haftet **jeder Gesellschafter für die gesamten Schulden** (solidarisch/gesamtschuldnerisch), nicht nur für seinen Anteil! Ein Gläubiger kann sich aussuchen, von wem er das Geld fordert. (3) Die UG ist **keine eigene Rechtsform**, sondern eine Sonderform der GmbH. Ihr Namenszusatz lautet zwingend **UG (haftungsbeschränkt)**.'],
+    ['h', 'Wörter, die in der Prüfung vorkommen'],
+    ['table', ['Wort', 'Einfach erklärt'], [
+      ['Juristische Person', 'Eine Organisation, die vor dem Gesetz wie ein Mensch Rechte hat und Verträge schließen kann'],
+      ['Unbeschränkte Haftung', 'Der Inhaber haftet mit Firmenvermögen UND seinem gesamten privaten Vermögen'],
+      ['Solidarische Haftung', 'Gläubiger können die gesamte Summe von jedem beliebigen Gesellschafter verlangen'],
+      ['Stammkapital', 'Das gesetzlich vorgeschriebene Startkapital einer GmbH (mindestens 25.000 Euro)'],
+      ['Komplementär', 'Der voll haftende Gesellschafter einer KG, der das Unternehmen leitet'],
+      ['Kommanditist', 'Der Teilhafter einer KG, der nur mit seiner Geldeinlage haftet und nicht mitentscheidet'],
+      ['Deklaratorisch', 'Rechtsbekundend: Die Rechtswirkung bestand schon vorher (z. B. Eintragung des Istkaufmanns)'],
+      ['Konstitutiv', 'Rechtsbegründend: Das Recht entsteht erst durch den Eintrag (z. B. Entstehung der GmbH)'],
+    ]],
+    ['see', ['wiso-firma', 'wiso-vollmacht', 'wiso-steuern', 'wiso-organisation']],
   ],
 });
 ;
@@ -21193,39 +29669,119 @@ Beispiel: Brutto 119 Euro -> Netto 100 Euro -> USt 19 Euro`],
 ;
 // content/wiso/gehalt-1.js
 AP2.page('wiso-gehalt', {
-  b: 'wiso', g: 'Unternehmen und Steuern', t: 'Gehaltsabrechnung: Brutto und Netto',
-  d: 'Das **Bruttogehalt** ist der vereinbarte Lohn vor Abzügen. Davon werden **Lohnsteuer**, **Solidaritätszuschlag**, **Kirchensteuer** und der **Arbeitnehmeranteil der Sozialversicherung** abgezogen. Übrig bleibt das **Nettogehalt** (Auszahlungsbetrag). Der Arbeitgeber zahlt zusätzlich seinen **Sozialversicherungsanteil** (Lohnnebenkosten).',
-  m: '**Brutto minus Steuern minus Sozialabgaben (AN) gleich Netto.** Sozialabgaben AN etwa **20 %** (RV 9,3, KV 7,3 + Zusatz, PV 1,8, ALV 1,3). **Arbeitgeberkosten = Brutto + AG-Anteile (ca. 21 %).**',
+  b: 'wiso', g: 'Unternehmen und Steuern', t: 'Gehaltsabrechnung: Brutto, Steuern, Sozialabgaben und Netto',
+  d: 'Das **Bruttogehalt** ist das vertraglich vereinbarte Entgelt vor allen Abzügen. Der Arbeitgeber zieht davon die **gesetzlichen Steuern** (Lohnsteuer, Solidaritätszuschlag, Kirchensteuer) und die **Arbeitnehmeranteile zur Sozialversicherung** (RV, KV, PV, ALV) ab. Der verbleibende Betrag ist das **Nettogehalt**. Zieht man persönliche Posten wie vermögenswirksame Leistungen (VWL) ab, ergibt sich der **Auszahlungsbetrag**. Der Arbeitgeber trägt zusätzlich den **Arbeitgeberanteil zur Sozialversicherung** sowie Umlagen (Lohnnebenkosten).',
+  m: '**Nettogehalt = Bruttogehalt minus Steuern minus Sozialversicherungsbeiträge (AN-Anteil).** **Auszahlungsbetrag = Netto minus persönliche Abzüge (z. B. VWL-Sparbetrag).** **Arbeitgeber-Gesamtkosten = Bruttogehalt plus AG-Sozialabgaben (ca. 20 bis 22 %) plus Umlagen (U1, U2, U3) und BG.** Die Unfallversicherung zahlt allein der Arbeitgeber.',
   cheat: [
-    ['Abzüge Arbeitnehmer', ['**Lohnsteuer** (Steuerklasse)', '**Soli** (nur Besserverdiener), **Kirchensteuer** (8 % in BW)', '**RV 9,3 %**, **ALV 1,3 %**', '**KV 7,3 % + halber Zusatzbeitrag**, **PV 1,8 %** (Kinderlose 2,4 %)']],
-    ['Begriffe', ['**Brutto:** vor Abzügen', '**Netto:** Auszahlung', '**Gesamtbrutto:** inkl. Sachbezüge/Zuschläge', '**Arbeitgeber-Brutto:** Gehalt + AG-Anteile']],
+    ['Berechnungsschema', ['**Bruttogehalt** (Grundgehalt + Zuschläge + geldwerter Vorteil)', 'Minus **Lohnsteuer** (nach Steuerklasse I bis VI)', 'Minus **Solidaritätszuschlag** (nur bei hoher Steuer)', 'Minus **Kirchensteuer** (8 % in BW/BY, sonst 9 % der Lohnsteuer)', 'Minus **Arbeitnehmeranteil Sozialversicherung** (ca. 20-21 %)', 'Gleich **Nettogehalt**', 'Minus/Plus **persönliche Abzüge/Zulagen (z. B. VWL)**', 'Gleich **Auszahlungsbetrag** (Überweisung auf das Girokonto)']],
+    ['Lohnsteuerklassen', ['**I:** Ledig, geschieden, dauernd getrennt lebend', '**II:** Alleinerziehend mit Kind (Entlastungsbetrag)', '**III:** Verheiratet, Partner hat Steuerklasse V (hohes Einkommen)', '**IV:** Verheiratet, beide verdienen etwa gleich viel', '**IV mit Faktor:** Verheiratet, verteilt Steuerbelastung exakt', '**V:** Verheiratet, Partner hat III (niedriges Einkommen)', '**VI:** Zweites oder weiteres Beschäftigungsverhältnis (hohe Abzüge)']],
+    ['Sozialabgaben 2026 (Richtwerte)', ['**Rentenversicherung (RV):** 18,6 % (AN: **9,3 %** / AG: **9,3 %**)', '**Krankenversicherung (KV):** 14,6 % + Zusatzbeitrag (AN: **7,3 % + halber Zusatz**)', '**Arbeitslosenversicherung (ALV):** 2,6 % (AN: **1,3 %** / AG: **1,3 %**)', '**Pflegeversicherung (PV):** 4,0 % (AN: **2,0 %** / AG: **2,0 %**)', '**PV-Kinderlosenzuschlag:** + **0,6 %** (zahlt AN allein ab 23 Jahren)', '**Unfallversicherung (UV):** trägt **100 % der Arbeitgeber**']],
+    ['Arbeitgeberkosten', ['**Bruttolohn** des Mitarbeiters', 'Plus **AG-Anteile Sozialversicherung** (ca. 20 %)', 'Plus **Umlagen** (U1 Entgeltfortzahlung, U2 Mutterschutz, U3 Insolvenzgeld)', 'Plus **Beitrag zur Berufsgenossenschaft (UV)**', 'Gesamtkosten liegen ca. **20 bis 25 % über dem Bruttogehalt**']],
   ],
   blocks: [
-    ['h', 'Vom Brutto zum Netto'],
-    ['table', ['Position', 'Wer?', 'Beispiel bei 3.200 Euro Brutto (Steuerklasse I, kinderlos, grob)'], [
-      ['Bruttogehalt', '', '3.200,00'],
-      ['Lohnsteuer', 'AN', '- 440,00 (Näherung)'],
-      ['Soli / Kirchensteuer', 'AN', '- 0,00 / - 35,00'],
-      ['Rentenversicherung 9,3 %', 'AN', '- 297,60'],
-      ['Arbeitslosenversicherung 1,3 %', 'AN', '- 41,60'],
-      ['Krankenversicherung 7,3 % + 1,45 %', 'AN', '- 280,00'],
-      ['Pflegeversicherung 2,4 % (kinderlos)', 'AN', '- 76,80'],
-      ['**Nettogehalt**', '', '**ca. 2.029**'],
+    ['h', 'Vom Bruttogehalt zum Auszahlungsbetrag'],
+    ['p', 'Auf der monatlichen Gehaltsabrechnung wird schrittweise vom Brutto zum Auszahlungsbetrag gerechnet. Das Schema ist in der IHK-Prüfung ein fester Bestandteil.'],
+    ['table', ['Schritt', 'Bezeichnung', 'Erklärung'], [
+      ['1', '**Bruttogehalt**', 'Grundgehalt laut Arbeitsvertrag, Überstunden, Zulagen und Zuschläge'],
+      ['+ / -', '**Geldwerter Vorteil**', 'Sachbezüge wie Dienstwagen oder Jobticket erhöhen das Steuerbrutto'],
+      ['=', '**Steuer- und SV-Brutto**', 'Bemessungsgrundlage für Steuern und Sozialversicherungsbeiträge'],
+      ['-', '**Lohnsteuer**', 'Wird nach Lohnsteuertabelle / Steuertarif der Steuerklasse ermittelt'],
+      ['-', '**Kirchensteuer**', '8 % (in BW und Bayern) bzw. 9 % (übrige Bundesländer) der Lohnsteuer'],
+      ['-', '**Solidaritätszuschlag**', '5,5 % der Lohnsteuer, fällt erst ab höheren Einkommensgrenzen an'],
+      ['-', '**Krankenversicherung (AN)**', 'Allgemeiner Beitragssatz (7,3 %) plus halber kassenindividueller Zusatzbeitrag'],
+      ['-', '**Pflegeversicherung (AN)**', 'Grundanteil (2,0 %) plus 0,6 % Kinderlosenzuschlag ab 23 Jahren'],
+      ['-', '**Rentenversicherung (AN)**', '9,3 % des SV-Bruttos (Hälfte von 18,6 %)'],
+      ['-', '**Arbeitslosenversicherung (AN)**', '1,3 % des SV-Bruttos (Hälfte von 2,6 %)'],
+      ['=', '**Nettogehalt**', 'Ergebnis nach allen gesetzlichen Abzügen'],
+      ['-', '**VWL-Sparbetrag**', 'Betrag, der direkt in einen Bauspar- oder Fondssparvertrag fließt'],
+      ['+', '**AG-Zuschuss zu VWL**', 'Freiwillige oder tarifliche Leistung des Arbeitgebers'],
+      ['=', '**Auszahlungsbetrag**', 'Der Betrag, der tatsächlich auf das Bankkonto überwiesen wird'],
     ]],
-    ['note', 'Die Lohnsteuer ist hier nur **gerundet geschätzt**. In der Prüfung werden Prozentsätze oder Tabellenwerte vorgegeben.'],
-    ['ex', ['**Sozialabgaben AN:** 297,60 + 41,60 + 280,00 + 76,80 = **696,00 Euro** (21,75 %).', '**Arbeitgeberkosten:** 3.200 + ca. 21 % = **ca. 3.870 Euro**.']],
-    ['h', 'Weitere Begriffe'],
+    ['h', 'Die sechs Steuerklassen im Überblick'],
+    ['p', 'Die Steuerklasse richtet sich nach dem Familienstand und den persönlichen Verhältnissen. Sie bestimmt die Freibeträge beim monatlichen Lohnsteuerabzug.'],
+    ['table', ['Steuerklasse', 'Zielgruppe / Voraussetzung', 'Besonderheit / Freibeträge'], [
+      ['**I**', 'Ledige, Geschiedene, Verwitwete, dauernd getrennt Lebende', 'Grundfreibetrag, Arbeitnehmerpauschbetrag, Sonderausgabenpauschale'],
+      ['**II**', 'Alleinerziehende mit mindestens einem kindergeldberechtigten Kind im Haushalt', 'Zusätzlicher **Entlastungsbetrag für Alleinerziehende** mindert die Lohnsteuer'],
+      ['**III**', 'Verheiratet/eingetragene Lebenspartner, Alleinverdiener oder deutlich höherer Verdienst', 'Doppelter Grundfreibetrag; Kombination nur mit **Steuerklasse V** des Partners'],
+      ['**IV**', 'Verheiratet/Partner, wenn beide Partner etwa gleich viel verdienen', 'Standardklasse nach der Heirat; Freibeträge wie Steuerklasse I'],
+      ['**IV mit Faktor**', 'Verheiratet/Partner, verteilt den Steuervorteil exakt nach Einkommensanteil', 'Vermeidet hohe Steuernachzahlungen bei ungleichem Einkommen'],
+      ['**V**', 'Verheiratet/Partner, dessen Ehegatte Steuerklasse III gewählt hat', 'Kein Grundfreibetrag; hohe monatliche Abzüge beim Geringverdiener'],
+      ['**VI**', 'Für jedes zweite und weitere Dienstverhältnis (Nebenjob, Zweitkarte)', 'Höchste Abzüge, da keinerlei Grundfreibeträge gewährt werden'],
+    ]],
+    ['note', 'Bei der Kombination **III / V** zahlen Verheiratete monatlich oft weniger Steuern voraus. Am Jahresende muss jedoch zwingend eine **Einkommensteuererklärung** abgegeben werden. Häufig kommt es dabei zu einer Nachzahlung.'],
+    ['h', 'Sozialversicherungsbeiträge und Beitragsbemessungsgrenzen'],
+    ['p', 'Die Beiträge zur Sozialversicherung werden prozentual vom Bruttogehalt berechnet. Es gilt das Solidaritätsprinzip: Wer mehr verdient, zahlt absolut mehr. Allerdings sind die Beiträge nach oben gedeckelt.'],
+    ['table', ['Zweig', 'Gesamtbeitrag', 'Arbeitnehmeranteil', 'Arbeitgeberanteil', 'Träger'], [
+      ['**Rentenversicherung (RV)**', '18,6 %', '9,3 %', '9,3 %', 'Deutsche Rentenversicherung'],
+      ['**Krankenversicherung (GKV)**', '14,6 % + Zusatz (z. B. 1,7 % = 16,3 %)', '7,3 % + 0,85 % = 8,15 %', '7,3 % + 0,85 % = 8,15 %', 'Gesetzliche Krankenkassen'],
+      ['**Pflegeversicherung (PV)**', '4,0 % (+ 0,6 % kinderlos)', '2,0 % (+ 0,6 % = 2,6 %)', '2,0 %', 'Pflegekassen bei den Krankenkassen'],
+      ['**Arbeitslosenversicherung (ALV)**', '2,6 %', '1,3 %', '1,3 %', 'Bundesagentur für Arbeit'],
+      ['**Unfallversicherung (UV)**', 'Individuell nach Gefahrtarif', '**0 % (beitragsfrei)**', '**100 %**', 'Berufsgenossenschaften (z. B. VBG)'],
+    ]],
     ['kv', [
-      ['Vermögenswirksame Leistungen (VL)', 'Teil des Gehalts, der in Sparverträge fließt; oft **Zuschuss des Arbeitgebers** (bis 40 Euro).'],
-      ['Sachbezug', 'Geldwerte Vorteile (Dienstwagen, Jobticket), steuer- und sozialversicherungspflichtig.'],
-      ['Sonderzahlungen', 'Weihnachts- und Urlaubsgeld; werden versteuert, oft höher belastet.'],
-      ['Minijob / Midijob', 'Minijob bis 603 Euro: pauschal; Midijob (Übergangsbereich) 603,01 bis 2.000 Euro: reduzierte AN-Beiträge.'],
+      ['Beitragsbemessungsgrenze (BBG)', 'Höchstgrenze des Bruttoeinkommens, bis zu der Beiträge erhoben werden. Jeder Euro darüber ist **beitragsfrei**. Es gibt eine BBG für Kranken-/Pflegeversicherung und eine höhere BBG für Renten-/Arbeitslosenversicherung.'],
+      ['Versicherungspflichtgrenze (JAEG)', 'Jahresarbeitsentgeltgrenze in der Krankenversicherung. Liegt das Bruttoeinkommen dauerhaft darüber, kann der Arbeitnehmer freiwillig in die private Krankenversicherung (PKV) wechseln.'],
+      ['Geldwerter Vorteil', 'Leistungen des Arbeitgebers in Sachform (z. B. Privatnutzung Firmenwagen nach der 1-%-Regelung). Müssen dem Bruttogehalt hinzugerechnet und versteuert werden.'],
+      ['Lohnnebenkosten des Arbeitgebers', 'Der Arbeitgeber zahlt nicht nur das Bruttogehalt. Er trägt seinen Sozialversicherungsanteil (ca. 20 %) plus Umlagen: U1 (Krankheitsausgleich für Betriebe bis 30 AN), U2 (Mutterschutz 100 %), U3 (Insolvenzgeldumlage 0,06 %) und den Beitrag zur Berufsgenossenschaft.'],
     ]],
-    ['qa', 'Berechnen Sie die Arbeitnehmeranteile zur RV und ALV bei 2.800 Euro Brutto.', ['RV: 2.800 mal 9,3 % = **260,40 Euro**.', 'ALV: 2.800 mal 1,3 % = **36,40 Euro**.'], 4],
-    ['qa', 'Was ist der Unterschied zwischen Brutto und Netto?', 'Brutto ist das vereinbarte Entgelt **vor** Abzügen. Netto ist der **Auszahlungsbetrag** nach Abzug von Steuern und Arbeitnehmeranteilen der Sozialversicherung.', 3],
+    ['h', 'Beispielrechnung Schritt für Schritt'],
+    ['p', 'Ausgangslage: Eine Fachinformatikerin (26 Jahre alt, ledig, Steuerklasse I, kinderlos, keine Kirchensteuer, Krankenkasse mit 1,6 % Zusatzbeitrag) erhält ein Bruttogehalt von **3.200,00 Euro**.'],
+    ['table', ['Position', 'Rechenweg', 'Betrag in Euro'], [
+      ['Bruttogehalt', 'Vereinbartes Grundgehalt', '3.200,00'],
+      ['Lohnsteuer (Stkl. I)', 'Aus Lohnsteuertabelle / Rechenwert', '- 395,00'],
+      ['Solidaritätszuschlag', 'Fällt unterhalb der Freigrenze nicht an', '0,00'],
+      ['Kirchensteuer', 'Keine Religionsgemeinschaft', '0,00'],
+      ['Rentenversicherung (9,3 %)', '3.200,00 * 9,3 %', '- 297,60'],
+      ['Krankenversicherung (7,3 % + 0,8 %)', '3.200,00 * 8,10 %', '- 259,20'],
+      ['Pflegeversicherung (2,0 % + 0,6 %)', '3.200,00 * 2,60 % (kinderlos ab 23)', '- 83,20'],
+      ['Arbeitslosenversicherung (1,3 %)', '3.200,00 * 1,3 %', '- 41,60'],
+      ['**Gesamte AN-Sozialabgaben**', '297,60 + 259,20 + 83,20 + 41,60', '**- 681,60**'],
+      ['**Nettogehalt**', '3.200,00 - 395,00 - 681,60', '**2.123,40**'],
+    ]],
+    ['ex', [
+      '**Arbeitgeber-Gesamtkosten für diesen Arbeitsplatz:**',
+      '- Bruttolohn: 3.200,00 Euro',
+      '- RV Arbeitgeber (9,3 %): 297,60 Euro',
+      '- KV Arbeitgeber (8,10 %): 259,20 Euro',
+      '- PV Arbeitgeber (2,0 %): 64,00 Euro (AG zahlt keinen Kinderlosenzuschlag)',
+      '- ALV Arbeitgeber (1,3 %): 41,60 Euro',
+      '- Umlagen U1, U2, U3 + BG-Beitrag (ca. 2,0 %): ca. 64,00 Euro',
+      '**Gesamtaufwand des Arbeitgebers: ca. 3.926,40 Euro** (das sind rund 122,7 % des Bruttolohns).',
+    ]],
+    ['tip', 'Prüfungsfallen: (1) Die **Unfallversicherung** taucht auf dem Arbeitnehmer-Gehaltszettel **niemals** als Abzug auf – sie zahlt zu 100 % der Arbeitgeber. (2) Den **Kinderlosenzuschlag** in der Pflegeversicherung (+ 0,6 %) zahlt der Arbeitnehmer **allein**. (3) Bei der Kirchensteuer immer prüfen, ob das Bundesland genannt ist: In Baden-Württemberg und Bayern sind es **8 %**, in allen anderen Ländern **9 %** der Lohnsteuer. (4) **Netto ist nicht gleich Auszahlung**, wenn vermögenswirksame Leistungen direkt an eine Bausparkasse abgeführt werden.'],
+    ['h', 'Wörter, die in der Prüfung vorkommen'],
+    ['table', ['Wort', 'Einfach erklärt'], [
+      ['Bruttoentgelt', 'Gesamtes Gehalt vor Steuern und Abzügen laut Arbeitsvertrag'],
+      ['Nettoentgelt', 'Betrag nach Abzug von Lohnsteuer, Soli, Kirchensteuer und Sozialabgaben'],
+      ['Auszahlungsbetrag', 'Tatsächlich auf das Konto überwiesenes Geld (nach Abzug privater Sparraten wie VWL)'],
+      ['Beitragsbemessungsgrenze', 'Maximaler Betrag, von dem Sozialversicherungsbeiträge berechnet werden'],
+      ['Solidaritätsprinzip', 'Jeder zahlt nach Leistungsfähigkeit ein, jeder erhält nach individuellem Bedarf'],
+      ['Geldwerter Vorteil', 'Sachleistung des Arbeitgebers, die wie Geld versteuert werden muss (z. B. Dienstwagen)'],
+      ['Lohnnebenkosten', 'Zusätzliche Kosten des Arbeitgebers für Sozialabgaben, Umlagen und Unfallversicherung'],
+      ['Progressiver Steuertarif', 'Wer mehr verdient, zahlt einen höheren prozentualen Steuersatz'],
+    ]],
+    ['see', ['wiso-sv', 'wiso-kv', 'wiso-rv', 'wiso-alv', 'wiso-pv', 'wiso-uv', 'wiso-steuern']],
+    ['h', 'Aufgaben im Prüfungsstil'],
+    ['qa', 'Ein Fachinformatiker verdient 3.000,00 Euro brutto im Monat. Berechnen Sie die Arbeitnehmeranteile zur Rentenversicherung (9,3 %), Arbeitslosenversicherung (1,3 %) und Krankenversicherung (7,3 % Grundbeitrag + halber Zusatzbeitrag von 0,8 % = 8,1 %).', [
+      '- RV: 3.000,00 Euro * 9,3 % = **279,00 Euro**',
+      '- ALV: 3.000,00 Euro * 1,3 % = **39,00 Euro**',
+      '- KV: 3.000,00 Euro * 8,1 % = **243,00 Euro**',
+      'Summe der drei Abgaben: 279,00 + 39,00 + 243,00 = **561,00 Euro**.',
+      'Je Teilrechnung 1 Punkt, zusammen 4 Punkte.',
+    ], 4],
+    ['qa', 'Erklären Sie den Unterschied zwischen dem Nettogehalt und dem Auszahlungsbetrag anhand eines praktischen Beispiels.', 'Das **Nettogehalt** entsteht nach Abzug der gesetzlichen Steuern und Sozialabgaben vom Bruttogehalt. Der **Auszahlungsbetrag** ist das Geld, das der Arbeitnehmer auf sein Bankkonto überwiesen bekommt. Beispiel: Wenn ein Arbeitnehmer einen **vermögenswirksamen Bausparvertrag (VWL)** über 40 Euro monatlich bespart, überweist der Arbeitgeber diese 40 Euro direkt an die Bausparkasse. Der Auszahlungsbetrag ist dann um 40 Euro niedriger als das Nettogehalt.', 4],
+    ['qa', 'Nennen Sie zwei Personengruppen, die der Lohnsteuerklasse I und der Lohnsteuerklasse II zugeordnet werden.', [
+      '- **Steuerklasse I:** Ledige, geschiedene, verwitwete oder dauernd getrennt lebende Arbeitnehmer ohne Kinder.',
+      '- **Steuerklasse II:** Alleinerziehende Arbeitnehmer, die mit mindestens einem minderjährigen oder kindergeldberechtigten Kind im Haushalt leben (erhalten den Entlastungsbetrag für Alleinerziehende).',
+    ], 4],
+    ['qa', 'Warum sind die Gesamtkosten eines Arbeitgebers für einen Mitarbeiter höher als das vertraglich vereinbarte Bruttogehalt? Nennen Sie zwei konkrete Kostenpositionen.', 'Der Arbeitgeber muss neben dem Bruttogehalt die sogenannten **Lohnnebenkosten** tragen. Dazu gehören: (1) Der **Arbeitgeberanteil an der Sozialversicherung** (ca. 20 % für RV, KV, PV, ALV). (2) Die **Umlagebeiträge (U1 für Lohnfortzahlung, U2 für Mutterschutz, U3 für Insolvenzgeld)** und die Beiträge zur **gesetzlichen Unfallversicherung (Berufsgenossenschaft)**.', 4],
     ['quiz', [
-      {q: 'Wie berechnet sich das Netto?', o: ['Brutto minus Steuern und Sozialabgaben', 'Brutto plus AG-Anteile', 'Brutto mal 0,5', 'Brutto minus Steuern plus VL'], a: 0, e: 'Netto = Brutto - Lohnsteuer - Soli - Kirchensteuer - AN-Sozialabgaben.'},
-      {q: 'Welchen Satz zahlt der AN zur Rentenversicherung (2026)?', o: ['9,3 %', '18,6 %', '1,3 %', '7,3 %'], a: 0, e: 'Die Hälfte von 18,6 %.'},
+      {q: 'Welche Formel beschreibt die Berechnung des Nettogehalts korrekt?', o: ['Brutto minus Steuern minus AN-Sozialabgaben', 'Brutto minus Steuern plus AG-Sozialabgaben', 'Brutto plus VL minus Steuern', 'Auszahlungsbetrag minus Steuern'], a: 0, e: 'Nettogehalt = Brutto - Lohnsteuer - Kirchensteuer/Soli - AN-Sozialabgaben.'},
+      {q: 'Wer trägt die Beiträge zur gesetzlichen Unfallversicherung?', o: ['Allein der Arbeitgeber', 'Arbeitgeber und Arbeitnehmer hälftig', 'Allein der Arbeitnehmer', 'Der Staat aus Steuermitteln'], a: 0, e: 'Die gesetzliche Unfallversicherung finanziert ausschließlich der Arbeitgeber über die Berufsgenossenschaft.'},
+      {q: 'Welche Steuerklasse ist für einen alleinerziehenden Vater mit Kind vorgesehen?', o: ['Steuerklasse II', 'Steuerklasse I', 'Steuerklasse III', 'Steuerklasse IV'], a: 0, e: 'Steuerklasse II gilt für Alleinerziehende und gewährt einen Entlastungsbetrag.'},
+      {q: 'Was bewirkt die Beitragsbemessungsgrenze (BBG)?', o: ['Einkommen über der Grenze ist beitragsfrei zur Sozialversicherung', 'Einkommen über der Grenze ist steuerfrei', 'Sie legt den Mindestlohn fest', 'Sie bestimmt die maximale Arbeitszeit'], a: 0, e: 'Ab der BBG steigen die Beiträge zur jeweiligen Sozialversicherung nicht mehr an.'},
+      {q: 'Wer zahlt den PV-Zuschlag für Kinderlose ab dem 23. Lebensjahr (+ 0,6 %)?', o: ['Der Arbeitnehmer allein', 'Der Arbeitgeber allein', 'Beide zur Hälfte', 'Die Krankenkasse'], a: 0, e: 'Den Kinderlosenzuschlag in der Pflegeversicherung trägt der Arbeitnehmer alleine.'},
+      {q: 'Welche Aussage zur Steuerklasse VI ist richtig?', o: ['Sie gilt für Zweit- und Nebenjobs und hat keine Freibeträge', 'Sie gilt für Verheiratete mit hohem Einkommen', 'Sie ist steuerfrei', 'Sie gilt nur für Auszubildende'], a: 0, e: 'Steuerklasse VI wird beim zweiten Job angewendet und führt zu den höchsten Abzügen.'},
     ]],
   ],
 });
@@ -25666,6 +34222,1323 @@ AP2.page('gk-medien', {
     ['see', ['gk-methoden', 'gk-ki', 'gk-gleichstellung', 'gk-mitwirkung']],
   ],
 });
+;
+// content/gk/grundrechte-1.js
+AP2.page('gk-grundrechte', {
+  b: 'gk', g: 'Recht und Staat', t: 'Grundrechte, Schranken und wehrhafte Demokratie',
+  d: 'Die **Grundrechte** stehen in den **Artikeln 1 bis 19** des Grundgesetzes. Sie schützen jeden Menschen vor dem Staat. Manche Rechte gelten für **alle Menschen** (Jedermann-Rechte), andere nur für **Deutsche** (zum Beispiel Versammlungsfreiheit und Berufsfreiheit). Viele Rechte haben **Schranken**: Der Staat darf sie durch ein Gesetz begrenzen, wenn das nötig und verhältnismäßig ist. Wer sich verletzt fühlt, kann **Verfassungsbeschwerde** beim **Bundesverfassungsgericht** (Karlsruhe) einlegen. Die **wehrhafte Demokratie** schützt die Ordnung vor Extremisten: Parteien können verboten werden, und die Grundsätze in Art. 1 und 20 sind unveränderlich.',
+  m: '**Art. 1 Würde. Art. 2 Freiheit. Art. 3 Gleichheit. Art. 4 Glaube. Art. 5 Meinung. Art. 8 Versammlung. Art. 9 Vereine. Art. 12 Beruf. Art. 13 Wohnung. Art. 14 Eigentum.** **Verfassungsbeschwerde: erst Rechtsweg, dann Karlsruhe.** **Art. 79 Abs. 3 = Ewigkeitsklausel.**',
+  cheat: [
+    ['Wichtige Grundrechte', ['**Art. 1:** Menschenwürde (nie einschränkbar)', '**Art. 2:** Handlungsfreiheit, Leben, Gesundheit', '**Art. 3:** Gleichheit, Gleichberechtigung', '**Art. 4:** Glaubens- und Gewissensfreiheit', '**Art. 5:** Meinungs-, Presse-, Kunstfreiheit', '**Art. 8, 9:** Versammlung, Vereine, Gewerkschaft', '**Art. 10, 13:** Briefgeheimnis, Wohnung', '**Art. 12:** Berufsfreiheit', '**Art. 14:** Eigentum verpflichtet']],
+    ['Schutz', ['**Verfassungsbeschwerde** (Art. 93 GG)', '**Bundesverfassungsgericht** in Karlsruhe', 'Parteiverbot nur durch das BVerfG', '**Ewigkeitsklausel** Art. 79 Abs. 3']],
+    ['Schranken', ['Gesetz kann Recht begrenzen', 'Immer **verhältnismäßig**: geeignet, erforderlich, angemessen', 'Wesensgehalt bleibt (Art. 19)']],
+  ],
+  blocks: [
+    ['h', 'Was sind Grundrechte?'],
+    ['p', 'Grundrechte sind **Rechte der Menschen gegenüber dem Staat**. Der Staat darf sie nicht einfach wegnehmen. Sie binden **alle drei Gewalten**: Gesetzgebung, Regierung und Gerichte (Art. 1 Abs. 3 GG). Ein Gesetz, das gegen ein Grundrecht verstößt, ist ungültig.'],
+    ['table', ['Wort', 'Einfach erklärt'], [
+      ['Grundrecht', 'Wichtiges Recht, das im Grundgesetz steht.'],
+      ['Abwehrrecht', 'Recht, sich gegen den Staat zu wehren. Beispiel: Der Staat darf meine Post nicht lesen.'],
+      ['Jedermann-Recht', 'Recht für alle Menschen, auch für Ausländer. Beispiel: Würde, Leben.'],
+      ['Deutschen-Recht', 'Recht nur für Deutsche. Beispiel: Versammlungsfreiheit (Art. 8), Berufsfreiheit (Art. 12).'],
+      ['Schranke', 'Grenze. Ein Gesetz darf ein Grundrecht begrenzen.'],
+      ['verhältnismäßig', 'Das Mittel passt zum Ziel. Es ist nicht zu hart.'],
+      ['Wesensgehalt', 'Der Kern eines Rechts. Er darf nie ganz verschwinden (Art. 19 Abs. 2).'],
+      ['Verfassungsbeschwerde', 'Klage einer Person beim Bundesverfassungsgericht, weil ein Grundrecht verletzt ist.'],
+      ['wehrhafte Demokratie', 'Die Demokratie darf sich gegen ihre Feinde wehren.'],
+    ]],
+    ['h', 'Die wichtigsten Grundrechte mit Beispielen'],
+    ['table', ['Artikel', 'Inhalt', 'Beispiel aus dem Alltag und Beruf'], [
+      ['**Art. 1**', 'Würde des Menschen ist unantastbar.', 'Folter ist verboten. Mobbing im Betrieb verletzt die Würde.'],
+      ['**Art. 2**', 'Freie Entfaltung der Persönlichkeit; Leben; körperliche Unversehrtheit.', 'Arbeitsschutz: Der Betrieb muss Unfälle verhindern. Datenschutz entsteht aus diesem Recht.'],
+      ['**Art. 3**', 'Gleichheit vor dem Gesetz; Männer und Frauen gleichberechtigt; Verbot der Benachteiligung.', 'Gleiche Bezahlung für gleiche Arbeit. Keine Absage wegen Herkunft.'],
+      ['**Art. 4**', 'Glaubens-, Gewissens-, Bekenntnisfreiheit.', 'Der Betrieb nimmt Rücksicht auf Feiertage und Gebetszeiten, wenn es möglich ist.'],
+      ['**Art. 5**', 'Meinungsfreiheit, Pressefreiheit, Informationsfreiheit, Kunst, Wissenschaft. Keine Zensur.', 'Du darfst deine Meinung sagen. Beleidigung und Volksverhetzung sind verboten.'],
+      ['**Art. 6**', 'Schutz von Ehe und Familie; Elternrecht.', 'Elternzeit, Kindergeld.'],
+      ['**Art. 7**', 'Schulwesen steht unter Aufsicht des Staates.', 'Schulpflicht, Berufsschulpflicht.'],
+      ['**Art. 8**', 'Versammlungsfreiheit (für Deutsche).', 'Demonstration, Warnstreik-Kundgebung. Große Versammlungen muss man anmelden.'],
+      ['**Art. 9**', 'Vereinigungsfreiheit. Koalitionsfreiheit: Gewerkschaften und Arbeitgeberverbände.', 'Jeder darf in die Gewerkschaft eintreten.'],
+      ['**Art. 10**', 'Brief-, Post- und Fernmeldegeheimnis.', 'Der Chef darf private E-Mails nicht einfach lesen.'],
+      ['**Art. 11**', 'Freizügigkeit im ganzen Bundesgebiet (für Deutsche).', 'Du darfst in jede Stadt umziehen.'],
+      ['**Art. 12**', 'Berufsfreiheit (für Deutsche). Zwangsarbeit ist verboten.', 'Jeder wählt Beruf und Ausbildungsplatz frei.'],
+      ['**Art. 13**', 'Unverletzlichkeit der Wohnung.', 'Polizei braucht meist einen richterlichen Beschluss.'],
+      ['**Art. 14**', 'Eigentum ist garantiert. Eigentum verpflichtet.', 'Enteignung nur gegen Entschädigung und zum Wohl der Allgemeinheit.'],
+      ['**Art. 16a**', 'Politisch Verfolgte genießen Asylrecht.', 'Asylverfahren beim Bundesamt für Migration und Flüchtlinge (BAMF).'],
+      ['**Art. 17**', 'Petitionsrecht: Bitten und Beschwerden an Behörden und Parlament.', 'Online-Petition an den Bundestag.'],
+    ]],
+    ['note', 'Der Satz „Eigentum verpflichtet“ steht in **Art. 14 Abs. 2**. Der Gebrauch des Eigentums soll **zugleich dem Wohl der Allgemeinheit dienen**.'],
+    ['h', 'Grundrechte können Schranken haben'],
+    ['p', 'Meine Freiheit endet dort, wo die Rechte anderer beginnen. Darum kann ein **Gesetz** Grundrechte begrenzen. Die Begrenzung muss aber **verhältnismäßig** sein. Das Bundesverfassungsgericht prüft drei Dinge:'],
+    ['steps', [
+      '**Geeignet?** Hilft die Maßnahme, das Ziel zu erreichen?',
+      '**Erforderlich?** Gibt es kein milderes Mittel, das genauso gut hilft?',
+      '**Angemessen?** Ist der Schaden für die Person nicht größer als der Nutzen für die Allgemeinheit?',
+    ]],
+    ['ex', ['**Beispiel Rauchverbot in Gaststätten:** Das Grundrecht auf Berufsfreiheit der Wirte wird begrenzt. Das Ziel ist der Gesundheitsschutz der Gäste und des Personals (Art. 2). Das Verbot ist geeignet und angemessen, darum erlaubt.', '**Beispiel Meinungsfreiheit:** Sie endet bei Beleidigung, Verleumdung und Volksverhetzung. Hier schützen andere Gesetze die Ehre und die Würde anderer.', '**Beispiel Versammlung:** Eine Demonstration kann verboten werden, wenn Gewalt droht und kein milderes Mittel hilft.']],
+    ['warn', 'Die **Menschenwürde (Art. 1)** und der **Wesensgehalt** der Grundrechte (Art. 19) sind **nicht abwägbar**. Das ist ein beliebter Prüfungsunterschied zu den anderen Rechten.'],
+    ['h', 'Verfassungsbeschwerde: So wehre ich mich'],
+    ['p', '**Ablauf:** Grundrecht verletzt, dann zuerst der normale Rechtsweg, dann alle Instanzen ausgeschöpft, dann Beschwerde in Karlsruhe, dann Prüfung durch das BVerfG, dann Urteil (bindend für alle).'],
+    ['list', ['Jede Person kann eine Verfassungsbeschwerde einlegen (Art. 93 GG), auch ohne Anwalt.', 'Sie muss **selbst, gegenwärtig und unmittelbar** betroffen sein.', 'In der Regel muss man **erst den Rechtsweg** (Amtsgericht, Landgericht usw.) gehen.', 'Das Gericht kann ein Gesetz **für nichtig erklären**. Der Gesetzgeber muss dann ein neues Gesetz machen.']],
+    ['h', 'Das Bundesverfassungsgericht'],
+    ['table', ['Merkmal', 'Inhalt'], [
+      ['Sitz', 'Karlsruhe'],
+      ['Mitglieder', '16 Richterinnen und Richter in zwei Senaten (je 8)'],
+      ['Wahl', 'Je zur Hälfte von Bundestag und Bundesrat, mit Zweidrittelmehrheit'],
+      ['Amtszeit', '12 Jahre, keine Wiederwahl'],
+      ['Aufgaben', 'Verfassungsbeschwerde, Normenkontrolle (Ist ein Gesetz verfassungsgemäß?), Streit zwischen Staatsorganen, Parteienverbot, Wahlprüfung'],
+    ]],
+    ['h', 'Wehrhafte Demokratie'],
+    ['p', 'Die Weimarer Republik (1919 bis 1933) wurde von Feinden der Demokratie zerstört. Aus dieser Erfahrung hat das Grundgesetz Schutzregeln: Man spricht von der **wehrhaften (streitbaren) Demokratie**.'],
+    ['table', ['Schutz', 'Regel', 'Erklärung'], [
+      ['**Ewigkeitsklausel**', 'Art. 79 Abs. 3', 'Die Grundsätze von Art. 1 (Würde) und Art. 20 (Demokratie, Rechtsstaat, Sozialstaat, Bundesstaat) darf niemand ändern.'],
+      ['**Parteiverbot**', 'Art. 21 Abs. 2', 'Nur das Bundesverfassungsgericht kann eine Partei verbieten, wenn sie die freiheitliche demokratische Grundordnung bekämpft.'],
+      ['**Verwirkung von Grundrechten**', 'Art. 18', 'Wer Grundrechte zum Kampf gegen die Demokratie missbraucht, kann sie verlieren. Das entscheidet das BVerfG.'],
+      ['**Widerstandsrecht**', 'Art. 20 Abs. 4', 'Alle Deutschen dürfen Widerstand leisten, wenn jemand die Ordnung beseitigen will und es keine andere Hilfe gibt.'],
+      ['**Verfassungsschutz**', 'Bundesamt und Landesämter', 'Sie beobachten Extremisten. Die Behörde sammelt Informationen, sie hat keine Polizeigewalt.'],
+      ['**Bundeszentrale für politische Bildung**', 'Staatliche Stelle', 'Sie informiert über Demokratie und Politik.'],
+    ]],
+    ['h', 'Extremismus erkennen'],
+    ['table', ['Form', 'Merkmale'], [
+      ['Rechtsextremismus', 'Wertet Menschen nach Herkunft ab, Rassismus, Antisemitismus, Gewaltverherrlichung.'],
+      ['Linksextremismus', 'Lehnt den demokratischen Rechtsstaat ab, rechtfertigt Gewalt für politische Ziele.'],
+      ['Islamismus', 'Will Staat und Gesellschaft nach religiösen Regeln ändern. Nicht jede Religion ist Islamismus.'],
+    ]],
+    ['tip', 'In der Prüfung heißt es oft: „Beurteilen Sie, ob die Einschränkung eines Grundrechts gerechtfertigt ist.“ Antworte so: **1. Welches Recht? 2. Welches Ziel hat die Einschränkung? 3. Geeignet, erforderlich, angemessen? 4. Dein Urteil mit Begründung.**'],
+    ['h', 'Beispiel: Videoüberwachung im Betrieb'],
+    ['p', 'Ein Betrieb will Kameras im Pausenraum aufhängen, weil Werkzeug fehlt. Prüfe so:'],
+    ['table', ['Schritt', 'Antwort'], [
+      ['Betroffenes Recht', 'Persönlichkeitsrecht und Datenschutz (Art. 2 in Verbindung mit Art. 1 GG).'],
+      ['Ziel', 'Diebstahl verhindern, Eigentum schützen (Art. 14).'],
+      ['Geeignet?', 'Teilweise. Kameras schrecken ab.'],
+      ['Erforderlich?', 'Nein. Es gibt mildere Mittel: Schlüsselsystem, Werkzeugausgabe.'],
+      ['Angemessen?', 'Nein. Ein Pausenraum ist ein privater Bereich. Der Eingriff ist zu groß.'],
+      ['Urteil', 'Die Kamera im Pausenraum ist nicht erlaubt. Der Betriebsrat hat zudem ein Mitbestimmungsrecht (§ 87 BetrVG).'],
+    ]],
+    ['h', 'Prüfungsfragen'],
+    ['qa', 'Nennen Sie vier Grundrechte aus dem Grundgesetz.', ['Zum Beispiel: Menschenwürde (Art. 1), freie Entfaltung der Persönlichkeit (Art. 2), Gleichheit vor dem Gesetz (Art. 3), Meinungsfreiheit (Art. 5), Versammlungsfreiheit (Art. 8), Berufsfreiheit (Art. 12). Je Grundrecht 1 Punkt.'], 4],
+    ['qa', 'Erläutern Sie, warum die Meinungsfreiheit Schranken hat.', ['Die Freiheit des einen darf die Rechte anderer nicht verletzen. Darum verbieten Gesetze Beleidigung, Verleumdung und Volksverhetzung. (1 Punkt Regel, 1 Punkt Begründung, 1 Punkt Beispiel)'], 3],
+    ['qa', 'Beschreiben Sie, was die Ewigkeitsklausel ist.', ['Art. 79 Abs. 3 GG verbietet es, die Grundsätze der Art. 1 und Art. 20 zu ändern. Das gilt für die Menschenwürde, Demokratie, Rechtsstaat, Sozialstaat und Bundesstaat. So kann keine Mehrheit die Demokratie abschaffen.'], 3],
+    ['qa', 'Erläutern Sie, was „wehrhafte Demokratie“ bedeutet. Nennen Sie zwei Beispiele.', ['Die Demokratie schützt sich gegen ihre Feinde. Beispiele: Parteiverbot durch das Bundesverfassungsgericht (Art. 21), Ewigkeitsklausel (Art. 79 Abs. 3), Verfassungsschutz, Verwirkung von Grundrechten (Art. 18). 1 Punkt Erklärung, je 1 Punkt für ein Beispiel.'], 3],
+    ['qa', 'Wann kann man Verfassungsbeschwerde einlegen?', ['Wenn man selbst, gegenwärtig und unmittelbar in einem Grundrecht verletzt ist und den normalen Rechtsweg schon ausgeschöpft hat. Die Beschwerde geht an das Bundesverfassungsgericht in Karlsruhe.'], 3],
+    ['quiz', [
+      {q: 'In welchen Artikeln stehen die Grundrechte des Grundgesetzes?', o: ['Art. 1 bis 19', 'Art. 20 bis 40', 'Art. 70 bis 80', 'Art. 100 bis 120'], a: 0, e: 'Der erste Abschnitt des Grundgesetzes heißt „Die Grundrechte“ (Art. 1 bis 19).'},
+      {q: 'Welches Grundrecht gilt nur für Deutsche?', o: ['Berufsfreiheit (Art. 12)', 'Menschenwürde (Art. 1)', 'Recht auf Leben (Art. 2)', 'Glaubensfreiheit (Art. 4)'], a: 0, e: 'Art. 8, 9, 11 und 12 sind Rechte der Deutschen. Würde, Leben und Glaube gelten für alle.'},
+      {q: 'Wer kann eine Partei verbieten?', o: ['Das Bundesverfassungsgericht', 'Der Bundestag', 'Der Bundespräsident', 'Die Polizei'], a: 0, e: 'Art. 21 Abs. 2 GG. Nur das BVerfG darf eine Partei verbieten.'},
+      {q: 'Wo sitzt das Bundesverfassungsgericht?', o: ['Karlsruhe', 'Berlin', 'Frankfurt', 'München'], a: 0, e: 'Karlsruhe in Baden-Württemberg.'},
+      {q: 'Welche drei Prüfpunkte gehören zur Verhältnismäßigkeit?', o: ['Geeignet, erforderlich, angemessen', 'Billig, schnell, einfach', 'Legal, moralisch, sozial', 'Neu, alt, bewährt'], a: 0, e: 'Alle drei müssen erfüllt sein.'},
+      {q: 'Was gilt für die Menschenwürde nach Art. 1 GG?', o: ['Sie ist unantastbar', 'Sie darf per Gesetz eingeschränkt werden', 'Sie gilt nur für Erwachsene', 'Sie gilt nur für Deutsche'], a: 0, e: 'Das ist der oberste Wert des Grundgesetzes.'},
+      {q: 'Was bedeutet „Eigentum verpflichtet“?', o: ['Der Gebrauch soll auch der Allgemeinheit dienen', 'Man muss sein Eigentum verkaufen', 'Man zahlt keine Steuern', 'Eigentum gehört dem Staat'], a: 0, e: 'Art. 14 Abs. 2 GG.'},
+      {q: 'Eine Kamera im Umkleideraum wird geplant. Welches Recht ist vor allem betroffen?', o: ['Allgemeines Persönlichkeitsrecht', 'Versammlungsfreiheit', 'Berufsfreiheit', 'Wahlrecht'], a: 0, e: 'Art. 2 Abs. 1 in Verbindung mit Art. 1 Abs. 1 GG.'},
+    ]],
+    ['see', ['gk-grundordnung', 'gk-institutionen', 'gk-rechtsstaat', 'gk-datenschutz', 'wiso-staat']],
+  ],
+});
+;
+// content/gk/rechtsstaat-1.js
+AP2.page('gk-rechtsstaat', {
+  b: 'gk', g: 'Recht und Staat', t: 'Gerichte, Rechtsarten und Rechtsfähigkeit im Alltag',
+  d: 'In Deutschland gibt es **fünf Gerichtsbarkeiten**: ordentliche (Zivil und Straf), Arbeit, Soziales, Verwaltung und Finanzen. Jede hat eigene **Instanzen**. Das Recht teilt sich in **öffentliches Recht** (Staat und Bürger) und **Privatrecht** (Bürger und Bürger). Wichtig für den Alltag: **Rechtsfähigkeit** (ab Geburt), **Geschäftsfähigkeit** (ab 7 beschränkt, ab 18 voll) und **Strafmündigkeit** (ab 14). Es gilt immer: **Keine Strafe ohne Gesetz** und **im Zweifel für den Angeklagten**.',
+  m: '**Geschäftsfähigkeit: 0 bis 6 nein, 7 bis 17 beschränkt, ab 18 voll.** **Strafmündig ab 14.** **Instanzen: Amtsgericht, Landgericht, Oberlandesgericht, BGH.** **Straftat = Strafgericht. Ordnungswidrigkeit = Bußgeld.**',
+  cheat: [
+    ['Gerichtsbarkeiten', ['**Ordentliche:** Amtsgericht, Landgericht, OLG, BGH (Karlsruhe)', '**Arbeit:** Arbeitsgericht, LAG, BAG (Erfurt)', '**Soziales:** Sozialgericht, LSG, BSG (Kassel)', '**Verwaltung:** VG, OVG, BVerwG (Leipzig)', '**Finanzen:** Finanzgericht, BFH (München)']],
+    ['Alter und Recht', ['Ab 7: beschränkt geschäftsfähig', 'Ab 14: strafmündig', 'Ab 16: Europawahl (seit 2024)', 'Ab 18: voll geschäftsfähig, wahlberechtigt (Bund)', 'Jugendstrafrecht bis 20 möglich']],
+    ['Rechtsgebiete', ['Öffentliches Recht: Staat und Bürger (Über-/Unterordnung)', 'Privatrecht: Bürger und Bürger (gleichberechtigt)', 'Strafrecht: Der Staat bestraft Taten']],
+  ],
+  blocks: [
+    ['h', 'Rechtsquellen: Welches Recht gilt vor welchem?'],
+    ['p', 'Es gibt eine **Rangfolge** der Rechtsregeln. Das höhere Recht schlägt das niedrigere Recht (Normenhierarchie).'],
+    ['table', ['Rang', 'Rechtsquelle', 'Beispiel'], [
+      ['1', 'EU-Recht (Verträge, Verordnungen)', 'DSGVO'],
+      ['2', 'Grundgesetz', 'Art. 1 bis 19 Grundrechte'],
+      ['3', 'Bundesgesetze', 'BGB, StGB, BBiG, SGB'],
+      ['4', 'Landesrecht', 'Schulgesetz, Polizeigesetz des Landes'],
+      ['5', 'Rechtsverordnungen und Satzungen', 'Satzung einer Stadt'],
+      ['6', 'Tarifverträge und Betriebsvereinbarungen', 'Entgelttarifvertrag IT-Branche'],
+      ['7', 'Arbeitsvertrag', 'Vereinbarung zwischen Chef und Mitarbeiter'],
+    ]],
+    ['note', 'Es gilt das **Günstigkeitsprinzip** im Arbeitsrecht: Eine niedrigere Regel darf gelten, wenn sie für den Arbeitnehmer **besser** ist (zum Beispiel 30 statt 24 Tage Urlaub im Vertrag).'],
+    ['h', 'Öffentliches Recht und Privatrecht'],
+    ['table', ['Merkmal', 'Öffentliches Recht', 'Privatrecht'], [
+      ['Beteiligte', 'Staat und Bürger', 'Bürger und Bürger (auch Firmen)'],
+      ['Verhältnis', 'Über- und Unterordnung: Der Staat kann anordnen.', 'Gleichberechtigung: Man einigt sich im Vertrag.'],
+      ['Beispiele', 'Steuerrecht, Strafrecht, Baurecht, Sozialrecht', 'Kaufvertrag, Mietvertrag, Arbeitsvertrag, Erbrecht'],
+      ['Gesetze', 'StGB, AO, SGB, VwVfG', 'BGB, HGB'],
+      ['Gericht', 'Verwaltungs-, Finanz-, Sozial-, Strafgericht', 'Amts- und Landgericht (Zivil), Arbeitsgericht'],
+    ]],
+    ['h', 'Rechtsfähigkeit, Geschäftsfähigkeit, Deliktsfähigkeit'],
+    ['table', ['Begriff', 'Bedeutung', 'Beginn'], [
+      ['**Rechtsfähigkeit**', 'Man kann Rechte und Pflichten haben (§ 1 BGB).', 'Mit der Geburt, bis zum Tod. Firmen (juristische Personen) ab Eintragung.'],
+      ['**Geschäftsfähigkeit**', 'Man kann Verträge selbst wirksam schließen.', 'Stufen siehe Tabelle unten.'],
+      ['**Deliktsfähigkeit**', 'Man haftet für Schäden, die man verursacht.', 'Ab 7 Jahren, im Straßenverkehr ab 10.'],
+      ['**Strafmündigkeit**', 'Man kann bestraft werden.', 'Ab 14 Jahren.'],
+    ]],
+    ['table', ['Alter', 'Stufe', 'Folge für Verträge'], [
+      ['0 bis 6 Jahre', 'geschäftsunfähig', 'Willenserklärung nichtig. Die Eltern handeln.'],
+      ['7 bis 17 Jahre', 'beschränkt geschäftsfähig', 'Vertrag braucht Zustimmung der Eltern. Bis dahin „schwebend unwirksam“.'],
+      ['ab 18 Jahre', 'voll geschäftsfähig', 'Verträge gelten.'],
+    ]],
+    ['ex', ['**Taschengeldparagraf (§ 110 BGB):** Ein 16-Jähriger kauft mit seinem Taschengeld ein Spiel für 30 Euro. Der Vertrag ist wirksam, weil er „mit eigenen Mitteln“ bezahlt hat.', '**Ratenkauf:** Ein 17-Jähriger kauft ein Smartphone auf Raten, 40 Euro pro Monat. Die Eltern müssen zustimmen. Ohne Zustimmung ist der Vertrag unwirksam.', '**Ausbildungsvertrag:** Wer unter 18 ist, braucht die Unterschrift der **gesetzlichen Vertreter** (meist Eltern). Das gilt auch für den Arbeitsvertrag.']],
+    ['h', 'Gerichte und Instanzen'],
+    ['p', 'Eine **Instanz** ist eine Stufe im Gericht. Gegen ein Urteil kann man meist **Berufung** oder **Revision** einlegen. Dann prüft ein höheres Gericht.'],
+    ['table', ['Gerichtsbarkeit', '1. Instanz', '2. Instanz', '3. Instanz', 'Typischer Fall'], [
+      ['**Ordentliche** (Zivil)', 'Amtsgericht (bis 5.000 Euro), sonst Landgericht', 'Landgericht bzw. Oberlandesgericht', 'Bundesgerichtshof (Karlsruhe)', 'Streit um Kaufvertrag, Miete'],
+      ['**Ordentliche** (Straf)', 'Amtsgericht oder Landgericht', 'Landgericht bzw. OLG', 'Bundesgerichtshof', 'Diebstahl, Betrug, Körperverletzung'],
+      ['**Arbeit**', 'Arbeitsgericht', 'Landesarbeitsgericht', 'Bundesarbeitsgericht (Erfurt)', 'Kündigung, Lohn'],
+      ['**Soziales**', 'Sozialgericht', 'Landessozialgericht', 'Bundessozialgericht (Kassel)', 'Rente, Krankenkasse, Bürgergeld'],
+      ['**Verwaltung**', 'Verwaltungsgericht', 'Oberverwaltungsgericht', 'Bundesverwaltungsgericht (Leipzig)', 'Baugenehmigung, Ausweisung'],
+      ['**Finanzen**', 'Finanzgericht', 'Bundesfinanzhof (München)', '(keine)', 'Steuerbescheid'],
+    ]],
+    ['note', 'Die **Verfassungsgerichte** (Bundesverfassungsgericht, Landesverfassungsgerichte) stehen **außerhalb** dieser Reihen. Sie prüfen Grundrechte und Verfassung.'],
+    ['h', 'Strafrecht'],
+    ['table', ['Wort', 'Einfach erklärt'], [
+      ['Straftat', 'Tat, die im Strafgesetzbuch (StGB) verboten ist und bestraft wird.'],
+      ['Verbrechen', 'Straftat mit Mindeststrafe von 1 Jahr Freiheitsstrafe (zum Beispiel Raub).'],
+      ['Vergehen', 'Straftat mit weniger Mindeststrafe (zum Beispiel Diebstahl).'],
+      ['Ordnungswidrigkeit', 'Kleineres Unrecht, zum Beispiel falsch parken. Die Strafe heißt Bußgeld.'],
+      ['Staatsanwaltschaft', 'Behörde, die Straftaten verfolgt und anklagt.'],
+      ['Unschuldsvermutung', 'Jeder gilt als unschuldig, bis ein Gericht ihn verurteilt.'],
+      ['Nulla poena sine lege', 'Keine Strafe ohne Gesetz (Art. 103 GG).'],
+      ['Strafmaß', 'Höhe der Strafe: Geldstrafe (Tagessätze) oder Freiheitsstrafe.'],
+    ]],
+    ['h', 'Jugendstrafrecht'],
+    ['table', ['Alter', 'Bezeichnung', 'Recht'], [
+      ['unter 14', 'Kind', 'nicht strafmündig, keine Strafe'],
+      ['14 bis 17', 'Jugendlicher', 'Jugendstrafrecht (Erziehung vor Strafe)'],
+      ['18 bis 20', 'Heranwachsender', 'Jugend- oder Erwachsenenstrafrecht, je nach Reife'],
+      ['ab 21', 'Erwachsener', 'Erwachsenenstrafrecht'],
+    ]],
+    ['p', 'Das **Jugendstrafrecht** will vor allem **erziehen**. Es kennt Erziehungsmaßregeln (zum Beispiel Arbeitsstunden), Zuchtmittel (zum Beispiel Verwarnung, Arrest) und als letztes Mittel die Jugendstrafe. Wichtig: Die **Jugendgerichtshilfe** hilft dem Gericht.'],
+    ['h', 'Zivilrecht im Alltag: Verbraucherschutz'],
+    ['table', ['Recht', 'Regel', 'Beispiel'], [
+      ['Widerruf', '14 Tage bei Verträgen im Internet oder an der Haustür (Fernabsatz)', 'Du bestellst Schuhe online und schickst sie nach 10 Tagen zurück.'],
+      ['Gewährleistung', '2 Jahre bei neuen Waren, 1 Jahr bei gebrauchten (Verkäufer)', 'Der Laptop ist nach 8 Monaten kaputt. Der Verkäufer muss reparieren oder ersetzen.'],
+      ['Beweislastumkehr', 'In den ersten 12 Monaten gilt: Der Mangel war schon beim Kauf da.', 'Der Händler muss beweisen, dass du den Fehler verursacht hast.'],
+      ['Garantie', 'Freiwilliges Versprechen des Herstellers', '3 Jahre Garantie auf einen Drucker.'],
+      ['Verjährung', 'Regelmäßig 3 Jahre (§ 195 BGB), Beginn am Jahresende', 'Rechnung von März 2025: Verjährung am 31.12.2028.'],
+      ['Mahnverfahren', 'Mahnung, dann gerichtlicher Mahnbescheid, dann Vollstreckungsbescheid', 'Kunde zahlt nicht.'],
+    ]],
+    ['warn', 'Verwechsle nicht **Gewährleistung** (gesetzlich, Verkäufer) und **Garantie** (freiwillig, meist Hersteller). Das ist eine häufige Prüfungsfalle.'],
+    ['h', 'Ein Rechtsfall in vier Schritten'],
+    ['steps', [
+      '**Sachverhalt:** Was ist passiert? Schreibe kurz die Fakten auf.',
+      '**Rechtsgrundlage:** Welches Gesetz oder welcher Artikel passt (zum Beispiel § 433 BGB Kaufvertrag)?',
+      '**Prüfung:** Sind alle Voraussetzungen erfüllt? Gehe Punkt für Punkt vor.',
+      '**Ergebnis:** Antworte klar mit „ja“ oder „nein“ und einem Satz Begründung.',
+    ]],
+    ['ex', ['**Fall:** Lena (16) kauft ohne Wissen ihrer Eltern im Internet ein Tablet für 380 Euro auf Rechnung.', '**Prüfung:** Lena ist beschränkt geschäftsfähig. Der Vertrag braucht die Zustimmung der Eltern (§ 107 BGB). Der Taschengeldparagraf passt nicht: 380 Euro sind zu viel, und sie hat nicht bezahlt.', '**Ergebnis:** Der Vertrag ist schwebend unwirksam. Verweigern die Eltern die Zustimmung, wird er endgültig unwirksam.']],
+    ['h', 'Prüfungsfragen'],
+    ['qa', 'Nennen Sie die drei Stufen der Geschäftsfähigkeit mit Alter.', ['Geschäftsunfähig bis 6 Jahre; beschränkt geschäftsfähig von 7 bis 17 Jahren; voll geschäftsfähig ab 18 Jahren. (je 1 Punkt)'], 3],
+    ['qa', 'Erläutern Sie den Unterschied zwischen öffentlichem Recht und Privatrecht.', ['Im öffentlichen Recht stehen Staat und Bürger in einem Über- und Unterordnungsverhältnis, zum Beispiel beim Steuerrecht. Im Privatrecht sind die Beteiligten gleichberechtigt, zum Beispiel beim Kaufvertrag. (2 Punkte Unterschied, 1 Punkt Beispiel)'], 3],
+    ['qa', 'Nennen Sie zwei Gerichtsbarkeiten außer der ordentlichen und je ein Beispiel.', ['Arbeitsgericht: Kündigungsschutzklage. Sozialgericht: Streit um Rente oder Krankenkasse. Verwaltungsgericht: Baugenehmigung. Finanzgericht: Steuerbescheid. (je 1 Punkt für Gericht, 1 Punkt für Beispiel, zwei verlangt)'], 4],
+    ['qa', 'Erklären Sie die Unschuldsvermutung.', ['Jede Person gilt als unschuldig, bis ein Gericht sie rechtskräftig verurteilt hat. Der Staat muss die Schuld beweisen. Im Zweifel wird der Angeklagte freigesprochen.'], 2],
+    ['quiz', [
+      {q: 'Ab welchem Alter ist man voll geschäftsfähig?', o: ['18 Jahre', '16 Jahre', '14 Jahre', '21 Jahre'], a: 0, e: '§ 2 BGB: Volljährigkeit mit 18.'},
+      {q: 'Ab welchem Alter ist man in Deutschland strafmündig?', o: ['14 Jahre', '12 Jahre', '16 Jahre', '18 Jahre'], a: 0, e: 'Unter 14 ist man ein Kind und nicht strafmündig.'},
+      {q: 'Welches Gericht ist bei einer Kündigungsklage zuständig?', o: ['Arbeitsgericht', 'Verwaltungsgericht', 'Finanzgericht', 'Sozialgericht'], a: 0, e: 'Arbeitsrechtliche Streitigkeiten gehören vor das Arbeitsgericht.'},
+      {q: 'Wo sitzt das Bundesarbeitsgericht?', o: ['Erfurt', 'Kassel', 'Leipzig', 'München'], a: 0, e: 'Kassel = Bundessozialgericht, Leipzig = Bundesverwaltungsgericht, München = Bundesfinanzhof.'},
+      {q: 'Wie lange gilt die gesetzliche Gewährleistung bei neuen Waren?', o: ['2 Jahre', '6 Monate', '3 Jahre', '5 Jahre'], a: 0, e: 'Sie richtet sich gegen den Verkäufer (§ 438 BGB).'},
+      {q: 'Wie lange kann man bei einem Online-Kauf in der Regel widerrufen?', o: ['14 Tage', '7 Tage', '30 Tage', '2 Jahre'], a: 0, e: 'Das Widerrufsrecht bei Fernabsatzverträgen beträgt 14 Tage.'},
+      {q: 'Was bedeutet „nulla poena sine lege“?', o: ['Keine Strafe ohne Gesetz', 'Jeder ist gleich', 'Im Zweifel für den Angeklagten', 'Kein Urteil ohne Zeugen'], a: 0, e: 'Art. 103 Abs. 2 GG.'},
+      {q: 'Welche Regel gilt bei einem Streit zwischen Tarifvertrag und Arbeitsvertrag?', o: ['Günstigkeitsprinzip: Die bessere Regel für den Arbeitnehmer gilt', 'Der Arbeitsvertrag gilt immer', 'Das Gericht würfelt', 'Der Chef entscheidet'], a: 0, e: 'Nur Abweichungen zugunsten des Arbeitnehmers sind erlaubt.'},
+    ]],
+    ['see', ['gk-grundrechte', 'gk-grundordnung', 'gk-arbeitsrecht', 'wiso-vertrag', 'wiso-kv']],
+  ],
+});
+;
+// content/gk/sozialstaat-1.js
+AP2.page('gk-sozialstaat', {
+  b: 'gk', g: 'Soziales', t: 'Sozialstaat und Sozialversicherung mit Rechenbeispiel',
+  d: 'Deutschland ist ein **Sozialstaat** (Art. 20 GG). Der Staat sichert Menschen gegen große Lebensrisiken ab. Das wichtigste Mittel ist die **gesetzliche Sozialversicherung** mit **fünf Zweigen**: Kranken-, Pflege-, Renten-, Arbeitslosen- und Unfallversicherung. Die Beiträge zahlen **Arbeitgeber und Arbeitnehmer je zur Hälfte** (Ausnahme: Unfallversicherung nur Arbeitgeber). Prinzipien: **Solidarität**, **Pflichtversicherung**, **Umlageverfahren** und **Selbstverwaltung**. Wer trotzdem Hilfe braucht, bekommt **Sozialleistungen** vom Staat, zum Beispiel Bürgergeld, Wohngeld, Kindergeld.',
+  m: '**KRAPU = Kranken, Renten, Arbeitslosen, Pflege, Unfall.** **Beitrag halb-halb, Unfall nur Arbeitgeber.** **Umlage: Die Jungen zahlen für die Alten von heute.** **Solidarprinzip: Beitrag nach Einkommen, Leistung nach Bedarf.**',
+  cheat: [
+    ['5 Zweige (Beispielwerte 2026)', ['**Krankenversicherung:** 14,6 % plus Zusatzbeitrag (etwa 2,9 %), geteilt', '**Rentenversicherung:** 18,6 %, geteilt', '**Arbeitslosenversicherung:** 2,6 %, geteilt', '**Pflegeversicherung:** 3,6 %, geteilt, Kinderlose zahlen mehr', '**Unfallversicherung:** nur Arbeitgeber, Berufsgenossenschaft']],
+    ['Prinzipien', ['**Solidarprinzip:** Starke helfen Schwachen', '**Umlageverfahren:** Beiträge von heute zahlen Leistungen von heute', '**Pflichtversicherung:** Arbeitnehmer müssen mitmachen', '**Selbstverwaltung:** Versicherte und Arbeitgeber verwalten mit']],
+    ['Sozialleistungen', ['Bürgergeld (Grundsicherung)', 'Wohngeld', 'Kindergeld (259 Euro pro Kind, 2026)', 'Elterngeld', 'BAföG', 'Sozialhilfe']],
+  ],
+  blocks: [
+    ['h', 'Warum gibt es die Sozialversicherung?'],
+    ['p', 'Jeder Mensch kann krank werden, arbeitslos werden, einen Unfall haben, alt werden oder Pflege brauchen. Das sind **Lebensrisiken**. Wenn alle in einen gemeinsamen Topf einzahlen, hilft der Topf denen, die gerade in Not sind. Das ist die Idee der **Solidargemeinschaft**. Die ersten Sozialversicherungen führte **Otto von Bismarck** 1883 bis 1889 ein.'],
+    ['table', ['Wort', 'Einfach erklärt'], [
+      ['Sozialversicherung', 'Pflichtversicherung für Arbeitnehmer gegen Lebensrisiken.'],
+      ['Solidarprinzip', 'Alle zahlen nach ihrem Einkommen. Alle bekommen Hilfe nach ihrem Bedarf.'],
+      ['Versicherungsprinzip', 'Wer eingezahlt hat, hat Anspruch auf Leistung. Beispiel: Arbeitslosengeld I.'],
+      ['Umlageverfahren', 'Die Beiträge von heute werden sofort als Leistungen ausgezahlt. Es wird nichts angespart.'],
+      ['Kapitaldeckung', 'Jeder spart für sich selbst an. Beispiel: private Altersvorsorge.'],
+      ['Beitragsbemessungsgrenze', 'Bis zu diesem Einkommen zahlt man Beitrag. Was darüber liegt, ist beitragsfrei.'],
+      ['paritätisch', 'Beide Seiten zahlen gleich viel, je die Hälfte.'],
+      ['brutto / netto', 'Brutto = vor Abzügen. Netto = was auf dem Konto ankommt.'],
+      ['Subsidiarität', 'Zuerst hilft man sich selbst, dann Familie, dann der Staat.'],
+    ]],
+    ['h', 'Die fünf Zweige im Überblick'],
+    ['table', ['Zweig', 'Schutz vor', 'Beitrag insgesamt (2026, Beispiel)', 'Zahlt', 'Wichtige Leistungen'], [
+      ['**Krankenversicherung** (KV)', 'Krankheit', '14,6 % plus Zusatzbeitrag (Ø etwa 2,9 %)', 'AG und AN je die Hälfte', 'Arztbehandlung, Krankenhaus, Medikamente, Krankengeld'],
+      ['**Pflegeversicherung** (PV)', 'Pflegebedürftigkeit', '3,6 %, Kinderlose ab 23 Jahre plus 0,6 % (nur AN)', 'AG und AN je die Hälfte', 'Pflegegeld, Pflegesachleistungen, Pflegegrade 1 bis 5'],
+      ['**Rentenversicherung** (RV)', 'Alter, Erwerbsminderung, Tod', '18,6 %', 'AG und AN je die Hälfte', 'Altersrente, Erwerbsminderungsrente, Reha, Hinterbliebenenrente'],
+      ['**Arbeitslosenversicherung** (AV)', 'Arbeitslosigkeit', '2,6 %', 'AG und AN je die Hälfte', 'Arbeitslosengeld I (60 %, mit Kind 67 % des Netto), Vermittlung, Weiterbildung'],
+      ['**Unfallversicherung** (UV)', 'Arbeitsunfall, Berufskrankheit, Wegeunfall', 'nach Gefahrklasse', '**Nur der Arbeitgeber**', 'Heilbehandlung, Verletztengeld, Unfallrente'],
+    ]],
+    ['note', 'Die genauen Prozentzahlen ändern sich fast jedes Jahr. In der Prüfung steht der Satz meist **in der Aufgabe**. Du musst **rechnen** können und **wissen**, wer zahlt. Der Zusatzbeitrag der Krankenkasse wird seit 2019 ebenfalls **geteilt**.'],
+    ['h', 'Die Träger'],
+    ['table', ['Zweig', 'Träger'], [
+      ['KV', 'Krankenkassen (AOK, TK, Barmer, IKK, ...)'],
+      ['PV', 'Pflegekassen bei den Krankenkassen'],
+      ['RV', 'Deutsche Rentenversicherung (DRV)'],
+      ['AV', 'Bundesagentur für Arbeit (BA)'],
+      ['UV', 'Berufsgenossenschaften und Unfallkassen (DGUV)'],
+    ]],
+    ['h', 'Rechenbeispiel: Vom Brutto zum Netto'],
+    ['p', 'Marta ist 25 Jahre alt und hat keine Kinder. Sie verdient **3.000 Euro brutto** im Monat. Die Krankenkasse hat einen Zusatzbeitrag von 2,9 %. Berechne die Sozialabgaben von Marta (ohne Steuern).'],
+    ['table', ['Zweig', 'Gesamtsatz', 'Anteil Marta', 'Rechnung', 'Betrag'], [
+      ['KV', '14,6 % + 2,9 % = 17,5 %', '8,75 %', '3.000 mal 0,0875', '262,50 Euro'],
+      ['PV (kinderlos)', '3,6 %', '1,8 % + 0,6 % = 2,4 %', '3.000 mal 0,024', '72,00 Euro'],
+      ['RV', '18,6 %', '9,3 %', '3.000 mal 0,093', '279,00 Euro'],
+      ['AV', '2,6 %', '1,3 %', '3.000 mal 0,013', '39,00 Euro'],
+      ['**Summe**', '', '21,75 %', '262,50 + 72 + 279 + 39', '**652,50 Euro**'],
+    ]],
+    ['p', 'Der **Arbeitgeber** zahlt zusätzlich seinen Anteil. Er zahlt keinen Kinderlosenzuschlag. Seine Rechnung:'],
+    ['ex', ['**Arbeitgeberanteil:** KV 8,75 % + PV 1,8 % + RV 9,3 % + AV 1,3 % = 21,15 %.', '3.000 mal 0,2115 = **634,50 Euro**.', '**Gesamtbeitrag** zur Sozialversicherung: 652,50 + 634,50 = **1.287 Euro** im Monat.', '**Arbeitgeberkosten** (ohne Unfallversicherung): 3.000 + 634,50 = **3.634,50 Euro**.', '**Netto** vor Steuer: 3.000 - 652,50 = **2.347,50 Euro**. Die Lohnsteuer kommt noch dazu.']],
+    ['tip', 'In Prüfungsaufgaben fragt man oft: „Berechnen Sie den **Arbeitnehmeranteil**.“ Rechne **erst den Gesamtsatz**, dann **halbiere**, dann **multipliziere** mit dem Brutto. Schreibe jeden Schritt auf.'],
+    ['h', 'Beitragsbemessungsgrenze (BBG)'],
+    ['p', 'Es gibt eine Obergrenze für das Einkommen, von dem Beiträge gezahlt werden. Beispielwerte für 2026 pro Monat: **KV und PV etwa 5.812,50 Euro**, **RV und AV etwa 8.450 Euro**. Wer mehr verdient, zahlt vom Rest keinen Beitrag. Bei Einkommen über der **Versicherungspflichtgrenze** (2026 etwa 77.400 Euro im Jahr) darf man sich privat krankenversichern.'],
+    ['table', ['Brutto', 'Beitrag KV (17,5 %, davon AN 8,75 %)', 'Erklärung'], [
+      ['3.000 Euro', '262,50 Euro', '3.000 mal 8,75 %'],
+      ['5.812,50 Euro', '508,59 Euro', '5.812,50 mal 8,75 %'],
+      ['7.000 Euro', '508,59 Euro', 'Nur bis zur BBG: 5.812,50 mal 8,75 %'],
+    ]],
+    ['h', 'Minijob und Midijob'],
+    ['table', ['', 'Minijob', 'Midijob (Übergangsbereich)'], [
+      ['Verdienst', 'bis 603 Euro im Monat (2026)', 'von 603,01 bis 2.000 Euro'],
+      ['Steuer und Sozialabgaben', 'Pauschal; Arbeitgeber zahlt etwa 30 %; Beschäftigte können Rentenbeitrag zahlen', 'Beschäftigte zahlen weniger Beitrag, Leistung bleibt voll'],
+      ['Grenze', 'Hängt vom Mindestlohn ab (130 Stunden mal Mindestlohn durch 3)', 'Obere Grenze fest bei 2.000 Euro'],
+    ]],
+    ['h', 'Sozialleistungen vom Staat'],
+    ['table', ['Leistung', 'Für wen', 'Idee'], [
+      ['**Bürgergeld** (Grundsicherung)', 'Erwerbsfähige, die ihren Lebensunterhalt nicht bezahlen können', 'Existenzminimum sichern. Es gibt Pflichten (Termine, Bewerbungen).'],
+      ['**Sozialhilfe**', 'Nicht Erwerbsfähige (Alter, Krankheit)', 'Existenzminimum'],
+      ['**Wohngeld**', 'Geringverdiener', 'Zuschuss zur Miete'],
+      ['**Kindergeld**', 'Alle Eltern', '259 Euro pro Kind und Monat (2026)'],
+      ['**Elterngeld**', 'Eltern nach der Geburt', 'Ersatz für ausgefallenes Einkommen, 65 bis 67 %, mindestens 300 und höchstens 1.800 Euro'],
+      ['**BAföG**', 'Schüler und Studenten aus Familien mit wenig Geld', 'Ausbildungsförderung'],
+      ['**Berufsausbildungsbeihilfe (BAB)**', 'Azubis, die nicht bei den Eltern wohnen können', 'Zuschuss zur Ausbildung'],
+    ]],
+    ['note', 'Das Bürgergeld wird von der Politik gerade überarbeitet. Die **Grundidee** (Existenzminimum, „Fördern und Fordern“) bleibt Prüfungsstoff.'],
+    ['h', 'Krise der Sozialversicherung?'],
+    ['p', 'Es gibt immer mehr Ältere und weniger Beitragszahler (siehe Seite Demografie). Darum steigen die Beiträge und der Staat gibt Zuschüsse aus Steuern. Politiker diskutieren Lösungen.'],
+    ['table', ['Maßnahme', 'Vorteil', 'Nachteil'], [
+      ['Rentenalter erhöhen (aktuell 67)', 'Mehr Beitragsjahre, weniger Rentenjahre', 'Belastung für körperlich Arbeitende'],
+      ['Beitragssatz erhöhen', 'Schnelle Mehreinnahmen', 'Höhere Arbeitskosten, weniger Netto'],
+      ['Mehr Zuwanderung von Fachkräften', 'Mehr Beitragszahler', 'Integration braucht Zeit und Geld'],
+      ['Private Vorsorge stärken', 'Weniger Druck auf die Umlage', 'Nicht alle können sparen'],
+      ['Beamte und Selbstständige einbeziehen', 'Mehr Einnahmen, Gerechtigkeit', 'Spätere Ansprüche, rechtliche Fragen'],
+    ]],
+    ['h', 'Prüfungsfragen'],
+    ['qa', 'Nennen Sie die fünf Zweige der Sozialversicherung.', ['Krankenversicherung, Pflegeversicherung, Rentenversicherung, Arbeitslosenversicherung, Unfallversicherung. (je 1 Punkt)'], 5],
+    ['qa', 'Erklären Sie das Solidarprinzip an einem Beispiel.', ['Alle zahlen nach ihrem Einkommen ein, aber alle bekommen die gleiche Leistung nach Bedarf. Beispiel: Ein Geringverdiener und eine Gutverdienerin haben dieselbe ärztliche Behandlung, obwohl sie unterschiedliche Beiträge zahlen. (2 Punkte Erklärung, 1 Punkt Beispiel)'], 3],
+    ['qa', 'Berechnen Sie den Arbeitnehmeranteil zur Rentenversicherung bei 2.800 Euro brutto und 18,6 % Beitragssatz.', ['Arbeitnehmeranteil = 18,6 % durch 2 = 9,3 %. 2.800 mal 0,093 = 260,40 Euro. (1 Punkt Halbierung, 1 Punkt Rechnung, 1 Punkt Ergebnis mit Einheit)'], 3],
+    ['qa', 'Beschreiben Sie, wer die Unfallversicherung bezahlt und wer sie trägt.', ['Nur der Arbeitgeber zahlt den Beitrag. Träger sind die Berufsgenossenschaften und Unfallkassen. Sie zahlen bei Arbeitsunfall, Wegeunfall und Berufskrankheit.'], 3],
+    ['qa', 'Erläutern Sie das Umlageverfahren.', ['Die Beiträge der heutigen Beitragszahler bezahlen sofort die Renten der heutigen Rentner. Es wird kein Geld für den Einzelnen angespart. Die junge Generation zahlt für die ältere (Generationenvertrag).'], 3],
+    ['quiz', [
+      {q: 'Welche Versicherung zahlt nur der Arbeitgeber?', o: ['Unfallversicherung', 'Rentenversicherung', 'Krankenversicherung', 'Pflegeversicherung'], a: 0, e: 'Nur die Unfallversicherung wird allein vom Arbeitgeber bezahlt.'},
+      {q: 'Welche Stelle ist Träger der gesetzlichen Arbeitslosenversicherung?', o: ['Bundesagentur für Arbeit', 'Deutsche Rentenversicherung', 'AOK', 'Berufsgenossenschaft'], a: 0, e: 'Die BA zahlt Arbeitslosengeld I.'},
+      {q: 'Wie hoch ist Arbeitslosengeld I ohne Kind?', o: ['60 % des pauschalierten Nettoentgelts', '100 %', '30 %', '80 %'], a: 0, e: 'Mit Kind 67 %.'},
+      {q: 'Was bedeutet „paritätisch“?', o: ['Beide zahlen gleich viel (je 50 %)', 'Nur der Arbeitgeber zahlt', 'Der Staat zahlt alles', 'Nur Besserverdiener zahlen'], a: 0, e: 'Parität = Gleichheit.'},
+      {q: 'Brutto 2.000 Euro, KV-Gesamtsatz 17,5 %. Wie viel zahlt der Arbeitnehmer?', o: ['175 Euro', '350 Euro', '87,50 Euro', '250 Euro'], a: 0, e: '17,5 % durch 2 = 8,75 %. 2.000 mal 0,0875 = 175 Euro.'},
+      {q: 'Was ist ein Umlageverfahren?', o: ['Beiträge von heute zahlen Leistungen von heute', 'Jeder spart für sich selbst', 'Der Staat zahlt aus Steuern', 'Die Bank zahlt'], a: 0, e: 'Gegenteil: Kapitaldeckung.'},
+      {q: 'Wer ist für Arbeitsunfälle zuständig?', o: ['Berufsgenossenschaft (gesetzliche Unfallversicherung)', 'Arbeitsamt', 'Krankenkasse', 'Rentenkasse'], a: 0, e: 'Auch für Wegeunfälle auf dem Weg zur Arbeit.'},
+      {q: 'Ab wann zahlen Kinderlose einen Zuschlag in der Pflegeversicherung?', o: ['Ab 23 Jahren', 'Ab 18 Jahren', 'Ab 30 Jahren', 'Ab 40 Jahren'], a: 0, e: 'Der Zuschlag beträgt 0,6 Prozentpunkte (nur Arbeitnehmer).'},
+    ]],
+    ['see', ['gk-demografie', 'gk-grundordnung', 'wiso-sv', 'wiso-kv', 'wiso-rv', 'wiso-alv', 'wiso-pv', 'wiso-uv']],
+  ],
+});
+;
+// content/gk/arbeitsrecht-1.js
+AP2.page('gk-arbeitsrecht', {
+  b: 'gk', g: 'Soziales', t: 'Arbeitsrecht im Überblick: Vertrag, Schutz, Kündigung, Mitbestimmung',
+  d: 'Das **Arbeitsrecht** schützt die Arbeitnehmer, weil sie dem Arbeitgeber meist unterlegen sind. Es besteht aus vielen Gesetzen: Arbeitsvertrag (BGB), **Arbeitszeitgesetz**, **Bundesurlaubsgesetz**, **Kündigungsschutzgesetz**, **Jugendarbeitsschutzgesetz**, **Mutterschutzgesetz**, **Mindestlohngesetz** und **Betriebsverfassungsgesetz**. Dazu kommen **Tarifverträge**. Die Seite fasst alles für die Gemeinschaftskunde zusammen. Ausführliche Seiten gibt es im Bereich WiSo.',
+  m: '**Kündigung: schriftlich, Frist beachten, Betriebsrat anhören.** **Kündigungsschutzklage in 3 Wochen.** **Arbeitszeit: 8 Stunden, bis 10 Stunden mit Ausgleich.** **Pause: 30 Minuten ab 6 Stunden, 45 ab 9 Stunden.** **Ruhezeit: 11 Stunden.** **Mindestlohn 2026: 13,90 Euro.**',
+  cheat: [
+    ['Arbeitszeit (ArbZG)', ['8 Stunden pro Tag, bis 10 Stunden möglich', 'Im Schnitt 8 Stunden in 6 Monaten', 'Pause: 30 min ab 6 h, 45 min ab 9 h', 'Ruhezeit: mindestens 11 Stunden', 'Sonntag in der Regel frei']],
+    ['Kündigung', ['Schriftform (mit Unterschrift)', 'Grundfrist: 4 Wochen zum 15. oder Monatsende', 'Probezeit: 2 Wochen', 'KSchG: nach 6 Monaten, über 10 Beschäftigte', 'Klage: 3 Wochen nach Zugang']],
+    ['Schutz', ['Mutterschutz: 6 Wochen vor, 8 Wochen nach der Geburt', 'Jugendliche: 40 Stunden, 5-Tage-Woche', 'Urlaub: mind. 24 Werktage (20 Arbeitstage)', 'Entgeltfortzahlung: 6 Wochen, 100 %', 'Mindestlohn: 13,90 Euro (2026)']],
+  ],
+  blocks: [
+    ['h', 'Wichtige Wörter'],
+    ['table', ['Wort', 'Einfach erklärt'], [
+      ['Arbeitnehmer / Arbeitgeber', 'Wer arbeitet / wer die Arbeit bezahlt.'],
+      ['Arbeitsvertrag', 'Vertrag über Arbeit gegen Lohn. Er kann mündlich sein, schriftlich ist besser.'],
+      ['Direktionsrecht', 'Der Chef sagt, was, wann und wo man arbeitet (im Rahmen des Vertrags).'],
+      ['Probezeit', 'Anfangszeit, in der beide leichter kündigen können (bis 6 Monate).'],
+      ['ordentliche Kündigung', 'Kündigung mit Frist.'],
+      ['außerordentliche (fristlose) Kündigung', 'Kündigung sofort, nur mit wichtigem Grund (§ 626 BGB).'],
+      ['Abmahnung', 'Schriftliche Warnung. Danach kann bei gleichem Fehler eine Kündigung folgen.'],
+      ['Tarifvertrag', 'Vertrag zwischen Gewerkschaft und Arbeitgeber(verband) über Lohn und Arbeitszeit.'],
+      ['Betriebsrat', 'Gewählte Vertretung der Beschäftigten im Betrieb.'],
+      ['Betriebsvereinbarung', 'Vertrag zwischen Betriebsrat und Chef für den ganzen Betrieb.'],
+    ]],
+    ['h', 'Der Arbeitsvertrag'],
+    ['table', ['Thema', 'Regel'], [
+      ['Form', 'Frei (auch mündlich). Der Arbeitgeber muss die **wesentlichen Bedingungen schriftlich** geben (Nachweisgesetz). Ein Ausbildungsvertrag muss schriftlich sein.'],
+      ['Inhalt', 'Parteien, Beginn, Tätigkeit, Arbeitsort, Vergütung, Arbeitszeit, Urlaub, Kündigungsfristen, Probezeit.'],
+      ['Befristung', 'Ohne Sachgrund bis 2 Jahre, bis zu dreimal verlängerbar. Mit Sachgrund (zum Beispiel Vertretung) länger.'],
+      ['Minderjährige', 'Brauchen die Zustimmung der gesetzlichen Vertreter (Eltern).'],
+      ['Pflichten Arbeitnehmer', 'Arbeit leisten, Weisungen befolgen, Verschwiegenheit, Treue, Anzeige bei Krankheit.'],
+      ['Pflichten Arbeitgeber', 'Lohn zahlen, beschäftigen, Fürsorge, Urlaub gewähren, Zeugnis erteilen.'],
+    ]],
+    ['h', 'Arbeitszeit und Pausen (Arbeitszeitgesetz)'],
+    ['table', ['Regel', 'Wert'], [
+      ['Tägliche Höchstzeit', '8 Stunden, bis 10 Stunden, wenn im Durchschnitt 8 Stunden in 6 Monaten'],
+      ['Pause bei mehr als 6 bis 9 Stunden', 'mindestens 30 Minuten'],
+      ['Pause bei mehr als 9 Stunden', 'mindestens 45 Minuten'],
+      ['Ruhezeit nach der Arbeit', 'mindestens 11 Stunden ohne Unterbrechung'],
+      ['Sonn- und Feiertage', 'In der Regel Arbeitsverbot, mit Ausnahmen (Krankenhaus, Polizei, Gastronomie)'],
+    ]],
+    ['ex', ['**Beispiel:** Jan arbeitet bis 22:00 Uhr. Am nächsten Morgen soll er um 07:00 Uhr beginnen. Zwischen 22:00 und 07:00 liegen nur **9 Stunden**. Die Ruhezeit von 11 Stunden ist verletzt. Frühestens um 09:00 Uhr darf er wieder anfangen.', '**Beispiel Pause:** Arbeitszeit von 08:00 bis 16:30 Uhr = 8,5 Stunden brutto. Pause 30 Minuten. Tatsächliche Arbeitszeit = 8 Stunden.']],
+    ['h', 'Urlaub und Krankheit'],
+    ['table', ['Thema', 'Regel'], [
+      ['Gesetzlicher Mindesturlaub', '24 Werktage (Mo bis Sa) = 20 Arbeitstage bei 5-Tage-Woche'],
+      ['Urlaub für Jugendliche (JArbSchG)', 'Unter 16: 30 Werktage; unter 17: 27 Werktage; unter 18: 25 Werktage'],
+      ['Schwerbehinderte', 'Zusätzlich 5 Arbeitstage'],
+      ['Wartezeit', 'Voller Urlaubsanspruch nach 6 Monaten Beschäftigung'],
+      ['Urlaubsentgelt', 'Der Lohn läuft weiter'],
+      ['Krankheit', 'Sofort melden. Ärztliche Bescheinigung (eAU) meist ab dem 4. Tag, wenn der Chef sie früher verlangt, ab dem 1. Tag.'],
+      ['Entgeltfortzahlung', '6 Wochen 100 % Lohn vom Arbeitgeber; danach Krankengeld der Krankenkasse (70 % des Brutto, maximal 90 % des Netto)'],
+    ]],
+    ['h', 'Kündigung: Fristen und Schutz'],
+    ['table', ['Fall', 'Frist (§ 622 BGB)'], [
+      ['In der Probezeit (bis 6 Monate)', '2 Wochen, jederzeit'],
+      ['Arbeitnehmer nach der Probezeit', '4 Wochen zum 15. oder zum Monatsende'],
+      ['Arbeitgeber, Betrieb 2 Jahre', '1 Monat zum Monatsende'],
+      ['Arbeitgeber, 5 Jahre', '2 Monate zum Monatsende'],
+      ['Arbeitgeber, 8 Jahre', '3 Monate zum Monatsende'],
+      ['Arbeitgeber, 10 Jahre', '4 Monate zum Monatsende'],
+      ['Arbeitgeber, 12 Jahre', '5 Monate zum Monatsende'],
+      ['Arbeitgeber, 15 Jahre', '6 Monate zum Monatsende'],
+      ['Arbeitgeber, 20 Jahre', '7 Monate zum Monatsende'],
+      ['Azubi nach der Probezeit', 'Azubi: 4 Wochen mit Grund oder Berufswechsel; Betrieb: nur fristlos mit wichtigem Grund'],
+    ]],
+    ['h', 'Wann ist eine Kündigung wirksam?'],
+    ['steps', [
+      '**Form:** Die Kündigung muss **schriftlich** sein, mit Unterschrift auf Papier (nicht per E-Mail oder WhatsApp).',
+      '**Frist:** Die Kündigungsfrist ist richtig berechnet.',
+      '**Betriebsrat:** Gibt es einen Betriebsrat, muss er **vorher angehört** werden (§ 102 BetrVG). Sonst ist die Kündigung unwirksam.',
+      '**Sonderschutz:** Schwangere, Eltern in Elternzeit, Schwerbehinderte (Integrationsamt), Betriebsräte und Azubis sind besonders geschützt.',
+      '**Kündigungsschutzgesetz:** Gilt nach 6 Monaten in Betrieben mit **mehr als 10 Beschäftigten**. Dann braucht der Arbeitgeber einen **Kündigungsgrund**.',
+    ]],
+    ['table', ['Grund (KSchG)', 'Erklärung', 'Beispiel'], [
+      ['**personenbedingt**', 'Es liegt an der Person, ohne Schuld.', 'Lange Krankheit, Verlust des Führerscheins bei Fahrer'],
+      ['**verhaltensbedingt**', 'Pflichtverletzung. Meist erst nach Abmahnung.', 'Wiederholt zu spät kommen, Diebstahl'],
+      ['**betriebsbedingt**', 'Der Arbeitsplatz fällt weg. Sozialauswahl nötig.', 'Abteilung schließt'],
+    ]],
+    ['note', 'Wer eine Kündigung bekommt, muss innerhalb von **3 Wochen** nach Zugang beim **Arbeitsgericht** eine **Kündigungsschutzklage** einreichen. Danach gilt die Kündigung als wirksam.'],
+    ['ex', ['**Fall:** Aylin arbeitet seit 3 Jahren in einem Betrieb mit 50 Beschäftigten. Sie bekommt am 10. März eine schriftliche Kündigung vom Chef. Ein Grund steht nicht darin.', '**Prüfung:** Das KSchG gilt (mehr als 6 Monate, mehr als 10 Beschäftigte). Der Chef braucht einen Grund. Aylin kann bis zum 31. März klagen (3 Wochen).', '**Frist:** 3 Jahre Betriebszugehörigkeit. Die Frist liegt bei 1 Monat zum Monatsende, da erst ab 2 Jahren. Kündigung am 10. März wirkt zum 30. April.']],
+    ['h', 'Mutterschutz und Elternzeit'],
+    ['table', ['Thema', 'Regel'], [
+      ['Schutzfrist', '6 Wochen vor und 8 Wochen nach der Geburt (12 Wochen bei Früh- oder Mehrlingsgeburt)'],
+      ['Mutterschaftsgeld', 'Von der Krankenkasse bis zu 13 Euro pro Tag, der Arbeitgeber zahlt den Rest zum Netto'],
+      ['Kündigungsschutz', 'Während der Schwangerschaft und bis 4 Monate nach der Geburt fast unmöglich'],
+      ['Elternzeit', 'Bis zu 3 Jahre pro Kind, für Mutter und Vater, Arbeitsplatz bleibt geschützt'],
+      ['Elterngeld', '12 Monate plus 2 Partnermonate (14 Monate insgesamt), 65 bis 67 % des Nettoeinkommens'],
+    ]],
+    ['h', 'Jugendarbeitsschutz (Kurzfassung)'],
+    ['table', ['Thema', 'Regel'], [
+      ['Altersgrenze', 'Kinder (unter 15) dürfen nicht arbeiten. Ausnahmen: Ausbildung, leichte Arbeit.'],
+      ['Arbeitszeit', 'Höchstens 8 Stunden pro Tag, 40 Stunden pro Woche'],
+      ['5-Tage-Woche', 'Samstag und Sonntag sollen frei sein'],
+      ['Pausen', '30 Minuten bei mehr als 4,5 bis 6 Stunden; 60 Minuten bei mehr als 6 Stunden'],
+      ['Ruhezeit', 'Mindestens 12 Stunden'],
+      ['Nachtruhe', 'Keine Arbeit von 20:00 bis 06:00 Uhr (Ausnahmen)'],
+      ['Berufsschule', 'Der Besuch zählt als Arbeitszeit. Freistellung vor der Prüfung.'],
+      ['Untersuchungen', 'Erstuntersuchung vor Beginn, Nachuntersuchung im 1. Jahr'],
+    ]],
+    ['h', 'Mindestlohn'],
+    ['p', 'Der **gesetzliche Mindestlohn** gilt für alle Arbeitnehmer ab 18 Jahren. Ausnahmen: Auszubildende (sie haben die **Mindestausbildungsvergütung**), Praktikanten im Pflichtpraktikum, Jugendliche ohne Berufsabschluss. Die **Mindestlohnkommission** schlägt die Höhe alle zwei Jahre vor.'],
+    ['table', ['Jahr', 'Mindestlohn pro Stunde'], [
+      ['2024', '12,41 Euro'],
+      ['2025', '12,82 Euro'],
+      ['2026', '13,90 Euro'],
+      ['2027', '14,60 Euro (beschlossen)'],
+    ]],
+    ['ex', ['**Rechnung:** 160 Stunden im Monat mal 13,90 Euro = **2.224 Euro brutto**. Im Jahr: 2.224 mal 12 = 26.688 Euro.']],
+    ['h', 'Tarifvertrag und Streik'],
+    ['table', ['Begriff', 'Erklärung'], [
+      ['Tarifautonomie', 'Gewerkschaften und Arbeitgeber handeln Tarife ohne Staat aus (Art. 9 Abs. 3 GG).'],
+      ['Tarifpartner', 'Gewerkschaft (zum Beispiel IG Metall, ver.di) und Arbeitgeberverband (oder einzelne Firma).'],
+      ['Friedenspflicht', 'Solange der Tarifvertrag gilt, gibt es keinen Streik.'],
+      ['Warnstreik', 'Kurzer Streik während der Verhandlung.'],
+      ['Urabstimmung', 'Mitglieder stimmen über einen unbefristeten Streik ab (meist 75 % Ja nötig).'],
+      ['Schlichtung', 'Neutrale Person hilft bei einer Einigung.'],
+      ['Aussperrung', 'Arbeitgeber schließen Beschäftigte aus (selten, nur als Antwort).'],
+      ['Allgemeinverbindlichkeit', 'Der Tarifvertrag gilt für die ganze Branche.'],
+    ]],
+    ['h', 'Mitbestimmung im Betrieb'],
+    ['table', ['Organ', 'Voraussetzung', 'Aufgabe'], [
+      ['**Betriebsrat**', 'Ab 5 ständigen Arbeitnehmern, gewählt alle 4 Jahre (März bis Mai)', 'Mitbestimmung bei Arbeitszeit, Lohnsystem, Urlaubsplan, Überwachung durch Technik, Einstellung, Kündigung (Anhörung)'],
+      ['**Jugend- und Auszubildendenvertretung (JAV)**', 'Ab 5 Beschäftigten unter 18 Jahren oder Azubis unter 25 Jahren, gewählt alle 2 Jahre', 'Vertritt die Interessen von Azubis und Jugendlichen'],
+      ['**Wirtschaftsausschuss**', 'Ab 100 Beschäftigten', 'Wird über die wirtschaftliche Lage informiert'],
+      ['**Aufsichtsrat**', 'Bei großen Kapitalgesellschaften', 'Überwacht den Vorstand; Arbeitnehmer sitzen mit (Drittel- oder Parität)'],
+    ]],
+    ['table', ['Stufe', 'Bedeutung', 'Beispiel'], [
+      ['Information', 'Chef muss berichten', 'Wirtschaftliche Lage'],
+      ['Anhörung', 'Betriebsrat muss gehört werden', 'Kündigung (sonst unwirksam)'],
+      ['Mitwirkung', 'Beratung und Vorschläge', 'Personalplanung'],
+      ['Mitbestimmung', 'Chef braucht Zustimmung (Einigungsstelle bei Streit)', 'Arbeitszeitplan, Einführung von Kameras oder neuer Software zur Leistungskontrolle'],
+    ]],
+    ['h', 'Gleichbehandlung (AGG)'],
+    ['p', 'Das **Allgemeine Gleichbehandlungsgesetz** verbietet Benachteiligung wegen **Rasse, ethnischer Herkunft, Geschlecht, Religion, Weltanschauung, Behinderung, Alter oder sexueller Identität**. Es gilt bei Bewerbung, Lohn, Beförderung und Kündigung. Wer benachteiligt wird, kann Schadenersatz verlangen. Frist: **2 Monate**. Die Beschwerdestelle im Betrieb hilft.'],
+    ['h', 'Prüfungsfragen'],
+    ['qa', 'Nennen Sie vier Voraussetzungen für eine wirksame Kündigung durch den Arbeitgeber.', ['Schriftform, Einhalten der Kündigungsfrist, Anhörung des Betriebsrats (falls vorhanden), Kündigungsgrund nach KSchG (wenn anwendbar), Beachten des Sonderkündigungsschutzes. (je 1 Punkt, vier verlangt)'], 4],
+    ['qa', 'Erläutern Sie, warum es Tarifverträge gibt.', ['Ein einzelner Arbeitnehmer ist schwächer als der Arbeitgeber. Gewerkschaften handeln für viele Beschäftigte gemeinsam bessere Bedingungen aus. Das schafft gleiche Regeln in der ganzen Branche und verhindert Streit im Einzelfall. (3 Aussagen)'], 3],
+    ['qa', 'Berechnen Sie den Mindestlohn für 38 Stunden pro Woche bei 13,90 Euro. Nutzen Sie 4,35 Wochen pro Monat.', ['38 mal 13,90 = 528,20 Euro pro Woche. 528,20 mal 4,35 = 2.297,67 Euro brutto im Monat. (1 Punkt Wochenlohn, 1 Punkt Monatsfaktor, 1 Punkt Ergebnis)'], 3],
+    ['qa', 'Nennen Sie zwei Aufgaben des Betriebsrats.', ['Mitbestimmung bei Arbeitszeit und Urlaubsplan; Anhörung bei Kündigungen; Überwachung, dass Gesetze und Tarifverträge eingehalten werden; Mitbestimmung bei technischer Überwachung. (je 1 Punkt)'], 2],
+    ['qa', 'Eine Mitarbeiterin ist schwanger. Der Chef kündigt. Beurteilen Sie die Kündigung.', ['Während der Schwangerschaft und bis 4 Monate nach der Geburt gilt ein Kündigungsverbot (§ 17 MuSchG). Nur mit Zustimmung der Aufsichtsbehörde ist eine Kündigung in Ausnahmefällen möglich. Die Kündigung ist hier in der Regel unwirksam. (Regel, Begründung, Ergebnis)'], 3],
+    ['quiz', [
+      {q: 'Wie lange ist die Probezeit höchstens bei einem Arbeitsvertrag?', o: ['6 Monate', '3 Monate', '12 Monate', '1 Monat'], a: 0, e: 'Üblich sind 3 bis 6 Monate. Mehr als 6 Monate sind nicht erlaubt.'},
+      {q: 'Welche Pause steht einem Erwachsenen bei 8 Stunden Arbeit mindestens zu?', o: ['30 Minuten', '15 Minuten', '45 Minuten', '60 Minuten'], a: 0, e: 'Ab 6 Stunden 30 Minuten, ab 9 Stunden 45 Minuten.'},
+      {q: 'Wie lange hat man Zeit für eine Kündigungsschutzklage?', o: ['3 Wochen', '1 Woche', '4 Monate', '1 Jahr'], a: 0, e: 'Ab Zugang der Kündigung (§ 4 KSchG).'},
+      {q: 'Ab wie vielen Arbeitnehmern kann ein Betriebsrat gewählt werden?', o: ['5', '10', '50', '100'], a: 0, e: 'Mindestens 5 ständige wahlberechtigte Arbeitnehmer.'},
+      {q: 'Wie lange zahlt der Arbeitgeber bei Krankheit das volle Gehalt weiter?', o: ['6 Wochen', '2 Wochen', '3 Monate', '1 Jahr'], a: 0, e: 'Entgeltfortzahlungsgesetz. Danach Krankengeld.'},
+      {q: 'Wie ist der gesetzliche Mindesturlaub bei einer 5-Tage-Woche?', o: ['20 Arbeitstage', '24 Arbeitstage', '30 Arbeitstage', '15 Arbeitstage'], a: 0, e: '24 Werktage entsprechen 20 Arbeitstage.'},
+      {q: 'Welche Ruhezeit muss zwischen zwei Arbeitstagen liegen?', o: ['11 Stunden', '8 Stunden', '6 Stunden', '14 Stunden'], a: 0, e: 'Bei Jugendlichen 12 Stunden.'},
+      {q: 'Welches Gericht entscheidet über eine Kündigungsklage?', o: ['Arbeitsgericht', 'Amtsgericht', 'Sozialgericht', 'Finanzgericht'], a: 0, e: 'Die Arbeitsgerichtsbarkeit ist eigenständig.'},
+    ]],
+    ['see', ['gk-sozialstaat', 'gk-rechtsstaat', 'wiso-arbeitsvertrag', 'wiso-kuendigung', 'wiso-urlaub', 'wiso-jarbschg', 'wiso-betriebsrat', 'wiso-tarif']],
+  ],
+});
+;
+// content/gk/wirtschaft-1.js
+AP2.page('gk-wirtschaft', {
+  b: 'gk', g: 'Wirtschaft und Politik', t: 'Soziale Marktwirtschaft, Preise, Inflation, Steuern und Staatshaushalt',
+  d: 'Deutschland hat die **soziale Marktwirtschaft**: Der Markt steuert Preise und Produktion (Angebot und Nachfrage), und der Staat sorgt für **sozialen Ausgleich** und faire Regeln. Wichtige Ziele nennt das **magische Viereck**: **stabile Preise, hoher Beschäftigungsstand, außenwirtschaftliches Gleichgewicht, stetiges und angemessenes Wachstum**. Die **Europäische Zentralbank (EZB)** sichert die Preise (Ziel: 2 % Inflation). Der Staat finanziert sich vor allem durch **Steuern**, die größten sind **Einkommensteuer** (mit Lohnsteuer) und **Umsatzsteuer** (19 %, ermäßigt 7 %).',
+  m: '**Magisches Viereck: Preise, Arbeit, Außenhandel, Wachstum (PAAW).** **Inflation = Preise steigen, Geld verliert Wert.** **EZB-Ziel: 2 %.** **USt 19 % / 7 %.** **Schuldenbremse: Art. 109 und 115 GG.**',
+  cheat: [
+    ['Wirtschaftsordnungen', ['**Freie Marktwirtschaft:** Markt regelt alles', '**Zentralverwaltungswirtschaft:** Staat plant alles (DDR)', '**Soziale Marktwirtschaft:** Markt plus soziale Regeln']],
+    ['Magisches Viereck', ['Preisstabilität (Inflation unter 2 %)', 'Hoher Beschäftigungsstand (Arbeitslosigkeit niedrig)', 'Außenwirtschaftliches Gleichgewicht (Exporte = Importe)', 'Stetiges Wirtschaftswachstum (BIP steigt)', 'Sechseck: plus Umwelt und gerechte Verteilung']],
+    ['Steuern', ['**Direkt:** Einkommensteuer, Körperschaftsteuer, Gewerbesteuer', '**Indirekt:** Umsatzsteuer, Energiesteuer, Tabaksteuer', '**Progression:** Hohe Einkommen werden höher belastet']],
+  ],
+  blocks: [
+    ['h', 'Wirtschaftsordnungen im Vergleich'],
+    ['table', ['Merkmal', 'Freie Marktwirtschaft', 'Zentralverwaltungswirtschaft', 'Soziale Marktwirtschaft'], [
+      ['Wer plant?', 'Unternehmen und Haushalte', 'Der Staat (Plan)', 'Markt, Staat setzt Regeln'],
+      ['Preise', 'Entstehen am Markt', 'Staat legt fest', 'Entstehen am Markt, Staat greift ein bei Missbrauch'],
+      ['Eigentum', 'Privat', 'Meist staatlich (Volkseigentum)', 'Privat, verpflichtet (Art. 14 GG)'],
+      ['Soziale Absicherung', 'Gering', 'Staatlich, aber oft schlecht', 'Hoch (Sozialversicherung)'],
+      ['Beispiel', 'USA im 19. Jahrhundert (Idealbild)', 'DDR, Sowjetunion', 'Deutschland seit 1949 (Ludwig Erhard, Alfred Müller-Armack)'],
+    ]],
+    ['h', 'Preisbildung: Angebot und Nachfrage'],
+    ['table', ['Wort', 'Einfach erklärt'], [
+      ['Angebot', 'Wie viel Verkäufer verkaufen wollen. Bei höherem Preis steigt das Angebot.'],
+      ['Nachfrage', 'Wie viel Käufer kaufen wollen. Bei höherem Preis sinkt die Nachfrage.'],
+      ['Gleichgewichtspreis', 'Preis, bei dem Angebot gleich Nachfrage ist.'],
+      ['Angebotsüberhang', 'Mehr Angebot als Nachfrage. Der Preis sinkt.'],
+      ['Nachfrageüberhang', 'Mehr Nachfrage als Angebot. Der Preis steigt.'],
+      ['Monopol', 'Nur ein Anbieter. Er kann den Preis bestimmen.'],
+      ['Oligopol', 'Wenige Anbieter.'],
+      ['Kartell', 'Firmen sprechen Preise ab. Das ist verboten (Bundeskartellamt).'],
+      ['Wettbewerb', 'Viele Anbieter konkurrieren. Das schützt Verbraucher.'],
+    ]],
+    ['ex', ['**Beispiel Grafikkarten:** Viele Gamer wollen eine neue Karte (hohe Nachfrage). Es gibt wenige Karten (kleines Angebot). Der Preis steigt, zum Beispiel von 500 auf 800 Euro.', '**Beispiel Winterjacken im Sommer:** Wenige Käufer, viele Jacken im Lager. Der Händler senkt den Preis (Sale).']],
+    ['h', 'Wirtschaftskreislauf, BIP und Wachstum'],
+    ['p', 'Das **Bruttoinlandsprodukt (BIP)** ist der Wert aller Waren und Dienstleistungen, die in einem Land in einem Jahr hergestellt werden. Das **Wirtschaftswachstum** ist die Veränderung des realen BIP in Prozent. Real heißt: ohne die Preissteigerung.'],
+    ['table', ['Konjunkturphase', 'Merkmale', 'Staat und EZB'], [
+      ['Aufschwung', 'Aufträge steigen, mehr Jobs', 'Beobachten'],
+      ['Boom (Hochkonjunktur)', 'Voll ausgelastet, Preise steigen', 'EZB erhöht Zinsen, Staat spart'],
+      ['Abschwung', 'Aufträge sinken', 'Gegensteuern vorbereiten'],
+      ['Rezession / Depression', 'BIP sinkt, viele Arbeitslose', 'EZB senkt Zinsen, Staat gibt mehr aus (Konjunkturprogramm)'],
+    ]],
+    ['h', 'Inflation und Geldwert'],
+    ['p', '**Inflation** heißt: Die Preise steigen im Durchschnitt. Für dasselbe Geld bekommt man weniger. Die **Inflationsrate** misst man mit dem **Verbraucherpreisindex (VPI)** (ein „Warenkorb“ mit Dingen, die Haushalte kaufen). Die **EZB** will etwa **2 %** Inflation.'],
+    ['table', ['Ursache', 'Erklärung', 'Beispiel'], [
+      ['Nachfrageinflation', 'Die Nachfrage ist höher als das Angebot.', 'Boom, viele Aufträge'],
+      ['Kosteninflation', 'Die Kosten der Firmen steigen, sie erhöhen die Preise.', 'Teure Energie, höhere Löhne'],
+      ['Geldmengeninflation', 'Zu viel Geld im Umlauf.', 'Notenbank druckt viel Geld'],
+      ['Importierte Inflation', 'Importwaren werden teurer.', 'Öl wird teurer'],
+    ]],
+    ['ex', ['**Rechnung Inflationsrate:** Warenkorb im Vorjahr 1.200 Euro, dieses Jahr 1.260 Euro.', '(1.260 - 1.200) / 1.200 mal 100 = **5 %**.', '**Kaufkraft:** Wer 2.000 Euro verdient und 5 % Inflation hat, braucht 2.100 Euro für dieselben Waren. Steigt das Gehalt nur um 2 %, sinkt die Kaufkraft um etwa 3 %.']],
+    ['table', ['Folgen der Inflation', 'Gewinner', 'Verlierer'], [
+      ['Schulden werden real kleiner', 'Schuldner (Kreditnehmer)', 'Sparer'],
+      ['Sparbuchzins unter Inflationsrate', '', 'Sparer'],
+      ['Feste Löhne verlieren Wert', '', 'Arbeitnehmer, Rentner'],
+      ['Sachwerte steigen (Immobilien)', 'Eigentümer', 'Mieter'],
+    ]],
+    ['h', 'Die EZB und die Geldpolitik'],
+    ['p', 'Die **Europäische Zentralbank** (Frankfurt am Main) ist für die Währungsunion zuständig (20 Euro-Länder). Sie ist **unabhängig**. Ihr wichtigstes Ziel ist **Preisstabilität**. Das wichtigste Mittel ist der **Leitzins**.'],
+    ['table', ['Maßnahme', 'Wirkung auf Kredite', 'Wirkung auf Wirtschaft'], [
+      ['Leitzins hoch', 'Kredite teurer', 'Weniger Ausgaben, weniger Inflation, aber weniger Wachstum'],
+      ['Leitzins niedrig', 'Kredite billiger', 'Mehr Investitionen und Konsum, aber höhere Inflation'],
+    ]],
+    ['h', 'Das magische Viereck (Stabilitätsgesetz 1967)'],
+    ['p', 'Ziele sind schwer gleichzeitig zu erreichen. Darum sagt man „magisch“. Beispiel: Mehr Wachstum bringt Arbeitsplätze, aber auch oft höhere Preise (Konflikt).'],
+    ['table', ['Ziel', 'Messgröße', 'Zielwert (Orientierung)'], [
+      ['Preisstabilität', 'Inflationsrate', 'etwa 2 % pro Jahr'],
+      ['Hoher Beschäftigungsstand', 'Arbeitslosenquote', 'möglichst niedrig'],
+      ['Außenwirtschaftliches Gleichgewicht', 'Handelsbilanz', 'Export etwa gleich Import'],
+      ['Stetiges, angemessenes Wachstum', 'Reale BIP-Veränderung', 'etwa 2 bis 3 %'],
+      ['Sechseck: Umweltschutz', 'CO2-Ausstoß', 'sinkend'],
+      ['Sechseck: Gerechte Verteilung', 'Einkommensunterschied (Gini)', 'ausgewogen'],
+    ]],
+    ['h', 'Steuern: Wer zahlt was?'],
+    ['table', ['Steuer', 'Art', 'Wer zahlt', 'Beispiel'], [
+      ['**Einkommensteuer** (Lohnsteuer)', 'direkt', 'Arbeitnehmer, Selbstständige', 'Vom Gehalt abgezogen; Progression'],
+      ['**Körperschaftsteuer**', 'direkt', 'Kapitalgesellschaften', '15 % auf den Gewinn einer GmbH'],
+      ['**Gewerbesteuer**', 'direkt', 'Gewerbebetriebe', 'Geld für die Gemeinde'],
+      ['**Umsatzsteuer**', 'indirekt', 'Verbraucher', '19 % oder 7 % (Lebensmittel, Bücher)'],
+      ['**Energiesteuer**', 'indirekt', 'Verbraucher', 'Benzin, Heizöl'],
+      ['**Grundsteuer**', 'direkt', 'Grundstückseigentümer', 'Gemeinde'],
+      ['**Kfz-Steuer**', 'direkt', 'Autohalter', 'Bund'],
+      ['**Erbschaftsteuer**', 'direkt', 'Erben', 'Länder'],
+    ]],
+    ['p', 'Bei der **Einkommensteuer** gilt die **Steuerprogression**: Der Steuersatz steigt mit dem Einkommen. Bis zum **Grundfreibetrag** (2026: 12.348 Euro im Jahr) zahlt man keine Steuer. Der **Spitzensteuersatz** beträgt 42 % (ab etwa 70.000 Euro Jahreseinkommen), die **Reichensteuer** 45 %. Der **Solidaritätszuschlag** (5,5 % der Steuer) trifft nur noch Besserverdiener.'],
+    ['note', 'Der **Grenzsteuersatz** ist der Satz auf den **letzten** Euro. Er ist höher als der **Durchschnittssteuersatz**. Ein Anstieg des Gehalts um 100 Euro bedeutet also nicht, dass 100 Euro mehr Netto bleiben.'],
+    ['h', 'Wofür gibt der Staat Geld aus?'],
+    ['table', ['Ausgabe', 'Anteil (Größenordnung Bundeshaushalt)'], [
+      ['Soziales (Rente, Bürgergeld, Zuschüsse)', 'etwa 40 %'],
+      ['Verteidigung', 'steigend, etwa 10 bis 15 %'],
+      ['Verkehr, Bildung, Forschung', 'etwa 8 bis 10 %'],
+      ['Zinsen für Staatsschulden', 'etwa 5 bis 7 %'],
+      ['Sonstiges (Verwaltung, Entwicklung, Umwelt)', 'Rest'],
+    ]],
+    ['p', 'Die **Schuldenbremse** (Art. 109 und 115 GG) begrenzt die Kredite. Der Bund darf normalerweise höchstens **0,35 % des BIP** neue Schulden pro Jahr machen. Die Länder dürfen strukturell keine neuen Schulden machen. In Krisen und für Sondervermögen gibt es Ausnahmen, die der Bundestag beschließen muss.'],
+    ['procon', 'Staatsverschuldung', ['Zukunftsinvestitionen in Schulen, Straßen, Klimaschutz', 'In Krisen kann der Staat schnell helfen', 'Niedrige Zinsen machen Kredite günstig'], ['Zinsen belasten spätere Haushalte', 'Junge Generationen zahlen später', 'Weniger Spielraum, wenn Zinsen steigen'], ['Dafür', 'Dagegen']],
+    ['h', 'Verbraucher, Unternehmen und Staat im Kreislauf'],
+    ['table', ['Akteur', 'Gibt', 'Bekommt'], [
+      ['Haushalte', 'Arbeit, Steuern, Konsumausgaben', 'Einkommen, Waren, Sozialleistungen'],
+      ['Unternehmen', 'Waren, Löhne, Steuern', 'Umsatz, Arbeitskräfte, Aufträge'],
+      ['Staat', 'Sozialleistungen, Leistungen (Straßen, Schulen)', 'Steuern und Beiträge'],
+      ['Banken', 'Kredite, Zinsen für Sparer', 'Einlagen, Zinsen von Kreditnehmern'],
+      ['Ausland', 'Importe', 'Exporte'],
+    ]],
+    ['h', 'Prüfungsfragen'],
+    ['qa', 'Nennen Sie die vier Ziele des magischen Vierecks.', ['Preisstabilität, hoher Beschäftigungsstand, außenwirtschaftliches Gleichgewicht, stetiges und angemessenes Wirtschaftswachstum. (je 1 Punkt)'], 4],
+    ['qa', 'Erläutern Sie, warum Inflation für Sparer ein Problem ist.', ['Bei Inflation steigen die Preise. Wenn der Zins auf dem Sparbuch niedriger ist als die Inflationsrate, verliert das Geld an Kaufkraft. Beispiel: 1 % Zins und 3 % Inflation ergeben 2 % reale Verluste. (3 Aussagen)'], 3],
+    ['qa', 'Berechnen Sie die Inflationsrate: Warenkorb 2.500 Euro im Vorjahr, 2.575 Euro in diesem Jahr.', ['(2.575 - 2.500) / 2.500 = 0,03 = 3 %. (1 Punkt Formel, 1 Punkt Einsetzen, 1 Punkt Ergebnis)'], 3],
+    ['qa', 'Beschreiben Sie, was die soziale Marktwirtschaft ist.', ['Der Markt bestimmt Preise und Produktion über Angebot und Nachfrage. Der Staat setzt Regeln, schützt den Wettbewerb und sorgt für sozialen Ausgleich, zum Beispiel durch Sozialversicherung. (2 Aussagen Markt, 1 Aussage Staat)'], 3],
+    ['qa', 'Erklären Sie den Unterschied zwischen direkten und indirekten Steuern. Nennen Sie je ein Beispiel.', ['Direkte Steuern trägt der Zahler selbst direkt (Einkommensteuer). Indirekte Steuern sind im Preis enthalten, der Verkäufer führt sie ab (Umsatzsteuer). (je 1 Punkt Erklärung, 1 Punkt Beispiel)'], 4],
+    ['quiz', [
+      {q: 'Welche Wirtschaftsordnung hat Deutschland?', o: ['Soziale Marktwirtschaft', 'Zentralverwaltungswirtschaft', 'Freie Marktwirtschaft ohne Staat', 'Planwirtschaft'], a: 0, e: 'Ludwig Erhard prägte sie nach 1948.'},
+      {q: 'Welches Ziel gehört NICHT zum magischen Viereck?', o: ['Hohe Staatsschulden', 'Preisstabilität', 'Hoher Beschäftigungsstand', 'Außenwirtschaftliches Gleichgewicht'], a: 0, e: 'Das vierte Ziel ist stetiges Wachstum.'},
+      {q: 'Wo sitzt die Europäische Zentralbank?', o: ['Frankfurt am Main', 'Brüssel', 'Berlin', 'Luxemburg'], a: 0, e: 'Sie ist unabhängig und sichert die Preisstabilität.'},
+      {q: 'Welchen Steuersatz hat die Umsatzsteuer normalerweise?', o: ['19 %', '7 %', '25 %', '12 %'], a: 0, e: 'Ermäßigt: 7 %.'},
+      {q: 'Der Preis steigt, wenn ...', o: ['die Nachfrage größer ist als das Angebot', 'das Angebot größer ist als die Nachfrage', 'der Staat nichts tut', 'alle Firmen gleich sind'], a: 0, e: 'Nachfrageüberhang führt zu steigenden Preisen.'},
+      {q: 'Was ist ein Kartell?', o: ['Absprache zwischen Firmen über Preise (verboten)', 'Ein großer Händler', 'Ein Verbraucherverband', 'Eine Steuer'], a: 0, e: 'Das Bundeskartellamt verfolgt Kartelle.'},
+      {q: 'Was macht die EZB bei zu hoher Inflation meist?', o: ['Sie erhöht die Zinsen', 'Sie senkt die Zinsen', 'Sie druckt mehr Geld', 'Sie gibt Steuern frei'], a: 0, e: 'Teurere Kredite dämpfen die Nachfrage.'},
+      {q: 'Was bedeutet Steuerprogression?', o: ['Der Steuersatz steigt mit dem Einkommen', 'Alle zahlen gleich viel', 'Der Steuersatz sinkt mit dem Einkommen', 'Nur Firmen zahlen'], a: 0, e: 'Starke Schultern tragen mehr.'},
+    ]],
+    ['see', ['gk-sozialstaat', 'gk-grundordnung', 'gk-umwelt', 'wiso-wirtschaftsordnung', 'wiso-markt', 'wiso-konjunktur', 'wiso-steuern', 'wiso-kreislauf']],
+  ],
+});
+;
+// content/gk/globalisierung-1.js
+AP2.page('gk-globalisierung', {
+  b: 'gk', g: 'Wirtschaft und Politik', t: 'Globalisierung, Migration und Fachkräfte',
+  d: '**Globalisierung** heißt: Länder sind wirtschaftlich, politisch und kulturell immer stärker miteinander verbunden. Waren, Geld, Daten, Ideen und Menschen bewegen sich weltweit. Deutschland ist ein **Exportland**, und die IT-Branche arbeitet global (Cloud, Software, Lieferketten). **Vorteile:** mehr Auswahl, niedrigere Preise, neue Märkte. **Nachteile:** Abhängigkeit, Umweltbelastung, Druck auf Löhne, schwache Arbeitsrechte in manchen Ländern. **Migration** und die **Zuwanderung von Fachkräften** sind ein wichtiges Thema, weil Deutschland älter wird und Arbeitskräfte fehlen.',
+  m: '**Globalisierung = weltweite Verflechtung (Wirtschaft, Politik, Kultur, Technik).** **Flucht (Zwang) ist nicht gleich Arbeitsmigration (Wahl).** **Asyl: Art. 16a GG.** **Fachkräfte: Blaue Karte EU, Chancenkarte.**',
+  cheat: [
+    ['Vorteile', ['Mehr Auswahl und niedrigere Preise', 'Neue Märkte und Exporte', 'Austausch von Wissen und Kultur', 'Arbeitsplätze in Exportbranchen']],
+    ['Nachteile', ['Abhängigkeit von Lieferketten', 'Verlagerung von Arbeitsplätzen', 'Umweltbelastung durch Transport', 'Ausbeutung in Billiglohnländern']],
+    ['Migration', ['**Asyl:** politisch Verfolgte (Art. 16a GG)', '**Flüchtling:** Genfer Konvention', '**Arbeitsmigration:** Fachkräfteeinwanderungsgesetz', '**EU-Bürger:** Freizügigkeit']],
+  ],
+  blocks: [
+    ['h', 'Was ist Globalisierung?'],
+    ['table', ['Wort', 'Einfach erklärt'], [
+      ['Globalisierung', 'Die Welt wächst zusammen. Handel, Reisen und Internet verbinden alle Länder.'],
+      ['Export / Import', 'Verkauf ins Ausland / Kauf aus dem Ausland.'],
+      ['Freihandel', 'Handel ohne Zölle und Hindernisse.'],
+      ['Zoll', 'Steuer auf Waren über die Grenze.'],
+      ['Handelsbilanz', 'Exporte minus Importe. Plus = Exportüberschuss.'],
+      ['Lieferkette', 'Weg einer Ware vom Rohstoff bis zum Kunden.'],
+      ['Offshoring', 'Firma verlagert Arbeit ins Ausland (zum Beispiel Support-Center).'],
+      ['Outsourcing', 'Firma gibt Aufgaben an eine andere Firma ab.'],
+      ['WTO', 'Welthandelsorganisation (Genf). Sie regelt den Welthandel und schlichtet Streit.'],
+      ['multinationaler Konzern', 'Firma mit Standorten in vielen Ländern, zum Beispiel SAP oder Siemens.'],
+    ]],
+    ['h', 'Globalisierung in der IT'],
+    ['list', [
+      '**Cloud:** Daten liegen in Rechenzentren in verschiedenen Ländern. Das wirft Fragen zum Datenschutz auf.',
+      '**Software-Entwicklung:** Teams arbeiten in verschiedenen Zeitzonen (Follow-the-Sun).',
+      '**Hardware:** Chips kommen oft aus Taiwan und Südkorea. Lieferprobleme stoppen die Produktion.',
+      '**Rohstoffe:** Seltene Erden und Kobalt für Akkus kommen aus wenigen Ländern.',
+      '**Fachkräfte:** Entwickler arbeiten remote für Firmen im Ausland.',
+    ]],
+    ['h', 'Vorteile und Nachteile abwägen'],
+    ['procon', 'Globalisierung', ['Größere Auswahl und niedrigere Preise für Verbraucher', 'Neue Absatzmärkte, mehr Exporte, sichere Jobs in Deutschland', 'Austausch von Technik, Wissen und Kultur', 'Zusammenarbeit bei globalen Problemen (Klima, Gesundheit)'], ['Abhängigkeit von einzelnen Ländern (Energie, Chips)', 'Arbeitsplätze wandern in Länder mit niedrigen Löhnen', 'Kinderarbeit und Umweltschäden in manchen Lieferketten', 'Mehr Verkehr und CO2'], ['Vorteile', 'Nachteile']],
+    ['h', 'Lieferkettengesetz'],
+    ['p', 'Große Firmen sollen darauf achten, dass ihre Zulieferer **Menschenrechte** und **Umweltstandards** einhalten. In Deutschland regelt das das **Lieferkettensorgfaltspflichtengesetz** (LkSG, seit 2023). Es gilt für große Unternehmen (ab 1.000 Beschäftigten). Auf EU-Ebene gibt es eine ähnliche Richtlinie. Firmen müssen Risiken prüfen, Maßnahmen ergreifen und berichten.'],
+    ['ex', ['**Beispiel:** Ein Handyhersteller kauft Kobalt für Akkus. Er muss prüfen, ob Kinder in den Minen arbeiten. Findet er Verstöße, muss er den Lieferanten wechseln oder Verbesserungen verlangen.']],
+    ['h', 'Migration: wichtige Begriffe'],
+    ['table', ['Begriff', 'Bedeutung', 'Rechtsgrundlage'], [
+      ['**Migration**', 'Menschen ziehen für längere Zeit in ein anderes Land.', ''],
+      ['**Asylberechtigte**', 'Politisch Verfolgte', 'Art. 16a GG'],
+      ['**Flüchtling**', 'Verfolgung wegen Rasse, Religion, Nationalität, politischer Meinung, Gruppenzugehörigkeit', 'Genfer Flüchtlingskonvention (1951)'],
+      ['**Subsidiärer Schutz**', 'Schutz bei Gefahr von Folter oder Krieg', 'EU-Recht'],
+      ['**Duldung**', 'Ausreisepflichtig, wird aber vorübergehend nicht abgeschoben.', 'Aufenthaltsgesetz'],
+      ['**Fachkräfteeinwanderung**', 'Qualifizierte Arbeitnehmer aus Nicht-EU-Ländern', 'Fachkräfteeinwanderungsgesetz (2020)'],
+      ['**Freizügigkeit**', 'EU-Bürger dürfen in jedem EU-Land leben und arbeiten.', 'EU-Vertrag, Art. 45 AEUV'],
+      ['**Integration**', 'Teilhabe an Sprache, Arbeit, Bildung und Gesellschaft.', 'Integrationskurs'],
+    ]],
+    ['h', 'Gründe für Migration: Push und Pull'],
+    ['table', ['Push-Faktoren (stoßen weg)', 'Pull-Faktoren (ziehen an)'], [
+      ['Krieg, Verfolgung', 'Sicherheit und Frieden'],
+      ['Armut, keine Arbeit', 'Arbeit und Einkommen'],
+      ['Klimawandel, Dürre', 'Gute Bildung und Gesundheitssystem'],
+      ['Schlechte Bildung', 'Familie, die schon im Land lebt'],
+      ['Diskriminierung', 'Rechtsstaat und Freiheit'],
+    ]],
+    ['h', 'Fachkräftemangel und Zuwanderung'],
+    ['p', 'In Deutschland fehlen in vielen Berufen Fachkräfte, auch in der IT. Gründe: **demografischer Wandel**, schnelle Technik, viele Rentner. Die Politik hat mehrere Wege geschaffen.'],
+    ['table', ['Weg', 'Erklärung'], [
+      ['**Blaue Karte EU**', 'Aufenthaltstitel für Akademiker mit Jobangebot und Mindestgehalt. IT-Fachkräfte haben niedrigere Gehaltsgrenzen.'],
+      ['**Fachkräfteeinwanderungsgesetz**', 'Fachkräfte mit Berufsabschluss dürfen mit Jobangebot einreisen. Abschluss wird anerkannt.'],
+      ['**Chancenkarte** (seit 2024)', 'Punktesystem: Qualifikation, Deutsch- oder Englischkenntnisse, Alter, Bezug zu Deutschland. Man darf zur Jobsuche einreisen.'],
+      ['**Anerkennung von Abschlüssen**', 'Eine Stelle prüft, ob ein ausländischer Abschluss gleichwertig ist.'],
+      ['**Ausbildung in Deutschland**', 'Junge Menschen aus dem Ausland machen hier eine duale Ausbildung.'],
+    ]],
+    ['h', 'Chancen und Herausforderungen der Zuwanderung'],
+    ['table', ['Chancen', 'Herausforderungen'], [
+      ['Mehr Beitragszahler für Rente und Krankenkasse', 'Sprachkurse und Anerkennung brauchen Zeit und Geld'],
+      ['Fachkräfte füllen Lücken (IT, Pflege, Handwerk)', 'Wohnungsmangel in Städten'],
+      ['Vielfalt bringt neue Ideen', 'Vorurteile und Diskriminierung'],
+      ['Wirtschaftswachstum', 'Auswirkungen auf Schulen und Verwaltung'],
+    ]],
+    ['tip', 'In der Prüfung sollst du oft **beide Seiten** zeigen. Schreibe mindestens ein Argument für **und** gegen. Beginne mit „**Einerseits** ... **andererseits** ...“. Das Fazit sagt dann deine Meinung mit Grund.'],
+    ['h', 'Interkulturelle Zusammenarbeit im Betrieb'],
+    ['list', ['**Respekt:** Kulturelle Unterschiede sind normal, zum Beispiel bei Pünktlichkeit oder Hierarchie.', '**Klare Sprache:** Einfache Sätze, keine Redewendungen, Nachfragen erlaubt.', '**Regeln gelten für alle:** Gleichbehandlung (AGG).', '**Vielfaltsmanagement (Diversity):** Gemischte Teams sind oft kreativer.']],
+    ['h', 'Prüfungsfragen'],
+    ['qa', 'Nennen Sie zwei Vorteile und zwei Nachteile der Globalisierung.', ['Vorteile: größere Auswahl und niedrigere Preise; neue Absatzmärkte. Nachteile: Abhängigkeit von Lieferketten; Verlagerung von Arbeitsplätzen. (je 1 Punkt)'], 4],
+    ['qa', 'Erklären Sie den Unterschied zwischen Asyl und Arbeitsmigration.', ['Asyl bekommt, wer politisch verfolgt wird und fliehen muss (Art. 16a GG). Bei der Arbeitsmigration zieht jemand freiwillig wegen eines Jobs um und braucht ein Visum, zum Beispiel die Blaue Karte EU. (je 1 Punkt für beide Begriffe, 1 Punkt für den Unterschied Zwang/freiwillig)'], 3],
+    ['qa', 'Beschreiben Sie, was das Lieferkettengesetz verlangt.', ['Große Unternehmen müssen prüfen, ob ihre Zulieferer Menschenrechte und Umweltstandards einhalten. Sie müssen Risiken erkennen, Maßnahmen ergreifen und berichten. (3 Aussagen)'], 3],
+    ['qa', 'Nennen Sie zwei Gründe, warum Deutschland Fachkräfte aus dem Ausland braucht.', ['Der demografische Wandel macht die Bevölkerung älter; es gehen mehr Menschen in Rente als nachkommen. In IT, Pflege und Handwerk fehlen Arbeitskräfte. (je 1 Punkt)'], 2],
+    ['quiz', [
+      {q: 'Was bedeutet Export?', o: ['Verkauf von Waren ins Ausland', 'Kauf von Waren aus dem Ausland', 'Eine Steuer', 'Ein Gesetz'], a: 0, e: 'Deutschland exportiert Autos, Maschinen und Software.'},
+      {q: 'Wo hat die WTO ihren Sitz?', o: ['Genf', 'New York', 'Brüssel', 'Berlin'], a: 0, e: 'Welthandelsorganisation in Genf.'},
+      {q: 'Welcher Artikel regelt das Asylrecht im Grundgesetz?', o: ['Art. 16a', 'Art. 1', 'Art. 38', 'Art. 79'], a: 0, e: 'Politisch Verfolgte genießen Asylrecht.'},
+      {q: 'Was ist die Blaue Karte EU?', o: ['Aufenthaltstitel für qualifizierte Akademiker mit Job', 'Eine Krankenkassenkarte', 'Ein Fahrausweis', 'Ein Führerschein'], a: 0, e: 'Sie erleichtert die Zuwanderung von Fachkräften.'},
+      {q: 'Was ist ein Push-Faktor der Migration?', o: ['Krieg im Heimatland', 'Hohe Löhne im Zielland', 'Gute Universitäten', 'Familie im Zielland'], a: 0, e: 'Push stößt weg, Pull zieht an.'},
+      {q: 'Wer darf ohne Visum in jedem EU-Land arbeiten?', o: ['EU-Bürger (Freizügigkeit)', 'Alle Menschen', 'Nur Deutsche', 'Nur Studenten'], a: 0, e: 'Arbeitnehmerfreizügigkeit im Binnenmarkt.'},
+      {q: 'Was gehört zur Globalisierung in der IT?', o: ['Cloud-Rechenzentren in mehreren Ländern', 'Nur lokale Server', 'Papierakten', 'Fax'], a: 0, e: 'Daten und Teams sind weltweit verteilt.'},
+    ]],
+    ['see', ['gk-eu', 'gk-demografie', 'gk-wirtschaft', 'gk-umwelt', 'wiso-demografie', 'wiso-eu']],
+  ],
+});
+;
+// content/gk/umwelt-1.js
+AP2.page('gk-umwelt', {
+  b: 'gk', g: 'Umwelt und Zukunft', t: 'Klimaschutz, Energiewende, Nachhaltigkeit und Green IT',
+  d: 'Der **Klimawandel** entsteht vor allem durch **Treibhausgase** wie Kohlendioxid (CO2) aus Kohle, Öl und Gas. Die Erde wird wärmer. Folgen sind Hitze, Dürre, Überschwemmungen und steigende Meere. Das **Pariser Abkommen (2015)** will die Erwärmung auf **deutlich unter 2 Grad**, möglichst **1,5 Grad** begrenzen. Deutschland will bis **2045 klimaneutral** sein. Wichtige Mittel sind die **Energiewende** (erneuerbare Energien), der **CO2-Preis** und der **EU-Emissionshandel**. **Nachhaltigkeit** heißt: Wir leben so, dass auch spätere Generationen gut leben können. Auch die IT hat einen großen Energiebedarf (**Green IT**).',
+  m: '**Nachhaltigkeit = Ökologie + Ökonomie + Soziales (Dreieck).** **Paris 2015: 1,5 Grad.** **Klimaneutral 2045.** **17 SDGs (Agenda 2030).** **Atomausstieg 2023, Kohleausstieg spätestens 2038.**',
+  cheat: [
+    ['Nachhaltigkeit', ['**Ökologie:** Umwelt schützen', '**Ökonomie:** Wirtschaft stabil', '**Soziales:** Gerechtigkeit', 'Generationengerechtigkeit']],
+    ['Klimaschutz', ['**Paris 2015:** 1,5 bis 2 Grad', '**Deutschland:** klimaneutral 2045', '**EU:** klimaneutral 2050', '**EU-ETS:** Handel mit CO2-Zertifikaten']],
+    ['Energiewende', ['Ausstieg aus Atomkraft (April 2023)', 'Kohleausstieg bis spätestens 2038', 'Wind, Sonne, Wasser, Biomasse', 'EEG: Vorrang für Ökostrom']],
+  ],
+  blocks: [
+    ['h', 'Wichtige Wörter'],
+    ['table', ['Wort', 'Einfach erklärt'], [
+      ['Klima', 'Das Wetter über viele Jahre.'],
+      ['Treibhausgas', 'Gas in der Luft, das Wärme festhält (CO2, Methan).'],
+      ['CO2-Äquivalent', 'Einheit, mit der man verschiedene Gase vergleicht.'],
+      ['klimaneutral', 'Man stößt nicht mehr Treibhausgas aus, als man wieder bindet.'],
+      ['erneuerbare Energie', 'Energie aus Sonne, Wind, Wasser, Erdwärme. Sie geht nicht zu Ende.'],
+      ['fossile Energie', 'Kohle, Erdöl, Erdgas. Sie sind begrenzt und erzeugen CO2.'],
+      ['Nachhaltigkeit', 'Man nutzt Ressourcen so, dass auch spätere Generationen genug haben.'],
+      ['Ressource', 'Rohstoff, Energie, Wasser, Boden.'],
+      ['Kreislaufwirtschaft', 'Dinge werden wiederverwendet oder recycelt.'],
+      ['Greenwashing', 'Eine Firma tut so, als wäre sie umweltfreundlich, ist es aber nicht.'],
+    ]],
+    ['h', 'Der Klimawandel in Zahlen und Folgen'],
+    ['list', [
+      'Seit 1850 ist die Erde im Schnitt um etwa **1,2 bis 1,3 Grad** wärmer geworden.',
+      '**Hauptursache:** Verbrennen von Kohle, Öl und Gas für Strom, Heizung, Verkehr und Industrie.',
+      '**Folgen:** mehr Hitzewellen, Dürre, Starkregen und Hochwasser, steigender Meeresspiegel, Schäden für Landwirtschaft.',
+      '**Kosten:** Schäden an Häusern und Straßen, Gesundheitsprobleme, Fluchtbewegungen.',
+    ]],
+    ['table', ['Sektor in Deutschland', 'Beispiel für Klimaschutz'], [
+      ['Energie', 'Wind- und Solarparks, Netzausbau, Speicher'],
+      ['Verkehr', 'Elektroautos, Bahn, Radwege, ÖPNV'],
+      ['Gebäude', 'Dämmung, Wärmepumpe'],
+      ['Industrie', 'Wasserstoff, Recycling, effiziente Maschinen'],
+      ['Landwirtschaft', 'Weniger Dünger, Moore schützen'],
+    ]],
+    ['h', 'Wichtige Regeln und Abkommen'],
+    ['table', ['Regel', 'Inhalt'], [
+      ['**Pariser Abkommen** (2015)', 'Fast alle Staaten wollen die Erwärmung auf deutlich unter 2 Grad, möglichst 1,5 Grad begrenzen.'],
+      ['**Bundes-Klimaschutzgesetz**', 'Deutschland: 65 % weniger Treibhausgas bis 2030 (zu 1990), Klimaneutralität bis 2045.'],
+      ['**Europäischer Green Deal**', 'EU klimaneutral bis 2050, 55 % weniger CO2 bis 2030.'],
+      ['**EU-Emissionshandel (ETS)**', 'Firmen brauchen Zertifikate für ihr CO2. Die Zahl der Zertifikate sinkt jedes Jahr.'],
+      ['**Nationaler CO2-Preis**', 'Für Heizen und Verkehr: Preis pro Tonne CO2 (2025: 55 Euro). Benzin und Heizöl werden teurer. Der Preis soll ab 2027 über den EU-Handel bestimmt werden.'],
+      ['**EEG**', 'Erneuerbare-Energien-Gesetz: Vorrang für Ökostrom im Netz.'],
+      ['**Kreislaufwirtschaftsgesetz**', 'Abfall vermeiden, wiederverwenden, recyceln.'],
+    ]],
+    ['h', 'Energiewende in Deutschland'],
+    ['table', ['Thema', 'Stand'], [
+      ['Atomausstieg', 'Letzte Kernkraftwerke gingen am 15. April 2023 vom Netz.'],
+      ['Kohleausstieg', 'Spätestens 2038 (Ziel der Politik: möglichst 2030).'],
+      ['Strom aus Erneuerbaren', 'Mehr als die Hälfte des Stroms in Deutschland.'],
+      ['Windenergie', 'An Land (Binnenland) und auf See (Nordsee, Ostsee).'],
+      ['Solarenergie', 'Dachanlagen, Freiflächen, Balkonkraftwerke.'],
+      ['Probleme', 'Wind und Sonne schwanken, Speicher und neue Stromleitungen fehlen noch.'],
+    ]],
+    ['procon', 'Energiewende', ['Weniger CO2 und Luftverschmutzung', 'Weniger Abhängigkeit von Öl- und Gasimporten', 'Neue Jobs in Solar, Wind und Handwerk', 'Langfristig günstige Energie'], ['Hohe Anfangskosten', 'Neue Stromleitungen und Speicher nötig', 'Wetterabhängigkeit', 'Widerstand vor Ort (Windräder)'], ['Pro', 'Kontra']],
+    ['h', 'Nachhaltigkeit: Drei Säulen und 17 Ziele'],
+    ['table', ['Säule', 'Frage', 'Beispiel im Betrieb'], [
+      ['**Ökologie**', 'Ist es gut für die Umwelt?', 'Ökostrom, weniger Papier, Recycling von Altgeräten'],
+      ['**Ökonomie**', 'Kann sich der Betrieb das leisten?', 'Energiesparen senkt Kosten'],
+      ['**Soziales**', 'Ist es fair für Menschen?', 'Faire Löhne, Gesundheit, Mitbestimmung'],
+    ]],
+    ['p', 'Die Vereinten Nationen haben 2015 die **Agenda 2030** mit **17 Zielen für nachhaltige Entwicklung (SDGs)** beschlossen. Beispiele: Keine Armut, Gesundheit, hochwertige Bildung, Geschlechtergleichheit, bezahlbare saubere Energie, menschenwürdige Arbeit, Industrie und Innovation, Maßnahmen zum Klimaschutz.'],
+    ['h', 'Green IT: Umweltschutz in der IT'],
+    ['table', ['Handlungsfeld', 'Maßnahme', 'Wirkung'], [
+      ['**Energie**', 'Rechenzentrum mit Ökostrom, effiziente Server, Virtualisierung', 'Weniger Strom, weniger CO2'],
+      ['**Kühlung**', 'Freie Kühlung, Abwärme nutzen', 'PUE-Wert sinkt (Ideal 1,0)'],
+      ['**Geräte**', 'Länger nutzen, reparieren, Gebrauchtgeräte', 'Weniger Elektroschrott'],
+      ['**Entsorgung**', 'Rückgabe nach Elektrogesetz (ElektroG), Recycling', 'Seltene Rohstoffe zurückgewinnen'],
+      ['**Arbeitsweise**', 'Homeoffice, Videokonferenz statt Reise, Energiesparmodus', 'Weniger Verkehr'],
+      ['**Software**', 'Effizienter Code, kleine Datenmengen, Daten löschen', 'Weniger Rechenleistung'],
+      ['**Kennzeichen**', 'Blauer Engel, Energy Star, EU-Energielabel', 'Orientierung beim Kauf'],
+    ]],
+    ['ex', ['**Rechenbeispiel Strom:** Ein Server verbraucht 400 Watt und läuft 24 Stunden an 365 Tagen.', 'Energie: 0,4 kW mal 8.760 h = **3.504 kWh**.', 'Kosten bei 0,30 Euro pro kWh: 3.504 mal 0,30 = **1.051,20 Euro** im Jahr.', 'CO2 (Strommix etwa 0,38 kg pro kWh): 3.504 mal 0,38 = **etwa 1.331 kg**.', 'Mit Virtualisierung laufen 4 virtuelle Maschinen auf einem Server statt 4 Servern. Du sparst 3 mal 1.051,20 = 3.153,60 Euro im Jahr.']],
+    ['h', 'Was kann ich tun? Privat und im Betrieb'],
+    ['table', ['Privat', 'Im Betrieb'], [
+      ['Licht ausschalten, Standby vermeiden', 'Energie-Management, LED-Licht'],
+      ['Bahn und Rad statt Auto', 'Jobticket, Fahrradleasing'],
+      ['Geräte reparieren statt kaufen', 'Geräte-Lebenszyklus verlängern'],
+      ['Ökostrom nutzen', 'Zertifizierung (ISO 14001, EMAS)'],
+      ['Müll trennen', 'Recyclingkonzept, Elektroschrott richtig entsorgen'],
+    ]],
+    ['h', 'Prüfungsfragen'],
+    ['qa', 'Nennen Sie die drei Säulen der Nachhaltigkeit.', ['Ökologie (Umwelt), Ökonomie (Wirtschaft), Soziales (Gerechtigkeit). (je 1 Punkt)'], 3],
+    ['qa', 'Erläutern Sie zwei Maßnahmen, mit denen ein IT-Betrieb Strom sparen kann.', ['Virtualisierung: Mehrere virtuelle Server laufen auf einem Rechner, daher weniger Hardware und weniger Strom. Energiesparmodus für Arbeitsplatzrechner: Geräte schalten sich nachts ab. Effizientere Kühlung im Serverraum. (je 2 Punkte: Maßnahme und Wirkung)'], 4],
+    ['qa', 'Berechnen Sie die Stromkosten für 5 PCs mit je 120 Watt bei 2.000 Betriebsstunden pro Jahr und 0,30 Euro pro kWh.', ['Gesamtleistung: 5 mal 0,12 kW = 0,6 kW. Energie: 0,6 mal 2.000 = 1.200 kWh. Kosten: 1.200 mal 0,30 = 360 Euro. (1 Punkt Leistung, 1 Punkt Energie, 1 Punkt Kosten)'], 3],
+    ['qa', 'Erklären Sie, was „Greenwashing“ ist.', ['Ein Unternehmen stellt sich umweltfreundlicher dar, als es wirklich ist. Beispiel: Werbung mit „klimaneutral“ ohne Nachweis. Ziel ist ein besseres Image. (3 Aussagen)'], 3],
+    ['quiz', [
+      {q: 'Welches Ziel nennt das Pariser Abkommen?', o: ['Erwärmung deutlich unter 2 Grad, möglichst 1,5 Grad', 'Erwärmung auf 5 Grad', 'Kein Kohlendioxid mehr bis 2025', 'Weniger Autos'], a: 0, e: '2015 beschlossen auf der Klimakonferenz in Paris.'},
+      {q: 'Bis wann will Deutschland klimaneutral sein?', o: ['2045', '2030', '2060', '2100'], a: 0, e: 'Bundes-Klimaschutzgesetz.'},
+      {q: 'Was ist ein fossiler Energieträger?', o: ['Kohle', 'Sonne', 'Wind', 'Wasserkraft'], a: 0, e: 'Auch Erdöl und Erdgas.'},
+      {q: 'Wann gingen die letzten deutschen Atomkraftwerke vom Netz?', o: ['April 2023', '2011', '2030', '2001'], a: 0, e: 'Der Atomausstieg wurde am 15. April 2023 vollendet.'},
+      {q: 'Wie viele Nachhaltigkeitsziele (SDGs) gibt es?', o: ['17', '10', '5', '30'], a: 0, e: 'Agenda 2030 der UN.'},
+      {q: 'Was ist ein Maß für die Energieeffizienz eines Rechenzentrums?', o: ['PUE (Power Usage Effectiveness)', 'RAID', 'MTBF', 'DPI'], a: 0, e: 'PUE = Gesamtenergie / Energie für IT. Ideal: nahe 1,0.'},
+      {q: 'Was bedeutet Kreislaufwirtschaft?', o: ['Stoffe wiederverwenden und recyceln', 'Müll verbrennen', 'Mehr kaufen', 'Alles wegwerfen'], a: 0, e: 'Abfall vermeiden, wiederverwenden, recyceln.'},
+    ]],
+    ['see', ['gk-wirtschaft', 'gk-globalisierung', 'wiso-nachhaltigkeit', 'infra-elektro', 'infra-virtualisierung']],
+  ],
+});
+;
+// content/gk/datenschutz-1.js
+AP2.page('gk-datenschutz', {
+  b: 'gk', g: 'Recht und Staat', t: 'Datenschutz, Persönlichkeitsrecht und Sicherheit',
+  d: 'Jeder Mensch hat das Recht, selbst zu entscheiden, was mit seinen **persönlichen Daten** geschieht. Dieses **Recht auf informationelle Selbstbestimmung** hat das Bundesverfassungsgericht 1983 (Volkszählungsurteil) aus Art. 2 und Art. 1 GG abgeleitet. Heute regelt vor allem die **EU-Datenschutz-Grundverordnung (DSGVO)** den Schutz, in Deutschland ergänzt durch das **Bundesdatenschutzgesetz (BDSG)**. Es gibt immer einen **Konflikt** zwischen **Freiheit** (Datenschutz) und **Sicherheit** (Überwachung). Auch im Betrieb gilt Datenschutz: Der Arbeitgeber darf Beschäftigte nur begrenzt überwachen.',
+  m: '**Informationelle Selbstbestimmung (1983).** **DSGVO seit 25.5.2018, gilt direkt in der EU.** **Grundsätze: Rechtmäßigkeit, Zweckbindung, Datenminimierung, Richtigkeit, Speicherbegrenzung, Integrität, Rechenschaft.** **Bußgeld bis 20 Mio. Euro oder 4 % Umsatz.** **Meldung einer Datenpanne in 72 Stunden.**',
+  cheat: [
+    ['Betroffenenrechte', ['**Auskunft** (Art. 15)', '**Berichtigung** (Art. 16)', '**Löschung** (Art. 17)', '**Einschränkung** (Art. 18)', '**Datenübertragbarkeit** (Art. 20)', '**Widerspruch** (Art. 21)']],
+    ['Grundsätze (Art. 5)', ['Rechtmäßigkeit', 'Zweckbindung', 'Datenminimierung', 'Richtigkeit', 'Speicherbegrenzung', 'Integrität und Vertraulichkeit']],
+    ['Pflichten', ['Einwilligung freiwillig und widerrufbar', 'Datenschutzbeauftragter ab 20 Personen', 'Datenpanne in 72 Stunden melden', 'Verzeichnis der Verarbeitungstätigkeiten']],
+  ],
+  blocks: [
+    ['h', 'Wichtige Wörter'],
+    ['table', ['Wort', 'Einfach erklärt'], [
+      ['personenbezogene Daten', 'Informationen über eine bestimmte Person: Name, Adresse, IP-Adresse, Foto, Standort.'],
+      ['besondere Daten', 'Besonders sensibel: Gesundheit, Religion, Herkunft, politische Meinung, Gewerkschaft, Biometrie.'],
+      ['Verantwortlicher', 'Wer entscheidet, was mit den Daten passiert (zum Beispiel die Firma).'],
+      ['Auftragsverarbeiter', 'Dienstleister, der im Auftrag Daten verarbeitet (zum Beispiel Cloud-Anbieter).'],
+      ['Betroffene Person', 'Die Person, deren Daten verarbeitet werden.'],
+      ['Einwilligung', 'Freiwillige, informierte Zustimmung. Man kann sie jederzeit widerrufen.'],
+      ['Anonymisierung', 'Daten so ändern, dass niemand mehr erkannt wird.'],
+      ['Pseudonymisierung', 'Namen durch Codes ersetzen. Mit Zusatzwissen kann man die Person wieder finden.'],
+      ['Aufsichtsbehörde', 'Behörde, die Datenschutz kontrolliert (Landesdatenschutzbeauftragte, Bundesbeauftragter).'],
+    ]],
+    ['h', 'Rechtsgrundlagen'],
+    ['table', ['Quelle', 'Inhalt'], [
+      ['**Art. 1 und 2 GG**', 'Allgemeines Persönlichkeitsrecht und Recht auf informationelle Selbstbestimmung'],
+      ['**Art. 10 GG**', 'Brief-, Post- und Fernmeldegeheimnis'],
+      ['**Art. 13 GG**', 'Unverletzlichkeit der Wohnung'],
+      ['**DSGVO** (EU, 2018)', 'Allgemeine Regeln für alle Unternehmen und Behörden in der EU'],
+      ['**BDSG**', 'Ergänzungen für Deutschland, zum Beispiel Beschäftigtendatenschutz (§ 26)'],
+      ['**TTDSG / TDDDG**', 'Regeln für Cookies und Telekommunikation (heute TDDDG)'],
+      ['**BetrVG § 87**', 'Betriebsrat bestimmt bei technischer Überwachung mit'],
+    ]],
+    ['h', 'Wann darf man Daten verarbeiten? (Art. 6 DSGVO)'],
+    ['p', 'Verarbeiten ist nur erlaubt, wenn es eine **Rechtsgrundlage** gibt. Das nennt man „Verbot mit Erlaubnisvorbehalt“.'],
+    ['table', ['Rechtsgrundlage', 'Erklärung', 'Beispiel'], [
+      ['**Einwilligung**', 'Die Person stimmt zu.', 'Newsletter mit Häkchen'],
+      ['**Vertrag**', 'Nötig zur Erfüllung eines Vertrags.', 'Adresse beim Online-Kauf'],
+      ['**Rechtliche Pflicht**', 'Ein Gesetz verlangt es.', 'Aufbewahrung von Rechnungen (10 Jahre)'],
+      ['**Lebenswichtige Interessen**', 'Notfall.', 'Notarzt'],
+      ['**Öffentliche Aufgabe**', 'Behörde.', 'Meldeamt'],
+      ['**Berechtigtes Interesse**', 'Abwägung zwischen Interesse der Firma und der Person.', 'Videokamera am Eingang (mit Schild)'],
+    ]],
+    ['h', 'Die Rechte der betroffenen Personen'],
+    ['table', ['Recht', 'Das bedeutet', 'Beispiel'], [
+      ['**Informationspflicht**', 'Die Firma sagt vorher, was sie mit den Daten tut (Datenschutzerklärung).', 'Hinweis beim Anmelden'],
+      ['**Auskunft**', 'Ich frage: Welche Daten habt ihr über mich?', 'Antwort innerhalb von einem Monat'],
+      ['**Berichtigung**', 'Falsche Daten ändern lassen.', 'Falsche Adresse'],
+      ['**Löschung**', '„Recht auf Vergessenwerden“: Löschen, wenn kein Grund mehr besteht.', 'Account löschen'],
+      ['**Einschränkung**', 'Daten werden gesperrt, nicht genutzt.', 'Streit über Richtigkeit'],
+      ['**Datenübertragbarkeit**', 'Ich bekomme meine Daten in einem gängigen Format.', 'Wechsel zu einem neuen Anbieter'],
+      ['**Widerspruch**', 'Ich lehne eine Verarbeitung ab.', 'Werbung'],
+      ['**Beschwerde**', 'Ich wende mich an die Aufsichtsbehörde.', 'Landesdatenschutzbeauftragte'],
+    ]],
+    ['h', 'Pflichten für Unternehmen'],
+    ['list', [
+      '**Datenschutzbeauftragter:** Pflicht, wenn mindestens **20 Personen** ständig mit automatischer Verarbeitung beschäftigt sind (oder bei sensiblen Daten).',
+      '**Verzeichnis der Verarbeitungstätigkeiten:** Liste, welche Daten wofür verarbeitet werden.',
+      '**Technische und organisatorische Maßnahmen (TOM):** Zutrittskontrolle, Zugriffsrechte, Verschlüsselung, Backups.',
+      '**Datenpanne:** Meldung an die Aufsichtsbehörde **innerhalb von 72 Stunden**. Bei hohem Risiko auch an die Betroffenen.',
+      '**Datenschutz-Folgenabschätzung:** Bei hohem Risiko (zum Beispiel Videoüberwachung, große Mengen sensibler Daten).',
+      '**Privacy by Design:** Datenschutz schon beim Entwurf von Software einplanen. **Privacy by Default:** Voreinstellung = wenig Daten.',
+      '**Bußgeld:** bis zu **20 Millionen Euro** oder **4 % des weltweiten Jahresumsatzes** (der höhere Wert).',
+    ]],
+    ['h', 'Datenschutz im Arbeitsleben'],
+    ['table', ['Thema', 'Regel'], [
+      ['Bewerbung', 'Nur nötige Daten fragen. Unterlagen nach Absage löschen (meist nach 6 Monaten).'],
+      ['Personalakte', 'Nur Befugte dürfen lesen. Beschäftigte dürfen Einsicht verlangen.'],
+      ['E-Mail und Internet', 'Bei erlaubter Privatnutzung ist das Fernmeldegeheimnis zu beachten. Ohne Verdacht keine Kontrolle des Inhalts.'],
+      ['Videoüberwachung', 'Nur offen und mit Zweck. Nicht in Umkleiden, Toiletten, Pausenräumen. Betriebsrat entscheidet mit.'],
+      ['GPS in Firmenwagen', 'Nur mit Zweck und Betriebsvereinbarung.'],
+      ['Mitarbeiterfotos', 'Ohne Einwilligung nicht auf die Webseite.'],
+      ['Homeoffice', 'Verschlüsselte Verbindung (VPN), kein Mitlesen durch Dritte, Bildschirm sperren.'],
+    ]],
+    ['h', 'Sicherheit gegen Freiheit: Abwägung'],
+    ['p', 'Der Staat will Verbrechen und Terror verhindern. Dafür braucht er Daten. Gleichzeitig schützt das Grundgesetz die Privatsphäre. Ein Beispiel ist die **Vorratsdatenspeicherung**: Anbieter speichern, wer wann mit wem Kontakt hatte. Sie ist rechtlich umstritten. Gerichte (BVerfG und EuGH) haben Regeln gekippt.'],
+    ['procon', 'Mehr staatliche Überwachung', ['Hilft bei der Aufklärung schwerer Straftaten', 'Kann Anschläge verhindern', 'Mehr Sicherheit im öffentlichen Raum'], ['Greift in die Privatsphäre aller ein, auch Unschuldiger', 'Gefahr von Missbrauch', 'Einschüchterung: Man traut sich weniger, die Meinung zu sagen'], ['Für mehr Überwachung', 'Dagegen']],
+    ['h', 'Datenschutz-Tipps für den Alltag'],
+    ['list', ['Starke, verschiedene Passwörter und Passwort-Manager', 'Zwei-Faktor-Authentifizierung einschalten', 'Wenig Daten in sozialen Medien teilen, Privatsphäre einstellen', 'Cookies ablehnen, die nicht nötig sind', 'Apps nur die Rechte geben, die sie brauchen', 'Vorsicht bei E-Mails mit Links (Phishing)']],
+    ['h', 'Prüfungsfragen'],
+    ['qa', 'Erläutern Sie, was „Recht auf informationelle Selbstbestimmung“ bedeutet.', ['Jeder entscheidet selbst, wer welche persönlichen Daten über ihn bekommt und was damit passiert. Das Recht hat das BVerfG 1983 aus Art. 1 und Art. 2 GG abgeleitet. Einschränkungen brauchen ein Gesetz. (3 Aussagen)'], 3],
+    ['qa', 'Nennen Sie vier Rechte, die Betroffene nach der DSGVO haben.', ['Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit, Widerspruch, Beschwerde bei der Aufsichtsbehörde. (je 1 Punkt)'], 4],
+    ['qa', 'Eine Firma verliert einen USB-Stick mit Kundendaten. Beschreiben Sie, was sie tun muss.', ['Die Datenpanne innerhalb von 72 Stunden an die Aufsichtsbehörde melden. Bei hohem Risiko auch die betroffenen Kunden informieren. Die Panne dokumentieren und Maßnahmen ergreifen (zum Beispiel Passwörter ändern). Künftig Daten verschlüsseln. (4 Aussagen)'], 4],
+    ['qa', 'Beurteilen Sie: Der Chef liest die privaten E-Mails eines Mitarbeiters ohne Anlass.', ['Das ist nicht erlaubt. Es verletzt das Persönlichkeitsrecht und bei erlaubter Privatnutzung das Fernmeldegeheimnis (Art. 10 GG). Eine Kontrolle ist nur bei konkretem Verdacht auf eine Straftat und mit Beteiligung des Betriebsrats zulässig. (Regel, Grundlage, Ausnahme)'], 3],
+    ['quiz', [
+      {q: 'Seit wann gilt die DSGVO?', o: ['25. Mai 2018', '1. Januar 2000', '1. Mai 2024', '3. Oktober 1990'], a: 0, e: 'Die Verordnung gilt direkt in allen EU-Staaten.'},
+      {q: 'Was gehört zu den personenbezogenen Daten?', o: ['IP-Adresse', 'Wetterbericht', 'Primzahlen', 'Firmenlogo'], a: 0, e: 'Alles, womit man eine Person erkennen kann.'},
+      {q: 'Wie lange darf man höchstens warten, bis man eine Datenpanne meldet?', o: ['72 Stunden', '24 Stunden', '7 Tage', '1 Monat'], a: 0, e: 'Art. 33 DSGVO.'},
+      {q: 'Wie hoch ist das Bußgeld höchstens?', o: ['20 Mio. Euro oder 4 % vom Jahresumsatz', '100 Euro', '1.000 Euro', '1 Mio. Euro fest'], a: 0, e: 'Der höhere Betrag gilt.'},
+      {q: 'Wer muss einen Datenschutzbeauftragten benennen?', o: ['Betriebe mit mindestens 20 Personen, die ständig Daten automatisiert verarbeiten', 'Jeder Haushalt', 'Nur Behörden', 'Nur Schulen'], a: 0, e: '§ 38 BDSG.'},
+      {q: 'Welche Aussage über die Einwilligung stimmt?', o: ['Man kann sie jederzeit widerrufen', 'Sie ist für immer', 'Sie ist nicht nötig', 'Sie muss nicht freiwillig sein'], a: 0, e: 'Art. 7 DSGVO.'},
+      {q: 'Was bedeutet Datenminimierung?', o: ['Nur so viele Daten wie nötig erheben', 'Daten komprimieren', 'Daten löschen nach 1 Tag', 'Keine Daten speichern'], a: 0, e: 'Art. 5 DSGVO.'},
+      {q: 'Wer entscheidet bei Videoüberwachung im Betrieb mit?', o: ['Der Betriebsrat', 'Der Hausmeister', 'Der Kunde', 'Niemand'], a: 0, e: '§ 87 Abs. 1 Nr. 6 BetrVG.'},
+    ]],
+    ['see', ['gk-grundrechte', 'gk-medien', 'gk-ki', 'ps-dsgvo', 'infra-cia', 'wiso-betriebsrat']],
+  ],
+});
+;
+// content/gk/geschichte-1.js
+AP2.page('gk-geschichte', {
+  b: 'gk', g: 'Demokratie', t: 'Geschichte: Von Weimar zum Grundgesetz, Teilung und Einheit',
+  d: 'Das **Grundgesetz** (1949) ist eine Antwort auf die Fehler der **Weimarer Republik** (1919 bis 1933) und auf das Unrecht des **Nationalsozialismus** (1933 bis 1945). Nach dem Krieg wurde Deutschland in vier Besatzungszonen geteilt. 1949 entstanden zwei Staaten: die **Bundesrepublik Deutschland** (Demokratie, Marktwirtschaft) und die **DDR** (Diktatur, Planwirtschaft). Am **9. November 1989** fiel die Mauer, am **3. Oktober 1990** wurde Deutschland wiedervereinigt. Heute ist Deutschland Teil der **Europäischen Union**. Die Prüfung fragt selten Jahreszahlen, aber oft: **Warum hat das Grundgesetz bestimmte Regeln?**',
+  m: '**1919 Weimar. 1933 Hitler. 1945 Kriegsende. 1949 GG und DDR. 1961 Mauerbau. 1989 Mauerfall. 1990 Einheit.** **Lehren aus Weimar: 5-%-Hürde, konstruktives Misstrauensvotum, starker Parlamentarismus, Ewigkeitsklausel, Grundrechte direkt gültig.**',
+  cheat: [
+    ['Zeitleiste', ['1919: Weimarer Verfassung', '30.1.1933: Hitler wird Kanzler', '8.5.1945: Kriegsende', '23.5.1949: Grundgesetz', '7.10.1949: Gründung der DDR', '13.8.1961: Mauerbau', '9.11.1989: Mauerfall', '3.10.1990: Wiedervereinigung']],
+    ['Lehren aus Weimar', ['Fünf-Prozent-Hürde gegen Splitterparteien', 'Konstruktives Misstrauensvotum', 'Bundespräsident hat wenig Macht', 'Grundrechte binden den Staat', 'Ewigkeitsklausel Art. 79 Abs. 3', 'Keine Volksentscheide auf Bundesebene']],
+    ['Europa', ['1951 Montanunion', '1957 Römische Verträge (EWG)', '1992/93 Maastricht (EU)', '2002 Euro-Bargeld', '2009 Vertrag von Lissabon', '2020 Brexit']],
+  ],
+  blocks: [
+    ['h', 'Zeitleiste'],
+    ['table', ['Jahr', 'Ereignis', 'Bedeutung'], [
+      ['1871', 'Gründung des Deutschen Kaiserreichs', 'Erster deutscher Nationalstaat'],
+      ['1918', 'Ende des Ersten Weltkriegs, Kaiser dankt ab', 'Revolution, Republik'],
+      ['1919', 'Weimarer Verfassung', 'Erste Demokratie in Deutschland; Frauenwahlrecht'],
+      ['1923', 'Hyperinflation und Krise', 'Geld verliert fast allen Wert'],
+      ['1929', 'Weltwirtschaftskrise', 'Millionen Arbeitslose, Radikale gewinnen Stimmen'],
+      ['30.1.1933', 'Hitler wird Reichskanzler', 'Beginn der NS-Diktatur'],
+      ['23.3.1933', 'Ermächtigungsgesetz', 'Die Regierung macht Gesetze ohne Parlament'],
+      ['1933 bis 1945', 'NS-Diktatur, Verfolgung, Zweiter Weltkrieg', 'Holocaust: Ermordung von 6 Millionen Juden'],
+      ['8.5.1945', 'Kapitulation, Kriegsende', 'Deutschland in 4 Besatzungszonen'],
+      ['1948', 'Währungsreform, Berliner Blockade', 'D-Mark, Luftbrücke'],
+      ['23.5.1949', 'Grundgesetz tritt in Kraft', 'Bundesrepublik Deutschland (BRD)'],
+      ['7.10.1949', 'Gründung der DDR', 'Sozialistischer Staat im Osten'],
+      ['1955', 'BRD tritt der NATO bei', 'Westbindung'],
+      ['1957', 'Römische Verträge', 'Europäische Wirtschaftsgemeinschaft (EWG)'],
+      ['13.8.1961', 'Bau der Berliner Mauer', 'Grenze zwischen Ost und West wird geschlossen'],
+      ['1989', 'Friedliche Revolution, Montagsdemonstrationen', 'Menschen in der DDR fordern Freiheit'],
+      ['9.11.1989', 'Fall der Berliner Mauer', 'Grenzen öffnen sich'],
+      ['3.10.1990', 'Wiedervereinigung', 'Die DDR tritt der BRD bei (Art. 23 alt GG). Feiertag: Tag der Deutschen Einheit'],
+      ['1992/93', 'Vertrag von Maastricht', 'Europäische Union entsteht'],
+      ['2002', 'Euro als Bargeld', 'Gemeinsame Währung'],
+      ['2020', 'Brexit', 'Großbritannien verlässt die EU'],
+    ]],
+    ['h', 'Die Weimarer Republik und ihre Schwächen'],
+    ['table', ['Schwäche', 'Folge', 'Lösung im Grundgesetz'], [
+      ['Keine Hürde für Parteien: Viele Kleinparteien im Reichstag', 'Instabile Regierungen, oft wechselnde Koalitionen', '**Fünf-Prozent-Hürde**'],
+      ['Reichstag konnte den Kanzler leicht stürzen (reines Misstrauensvotum)', 'Regierungen blieben nur kurz', '**Konstruktives Misstrauensvotum** (Art. 67 GG): Man muss gleichzeitig einen neuen Kanzler wählen'],
+      ['Mächtiger Reichspräsident (Art. 48: Notverordnungen)', 'Das Parlament wurde ausgeschaltet', '**Schwacher Bundespräsident**, Repräsentant'],
+      ['Volksentscheide auf Reichsebene', 'Gefahr von Stimmungsmache', '**Keine Volksentscheide auf Bundesebene** (Art. 20 Abs. 2 und 29 GG)'],
+      ['Grundrechte waren nur Programm', 'Sie schützten nicht wirklich', '**Grundrechte binden direkt alle Gewalten** (Art. 1 Abs. 3)'],
+      ['Verfassung konnte legal abgeschafft werden', 'Ermächtigungsgesetz 1933', '**Ewigkeitsklausel** (Art. 79 Abs. 3), **Parteiverbot**'],
+    ]],
+    ['h', 'Nationalsozialismus und die Folgen'],
+    ['list', [
+      '**Diktatur:** Parteien, Gewerkschaften und freie Presse wurden verboten. Es gab keine freien Wahlen.',
+      '**Verfolgung:** Juden, Sinti und Roma, politische Gegner, Homosexuelle, Menschen mit Behinderung wurden verfolgt und ermordet.',
+      '**Holocaust:** Die systematische Ermordung von rund 6 Millionen Juden. Erinnerungstag: **27. Januar** (Befreiung von Auschwitz).',
+      '**Weltkrieg:** Der Krieg (1939 bis 1945) kostete Millionen Menschen das Leben.',
+      '**Lehre:** „Nie wieder!“ Darum steht in Art. 1 GG: Die Würde des Menschen ist unantastbar.',
+    ]],
+    ['h', 'Zwei deutsche Staaten'],
+    ['table', ['Merkmal', 'Bundesrepublik (BRD)', 'DDR'], [
+      ['Staatsform', 'Parlamentarische Demokratie', 'Einparteien-Diktatur der SED'],
+      ['Wirtschaft', 'Soziale Marktwirtschaft', 'Zentrale Planwirtschaft'],
+      ['Wahlen', 'Frei und geheim', 'Einheitsliste, keine echte Wahl'],
+      ['Presse', 'Pressefreiheit (Art. 5)', 'Zensur, Staatsmedien'],
+      ['Reisen', 'Frei', 'Stark eingeschränkt, Mauer und Grenzzaun'],
+      ['Geheimdienst', 'Verfassungsschutz (kontrolliert)', 'Stasi (Staatssicherheit), Überwachung der Bevölkerung'],
+      ['Bündnis', 'NATO, EWG', 'Warschauer Pakt, Sowjetunion'],
+    ]],
+    ['h', 'Wie kam es zur Einheit?'],
+    ['steps', [
+      '**Reformen in der Sowjetunion** (Gorbatschow, ab 1985) machten Veränderungen möglich.',
+      '**Ungarn öffnete 1989 die Grenze** nach Österreich. Tausende DDR-Bürger flohen.',
+      '**Montagsdemonstrationen** in Leipzig und anderen Städten: „Wir sind das Volk“.',
+      '**9. November 1989:** Die Mauer fällt nach einer missverständlichen Pressekonferenz.',
+      '**18. März 1990:** Erste freie Volkskammerwahl in der DDR.',
+      '**Zwei-plus-Vier-Vertrag** (1990): Die vier Siegermächte und beide deutsche Staaten regeln die Einheit.',
+      '**3. Oktober 1990:** Beitritt der fünf neuen Länder (Brandenburg, Mecklenburg-Vorpommern, Sachsen, Sachsen-Anhalt, Thüringen) zur BRD.',
+    ]],
+    ['h', 'Folgen der Einheit'],
+    ['table', ['Bereich', 'Folge'], [
+      ['Politik', '16 Bundesländer, Berlin wird Hauptstadt (Bundestag zieht 1999 um)'],
+      ['Wirtschaft', 'Umbau der DDR-Betriebe durch die Treuhandanstalt; viele Arbeitsplätze gingen verloren'],
+      ['Soziales', 'Solidaritätszuschlag (Aufbau Ost); Unterschiede bei Lohn und Rente bestehen noch'],
+      ['Gesellschaft', 'Unterschiedliche Erfahrungen in Ost und West; Debatte über Gerechtigkeit'],
+    ]],
+    ['h', 'Deutschland und Europa seit 1945'],
+    ['table', ['Jahr', 'Schritt'], [
+      ['1951', 'Montanunion (Kohle und Stahl): Frankreich, Deutschland, Italien, Belgien, Niederlande, Luxemburg'],
+      ['1957', 'Römische Verträge: EWG'],
+      ['1985/1995', 'Schengen: Keine Grenzkontrollen zwischen vielen Staaten'],
+      ['1993', 'Binnenmarkt und Maastricht-Vertrag: Name „Europäische Union“'],
+      ['1999/2002', 'Euro als Buchgeld und Bargeld'],
+      ['2004', 'Osterweiterung: 10 neue Staaten'],
+      ['2009', 'Vertrag von Lissabon: Parlament stärker'],
+      ['2020', 'Brexit: 27 Mitgliedstaaten'],
+    ]],
+    ['h', 'Erinnerungskultur'],
+    ['list', ['Gedenktage: **27. Januar** (Holocaust), **9. November** (Mauerfall und Novemberpogrome 1938), **3. Oktober** (Einheit)', '**Stolpersteine:** Kleine Gedenktafeln im Gehweg vor den Häusern von Opfern', '**Gedenkstätten:** zum Beispiel ehemalige Konzentrationslager, Stasi-Gefängnis Hohenschönhausen', '**Zeitzeugen:** Gespräche in der Schule', '**Wichtig für Demokratie:** Wer die Geschichte kennt, erkennt früh Gefahren.']],
+    ['h', 'Prüfungsfragen'],
+    ['qa', 'Nennen Sie drei Lehren, die das Grundgesetz aus der Weimarer Republik gezogen hat.', ['Fünf-Prozent-Hürde, konstruktives Misstrauensvotum, schwacher Bundespräsident, Ewigkeitsklausel, keine Volksentscheide auf Bundesebene, Grundrechte binden alle Gewalten. (je 1 Punkt, drei verlangt)'], 3],
+    ['qa', 'Erläutern Sie das konstruktive Misstrauensvotum.', ['Der Bundestag kann den Kanzler nur abwählen, wenn er gleichzeitig mit Mehrheit einen neuen Kanzler wählt (Art. 67 GG). So gibt es keine Zeit ohne Regierung und keine Zufallsmehrheiten gegen jemanden. (2 Aussagen Regel, 1 Aussage Grund)'], 3],
+    ['qa', 'Nennen Sie vier Unterschiede zwischen der Bundesrepublik und der DDR bis 1989.', ['Demokratie / Diktatur; Marktwirtschaft / Planwirtschaft; freie Wahlen / Einheitsliste; Pressefreiheit / Zensur; Reisefreiheit / Mauer. (je 1 Punkt)'], 4],
+    ['qa', 'Erklären Sie, warum Art. 1 GG am Anfang steht.', ['Der Nationalsozialismus hat die Würde vieler Menschen verletzt. Das Grundgesetz stellt darum die Würde des Menschen an den Anfang und macht sie unantastbar. Sie ist der oberste Wert. (3 Aussagen)'], 3],
+    ['quiz', [
+      {q: 'Wann trat das Grundgesetz in Kraft?', o: ['23. Mai 1949', '8. Mai 1945', '3. Oktober 1990', '9. November 1989'], a: 0, e: 'Der Parlamentarische Rat hat es 1948/49 geschrieben.'},
+      {q: 'Welches Ereignis fand am 9. November 1989 statt?', o: ['Der Fall der Berliner Mauer', 'Die Wiedervereinigung', 'Das Kriegsende', 'Der Mauerbau'], a: 0, e: 'Die Wiedervereinigung war am 3. Oktober 1990.'},
+      {q: 'Welche Regel soll Splitterparteien verhindern?', o: ['Fünf-Prozent-Hürde', 'Zweidrittelmehrheit', 'Volksentscheid', 'Ewigkeitsklausel'], a: 0, e: 'Sie gilt bei der Bundestagswahl.'},
+      {q: 'Wie hieß die Staatssicherheit der DDR kurz?', o: ['Stasi', 'BND', 'MAD', 'Gestapo'], a: 0, e: 'Die Gestapo war die Geheimpolizei der Nationalsozialisten.'},
+      {q: 'Wann gründete sich die DDR?', o: ['7. Oktober 1949', '23. Mai 1949', '13. August 1961', '1. Januar 1990'], a: 0, e: 'Wenige Monate nach der Bundesrepublik.'},
+      {q: 'Wann wurde die Berliner Mauer gebaut?', o: ['13. August 1961', '1949', '1989', '1971'], a: 0, e: 'Um die Flucht aus der DDR zu stoppen.'},
+      {q: 'Welcher Vertrag schuf 1993 die EU?', o: ['Vertrag von Maastricht', 'Römische Verträge', 'Vertrag von Versailles', 'Vertrag von Lissabon'], a: 0, e: 'Er trat am 1. November 1993 in Kraft.'},
+    ]],
+    ['see', ['gk-grundordnung', 'gk-institutionen', 'gk-eu', 'gk-internationales', 'gk-wahlen']],
+  ],
+});
+;
+// content/gk/internationales-1.js
+AP2.page('gk-internationales', {
+  b: 'gk', g: 'Europa und Welt', t: 'UNO, NATO, Europarat und Deutschlands Rolle in der Welt',
+  d: 'Kein Staat löst die großen Probleme allein: Krieg, Klima, Handel, Flucht, Cyberangriffe. Darum arbeiten Staaten in **internationalen Organisationen** zusammen. Die wichtigsten: die **UNO** (Frieden und Menschenrechte, 193 Mitglieder), die **NATO** (Verteidigungsbündnis, Bündnisfall nach Art. 5), die **EU**, der **Europarat** (Menschenrechte), die **WTO** (Welthandel) und die **OSZE** (Sicherheit in Europa). Deutschland ist Mitglied in allen diesen Organisationen. Die **Bundeswehr** ist eine **Parlamentsarmee**: Auslandseinsätze braucht die Zustimmung des Bundestages.',
+  m: '**UNO: New York, 1945, Sicherheitsrat mit 5 Vetomächten (USA, Russland, China, Frankreich, Großbritannien).** **NATO: 1949, Bündnisfall Art. 5.** **Europarat in Straßburg, EMRK.** **EU ≠ Europarat!**',
+  cheat: [
+    ['UNO', ['Gegründet 1945, Sitz New York', '193 Mitgliedstaaten', '**Generalversammlung:** alle Staaten, je eine Stimme', '**Sicherheitsrat:** 15 Mitglieder, 5 ständige mit Veto', 'Deutschland seit 1973 Mitglied']],
+    ['NATO', ['Gegründet 1949, Sitz Brüssel', '32 Mitglieder (2024)', '**Art. 5:** Angriff auf einen = Angriff auf alle', 'Deutschland seit 1955']],
+    ['Weitere', ['**Europarat:** Straßburg, 46 Staaten, Menschenrechte (EMRK)', '**OSZE:** Wien, Sicherheit und Zusammenarbeit', '**WTO:** Genf, Handel', '**G7 / G20:** Gruppen großer Wirtschaftsmächte']],
+  ],
+  blocks: [
+    ['h', 'Wichtige Wörter'],
+    ['table', ['Wort', 'Einfach erklärt'], [
+      ['Völkerrecht', 'Recht zwischen Staaten, zum Beispiel Verbot von Angriffskriegen.'],
+      ['Souveränität', 'Ein Staat entscheidet selbst über seine Angelegenheiten.'],
+      ['Veto', 'Nein-Stimme, die einen Beschluss stoppt.'],
+      ['Resolution', 'Beschluss der UN.'],
+      ['Sanktion', 'Strafmaßnahme gegen einen Staat, zum Beispiel Handelsverbot.'],
+      ['Bündnisfall', 'Ein NATO-Land wird angegriffen. Alle anderen helfen.'],
+      ['Mandat', 'Auftrag für einen Einsatz (zum Beispiel von der UNO).'],
+      ['Menschenrechte', 'Rechte, die allen Menschen zustehen.'],
+      ['Diplomatie', 'Politik mit Gesprächen zwischen Staaten.'],
+      ['Entwicklungszusammenarbeit', 'Hilfe für ärmere Länder.'],
+    ]],
+    ['h', 'Die Vereinten Nationen (UNO)'],
+    ['table', ['Organ', 'Aufgabe'], [
+      ['**Generalversammlung**', 'Alle 193 Staaten, je 1 Stimme. Empfehlungen, Haushalt.'],
+      ['**Sicherheitsrat**', '15 Mitglieder: 5 ständige (USA, Russland, China, Frankreich, Großbritannien) mit Vetorecht und 10 gewählte für 2 Jahre. Kann Sanktionen und Einsätze beschließen.'],
+      ['**Generalsekretär**', 'Oberster Beamter der UNO.'],
+      ['**Internationaler Gerichtshof**', 'Den Haag. Streit zwischen Staaten.'],
+      ['**Unterorganisationen**', 'UNICEF (Kinder), WHO (Gesundheit), UNESCO (Bildung, Kultur), UNHCR (Flüchtlinge), FAO (Ernährung)'],
+    ]],
+    ['p', 'Die UNO wurde nach dem Zweiten Weltkrieg gegründet, um **Frieden** zu sichern. Wichtige Dokumente: **Charta der Vereinten Nationen** (1945) und die **Allgemeine Erklärung der Menschenrechte** (10. Dezember 1948). Probleme: Das **Veto** blockiert oft Entscheidungen, weil Großmächte eigene Interessen haben.'],
+    ['h', 'NATO und Sicherheit'],
+    ['table', ['Thema', 'Inhalt'], [
+      ['Gründung', '1949 als Verteidigungsbündnis in Nordamerika und Europa'],
+      ['Mitglieder', '32 Staaten (2024: Schweden als 32. Mitglied)'],
+      ['Art. 5 Nordatlantikvertrag', 'Angriff auf einen Staat gilt als Angriff auf alle. Hilfe wird nach eigener Entscheidung geleistet.'],
+      ['Deutschland', 'Mitglied seit 1955; Bundeswehr'],
+      ['Ziel für Ausgaben', 'Mitglieder sollen etwa 2 % des BIP für Verteidigung ausgeben. Das Ziel wurde angehoben.'],
+    ]],
+    ['note', 'Seit dem Angriff Russlands auf die Ukraine (Februar 2022) sprach der Bundeskanzler von einer **Zeitenwende**: Deutschland gibt mehr Geld für die Bundeswehr aus und liefert Hilfe. Das ist ein beliebtes aktuelles Thema für Prüfungstexte.'],
+    ['h', 'Bundeswehr als Parlamentsarmee'],
+    ['list', [
+      'Die Bundeswehr ist eine **Armee in der Demokratie**: Zivile Regierung führt sie (Verteidigungsministerium).',
+      '**Auslandseinsätze** braucht die **Zustimmung des Bundestages** (Parlamentsvorbehalt).',
+      'Soldaten sind „**Staatsbürger in Uniform**“ mit Grundrechten.',
+      'Der **Wehrbeauftragte** des Bundestages hört Beschwerden von Soldaten.',
+      'Seit 2011 gibt es **keine Wehrpflicht** mehr. Die Diskussion über einen neuen Wehrdienst läuft.',
+    ]],
+    ['h', 'Europarat, OSZE und andere'],
+    ['table', ['Organisation', 'Sitz', 'Mitglieder', 'Aufgabe'], [
+      ['**Europarat**', 'Straßburg', '46 Staaten', 'Menschenrechte, Demokratie; **Europäische Menschenrechtskonvention (EMRK)**; **Europäischer Gerichtshof für Menschenrechte (EGMR)**'],
+      ['**EU**', 'Brüssel', '27 Staaten', 'Binnenmarkt, Gesetze, Euro. Nicht dasselbe wie der Europarat!'],
+      ['**OSZE**', 'Wien', '57 Staaten', 'Sicherheit, Wahlbeobachtung'],
+      ['**WTO**', 'Genf', '160 und mehr', 'Welthandel, Streitschlichtung'],
+      ['**IWF / Weltbank**', 'Washington', '190 Staaten', 'Währungsstabilität, Kredite für Entwicklung'],
+      ['**G7 / G20**', 'wechselnd', 'große Wirtschaftsmächte', 'Abstimmung von Wirtschaftspolitik'],
+    ]],
+    ['warn', 'Der **EuGH** (Luxemburg) gehört zur EU. Der **EGMR** (Straßburg) gehört zum Europarat. Das **Bundesverfassungsgericht** (Karlsruhe) ist ein deutsches Gericht. Verwechsle die drei nicht.'],
+    ['h', 'Menschenrechte'],
+    ['table', ['Dokument', 'Jahr', 'Inhalt'], [
+      ['Allgemeine Erklärung der Menschenrechte (UN)', '1948', 'Rechte für alle Menschen. Rechtlich nicht bindend, aber politisch wichtig.'],
+      ['Europäische Menschenrechtskonvention', '1950', 'Rechte in Europa, einklagbar in Straßburg'],
+      ['Genfer Flüchtlingskonvention', '1951', 'Schutz für Flüchtlinge'],
+      ['UN-Kinderrechtskonvention', '1989', 'Rechte von Kindern'],
+      ['UN-Behindertenrechtskonvention', '2006', 'Teilhabe für Menschen mit Behinderung'],
+      ['EU-Grundrechtecharta', '2000, bindend seit 2009', 'Grundrechte in der EU, auch Datenschutz'],
+    ]],
+    ['h', 'Beispiel: Konflikt und Lösungswege'],
+    ['p', 'Ein Staat greift einen Nachbarn an. Welche Wege gibt es?'],
+    ['table', ['Stufe', 'Mittel', 'Beispiel'], [
+      ['1', 'Diplomatie, Verhandlungen', 'Gespräche, Vermittler'],
+      ['2', 'Verurteilung und Resolutionen', 'UN-Generalversammlung'],
+      ['3', 'Sanktionen', 'Handelsverbote, Einfrieren von Konten (EU, UNO)'],
+      ['4', 'Unterstützung für das Opfer', 'Waffen, Geld, Aufnahme von Flüchtlingen'],
+      ['5', 'Militärische Verteidigung', 'NATO-Bündnisfall, wenn ein Mitglied angegriffen wird'],
+    ]],
+    ['h', 'Entwicklungszusammenarbeit und Verantwortung'],
+    ['list', ['Deutschland unterstützt ärmere Länder durch Geld, Projekte und Ausbildung (Ministerium BMZ, Organisation GIZ).', 'Ziel: Armut bekämpfen, Bildung, Gesundheit, sauberes Wasser (siehe SDGs).', 'Eigeninteresse: weniger Fluchtursachen, stabile Märkte, gemeinsame Lösung für Klima.', 'Kritik: Abhängigkeit, Korruption, zu wenig Wirkung.']],
+    ['h', 'Prüfungsfragen'],
+    ['qa', 'Nennen Sie drei internationale Organisationen, in denen Deutschland Mitglied ist.', ['Zum Beispiel UNO, NATO, EU, Europarat, OSZE, WTO. (je 1 Punkt)'], 3],
+    ['qa', 'Erläutern Sie das Vetorecht im UN-Sicherheitsrat.', ['Die fünf ständigen Mitglieder (USA, Russland, China, Frankreich, Großbritannien) können einen Beschluss allein durch ihre Nein-Stimme stoppen. Das schützt ihre Interessen, blockiert aber oft Beschlüsse. (3 Aussagen)'], 3],
+    ['qa', 'Beschreiben Sie, was Art. 5 des NATO-Vertrags bedeutet.', ['Ein bewaffneter Angriff auf ein Mitglied gilt als Angriff auf alle. Die anderen Mitglieder leisten Beistand, so wie sie es für nötig halten. Der Artikel schreckt Angreifer ab. (3 Aussagen)'], 3],
+    ['qa', 'Erklären Sie, warum die Bundeswehr „Parlamentsarmee“ heißt.', ['Für Auslandseinsätze mit bewaffneten Kräften muss der Bundestag zustimmen. So kontrollieren die gewählten Abgeordneten den Einsatz der Armee. Das ist eine Lehre aus der Geschichte. (3 Aussagen)'], 3],
+    ['quiz', [
+      {q: 'Wo hat die UNO ihren Hauptsitz?', o: ['New York', 'Genf', 'Brüssel', 'Wien'], a: 0, e: 'In Genf sitzt die WTO, in Brüssel die NATO und die EU-Kommission.'},
+      {q: 'Wie viele ständige Mitglieder mit Veto hat der UN-Sicherheitsrat?', o: ['5', '10', '15', '27'], a: 0, e: 'USA, Russland, China, Frankreich, Großbritannien.'},
+      {q: 'Welche Organisation ist ein Verteidigungsbündnis?', o: ['NATO', 'WTO', 'UNESCO', 'Europarat'], a: 0, e: 'Gegründet 1949.'},
+      {q: 'Welche Organisation sitzt in Straßburg und schützt die Menschenrechte in Europa?', o: ['Europarat', 'EU-Kommission', 'NATO', 'UNO'], a: 0, e: 'Dazu gehört die EMRK.'},
+      {q: 'Wer muss einem bewaffneten Auslandseinsatz der Bundeswehr zustimmen?', o: ['Der Bundestag', 'Der Bundesrat', 'Die EU-Kommission', 'Das Bundesverfassungsgericht'], a: 0, e: 'Parlamentsvorbehalt.'},
+      {q: 'Wann wurde die Allgemeine Erklärung der Menschenrechte beschlossen?', o: ['1948', '1919', '1949', '1990'], a: 0, e: 'Am 10. Dezember 1948 in Paris.'},
+      {q: 'Welche Organisation regelt den Welthandel?', o: ['WTO', 'WHO', 'NATO', 'OSZE'], a: 0, e: 'Sitz in Genf.'},
+    ]],
+    ['see', ['gk-eu', 'gk-geschichte', 'gk-globalisierung', 'gk-grundrechte', 'gk-institutionen']],
+  ],
+});
+;
+// content/gk/erg-1.js
+// Ergänzungen zu bestehenden Gemeinschaftskunde-Seiten (vertiefende Abschnitte, Beispiele, Rechnungen, Fragen).
+AP2.add('gk-institutionen', [
+  ['h', 'Vertiefung: Die Staatsorgane im Detail'],
+  ['table', ['Organ', 'Wie wird es besetzt?', 'Macht und Grenzen'], [
+    ['**Bundespräsident**', 'Wahl durch die Bundesversammlung (Bundestag plus gleich viele Mitglieder der Länder). 5 Jahre, einmal Wiederwahl. Mindestalter 40.', 'Repräsentiert den Staat, unterschreibt Gesetze, ernennt Kanzler und Minister. Wenig politische Macht, aber moralische Autorität.'],
+    ['**Bundeskanzler/in**', 'Wahl durch den Bundestag auf Vorschlag des Bundespräsidenten (Mehrheit der Mitglieder).', 'Bestimmt die Richtlinien der Politik (Art. 65 GG). Kann nur durch konstruktives Misstrauensvotum abgewählt werden.'],
+    ['**Bundesregierung**', 'Kanzler und Minister. Minister schlägt der Kanzler vor.', 'Führt die Gesetze aus, bringt Gesetzentwürfe ein (die meisten kommen von der Regierung).'],
+    ['**Bundestag**', 'Alle 4 Jahre vom Volk gewählt, mindestens 630 Abgeordnete.', 'Macht Gesetze, wählt den Kanzler, beschließt den Haushalt, kontrolliert die Regierung.'],
+    ['**Bundesrat**', '69 Mitglieder aus den Landesregierungen. Jedes Land 3 bis 6 Stimmen nach Einwohnern.', 'Wirkt bei Gesetzen und bei der Verwaltung mit. Hat keine Wahl, wechselt durch Landtagswahlen.'],
+    ['**Bundesverfassungsgericht**', '16 Richter, gewählt von Bundestag und Bundesrat mit Zweidrittelmehrheit. 12 Jahre.', 'Prüft, ob Gesetze zum Grundgesetz passen.'],
+  ]],
+  ['h', 'Gesetzgebung: Zustimmungsgesetz oder Einspruchsgesetz?'],
+  ['table', ['', 'Zustimmungsgesetz', 'Einspruchsgesetz'], [
+    ['Wann?', 'Wenn die Interessen der Länder stark betroffen sind (zum Beispiel Verwaltung oder Finanzen der Länder).', 'Alle anderen Gesetze (die meisten).'],
+    ['Rolle des Bundesrates', 'Er muss **zustimmen**. Sonst scheitert das Gesetz.', 'Er kann **Einspruch** einlegen. Der Bundestag kann den Einspruch überstimmen.'],
+    ['Bei Streit', 'Vermittlungsausschuss (Bundestag und Bundesrat je 16 Mitglieder) sucht einen Kompromiss.', 'Vermittlungsausschuss, dann Überstimmung durch Bundestag.'],
+  ]],
+  ['steps', [
+    '**Initiative:** Regierung, Bundesrat oder eine Gruppe im Bundestag legt einen Entwurf vor.',
+    '**Beratung im Bundestag:** Drei Lesungen, Fachausschüsse prüfen.',
+    '**Abstimmung:** Der Bundestag beschließt mit Mehrheit.',
+    '**Bundesrat:** Er stimmt zu oder legt Einspruch ein oder ruft den Vermittlungsausschuss an.',
+    '**Unterschrift:** Der Bundespräsident prüft und unterschreibt. Er kann ein Gesetz stoppen, wenn es klar gegen das Grundgesetz verstößt.',
+    '**Verkündung:** Das Gesetz erscheint im Bundesgesetzblatt und tritt in Kraft.',
+  ]],
+  ['h', 'Beispiel: Koalitionen rechnen'],
+  ['p', 'Im Bundestag sitzen 630 Abgeordnete. Eine Regierung braucht eine **Mehrheit**. Das sind mindestens **316 Stimmen** (mehr als die Hälfte). Beispiel: Partei A hat 250 Sitze, Partei B 120, Partei C 90, Partei D 80, Partei E 90.'],
+  ['table', ['Mögliche Koalition', 'Sitze', 'Mehrheit?'], [
+    ['A + B', '370', 'ja (mehr als 315)'],
+    ['A + C', '340', 'ja'],
+    ['B + C + D', '290', 'nein'],
+    ['B + C + D + E', '380', 'ja'],
+    ['A allein', '250', 'nein, Minderheitsregierung nötig'],
+  ]],
+  ['note', 'Die Mehrheit heißt „**Kanzlermehrheit**“: mehr als die Hälfte **aller** Mitglieder, nicht nur der Anwesenden. Eine **Minderheitsregierung** hat keine eigene Mehrheit und muss sich für jedes Gesetz Stimmen suchen.'],
+  ['h', 'Vertiefung: Länder und Gemeinden'],
+  ['table', ['Ebene', 'Parlament', 'Regierung', 'Beispiel Baden-Württemberg'], [
+    ['Bund', 'Bundestag, Bundesrat', 'Bundesregierung', 'Berlin'],
+    ['Land', 'Landtag', 'Ministerpräsident/in', 'Stuttgart'],
+    ['Landkreis', 'Kreistag', 'Landrat/Landrätin', 'Landratsamt'],
+    ['Gemeinde', 'Gemeinderat', 'Bürgermeister/in', 'Rathaus'],
+  ]],
+  ['p', 'Die Gemeinden haben ein Recht auf **kommunale Selbstverwaltung** (Art. 28 GG). Sie regeln „alle Angelegenheiten der örtlichen Gemeinschaft“. Sie finanzieren sich durch Gewerbesteuer, Grundsteuer, Gebühren und Zuweisungen.'],
+  ['quiz', [
+    {q: 'Wie lange dauert die Amtszeit des Bundespräsidenten?', o: ['5 Jahre mit einmaliger Wiederwahl', '4 Jahre', '8 Jahre ohne Wiederwahl', 'Lebenslang'], a: 0, e: 'Art. 54 GG.'},
+    {q: 'Wie viele Stimmen braucht man in einem Bundestag mit 630 Mitgliedern für die Kanzlermehrheit?', o: ['316', '315', '420', '210'], a: 0, e: 'Mehr als die Hälfte: 630 / 2 = 315, also mindestens 316.'},
+    {q: 'Wer sitzt im Bundesrat?', o: ['Mitglieder der Landesregierungen', 'Direkt gewählte Abgeordnete', 'Bundesrichter', 'Gewerkschafter'], a: 0, e: 'Der Bundesrat ist kein direkt gewähltes Gremium.'},
+    {q: 'Was passiert, wenn der Bundesrat bei einem Zustimmungsgesetz Nein sagt?', o: ['Das Gesetz scheitert (oder geht in den Vermittlungsausschuss)', 'Der Bundestag überstimmt ihn', 'Der Kanzler entscheidet', 'Das Volk entscheidet'], a: 0, e: 'Ohne Zustimmung gibt es kein Gesetz.'},
+    {q: 'Wer ist Chef der Landesregierung?', o: ['Ministerpräsident/in', 'Landrat', 'Bürgermeister', 'Bundesrat'], a: 0, e: 'Stadtstaaten: Regierender Bürgermeister / Präsident des Senats.'},
+  ]],
+]);
+
+AP2.add('gk-wahlen', [
+  ['h', 'Vertiefung: Wahlsysteme im Vergleich'],
+  ['table', ['', 'Mehrheitswahl', 'Verhältniswahl', 'Deutschland (personalisierte Verhältniswahl)'], [
+    ['Prinzip', 'Wer im Wahlkreis die meisten Stimmen hat, gewinnt. Alle anderen Stimmen verfallen.', 'Sitze nach Stimmenanteil der Parteien.', 'Erststimme für eine Person, Zweitstimme für eine Partei. Die Zweitstimme entscheidet über die Sitzverteilung.'],
+    ['Vorteil', 'Klare Mehrheiten, enge Bindung zwischen Wähler und Abgeordnetem.', 'Fair: Alle Stimmen zählen.', 'Fairness und Bindung zum Wahlkreis.'],
+    ['Nachteil', 'Viele Stimmen verfallen.', 'Viele kleine Parteien, schwierige Koalitionen.', 'Komplizierte Regeln, Sitzzahl schwankt.'],
+    ['Beispiel', 'Großbritannien, USA', 'Niederlande, Israel', 'Deutschland'],
+  ]],
+  ['h', 'Rechenbeispiel: Sitzverteilung mit Fünf-Prozent-Hürde'],
+  ['p', 'In einem kleinen Parlament mit **100 Sitzen** gibt es diese Zweitstimmen: Partei A 42 %, Partei B 31 %, Partei C 17 %, Partei D 6 %, Partei E 4 %. Partei E scheitert an der 5-%-Hürde.'],
+  ['steps', [
+    '**Hürde prüfen:** E hat 4 %. Das ist unter 5 %. E bekommt keine Sitze.',
+    '**Gültige Stimmen:** 42 + 31 + 17 + 6 = **96 %**.',
+    '**Anteil an den Sitzen:** Teile den Anteil jeder Partei durch 96 und multipliziere mit 100.',
+    '**A:** 42 / 96 mal 100 = 43,75 Sitze, **B:** 32,29, **C:** 17,71, **D:** 6,25.',
+    '**Runden:** 44, 32, 18, 6 = 100 Sitze. (Genaues Verfahren: Sainte-Laguë, höchste Restzahlen zuerst.)',
+  ]],
+  ['note', 'Die **Wahlrechtsreform 2023** hat Überhang- und Ausgleichsmandate abgeschafft. Der Bundestag hat feste **630 Sitze**. Wer im Wahlkreis gewinnt, bekommt den Sitz nur, wenn die Zweitstimmen der Partei dafür reichen.'],
+  ['h', 'Vertiefung: Wahlbeteiligung berechnen'],
+  ['ex', ['In einer Stadt gibt es 80.000 Wahlberechtigte. 56.000 haben gewählt.', 'Wahlbeteiligung = 56.000 / 80.000 mal 100 = **70 %**.', 'Nichtwähler = 24.000 = 30 %.']],
+  ['quiz', [
+    {q: 'Welche Stimme entscheidet bei der Bundestagswahl über die Sitzverteilung?', o: ['Zweitstimme', 'Erststimme', 'Beide gleich', 'Keine'], a: 0, e: 'Die Erststimme wählt die Person im Wahlkreis.'},
+    {q: 'Wie viele Sitze hat der Bundestag nach der Reform von 2023?', o: ['630', '598', '736', '500'], a: 0, e: 'Feste Größe, keine Überhangmandate mehr.'},
+    {q: 'Eine Partei hat 4,6 % der Zweitstimmen. Was passiert?', o: ['Sie bekommt keine Sitze (5-%-Hürde)', 'Sie bekommt 4,6 % der Sitze', 'Sie bekommt 5 Sitze', 'Neuwahl'], a: 0, e: 'Unter 5 % der Zweitstimmen gibt es keine Sitze.'},
+    {q: 'Wahlbeteiligung: 45.000 von 60.000 haben gewählt. Wie hoch ist sie?', o: ['75 %', '25 %', '45 %', '60 %'], a: 0, e: '45.000 / 60.000 = 0,75.'},
+  ]],
+]);
+
+AP2.add('gk-medien', [
+  ['h', 'Vertiefung: Medienrecht und Pflichten'],
+  ['table', ['Thema', 'Regel', 'Beispiel'], [
+    ['**Impressum**', 'Jede geschäftliche Webseite braucht ein Impressum mit Name, Anschrift, E-Mail (§ 5 DDG).', 'Webseite eines Betriebs'],
+    ['**Recht am eigenen Bild**', 'Fotos von Personen dürfen nur mit Einwilligung veröffentlicht werden (KUG).', 'Foto von Kollegen auf der Firmenseite'],
+    ['**Urheberrecht**', 'Der Urheber entscheidet über Nutzung. Zitate sind mit Quelle erlaubt.', 'Bild aus dem Internet nicht einfach kopieren'],
+    ['**Persönlichkeitsrecht**', 'Beleidigung und Verleumdung sind strafbar.', 'Hass-Kommentar'],
+    ['**Jugendmedienschutz**', 'Altersfreigaben (FSK, USK), Jugendschutz im Netz.', 'Spiel ab 16'],
+    ['**Presserecht**', 'Gegendarstellung bei falschen Tatsachen.', 'Zeitung muss Gegendarstellung drucken'],
+    ['**Pressekodex**', 'Regeln des Presserats: Wahrheit, Achtung der Würde, Trennung von Werbung.', 'Schleichwerbung ist verboten'],
+  ]],
+  ['h', 'Filterblase und Echokammer'],
+  ['table', ['Begriff', 'Erklärung', 'Gefahr'], [
+    ['**Filterblase**', 'Algorithmen zeigen dir vor allem, was dir gefällt.', 'Du siehst andere Meinungen nicht.'],
+    ['**Echokammer**', 'Du bist nur mit Gleichgesinnten verbunden. Alle bestätigen sich.', 'Meinungen werden extremer.'],
+    ['**Fake News**', 'Absichtlich falsche Nachrichten.', 'Verunsichern Wähler.'],
+    ['**Deepfake**', 'Mit KI erzeugte falsche Bilder, Videos oder Stimmen.', 'Täuschung, Rufschaden.'],
+    ['**Bots**', 'Automatische Konten, die Meinungen verbreiten.', 'Scheinbare Mehrheit.'],
+  ]],
+  ['list', ['**Was tun?** Quelle prüfen (Impressum, Autor, Datum), mehrere Quellen vergleichen, Bilder rückwärts suchen, vor dem Teilen nachdenken.', 'In Deutschland haben die **öffentlich-rechtlichen Sender** (ARD, ZDF, Deutschlandradio) einen Auftrag zur Information. Sie werden über den **Rundfunkbeitrag** finanziert (18,36 Euro pro Monat und Wohnung).', '**Privatsender** finanzieren sich durch Werbung. **Zeitungen** durch Abo und Werbung.']],
+  ['quiz', [
+    {q: 'Was ist eine Filterblase?', o: ['Der Algorithmus zeigt vor allem Inhalte, die zu deinen Interessen passen', 'Ein Spamfilter', 'Ein Fotofilter', 'Ein Virus'], a: 0, e: 'Dadurch sieht man wenig andere Meinungen.'},
+    {q: 'Wer darf ein Foto einer Person im Netz veröffentlichen?', o: ['Nur mit Einwilligung der Person', 'Jeder', 'Nur Journalisten', 'Niemand'], a: 0, e: 'Recht am eigenen Bild.'},
+    {q: 'Was ist ein Deepfake?', o: ['Mit KI erzeugte falsche Medieninhalte', 'Ein tiefes Video', 'Eine Datenbank', 'Ein Passwort'], a: 0, e: 'Sie können sehr echt wirken.'},
+    {q: 'Wie werden ARD und ZDF finanziert?', o: ['Hauptsächlich durch den Rundfunkbeitrag', 'Nur durch Werbung', 'Durch Steuern direkt', 'Durch Spenden'], a: 0, e: 'Pro Wohnung ein Beitrag.'},
+  ]],
+]);
+
+AP2.add('gk-demografie', [
+  ['h', 'Vertiefung: Kennzahlen berechnen'],
+  ['table', ['Kennzahl', 'Formel', 'Beispiel'], [
+    ['**Altenquotient**', 'Personen ab 65 / Personen von 20 bis 64 mal 100', '20 Mio. / 50 Mio. mal 100 = 40'],
+    ['**Jugendquotient**', 'Personen unter 20 / Personen von 20 bis 64 mal 100', '15 Mio. / 50 Mio. mal 100 = 30'],
+    ['**Gesamtquotient**', 'Altenquotient + Jugendquotient', '40 + 30 = 70'],
+    ['**Geburtenrate (TFR)**', 'Durchschnittliche Kinderzahl pro Frau', 'In Deutschland etwa 1,4. Zum Erhalt der Bevölkerung nötig: etwa 2,1.'],
+    ['**Lebenserwartung**', 'Durchschnittliches Lebensalter bei Geburt', 'Frauen etwa 83, Männer etwa 78 Jahre'],
+    ['**Medianalter**', 'Alter, bei dem die Hälfte jünger und die Hälfte älter ist', 'Deutschland etwa 45 Jahre'],
+  ]],
+  ['ex', ['**Aufgabe:** 1990 kamen auf 100 Menschen im Alter 20 bis 64 etwa 24 Ältere (ab 65). 2040 sind es 47.', '**Rechnung:** 47 / 24 = 1,96. Der Altenquotient hat sich fast **verdoppelt**.', '**Folge:** Für jeden Rentner gibt es weniger Beitragszahler. 1990 waren es etwa 4 Beitragszahler je Rentner (100 / 24 = 4,2). 2040 nur noch etwa 2 (100 / 47 = 2,1).']],
+  ['table', ['Maßnahme', 'Wirkung'], [
+    ['Rente mit 67', 'Mehr Beitragszahler und weniger Rentenjahre'],
+    ['Familienförderung (Kita, Elterngeld)', 'Mehr Geburten möglich, Beruf und Familie vereinbar'],
+    ['Zuwanderung von Fachkräften', 'Mehr junge Beitragszahler'],
+    ['Automatisierung und KI', 'Weniger Arbeitskräfte nötig'],
+    ['Private Vorsorge (Riester, Betriebsrente)', 'Zweite und dritte Säule neben der gesetzlichen Rente'],
+  ]],
+  ['quiz', [
+    {q: 'Altenquotient: 12 Mio. Ältere (65 plus) auf 40 Mio. Menschen von 20 bis 64. Wie hoch ist er?', o: ['30', '12', '40', '3,3'], a: 0, e: '12 / 40 mal 100 = 30.'},
+    {q: 'Wie hoch ist die Geburtenrate zum Erhalt der Bevölkerung?', o: ['Etwa 2,1 Kinder pro Frau', 'Etwa 1,0', 'Etwa 4,0', 'Etwa 0,5'], a: 0, e: 'In Deutschland liegt sie bei etwa 1,4.'},
+  ]],
+]);
+
+AP2.add('gk-gleichstellung', [
+  ['h', 'Vertiefung: Gender Pay Gap berechnen'],
+  ['p', 'Der **Gender Pay Gap** zeigt den Unterschied beim Stundenlohn zwischen Männern und Frauen. Man unterscheidet den **unbereinigten** Wert (alle Unterschiede) und den **bereinigten** Wert (gleiche Arbeit, gleiche Qualifikation).'],
+  ['ex', ['**Formel:** Gap = (Männerlohn - Frauenlohn) / Männerlohn mal 100.', '**Beispiel:** Männer 24 Euro pro Stunde, Frauen 20,40 Euro pro Stunde. (24 - 20,40) / 24 mal 100 = **15 %**.', '**Deutschland:** unbereinigt etwa 16 %, bereinigt etwa 6 %.', '**Gründe:** Frauen arbeiten öfter in schlechter bezahlten Berufen, öfter in Teilzeit und unterbrechen die Karriere wegen Kindern. Ein kleiner Teil bleibt unerklärt und ist Diskriminierung.']],
+  ['table', ['Maßnahme', 'Wirkung'], [
+    ['Entgelttransparenzgesetz', 'Beschäftigte in größeren Betrieben dürfen erfragen, was Kollegen verdienen (Median).'],
+    ['EU-Entgelttransparenzrichtlinie', 'Gehaltsangaben in Stellenanzeigen, Berichte über Lohnlücken (Umsetzung bis 2026).'],
+    ['Kita-Ausbau', 'Eltern können Vollzeit arbeiten.'],
+    ['Partnermonate beim Elterngeld', 'Väter nehmen mehr Elternzeit.'],
+    ['Frauenquote', 'Mehr Frauen in Führung.'],
+  ]],
+  ['quiz', [
+    {q: 'Männer verdienen 25 Euro pro Stunde, Frauen 21 Euro. Wie groß ist der Gender Pay Gap?', o: ['16 %', '4 %', '21 %', '19 %'], a: 0, e: '(25 - 21) / 25 mal 100 = 16 %.'},
+    {q: 'Was ist der bereinigte Gender Pay Gap?', o: ['Lohnunterschied bei gleicher Arbeit und Qualifikation', 'Lohnunterschied aller Berufe', 'Der Unterschied bei Steuern', 'Der Unterschied bei Urlaub'], a: 0, e: 'In Deutschland etwa 6 %.'},
+  ]],
+]);
+
+AP2.add('gk-eu', [
+  ['h', 'Vertiefung: Euro, Schengen und Erweiterung'],
+  ['table', ['Thema', 'Inhalt'], [
+    ['**Euro-Zone**', '20 Staaten nutzen den Euro (Stand 2025). Kroatien trat 2023 bei. Bulgarien soll 2026 folgen.'],
+    ['**Schengen-Raum**', 'Reisen ohne Grenzkontrollen zwischen den meisten EU-Staaten. Gemeinsame Außengrenze (Frontex). Kontrollen sind zeitweise erlaubt.'],
+    ['**Kopenhagener Kriterien**', 'Wer der EU beitreten will, braucht Demokratie, Rechtsstaat, Menschenrechte, funktionierende Marktwirtschaft und muss EU-Recht übernehmen.'],
+    ['**Austritt**', 'Art. 50 EU-Vertrag. Beispiel Brexit: Antrag 2017, Austritt 31.1.2020.'],
+    ['**Vier Grundfreiheiten**', 'Freier Verkehr von Waren, Personen, Dienstleistungen und Kapital.'],
+    ['**Haushalt**', 'Etwa 1 % der Wirtschaftsleistung der EU. Einnahmen: Beiträge der Staaten, Zölle. Ausgaben: Landwirtschaft, Regionalförderung, Forschung.'],
+    ['**Amtssprachen**', '24'],
+  ]],
+  ['table', ['Vorteile für Betriebe in Deutschland', 'Beispiel'], [
+    ['Kein Zoll im Binnenmarkt', 'Ein IT-Zulieferer in Polen liefert Hardware zollfrei.'],
+    ['Gleiche Standards', 'CE-Zeichen gilt in der ganzen EU.'],
+    ['Gemeinsamer Datenschutz', 'DSGVO gilt in allen Staaten.'],
+    ['Arbeitnehmerfreizügigkeit', 'Fachkräfte aus Spanien können in Deutschland ohne Visum arbeiten.'],
+    ['Förderprogramme', 'ESF unterstützt Weiterbildung, Erasmus+ den Austausch für Azubis.'],
+  ]],
+  ['quiz', [
+    {q: 'Welche vier Grundfreiheiten gibt es im EU-Binnenmarkt?', o: ['Waren, Personen, Dienstleistungen, Kapital', 'Essen, Trinken, Wohnen, Reisen', 'Strom, Gas, Wasser, Öl', 'Wahl, Presse, Glaube, Streik'], a: 0, e: 'Der Binnenmarkt ist der Kern der EU.'},
+    {q: 'Was regeln die Kopenhagener Kriterien?', o: ['Beitritt neuer Staaten zur EU', 'Das Euro-Gebiet', 'Den Haushalt', 'Das Wahlrecht'], a: 0, e: '1993 beschlossen.'},
+  ]],
+]);
+
+AP2.add('gk-mitwirkung', [
+  ['h', 'Vertiefung: Petition, Bürgerbegehren, Lobbyismus'],
+  ['table', ['Instrument', 'Ablauf', 'Beispiel'], [
+    ['**Petition** (Art. 17 GG)', 'Jede Person kann sich schriftlich oder online an den Bundestag oder Landtag wenden. Bei 50.000 Unterschriften in 4 Wochen (Bundestag) gibt es eine öffentliche Anhörung.', 'Online-Petition für ein besseres Bahn-Angebot'],
+    ['**Bürgerbegehren**', 'Bürger sammeln Unterschriften in der Gemeinde. Bei genug Unterschriften folgt ein **Bürgerentscheid**.', 'Neues Schwimmbad ja oder nein'],
+    ['**Volksbegehren**', 'Auf Landesebene. Ziel ist ein Volksentscheid über ein Gesetz.', 'Bayern: Artenschutz 2019'],
+    ['**Demonstration**', 'Versammlung unter freiem Himmel; Anmeldung bei der Behörde (Art. 8 GG).', 'Fridays for Future'],
+    ['**Lobbyismus**', 'Interessengruppen beeinflussen die Politik (Gespräche, Gutachten). Er ist legal, muss aber transparent sein (Lobbyregister seit 2022).', 'Verband der Autoindustrie'],
+    ['**Ehrenamt**', 'Freiwillige Arbeit für die Gesellschaft.', 'Feuerwehr, Verein, Tafel'],
+  ]],
+  ['quiz', [
+    {q: 'Wie heißt der Entscheid, der auf ein erfolgreiches Bürgerbegehren folgt?', o: ['Bürgerentscheid', 'Volksentscheid', 'Misstrauensvotum', 'Verfassungsbeschwerde'], a: 0, e: 'Auf Gemeindeebene.'},
+    {q: 'In welchem Artikel steht das Petitionsrecht?', o: ['Art. 17 GG', 'Art. 1 GG', 'Art. 12 GG', 'Art. 38 GG'], a: 0, e: 'Jeder hat das Recht, Bitten und Beschwerden einzureichen.'},
+  ]],
+]);
+
+AP2.add('gk-ki', [
+  ['h', 'Vertiefung: KI im Betrieb und im Alltag'],
+  ['table', ['Thema', 'Frage', 'Antwort'], [
+    ['**Verzerrung (Bias)**', 'Warum entscheidet KI manchmal ungerecht?', 'Sie lernt aus Daten. Wenn die Daten Vorurteile enthalten, übernimmt sie diese. Beispiel: Bewerbungs-KI bevorzugt Männer.'],
+    ['**Haftung**', 'Wer ist verantwortlich, wenn die KI Fehler macht?', 'Der Mensch oder die Firma, die sie einsetzt. Die KI selbst haftet nicht.'],
+    ['**Transparenz**', 'Weiß man, wie die KI entscheidet?', 'Oft nicht („Black Box“). Die KI-Verordnung verlangt Erklärbarkeit bei Hochrisiko-Systemen.'],
+    ['**Datenschutz**', 'Welche Daten dürfen in die KI?', 'Keine geheimen oder personenbezogenen Daten in öffentliche KI-Tools. DSGVO beachten.'],
+    ['**Urheberrecht**', 'Darf KI mit fremden Texten lernen?', 'Rechtlich umstritten. Texte der KI können Urheberrechte verletzen.'],
+    ['**Mitbestimmung**', 'Wer entscheidet über KI im Betrieb?', 'Der Betriebsrat bestimmt mit, wenn die KI Verhalten und Leistung überwachen kann (§ 87 BetrVG).'],
+  ]],
+  ['table', ['Risikostufe (AI Act)', 'Beispiel', 'Regel'], [
+    ['**Unannehmbar**', 'Soziale Bewertung von Bürgern (Social Scoring)', 'Verboten'],
+    ['**Hohes Risiko**', 'KI bei Bewerbung, Kreditvergabe, Medizin', 'Strenge Pflichten: Dokumentation, menschliche Aufsicht'],
+    ['**Begrenztes Risiko**', 'Chatbots', 'Kennzeichnung: „Du sprichst mit einer KI“'],
+    ['**Minimales Risiko**', 'Spamfilter, Videospiele', 'Keine besonderen Pflichten'],
+  ]],
+  ['quiz', [
+    {q: 'Was bedeutet „Bias“ bei KI?', o: ['Verzerrung durch Vorurteile in den Trainingsdaten', 'Ein Programmierfehler', 'Eine Art von Speicher', 'Eine Netzwerkverbindung'], a: 0, e: 'KI kann Ungerechtigkeit verstärken.'},
+    {q: 'Welche Stufe des AI Act ist verboten?', o: ['Unannehmbares Risiko, zum Beispiel Social Scoring', 'Spamfilter', 'Chatbot', 'Suchmaschine'], a: 0, e: 'Diese Praktiken sind verboten.'},
+  ]],
+]);
 ;
 // content/exam/info-1.js
 AP2.page('exam-info', {
@@ -41886,6 +51759,76 @@ AP2.add('ref-formeln', [
   ['see', ['ref-ablauf', 'ps-qm', 'infra-elektro', 'infra-vlsm', 'wiso-kennzahlen', 'eua-pruefziffer']],
 ]);
 ;
+// content/ref/formeln-3.js
+// Weitere Formeln: Prozent, Zins, Skonto, Kalkulation, Abschreibung, Break-even, Statistik, Zahlensysteme.
+AP2.add('ref-formeln', [
+  ['h', 'Mehr Formeln für die Prüfung'],
+  ['p', 'Hier stehen Formeln, die in den anderen Tabellen fehlen. Jede Formel hat ein Rechenbeispiel.'],
+  ['h', 'Prozent und Dreisatz'],
+  ['table', ['Was?', 'Formel', 'Beispiel'], [
+    ['Prozentwert', 'W = G mal p / 100', '19 % von 200 Euro: 200 mal 19 / 100 = 38 Euro'],
+    ['Prozentsatz', 'p = W / G mal 100', '30 von 150: 30 / 150 mal 100 = 20 %'],
+    ['Grundwert', 'G = W / p mal 100', '45 Euro sind 15 %: 45 / 15 mal 100 = 300 Euro'],
+    ['Dreisatz (gerade)', 'Mehr gibt mehr: x = a mal c / b', '5 Stunden = 60 Euro. 8 Stunden = 60 / 5 mal 8 = 96 Euro'],
+    ['Dreisatz (ungerade)', 'Mehr gibt weniger: x = a mal b / c', '4 Personen brauchen 6 Tage. 6 Personen: 4 mal 6 / 6 = 4 Tage'],
+    ['Prozentpunkte', 'Unterschied der Prozentsätze', 'Von 5 % auf 8 % = 3 Prozentpunkte (und +60 %)'],
+  ]],
+  ['h', 'Zins und Skonto'],
+  ['table', ['Was?', 'Formel', 'Beispiel'], [
+    ['Jahreszins', 'Z = K mal p / 100', '2.000 Euro bei 3 %: 60 Euro'],
+    ['Tageszins', 'Z = K mal p mal t / (100 mal 360)', '5.000 Euro, 4 %, 90 Tage: 5.000 mal 4 mal 90 / 36.000 = 50 Euro'],
+    ['Zinseszins', 'K(n) = K0 mal (1 + p/100) hoch n', '1.000 Euro, 5 %, 3 Jahre: 1.000 mal 1,05 hoch 3 = 1.157,63 Euro'],
+    ['Skonto', 'Skontobetrag = Rechnung mal Skontosatz / 100', '1.190 Euro brutto, 2 % Skonto: 23,80 Euro. Zahlung 1.166,20 Euro'],
+    ['Effektiver Zins von Skonto', 'Skonto % mal 360 / (Zahlungsziel - Skontofrist)', '2 % bei 10 Tagen Skonto, 30 Tagen Ziel: 2 mal 360 / 20 = 36 % pro Jahr'],
+    ['Kreditrate (einfach)', '(Kredit + Zinsen) / Monate', '12.000 Euro, Zinsen 960 Euro, 24 Monate: 12.960 / 24 = 540 Euro'],
+  ]],
+  ['note', 'Skonto ist fast immer sinnvoll. 36 % pro Jahr ist viel mehr als jeder Kreditzins. Bezahle also innerhalb der Skontofrist.'],
+  ['h', 'Kalkulation und Preis'],
+  ['table', ['Schritt', 'Rechnung', 'Beispiel'], [
+    ['Selbstkosten', 'Material + Fertigung + Gemeinkosten', '100 + 200 + 50 = 350 Euro'],
+    ['Gewinn', 'Selbstkosten mal Gewinnsatz', '350 mal 10 % = 35 Euro'],
+    ['Nettoverkaufspreis', 'Selbstkosten + Gewinn', '385 Euro'],
+    ['Bruttopreis', 'Netto mal 1,19', '385 mal 1,19 = 458,15 Euro'],
+    ['Nettopreis aus Brutto', 'Brutto / 1,19', '458,15 / 1,19 = 385 Euro'],
+    ['Deckungsbeitrag', 'Verkaufspreis - variable Kosten', '50 - 30 = 20 Euro je Stück'],
+    ['Stundensatz', 'Gesamtkosten / produktive Stunden', '120.000 Euro / 1.500 h = 80 Euro pro Stunde'],
+  ]],
+  ['h', 'Abschreibung und Break-even'],
+  ['table', ['Was?', 'Formel', 'Beispiel'], [
+    ['Lineare Abschreibung', 'Jahresbetrag = Anschaffungskosten / Nutzungsdauer', 'Server 6.000 Euro, 5 Jahre: 1.200 Euro pro Jahr'],
+    ['Restwert nach n Jahren', 'AK - n mal Jahresbetrag', 'Nach 2 Jahren: 6.000 - 2.400 = 3.600 Euro'],
+    ['Abschreibungssatz', '100 % / Nutzungsdauer', '100 / 5 = 20 % pro Jahr'],
+    ['Degressive Abschreibung', 'Prozentsatz vom Restwert', '6.000 Euro, 20 %: Jahr 1 = 1.200, Jahr 2 = 960'],
+    ['Break-even-Menge', 'Fixkosten / Deckungsbeitrag je Stück', '10.000 Euro / 20 Euro = 500 Stück'],
+    ['Break-even-Umsatz', 'Menge mal Preis', '500 mal 50 = 25.000 Euro'],
+    ['Amortisation (Jahre)', 'Investition / jährlicher Nutzen', '24.000 Euro / 8.000 Euro = 3 Jahre'],
+  ]],
+  ['h', 'Statistik'],
+  ['table', ['Was?', 'Formel', 'Beispiel'], [
+    ['Mittelwert', 'Summe aller Werte / Anzahl', '2, 4, 9: 15 / 3 = 5'],
+    ['Median', 'Mittlerer Wert der sortierten Liste', '2, 4, 9, 20, 100: Median 9'],
+    ['Spannweite', 'Größter Wert - kleinster Wert', '100 - 2 = 98'],
+    ['Gewichteter Mittelwert', 'Summe (Wert mal Gewicht) / Summe Gewichte', 'Note 2 (Gewicht 2) und 4 (Gewicht 1): (4 + 4) / 3 = 2,67'],
+    ['Relative Häufigkeit', 'Anzahl / Gesamt', '12 von 40 Antworten: 0,3 = 30 %'],
+  ]],
+  ['h', 'Zahlensysteme umrechnen'],
+  ['table', ['Aufgabe', 'Methode', 'Beispiel'], [
+    ['Binär in Dezimal', 'Stellenwerte 128, 64, 32, 16, 8, 4, 2, 1 addieren', '1011 0101 = 128 + 32 + 16 + 4 + 1 = 181'],
+    ['Dezimal in Binär', 'Immer durch 2 teilen, Reste von unten nach oben lesen', '13: 13/2=6 R1, 6/2=3 R0, 3/2=1 R1, 1/2=0 R1. Ergebnis 1101'],
+    ['Hex in Dezimal', 'Stelle mal 16 plus Stelle', 'B7 = 11 mal 16 + 7 = 183'],
+    ['Binär in Hex', 'Je 4 Bit eine Hex-Ziffer', '1011 0101 = B5'],
+    ['Zweierkomplement (8 Bit)', 'Alle Bits kippen, 1 addieren', '-5: 0000 0101 wird 1111 1010, plus 1 = 1111 1011'],
+  ]],
+  ['quiz', [
+    {q: 'Eine Rechnung von 2.380 Euro brutto hat 2 % Skonto. Wie hoch ist der Skontobetrag?', o: ['47,60 Euro', '23,80 Euro', '4,76 Euro', '238 Euro'], a: 0, e: '2.380 mal 2 / 100 = 47,60 Euro.'},
+    {q: 'Ein Laptop kostet 1.500 Euro und wird 3 Jahre linear abgeschrieben. Wie hoch ist der Restwert nach 2 Jahren?', o: ['500 Euro', '1.000 Euro', '750 Euro', '0 Euro'], a: 0, e: 'Jahresbetrag 500 Euro. 1.500 - 1.000 = 500 Euro.'},
+    {q: 'Fixkosten 6.000 Euro, Preis 40 Euro, variable Kosten 25 Euro je Stück. Break-even-Menge?', o: ['400 Stück', '150 Stück', '240 Stück', '600 Stück'], a: 0, e: 'Deckungsbeitrag 15 Euro. 6.000 / 15 = 400.'},
+    {q: 'Wie lautet die Dezimalzahl von 0001 0110?', o: ['22', '16', '26', '14'], a: 0, e: '16 + 4 + 2 = 22.'},
+    {q: 'Nettopreis 250 Euro. Wie hoch ist der Bruttopreis bei 19 % USt?', o: ['297,50 Euro', '269 Euro', '285 Euro', '202,50 Euro'], a: 0, e: '250 mal 1,19 = 297,50.'},
+    {q: '4 Techniker installieren in 6 Tagen alle PCs. Wie lange brauchen 8 Techniker?', o: ['3 Tage', '12 Tage', '4 Tage', '2 Tage'], a: 0, e: 'Ungerader Dreisatz: 4 mal 6 / 8 = 3.'},
+  ]],
+]);
+;
 // content/ref/glossar-1.js
 AP2.page('ref-glossar', {
   b: 'ref', g: 'Referenz', t: 'Glossar',
@@ -41957,6 +51900,163 @@ AP2.add('ref-glossar', [
     ['Zeitverlaufsdiagramm', 'UML-Interaktionsdiagramm mit Zuständen entlang einer Zeitachse.'],
   ]],
 ]);
+;
+// content/ref/glossar-3.js
+AP2.add('ref-glossar', [
+  ['h', 'Wirtschaft, Recht und Gemeinschaftskunde (einfach erklärt)'],
+  ['kv', [
+    ['Abmahnung', 'Schriftliche Warnung vom Arbeitgeber bei Pflichtverletzung. Meist nötig vor einer verhaltensbedingten Kündigung.'],
+    ['Arbeitgeberanteil', 'Teil der Sozialversicherungsbeiträge, den der Betrieb zahlt (etwa die Hälfte).'],
+    ['Beitragsbemessungsgrenze', 'Höchstbetrag des Einkommens, auf den Sozialversicherungsbeiträge berechnet werden.'],
+    ['Betriebsrat', 'Vertretung der Beschäftigten im Betrieb. Er hat Mitbestimmungsrechte (BetrVG).'],
+    ['Bruttolohn', 'Lohn vor Abzug von Steuern und Sozialabgaben.'],
+    ['Nettolohn', 'Lohn, der auf das Konto kommt (nach allen Abzügen).'],
+    ['Bürgerentscheid', 'Abstimmung der Bürger einer Gemeinde über eine Sachfrage.'],
+    ['Deflation', 'Die Preise fallen allgemein. Gefahr: Käufe werden verschoben.'],
+    ['Direktmandat', 'Sitz im Bundestag für den Gewinner eines Wahlkreises (Erststimme).'],
+    ['Einspruchsgesetz', 'Gesetz, bei dem der Bundestag den Einspruch des Bundesrates überstimmen kann.'],
+    ['Zustimmungsgesetz', 'Gesetz, das nur mit Zustimmung des Bundesrates gilt.'],
+    ['Fristlose Kündigung', 'Sofortige Kündigung aus wichtigem Grund (§ 626 BGB), zum Beispiel Diebstahl.'],
+    ['Geschäftsfähigkeit', 'Fähigkeit, selbst gültige Verträge zu schließen. Voll ab 18 Jahren.'],
+    ['Gewaltenteilung', 'Staatsmacht ist verteilt auf Gesetzgebung (Legislative), Regierung (Exekutive) und Gerichte (Judikative).'],
+    ['Inflation', 'Das allgemeine Preisniveau steigt, das Geld verliert Kaufkraft.'],
+    ['Koalition', 'Bündnis von Parteien, die zusammen regieren.'],
+    ['Konjunktur', 'Auf und Ab der Wirtschaftsleistung (Aufschwung, Boom, Abschwung, Rezession).'],
+    ['Mindestlohn', 'Gesetzlich festgelegter niedrigster Stundenlohn.'],
+    ['Pflichtversicherung', 'Versicherung, die das Gesetz vorschreibt (zum Beispiel Kranken- und Rentenversicherung).'],
+    ['Probezeit', 'Zeit am Anfang des Arbeitsverhältnisses (bis 6 Monate) mit kurzer Kündigungsfrist von 2 Wochen.'],
+    ['Rezession', 'Wirtschaft schrumpft mindestens zwei Quartale hintereinander.'],
+    ['Sperrklausel', 'Mindestanteil an Stimmen (5 %), den eine Partei für Sitze braucht.'],
+    ['Subsidiarität', 'Aufgaben erledigt die kleinste mögliche Ebene. Die größere Ebene hilft nur, wenn es nötig ist.'],
+    ['Tarifautonomie', 'Gewerkschaften und Arbeitgeber handeln Löhne ohne Einmischung des Staates aus.'],
+    ['Tarifvertrag', 'Vertrag zwischen Gewerkschaft und Arbeitgeber(verband) über Lohn und Arbeitsbedingungen.'],
+    ['Verfassungsbeschwerde', 'Klage beim Bundesverfassungsgericht, wenn jemand seine Grundrechte verletzt sieht.'],
+    ['Wehrhafte Demokratie', 'Der Staat darf sich gegen Feinde der Demokratie schützen (Parteiverbot, Verfassungsschutz).'],
+    ['Zugewinn', 'Mehrwert, den ein Betrieb durch Arbeit schafft (Wertschöpfung).'],
+  ]],
+  ['h', 'Englisch - Deutsch (IT im Betrieb)'],
+  ['table', ['English', 'Deutsch'], [
+    ['backup', 'Datensicherung'], ['bandwidth', 'Bandbreite'], ['bug', 'Fehler im Programm'], ['cloud', 'Rechenzentrum im Netz'],
+    ['deadline', 'Abgabetermin'], ['firewall', 'Schutz zwischen Netzen'], ['patch', 'Fehlerkorrektur für Software'], ['release', 'Veröffentlichung einer Version'],
+    ['requirement', 'Anforderung'], ['stakeholder', 'Beteiligte oder Interessierte'], ['ticket', 'Meldung oder Aufgabe im Support'], ['workaround', 'Übergangslösung'],
+    ['downtime', 'Ausfallzeit'], ['latency', 'Verzögerung bei der Übertragung'], ['throughput', 'Datendurchsatz'], ['scalability', 'Erweiterbarkeit bei wachsender Last'],
+  ]],
+]);
+;
+// content/ref/abkuerzungen-1.js
+AP2.page('ref-abkuerzungen', {b: 'ref', g: 'Referenz', t: 'Abkürzungen A bis Z', d: 'Wichtige Abkürzungen aus IT, Recht und Wirtschaft', m: 'Langform und Bedeutung **mitlernen**.', blocks: [
+  ['p', 'In der Prüfung stehen viele Abkürzungen. Hier findest du sie sortiert nach Bereich, mit Langform und kurzer Erklärung.'],
+  ['h', 'Netzwerk und Sicherheit'],
+  ['table', ['Abkürzung', 'Langform', 'Bedeutung'], [
+    ['ARP', 'Address Resolution Protocol', 'Findet die MAC-Adresse zu einer IP-Adresse'],
+    ['DHCP', 'Dynamic Host Configuration Protocol', 'Verteilt IP-Adressen automatisch'],
+    ['DNS', 'Domain Name System', 'Wandelt Namen in IP-Adressen um'],
+    ['FTP', 'File Transfer Protocol', 'Dateiübertragung (Port 21)'],
+    ['HTTP/HTTPS', 'Hypertext Transfer Protocol (Secure)', 'Webseiten (Port 80/443)'],
+    ['ICMP', 'Internet Control Message Protocol', 'Fehler- und Testmeldungen (ping)'],
+    ['LAN/WAN', 'Local / Wide Area Network', 'Lokales Netz / weites Netz'],
+    ['NAT', 'Network Address Translation', 'Übersetzt private in öffentliche IP-Adressen'],
+    ['SSH', 'Secure Shell', 'Verschlüsselter Fernzugriff (Port 22)'],
+    ['TLS', 'Transport Layer Security', 'Verschlüsselung für Verbindungen'],
+    ['VLAN', 'Virtual LAN', 'Logisch getrenntes Netz auf demselben Switch'],
+    ['VPN', 'Virtual Private Network', 'Sichere Verbindung über ein öffentliches Netz'],
+    ['IDS/IPS', 'Intrusion Detection / Prevention System', 'Erkennt / blockiert Angriffe'],
+    ['MFA', 'Multi-Faktor-Authentifizierung', 'Login mit mehreren Nachweisen'],
+    ['CIA', 'Confidentiality, Integrity, Availability', 'Vertraulichkeit, Integrität, Verfügbarkeit'],
+  ]],
+  ['h', 'Hardware, Betrieb und Software'],
+  ['table', ['Abkürzung', 'Langform', 'Bedeutung'], [
+    ['RAID', 'Redundant Array of Independent Disks', 'Mehrere Platten als ein Verbund'],
+    ['SSD/HDD', 'Solid State Drive / Hard Disk Drive', 'Flash-Speicher / Magnetplatte'],
+    ['USV', 'Unterbrechungsfreie Stromversorgung', 'Akku bei Stromausfall'],
+    ['SLA', 'Service Level Agreement', 'Vertrag über Dienstgüte'],
+    ['ITIL', 'IT Infrastructure Library', 'Rahmenwerk für IT-Service-Management'],
+    ['CI/CD', 'Continuous Integration / Delivery', 'Automatisches Bauen, Testen und Ausliefern'],
+    ['IaaS/PaaS/SaaS', 'Infrastructure / Platform / Software as a Service', 'Cloud-Modelle'],
+    ['API', 'Application Programming Interface', 'Schnittstelle für Programme'],
+    ['UML', 'Unified Modeling Language', 'Notation für Modelle'],
+    ['ERM', 'Entity-Relationship-Modell', 'Datenmodell mit Entitäten und Beziehungen'],
+    ['SQL', 'Structured Query Language', 'Datenbanksprache'],
+    ['CRUD', 'Create, Read, Update, Delete', 'Vier Grundoperationen auf Daten'],
+    ['ACID', 'Atomicity, Consistency, Isolation, Durability', 'Eigenschaften von Transaktionen'],
+    ['MTBF/MTTR', 'Mean Time Between Failures / To Repair', 'Mittlere Zeit zwischen Ausfällen / bis zur Reparatur'],
+  ]],
+  ['h', 'Recht und Wirtschaft'],
+  ['table', ['Abkürzung', 'Langform', 'Bedeutung'], [
+    ['AGB', 'Allgemeine Geschäftsbedingungen', 'Vorformulierte Vertragsbedingungen'],
+    ['BGB', 'Bürgerliches Gesetzbuch', 'Privatrecht (Verträge, Kauf, Miete)'],
+    ['HGB', 'Handelsgesetzbuch', 'Recht der Kaufleute'],
+    ['BetrVG', 'Betriebsverfassungsgesetz', 'Rechte des Betriebsrats'],
+    ['KSchG', 'Kündigungsschutzgesetz', 'Schutz vor sozial ungerechtfertigter Kündigung'],
+    ['JArbSchG', 'Jugendarbeitsschutzgesetz', 'Schutz Jugendlicher bei der Arbeit'],
+    ['ArbZG', 'Arbeitszeitgesetz', 'Höchstens 8 (bis 10) Stunden pro Tag'],
+    ['BUrlG', 'Bundesurlaubsgesetz', 'Mindestens 24 Werktage Urlaub'],
+    ['DSGVO', 'Datenschutz-Grundverordnung', 'EU-Datenschutzrecht'],
+    ['BDSG', 'Bundesdatenschutzgesetz', 'Ergänzung zur DSGVO'],
+    ['GG', 'Grundgesetz', 'Verfassung Deutschlands'],
+    ['USt/MwSt', 'Umsatzsteuer / Mehrwertsteuer', '19 % oder 7 %'],
+    ['BIP', 'Bruttoinlandsprodukt', 'Wert aller Waren und Dienste eines Jahres'],
+    ['EZB', 'Europäische Zentralbank', 'Sorgt für stabile Preise im Euro-Raum'],
+    ['GmbH', 'Gesellschaft mit beschränkter Haftung', 'Mindestens 25.000 Euro Stammkapital'],
+    ['KV/RV/AV/PV/UV', 'Kranken-, Renten-, Arbeitslosen-, Pflege-, Unfallversicherung', 'Fünf Zweige der Sozialversicherung'],
+  ]],
+  ['quiz', [
+    {q: 'Wofür steht ACID?', o: ['Atomicity, Consistency, Isolation, Durability', 'Access, Control, Identity, Data', 'Automatic Copy In Disk', 'Authentication, Cryptography, Integrity, Defense'], a: 0, e: 'Eigenschaften von Datenbank-Transaktionen.'},
+    {q: 'Was macht NAT?', o: ['Übersetzt private in öffentliche IP-Adressen', 'Verteilt IP-Adressen', 'Löst Namen auf', 'Verschlüsselt Daten'], a: 0, e: 'DHCP verteilt, DNS löst auf.'},
+    {q: 'Welches Gesetz schützt Jugendliche bei der Arbeit?', o: ['JArbSchG', 'BetrVG', 'KSchG', 'HGB'], a: 0, e: 'Jugendarbeitsschutzgesetz.'},
+    {q: 'Was bedeutet SLA?', o: ['Vertrag über die Dienstgüte', 'Ein Netzwerkprotokoll', 'Eine Programmiersprache', 'Ein Dateiformat'], a: 0, e: 'Service Level Agreement.'},
+  ]],
+]});
+;
+// content/ref/tabellen-1.js
+AP2.page('ref-tabellen', {b: 'ref', g: 'Referenz', t: 'Tabellen: Einheiten, Ports, Codes', d: 'Einheiten, Zweierpotenzen, Ports, HTTP-Codes, Subnetzmasken', m: 'Wichtige Werte **auswendig** lernen.', blocks: [
+  ['p', 'Diese Tabellen helfen bei Rechenaufgaben. Lerne die wichtigsten Werte auswendig.'],
+  ['h', 'Einheiten'],
+  ['table', ['Einheit', 'Dezimal (SI)', 'Binär (IEC)'], [
+    ['Kilo', '1 kB = 1.000 Byte', '1 KiB = 1.024 Byte'],
+    ['Mega', '1 MB = 1.000 kB', '1 MiB = 1.024 KiB'],
+    ['Giga', '1 GB = 1.000 MB', '1 GiB = 1.024 MiB'],
+    ['Tera', '1 TB = 1.000 GB', '1 TiB = 1.024 GiB'],
+    ['Bit und Byte', '1 Byte = 8 Bit', ''],
+  ]],
+  ['note', 'Datenraten in **Bit** pro Sekunde (Mbit/s), Dateien in **Byte**. 100 Mbit/s = 12,5 MB/s (Teile durch 8).'],
+  ['h', 'Zweierpotenzen'],
+  ['table', ['n', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '16'], [
+    ['2 hoch n', '1', '2', '4', '8', '16', '32', '64', '128', '256', '512', '1.024', '65.536'],
+  ]],
+  ['h', 'Wichtige Ports'],
+  ['table', ['Port', 'Dienst', 'Protokoll'], [
+    ['20/21', 'FTP', 'TCP'], ['22', 'SSH, SFTP', 'TCP'], ['23', 'Telnet (unsicher)', 'TCP'], ['25', 'SMTP (E-Mail senden)', 'TCP'],
+    ['53', 'DNS', 'UDP/TCP'], ['67/68', 'DHCP', 'UDP'], ['80', 'HTTP', 'TCP'], ['110', 'POP3', 'TCP'],
+    ['123', 'NTP (Zeit)', 'UDP'], ['143', 'IMAP', 'TCP'], ['443', 'HTTPS', 'TCP'], ['445', 'SMB (Dateifreigabe)', 'TCP'],
+    ['3306', 'MySQL', 'TCP'], ['3389', 'RDP (Fernwartung)', 'TCP'],
+  ]],
+  ['h', 'HTTP-Statuscodes'],
+  ['table', ['Code', 'Bedeutung'], [
+    ['200', 'OK'], ['201', 'Erstellt'], ['301', 'Dauerhaft umgezogen'], ['304', 'Nicht verändert (Cache)'],
+    ['400', 'Falsche Anfrage'], ['401', 'Nicht angemeldet'], ['403', 'Verboten (keine Rechte)'], ['404', 'Nicht gefunden'],
+    ['500', 'Serverfehler'], ['503', 'Dienst nicht verfügbar'],
+  ]],
+  ['p', 'Merke: 2xx = Erfolg, 3xx = Umleitung, 4xx = Fehler beim Client, 5xx = Fehler beim Server.'],
+  ['h', 'Subnetzmasken (IPv4)'],
+  ['table', ['CIDR', 'Maske', 'Adressen', 'Nutzbare Hosts'], [
+    ['/24', '255.255.255.0', '256', '254'], ['/25', '255.255.255.128', '128', '126'], ['/26', '255.255.255.192', '64', '62'],
+    ['/27', '255.255.255.224', '32', '30'], ['/28', '255.255.255.240', '16', '14'], ['/29', '255.255.255.248', '8', '6'],
+    ['/30', '255.255.255.252', '4', '2'], ['/16', '255.255.0.0', '65.536', '65.534'], ['/8', '255.0.0.0', '16.777.216', '16.777.214'],
+  ]],
+  ['p', 'Hosts = 2 hoch (32 - Präfix) minus 2 (Netz- und Broadcast-Adresse).'],
+  ['h', 'Private IPv4-Bereiche'],
+  ['table', ['Bereich', 'Netz'], [['10.0.0.0 bis 10.255.255.255', '10.0.0.0/8'], ['172.16.0.0 bis 172.31.255.255', '172.16.0.0/12'], ['192.168.0.0 bis 192.168.255.255', '192.168.0.0/16']]],
+  ['h', 'ASCII (Auswahl)'],
+  ['table', ['Zeichen', 'Dezimal', 'Hex'], [['0', '48', '30'], ['A', '65', '41'], ['a', '97', '61'], ['Leerzeichen', '32', '20'], ['Zeilenumbruch (LF)', '10', '0A']]],
+  ['quiz', [
+    {q: 'Wie viele nutzbare Hosts hat ein /28-Netz?', o: ['14', '16', '30', '28'], a: 0, e: '2 hoch 4 = 16, minus 2 = 14.'},
+    {q: 'Welcher Port gehört zu HTTPS?', o: ['443', '80', '22', '53'], a: 0, e: '80 ist HTTP.'},
+    {q: 'Was bedeutet der HTTP-Code 404?', o: ['Seite nicht gefunden', 'Serverfehler', 'Nicht angemeldet', 'OK'], a: 0, e: '4xx sind Clientfehler.'},
+    {q: 'Eine Leitung hat 200 Mbit/s. Wie viele MB pro Sekunde sind das?', o: ['25', '200', '1.600', '8'], a: 0, e: '200 / 8 = 25.'},
+    {q: 'Welche Adresse ist privat?', o: ['172.20.5.1', '172.40.5.1', '8.8.8.8', '193.168.0.1'], a: 0, e: '172.16 bis 172.31 ist privat.'},
+  ]],
+]});
 ;
 // content/spick/ps.js
 AP2.spick('ps', {
@@ -43087,6 +53187,72 @@ AP2.spick('de', {
       ['li', ['Aufgaben: **Textverständnis, Sprachwissen, Schreibaufgabe**', 'Zeit einteilen, Entwurf vor Reinschrift, **am Ende Korrektur lesen**', 'Schreibaufgaben aus den Vorjahren üben']],
       ['warn', 'Typische Fehler: **Komma vor „Mit freundlichen Grüßen“**, **„Betreff:“ im Betreff**, **Umgangssprache** und **Ich-Form im Fachbrief**.'],
       ['links', ['de-sprache', 'de-pruefung']],
+    ]},
+  ],
+});
+;
+// content/spick/gk.js
+AP2.spick('gk', {
+  exam: 'Schulprüfung: Gemeinschaftskunde (Berufsschule)', t: 'Spickzettel Gemeinschaftskunde',
+  s: 'Grundrechte, Staatsaufbau, Wahlen, Sozialversicherung, Arbeitsrecht, EU, Datenschutz und Wirtschaft auf einer Seite',
+  top: [
+    ['tip', 'Nenne in Antworten immer den **Artikel oder das Gesetz** (zum Beispiel Art. 1 GG, § 622 BGB) und ein **Beispiel aus dem Betrieb**.'],
+    ['mnemo', 'Gewaltenteilung: **Legislative** macht Gesetze, **Exekutive** führt aus, **Judikative** urteilt.'],
+  ],
+  sections: [
+    {t: 'Grundgesetz und Staat', icon: 'book', ids: ['gk-grundrechte', 'gk-grundordnung', 'gk-institutionen', 'gk-rechtsstaat'], items: [
+      ['pairs', [
+        ['Art. 1', 'Menschenwürde ist **unantastbar**'],
+        ['Art. 20', 'Demokratie, Rechtsstaat, Sozialstaat, Bundesstaat, Republik; Widerstandsrecht'],
+        ['Art. 79 (3)', '**Ewigkeitsklausel**: Art. 1 und 20 nicht änderbar'],
+        ['Bundestag', 'Gesetze, Kanzlerwahl, Haushalt, Kontrolle (4 Jahre, 630 Sitze)'],
+        ['Bundesrat', 'Vertretung der Länder; Zustimmung oder Einspruch'],
+        ['Bundespräsident', 'Repräsentiert; 5 Jahre; Wahl durch Bundesversammlung'],
+        ['BVerfG', 'Prüft Gesetze am Grundgesetz; Verfassungsbeschwerde'],
+      ]],
+      ['links', ['gk-grundrechte', 'gk-grundordnung', 'gk-institutionen', 'gk-rechtsstaat']],
+    ]},
+    {t: 'Wahlen und Mitwirkung', icon: 'check', ids: ['gk-wahlen', 'gk-mitwirkung'], items: [
+      ['pairs', [
+        ['Wahlgrundsätze', '**allgemein, unmittelbar, frei, gleich, geheim**'],
+        ['Erststimme', 'Person im Wahlkreis'],
+        ['Zweitstimme', 'Partei, entscheidet über Sitzverteilung'],
+        ['Sperrklausel', '**5 %** der Zweitstimmen'],
+        ['Wahlalter', 'Bund: 18; Europawahl: 16'],
+        ['Bürgerbegehren', 'Unterschriften, dann Bürgerentscheid'],
+      ]],
+      ['links', ['gk-wahlen', 'gk-mitwirkung']],
+    ]},
+    {t: 'Sozialstaat und Arbeitsrecht', icon: 'briefcase', ids: ['gk-sozialstaat', 'gk-arbeitsrecht', 'wiso-sv'], items: [
+      ['li', ['**5 Zweige:** Kranken-, Renten-, Arbeitslosen-, Pflege-, Unfallversicherung', 'Beiträge zahlen **Arbeitnehmer und Arbeitgeber** je etwa zur Hälfte', 'Unfallversicherung zahlt **nur der Arbeitgeber**', '**Beitragsbemessungsgrenze:** darüber keine höheren Beiträge'] ],
+      ['pairs', [
+        ['Probezeit', 'Bis 6 Monate, Kündigung mit 2 Wochen Frist'],
+        ['Grundfrist', '4 Wochen zum 15. oder Monatsende (§ 622 BGB)'],
+        ['Urlaub', 'Mindestens 24 Werktage (4 Wochen) bei 6-Tage-Woche'],
+        ['Jugendliche', 'Höchstens 8 Stunden pro Tag, 40 pro Woche'],
+        ['Kündigungsschutz', 'Ab 6 Monaten Betrieb und mehr als 10 Beschäftigten'],
+      ]],
+      ['links', ['gk-sozialstaat', 'gk-arbeitsrecht', 'wiso-sv']],
+    ]},
+    {t: 'EU, Wirtschaft, Umwelt', icon: 'map', ids: ['gk-eu', 'gk-wirtschaft', 'gk-umwelt', 'gk-globalisierung'], items: [
+      ['pairs', [
+        ['Binnenmarkt', 'Freier Verkehr von Waren, Personen, Dienstleistungen, Kapital'],
+        ['Soziale Marktwirtschaft', 'Freier Markt plus soziale Absicherung'],
+        ['Magisches Viereck', 'Preisstabilität, Vollbeschäftigung, Wachstum, außenwirtschaftliches Gleichgewicht'],
+        ['Inflation', 'Allgemeiner Preisanstieg'],
+        ['Pariser Abkommen', 'Erwärmung auf deutlich unter 2 Grad, möglichst 1,5 Grad'],
+      ]],
+      ['links', ['gk-eu', 'gk-wirtschaft', 'gk-umwelt', 'gk-globalisierung']],
+    ]},
+    {t: 'Datenschutz, Medien, KI', icon: 'lock', ids: ['gk-datenschutz', 'gk-medien', 'gk-ki'], items: [
+      ['pairs', [
+        ['DSGVO', 'Rechtmäßigkeit, Zweckbindung, Datenminimierung, Richtigkeit, Speicherbegrenzung, Integrität'],
+        ['Betroffenenrechte', 'Auskunft, Berichtigung, Löschung, Widerspruch, Übertragbarkeit'],
+        ['Meldepflicht', 'Datenpanne innerhalb von **72 Stunden** an die Behörde'],
+        ['Filterblase', 'Algorithmus zeigt nur passende Inhalte'],
+        ['AI Act', 'Risikostufen: verboten, hoch, begrenzt, minimal'],
+      ]],
+      ['links', ['gk-datenschutz', 'gk-medien', 'gk-ki']],
     ]},
   ],
 });
@@ -45096,6 +55262,81 @@ AP2.quest('wiso', [
     {lv: 1, q: 'Die **Prokura** berechtigt zu ...', o: ['allen gewöhnlichen Geschäften, aber nicht zum Verkauf von Grundstücken', 'nur zum Einkauf', 'nichts', 'allen Geschäften inkl. Grundstücksverkauf'], a: 0, e: 'Sie wird ins Handelsregister eingetragen.'},
     {lv: 2, k: 'match', q: 'Ordne die Vollmacht zu.', o: [['Generalvollmacht', 'gesamter Geschäftsbetrieb'], ['Prokura', 'umfassend, eingetragen'], ['Handlungsvollmacht', 'beschränkt']], e: 'Je nach Umfang.'},
     {lv: 2, k: 'tf', q: 'Der Prokurist unterschreibt mit dem Zusatz „ppa.“.', a: true, e: 'Handlungsbevollmächtigte: „i. V.“ oder „i. A.“.'},
+  ]},
+]);
+;
+// content/quest/wiso-3.js
+AP2.quest('wiso', [
+  {id: 'gk-grundrechte', t: 'Grundrechte', qs: [
+    {lv: 1, q: 'Welcher Artikel des Grundgesetzes schützt die **Menschenwürde**?', o: ['Art. 1', 'Art. 5', 'Art. 12', 'Art. 20'], a: 0, e: 'Art. 1 GG: Die Würde des Menschen ist **unantastbar**.'},
+    {lv: 1, q: 'Die Meinungsfreiheit steht in Art. 5 GG.', k: 'tf', a: true, e: 'Art. 5 schützt Meinung, Presse, Kunst und Wissenschaft.'},
+    {lv: 2, k: 'match', q: 'Ordne das Grundrecht dem Artikel zu.', o: [['Berufsfreiheit', 'Art. 12'], ['Versammlungsfreiheit', 'Art. 8'], ['Gleichheit vor dem Gesetz', 'Art. 3'], ['Petitionsrecht', 'Art. 17']], e: 'Die Artikel 1 bis 19 sind die Grundrechte.'},
+    {lv: 2, q: 'Wer kann **Verfassungsbeschwerde** einlegen?', o: ['Jeder, der sich in seinen Grundrechten verletzt sieht', 'Nur Parteien', 'Nur Beamte', 'Nur der Bundestag'], a: 0, e: 'Sie geht an das Bundesverfassungsgericht in Karlsruhe.'},
+    {lv: 3, k: 'gap', q: 'Die ___klausel in Art. 79 (3) GG schützt Art. 1 und Art. 20 vor Änderung.', a: ['Ewigkeits'], e: 'Die **Ewigkeitsklausel**.'},
+  ]},
+  {id: 'gk-institutionen', t: 'Staatsorgane', qs: [
+    {lv: 1, q: 'Wer wählt den Bundeskanzler?', o: ['Der Bundestag', 'Das Volk direkt', 'Der Bundesrat', 'Der Bundespräsident allein'], a: 0, e: 'Der Bundestag wählt auf Vorschlag des Bundespräsidenten.'},
+    {lv: 1, q: 'Der Bundesrat besteht aus Mitgliedern der Landesregierungen.', k: 'tf', a: true, e: 'Er wird nicht direkt gewählt.'},
+    {lv: 2, k: 'num', q: 'Der Bundestag hat 630 Mitglieder. Wie viele Stimmen braucht die Kanzlermehrheit mindestens?', a: 316, tol: 0, u: 'Stimmen', e: 'Mehr als die Hälfte: 316.'},
+    {lv: 2, k: 'order', q: 'Bringe den Weg eines Gesetzes in die richtige Reihenfolge.', o: ['Gesetzentwurf', 'Beratung im Bundestag', 'Beschluss im Bundestag', 'Bundesrat', 'Unterschrift des Bundespräsidenten', 'Verkündung'], e: 'Danach tritt das Gesetz in Kraft.'},
+    {lv: 3, q: 'Wann braucht ein Gesetz die **Zustimmung** des Bundesrates?', o: ['Wenn Interessen der Länder stark betroffen sind', 'Immer', 'Nie', 'Nur bei Steuern auf Tabak'], a: 0, e: 'Sonst reicht ein Einspruchsgesetz.'},
+  ]},
+  {id: 'gk-wahlen', t: 'Wahlen', qs: [
+    {lv: 1, k: 'multi', q: 'Welche sind **Wahlgrundsätze**?', o: ['allgemein', 'geheim', 'gleich', 'verpflichtend'], a: [0, 1, 2], e: 'Dazu kommen unmittelbar und frei. In Deutschland gibt es keine Wahlpflicht.'},
+    {lv: 1, q: 'Die Zweitstimme bestimmt die Sitzverteilung der Parteien im Bundestag.', k: 'tf', a: true, e: 'Die Erststimme wählt die Person im Wahlkreis.'},
+    {lv: 2, k: 'num', q: '60.000 von 80.000 Wahlberechtigten haben gewählt. Wie hoch ist die Wahlbeteiligung?', a: 75, tol: 0.5, u: '%', e: '60.000 / 80.000 = 0,75.'},
+    {lv: 2, k: 'gap', q: 'Eine Partei braucht mindestens ___ % der Zweitstimmen für den Einzug.', a: ['5'], e: 'Die Sperrklausel.'},
+  ]},
+  {id: 'gk-sozialstaat', t: 'Sozialstaat', qs: [
+    {lv: 1, q: 'Wie viele Zweige hat die gesetzliche Sozialversicherung?', o: ['5', '3', '4', '7'], a: 0, e: 'Kranken, Renten, Arbeitslosen, Pflege, Unfall.'},
+    {lv: 1, q: 'Die Unfallversicherung zahlt allein der Arbeitgeber.', k: 'tf', a: true, e: 'Der Beitrag geht an die Berufsgenossenschaft.'},
+    {lv: 2, k: 'match', q: 'Ordne die Versicherung dem Fall zu.', o: [['Krankenversicherung', 'Arztbesuch'], ['Rentenversicherung', 'Altersrente'], ['Arbeitslosenversicherung', 'Kündigung'], ['Unfallversicherung', 'Arbeitsunfall']], e: 'Jeder Zweig hat einen eigenen Zweck.'},
+    {lv: 3, k: 'num', q: 'Brutto 3.000 Euro. Der Arbeitnehmeranteil der Sozialversicherung beträgt 21,75 %. Wie viel Euro sind das?', a: 652.5, tol: 0.5, u: 'Euro', e: '3.000 mal 0,2175 = 652,50 Euro.'},
+  ]},
+  {id: 'gk-arbeitsrecht', t: 'Arbeitsrecht', qs: [
+    {lv: 1, q: 'Wie lang ist die gesetzliche Kündigungsfrist in der Probezeit?', o: ['2 Wochen', '4 Wochen', '3 Monate', 'Keine'], a: 0, e: '§ 622 Abs. 3 BGB.'},
+    {lv: 1, q: 'Der gesetzliche Mindesturlaub beträgt 24 Werktage bei einer 6-Tage-Woche.', k: 'tf', a: true, e: 'Das sind 4 Wochen. Bei 5 Tagen sind es 20 Arbeitstage.'},
+    {lv: 2, k: 'num', q: 'Wie viele Tage Mindesturlaub hat man bei einer 5-Tage-Woche?', a: 20, tol: 0, u: 'Tage', e: '24 / 6 mal 5 = 20.'},
+    {lv: 2, q: 'Wann muss der Betriebsrat vor einer Kündigung angehört werden?', o: ['Immer, sonst ist die Kündigung unwirksam', 'Nie', 'Nur bei Azubis', 'Nur bei fristloser Kündigung'], a: 0, e: '§ 102 BetrVG.'},
+    {lv: 3, k: 'multi', q: 'Welche Gründe können eine **fristlose Kündigung** rechtfertigen?', o: ['Diebstahl', 'Schwere Beleidigung', 'Krankheit', 'Schlechtes Wetter'], a: [0, 1], e: 'Es braucht einen wichtigen Grund (§ 626 BGB).'},
+  ]},
+  {id: 'gk-wirtschaft', t: 'Wirtschaft', qs: [
+    {lv: 1, q: 'Was ist Inflation?', o: ['Ein allgemeiner Anstieg der Preise', 'Ein Fallen der Preise', 'Mehr Arbeitslose', 'Weniger Steuern'], a: 0, e: 'Das Geld verliert Kaufkraft.'},
+    {lv: 1, q: 'Die EZB hat die Aufgabe, stabile Preise zu sichern.', k: 'tf', a: true, e: 'Ziel: etwa 2 % Inflation.'},
+    {lv: 2, k: 'multi', q: 'Welche gehören zum **magischen Viereck**?', o: ['Preisstabilität', 'Hohe Beschäftigung', 'Wirtschaftswachstum', 'Hohe Steuern'], a: [0, 1, 2], e: 'Das vierte Ziel: außenwirtschaftliches Gleichgewicht.'},
+    {lv: 2, k: 'order', q: 'Ordne die Konjunkturphasen.', o: ['Aufschwung', 'Boom', 'Abschwung', 'Rezession'], e: 'Danach beginnt der Kreislauf wieder.'},
+  ]},
+  {id: 'gk-datenschutz', t: 'Datenschutz', qs: [
+    {lv: 1, q: 'Was regelt die DSGVO?', o: ['Den Umgang mit personenbezogenen Daten', 'Das Urheberrecht', 'Die Löhne', 'Das Wahlrecht'], a: 0, e: 'Sie gilt in der ganzen EU.'},
+    {lv: 1, q: 'Eine Datenpanne muss innerhalb von 72 Stunden der Aufsichtsbehörde gemeldet werden.', k: 'tf', a: true, e: 'Art. 33 DSGVO.'},
+    {lv: 2, k: 'multi', q: 'Welche sind **Betroffenenrechte**?', o: ['Auskunft', 'Löschung', 'Berichtigung', 'Bonuszahlung'], a: [0, 1, 2], e: 'Dazu kommen Widerspruch und Datenübertragbarkeit.'},
+    {lv: 3, k: 'gap', q: 'Daten dürfen nur für den festgelegten ___ verwendet werden (Zweckbindung).', a: ['Zweck'], e: 'Und nur so lange wie nötig.'},
+  ]},
+  {id: 'gk-eu', t: 'Europäische Union', qs: [
+    {lv: 1, k: 'multi', q: 'Welche gehören zu den **Grundfreiheiten** des Binnenmarkts?', o: ['Waren', 'Personen', 'Dienstleistungen', 'Strom für alle kostenlos'], a: [0, 1, 2], e: 'Dazu kommt der freie Kapitalverkehr.'},
+    {lv: 1, q: 'Die DSGVO ist EU-Recht.', k: 'tf', a: true, e: 'Sie gilt direkt in allen Mitgliedstaaten.'},
+    {lv: 2, q: 'Welches Organ vertritt die Bürger der EU direkt?', o: ['Europäisches Parlament', 'Europäische Kommission', 'Rat der EU', 'EuGH'], a: 0, e: 'Es wird alle 5 Jahre gewählt.'},
+    {lv: 2, k: 'match', q: 'Ordne das EU-Organ seiner Aufgabe zu.', o: [['Kommission', 'Gesetzesvorschläge'], ['Parlament', 'Beschließt Gesetze mit'], ['EuGH', 'Rechtsprechung'], ['EZB', 'Geldpolitik']], e: 'Alle haben ihren Sitz in verschiedenen Städten.'},
+  ]},
+  {id: 'gk-umwelt', t: 'Umwelt und Klima', qs: [
+    {lv: 1, q: 'Was ist das Ziel des Pariser Klimaabkommens?', o: ['Erwärmung deutlich unter 2 Grad begrenzen', 'Alle Autos verbieten', 'Atomkraft ausbauen', 'Neue Steuern einführen'], a: 0, e: 'Möglichst 1,5 Grad.'},
+    {lv: 2, k: 'num', q: 'Ein Server braucht 400 W im Dauerbetrieb. Wie viel kWh sind das pro Tag?', a: 9.6, tol: 0.1, u: 'kWh', e: '0,4 kW mal 24 h = 9,6 kWh.'},
+    {lv: 2, q: 'Welche Maßnahme gehört zu Green IT?', o: ['Geräte länger nutzen und recyceln', 'Alle Geräte nachts laufen lassen', 'Mehr Server kaufen', 'Papier statt Dateien'], a: 0, e: 'Das spart Energie und Rohstoffe.'},
+  ]},
+  {id: 'gk-geschichte', t: 'Geschichte', qs: [
+    {lv: 1, k: 'order', q: 'Ordne nach Jahr (früh zuerst).', o: ['Gründung der Bundesrepublik 1949', 'Bau der Berliner Mauer 1961', 'Mauerfall 1989', 'Wiedervereinigung 1990'], e: 'Die Folge im Überblick.'},
+    {lv: 1, q: 'Das Grundgesetz wurde 1949 beschlossen.', k: 'tf', a: true, e: 'Am 23. Mai 1949.'},
+    {lv: 2, q: 'Welche Lehre zog das Grundgesetz aus der Weimarer Republik?', o: ['Konstruktives Misstrauensvotum und Sperrklausel', 'Mehr Macht für den Präsidenten', 'Keine Parteien', 'Volksentscheide über alles'], a: 0, e: 'Das stärkt die Stabilität der Regierung.'},
+  ]},
+  {id: 'gk-internationales', t: 'UNO und NATO', qs: [
+    {lv: 1, q: 'Wo hat die UNO ihren Hauptsitz?', o: ['New York', 'Genf', 'Brüssel', 'Paris'], a: 0, e: 'Genf ist ein weiterer UN-Standort.'},
+    {lv: 1, q: 'Die NATO ist ein Verteidigungsbündnis.', k: 'tf', a: true, e: 'Art. 5: Angriff auf einen ist Angriff auf alle.'},
+    {lv: 2, q: 'Wann wurde die NATO gegründet?', o: ['1949', '1919', '1989', '2001'], a: 0, e: 'Deutschland trat 1955 bei.'},
+  ]},
+  {id: 'gk-rechtsstaat', t: 'Recht und Gerichte', qs: [
+    {lv: 1, q: 'Ab welchem Alter ist man voll geschäftsfähig?', o: ['18', '16', '14', '21'], a: 0, e: 'Ab 7 beschränkt geschäftsfähig.'},
+    {lv: 2, k: 'match', q: 'Ordne den Fall dem Gericht zu.', o: [['Kündigung', 'Arbeitsgericht'], ['Diebstahl', 'Strafgericht'], ['Miete', 'Amtsgericht'], ['Rentenstreit', 'Sozialgericht']], e: 'Es gibt fünf Gerichtsbarkeiten.'},
+    {lv: 2, q: 'Wie nennt man Streit zwischen Bürger und Behörde?', o: ['Verwaltungsrecht (öffentliches Recht)', 'Privatrecht', 'Strafrecht', 'Arbeitsrecht'], a: 0, e: 'Dafür sind die Verwaltungsgerichte zuständig.'},
   ]},
 ]);
 ;

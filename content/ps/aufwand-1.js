@@ -35,3 +35,79 @@ AP2.page('ps-aufwand', {
     ['ex', ['Beispiel: 6 einfache EI (6 mal 3 = 18), 4 mittlere EO (4 mal 5 = 20), 5 einfache EQ (5 mal 3 = 15), 3 ILF mittel (3 mal 10 = 30), 1 EIF einfach (5). UFP = 18 + 20 + 15 + 30 + 5 = **88**.', 'Bewertungsfaktor 1,05 ergibt 88 mal 1,05 = **92,4 FP**. Bei 0,5 FP pro Personentag: 92,4 geteilt durch 0,5 = **184,8 Personentage** (etwa 185).']],
   ],
 });
+
+AP2.add('ps-aufwand', [
+  [
+    "h",
+    "Dreipunktschätzung mit Unsicherheit"
+  ],
+  [
+    "p",
+    "Für eine Schnittstelle werden drei Werte geschätzt. Optimistisch sind es 16 Stunden. Am wahrscheinlichsten sind 28 Stunden. Pessimistisch sind es 52 Stunden. Die Werte beruhen auf dokumentierten Annahmen."
+  ],
+  [
+    "code",
+    "text",
+    "PERT-Näherung:\nErwartungswert = (optimistisch + 4 × wahrscheinlich + pessimistisch) / 6\n              = (16 + 4 × 28 + 52) / 6\n              = 180 / 6 = 30 Stunden\n\nStreuungsmaß = (pessimistisch − optimistisch) / 6\n             = (52 − 16) / 6 = 6 Stunden"
+  ],
+  [
+    "note",
+    "Das Ergebnis ist eine Schätzung, keine Zusage. Aus drei Schätzwerten folgt keine garantierte Fertigstellungswahrscheinlichkeit. Die PERT-Formel ist eine Näherung."
+  ],
+  [
+    "h",
+    "Verfügbare Kapazität einbeziehen"
+  ],
+  [
+    "p",
+    "Ein Arbeitspaket braucht 90 Stunden. Drei Personen arbeiten jeweils sechs Projektstunden pro Tag. Ideale Dauer: 90 / (3 × 6) = fünf Arbeitstage. Das setzt vollständig teilbare Arbeit und gleiche Verfügbarkeit voraus."
+  ],
+  [
+    "table",
+    [
+      "Einfluss",
+      "Warum verändert er den Termin?"
+    ],
+    [
+      [
+        "Abhängige Aufgaben",
+        "Nicht alles kann gleichzeitig beginnen"
+      ],
+      [
+        "Einarbeitung",
+        "Neue Personen benötigen Zeit und Unterstützung"
+      ],
+      [
+        "Abstimmung",
+        "Mehr Beteiligte benötigen mehr Kommunikation"
+      ],
+      [
+        "Abwesenheiten",
+        "Kalendertage sind nicht automatisch Arbeitstage"
+      ],
+      [
+        "Unklare Anforderungen",
+        "Neue Erkenntnisse verändern die Schätzung"
+      ]
+    ]
+  ],
+  [
+    "qa",
+    "Ein Paket braucht 84 Stunden. Zwei Personen stehen je sieben Stunden täglich zur Verfügung. **Berechnen** Sie die ideale Dauer. **Nennen** Sie zwei Annahmen.",
+    [
+      "Kapazität: 2 × 7 = **14 Stunden pro Tag**. 1 Punkt.",
+      "Dauer: 84 / 14 = **6 Arbeitstage**. 1 Punkt.",
+      "Arbeit kann ausreichend parallel aufgeteilt werden. 1 Punkt.",
+      "Beide Personen sind verfügbar; zusätzlicher Abstimmungsaufwand ist nicht enthalten. 1 Punkt."
+    ],
+    4
+  ],
+  [
+    "see",
+    [
+      "ps-risiko",
+      "ps-aenderungen",
+      "ps-netzplan"
+    ]
+  ]
+]);

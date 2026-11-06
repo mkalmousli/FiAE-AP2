@@ -7,8 +7,46 @@ AP2.add('ps-git', [
   ['quiz', [
     {q: 'Was ist Git?', o: ['Ein verteiltes Versionsverwaltungssystem', 'Eine Programmiersprache', 'Eine Datenbank', 'Ein Betriebssystem'], a: 0, e: 'Git speichert die Historie von Dateien in verteilten Repositories.'},
     {q: 'Mit welchem Befehl merkt man Änderungen für den nächsten Commit vor?', o: ['git add', 'git push', 'git clone', 'git merge'], a: 0, e: '`git add` überträgt Änderungen in die Staging Area.'},
-    {q: 'Was bewirkt git pull?', o: ['Holt Änderungen vom Server und führt sie ein (fetch plus merge)', 'Lädt lokale Commits hoch', 'Löscht das Repository', 'Erstellt einen Branch'], a: 0, e: 'pull = fetch + merge.'},
+    {q: 'Was bewirkt git pull?', o: ['Holt Änderungen vom Server und integriert sie durch Merge oder Rebase', 'Lädt lokale Commits hoch', 'Löscht das Repository', 'Erstellt einen Branch'], a: 0, e: 'pull ruft ab und integriert. Die Integration kann Merge oder Rebase verwenden.'},
     {q: 'Was ist ein Branch?', o: ['Ein paralleler Entwicklungszweig', 'Ein Backup auf USB', 'Eine Datei', 'Ein Passwort'], a: 0, e: 'Branches erlauben paralleles Arbeiten ohne den Hauptzweig zu stören.'},
-    {q: 'Wofür dient .gitignore?', o: ['Dateien festlegen, die nicht versioniert werden', 'Passwörter speichern', 'Commits löschen', 'Branches umbenennen'], a: 0, e: 'In .gitignore stehen Muster für Dateien, die Git ignorieren soll.'},
+    {q: 'Wofür dient .gitignore?', o: ['Ignoriermuster für unversionierte Dateien festlegen', 'Passwörter speichern', 'Commits löschen', 'Branches umbenennen'], a: 0, e: 'Die Muster betreffen unversionierte Dateien. Bereits versionierte Dateien bleiben erfasst.'},
   ]],
+]);
+
+AP2.add('ps-git', [
+  [
+    "h",
+    "Geheimnis versehentlich veröffentlicht"
+  ],
+  [
+    "steps",
+    [
+      "Betroffenen Schlüssel sofort sperren oder rotieren.",
+      "Nutzung und mögliche Zugriffe untersuchen.",
+      "Geheimnis aus dem aktuellen Stand entfernen und sichere Übergabe einrichten.",
+      "Gegebenenfalls Historienbereinigung mit allen Beteiligten abstimmen.",
+      "Scans und sichere Abläufe gegen Wiederholung einrichten."
+    ]
+  ],
+  [
+    "warn",
+    "Ein späteres Löschen der Datei oder ein Eintrag in .gitignore macht einen veröffentlichten Schlüssel nicht wieder geheim. .gitignore entfernt keine bereits versionierten Inhalte."
+  ],
+  [
+    "qa",
+    "Ein Zugangsschlüssel steht in einem alten Commit. **Begründen** Sie die zuerst nötige Maßnahme. **Nennen** Sie zwei weitere Schritte.",
+    [
+      "Den Schlüssel sperren oder rotieren, weil Kopien bereits außerhalb der eigenen Kontrolle sein können. 1 Punkt.",
+      "Nutzung des Schlüssels und betroffene Systeme untersuchen. 1 Punkt.",
+      "Secret-Verwaltung und Repository-Scans einrichten. 1 Punkt."
+    ],
+    3
+  ],
+  [
+    "see",
+    [
+      "infra-websec",
+      "ps-cicd"
+    ]
+  ]
 ]);

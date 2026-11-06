@@ -1,7 +1,7 @@
 AP2.page('ps-architektur', {
   b: 'ps', g: 'Software-Architektur', t: 'Software-Architektur: Schichten, Client-Server, MVC, Microservices',
   d: 'Die **Software-Architektur** beschreibt die grundlegende Struktur eines Systems: seine **Komponenten**, deren **Beziehungen** und die **Prinzipien** für Entwurf und Weiterentwicklung (nach ISO/IEC/IEEE 42010). **Architekturmuster** (zum Beispiel Schichten, Client-Server, MVC, Microservices) lösen Strukturprobleme des **ganzen Systems**, **Entwurfsmuster** (Singleton, Observer) lösen wiederkehrende Probleme **im Kleinen** zwischen wenigen Klassen.',
-  m: '**Architekturmuster = Stadtplan, Entwurfsmuster = Bauplan eines Hauses.** MVC: **Model** kennt niemanden, **View** zeigt an, **Controller** steuert. Schichten: jede Schicht nutzt **nur die darunter**.',
+  m: '**Architekturmuster = Stadtplan, Entwurfsmuster = Bauplan eines Hauses.** MVC: **Model** kennt niemanden, **View** zeigt an, **Controller** steuert. Strenge Schichten: Aufrufe nur an die direkt darunterliegende Schicht. Andere Varianten erlauben Überspringen.',
   cheat: [
     ['Kategorien (POSA)', ['**Strukturierte Systeme:** Schichten, Pipes and Filters', '**Verteilte Systeme:** Client-Server, SOA, Microservices, Broker', '**Interaktive Systeme:** MVC, MVP, MVVM', '**Adaptive Systeme:** Reflexion, Microkernel (Plug-ins)']],
     ['Drei-Schichten-Architektur', ['**Präsentation:** UI', '**Logik:** Fachregeln, Berechnungen', '**Daten:** Datenbankzugriff', 'Austauschbar, testbar, wartbar']],
@@ -50,7 +50,7 @@ AP2.page('ps-architektur', {
     ['h', 'Aufgaben im Prüfungsstil'],
     ['qa', 'Erläutern Sie den Unterschied zwischen Architekturmustern und Entwurfsmustern.', 'Ein **Architekturmuster** beschreibt die **grundlegende Struktur des gesamten Systems** (Komponenten, Verteilung, Kommunikation), zum Beispiel Schichten oder Client-Server. Ein **Entwurfsmuster** ist eine bewährte Lösung für ein **wiederkehrendes Problem im Kleinen**, also für die Zusammenarbeit weniger Klassen, zum Beispiel Singleton oder Observer. Architekturmuster wirken auf das ganze System, Entwurfsmuster lokal im Code.', 3],
     ['qa', 'Ordnen Sie den Kategorien verteilte, interaktive, strukturierte und adaptive Systeme zu: Schichtenarchitektur, Serviceorientierte Architektur, Client-Server, Model View Presenter, Reflexion.', ['- **Strukturierte Systeme:** Schichtenarchitektur', '- **Verteilte Systeme:** Serviceorientierte Architektur, Client-Server', '- **Interaktive Systeme:** Model View Presenter', '- **Adaptive Systeme:** Reflexion'], 4],
-    ['qa', 'Nennen Sie je zwei Vor- und Nachteile einer Microservice-Architektur gegenüber einem Monolithen.', ['- **Vorteile:** Dienste unabhängig entwickeln und deployen; gezielt skalieren (nur der Bestell-Service bekommt mehr Instanzen); Ausfall eines Dienstes legt nicht alles lahm; je Dienst passende Technologie.', '- **Nachteile:** Höhere Komplexität (Netzwerk, verteilte Transaktionen, Versionierung von Schnittstellen); aufwendiges Monitoring und Logging; Datenkonsistenz über mehrere Datenbanken schwieriger.'], 4],
+    ['qa', 'Nennen Sie je zwei Vor- und Nachteile einer Microservice-Architektur gegenüber einem Monolithen.', ['- **Vorteile:** Dienste unabhängig entwickeln und deployen; gezielt skalieren (nur der Bestell-Service bekommt mehr Instanzen); Geeignete Entkopplung kann Ausfälle auf einzelne Bereiche begrenzen; je Dienst passende Technologie.', '- **Nachteile:** Höhere Komplexität (Netzwerk, verteilte Transaktionen, Versionierung von Schnittstellen); aufwendiges Monitoring und Logging; Datenkonsistenz über mehrere Datenbanken schwieriger.'], 4],
     ['see', ['eua-patterns', 'ps-umlueberblick', 'ps-sequenz', 'eua-webapi']],
     ['quiz', [
       {q: 'Welche Komponente kennt bei MVC weder View noch Controller?', o: ['Model', 'View', 'Controller', 'Alle kennen sich gegenseitig'], a: 0, e: 'Das Model ist unabhängig; Änderungen werden über Benachrichtigungen (Observer) mitgeteilt.'},
@@ -62,3 +62,100 @@ AP2.page('ps-architektur', {
     ]],
   ],
 });
+
+AP2.add('ps-architektur', [
+  [
+    "h",
+    "Kopplung, Kohäsion und Testbarkeit"
+  ],
+  [
+    "table",
+    [
+      "Begriff",
+      "Einfach erklärt",
+      "Gutes Beispiel"
+    ],
+    [
+      [
+        "Kopplung",
+        "Abhängigkeit zwischen Komponenten",
+        "Fachlogik kennt eine Repository-Schnittstelle statt konkreter SQL-Verbindung"
+      ],
+      [
+        "Kohäsion",
+        "Zusammengehörigkeit innerhalb einer Komponente",
+        "Preisberechnung enthält passende Preisregeln"
+      ],
+      [
+        "Dependency Injection",
+        "Benötigte Abhängigkeit wird von außen übergeben",
+        "Test übergibt ein kontrollierbares Repository"
+      ]
+    ]
+  ],
+  [
+    "p",
+    "Hohe Kohäsion und geringe unnötige Kopplung erleichtern Änderungen. Ein Test kann das Repository ersetzen. Dadurch prüft er Fachregeln ohne echte Datenbank. Integrationstests müssen den echten Datenbankzugriff zusätzlich prüfen."
+  ],
+  [
+    "h",
+    "Architekturentscheidung im Szenario"
+  ],
+  [
+    "p",
+    "Ein vierköpfiges Team baut eine kleine Reservierungsanwendung. Die Funktionen ändern sich oft gemeinsam. Ein modularer Monolith kann dafür gut passen. Er trennt Fachmodule, bleibt aber eine gemeinsame Deployment-Einheit."
+  ],
+  [
+    "table",
+    [
+      "Kriterium",
+      "Modularer Monolith",
+      "Microservices"
+    ],
+    [
+      [
+        "Deployment",
+        "Eine gemeinsame Auslieferung",
+        "Mehrere unabhängig betreibbare Dienste"
+      ],
+      [
+        "Datenkonsistenz",
+        "Lokale Transaktionen oft einfacher",
+        "Dienstübergreifende Konsistenz benötigt zusätzliche Konzepte"
+      ],
+      [
+        "Skalierung",
+        "Anwendung als Einheit skalieren",
+        "Einzelne Dienste getrennt skalieren"
+      ],
+      [
+        "Betriebsaufwand",
+        "Für kleine Teams oft geringer",
+        "Netzwerk, verteilte Diagnose und mehrere Deployments"
+      ]
+    ]
+  ],
+  [
+    "warn",
+    "Microservices verhindern keine Kettenausfälle. Timeouts, begrenzte Wiederholungen und geeignete Entkopplung sind nötig. Ein gemeinsamer Datenbankausfall kann weiterhin viele Dienste treffen."
+  ],
+  [
+    "qa",
+    "**Begründen** Sie für das kleine Team einen modularen Monolithen mit zwei Argumenten. **Nennen** Sie einen späteren Auslöser für eine getrennte Dienststruktur.",
+    [
+      "Weniger getrennte Deployments und Betriebsaufgaben passen zur kleinen Teamkapazität. 1 Punkt.",
+      "Gemeinsame fachliche Änderungen und lokale Transaktionen bleiben einfacher. 1 Punkt.",
+      "Ein eigenständig wachsender Bereich mit anderer Last oder eigenem Team kann eine Trennung begründen. 1 Punkt."
+    ],
+    3
+  ],
+  [
+    "see",
+    [
+      "ps-schnittstellen",
+      "ps-cicd",
+      "ps-testentwurf",
+      "infra-cloud"
+    ]
+  ]
+]);

@@ -20,3 +20,81 @@ AP2.page('infra-tls', {
     ['steps', ['**ClientHello:** Der Client nennt unterstützte TLS-Versionen und **Cipher Suites** (Kombination aus Schlüsselaustausch, Verschlüsselung, Hash) und sendet eine Zufallszahl.', '**ServerHello:** Der Server wählt Version und Cipher Suite und schickt seine Zufallszahl und sein **Zertifikat**.', '**Authentifizierung:** Der Client prüft das Zertifikat (Kette, Gültigkeit, Hostname, Sperrung).', '**Schlüsselaustausch:** Beide tauschen ECDHE-Parameter und berechnen daraus **denselben geheimen Sitzungsschlüssel**. Dieser wurde nie übertragen.', '**Finished:** Beide bestätigen mit einem ersten verschlüsselten Datenblock, dass der Handshake nicht manipuliert wurde.', '**Daten:** Die Kommunikation läuft mit dem schnellen **symmetrischen** Sitzungsschlüssel.']],
   ],
 });
+
+
+AP2.add('infra-tls', [
+  [
+    "h",
+    "Zertifikat und private Schlüssel unterscheiden"
+  ],
+  [
+    "table",
+    [
+      "Begriff",
+      "Funktion",
+      "Geheim?"
+    ],
+    [
+      [
+        "Zertifikat",
+        "Bindet Identitätsangaben an einen öffentlichen Schlüssel",
+        "Normalerweise nein"
+      ],
+      [
+        "Privater Zertifikatsschlüssel",
+        "Belegt den Besitz des Schlüssels durch Signatur",
+        "Ja"
+      ],
+      [
+        "Öffentlicher ECDHE-Anteil",
+        "Teil der gemeinsamen Schlüsselvereinbarung",
+        "Nein"
+      ],
+      [
+        "Abgeleitete Verkehrsschlüssel",
+        "Schützen die übertragenen Daten",
+        "Ja"
+      ]
+    ]
+  ],
+  [
+    "p",
+    "Die Sitzung verwendet tatsächlich mehrere abgeleitete Schlüssel. „Sitzungsschlüssel“ ist eine vereinfachte Sammelbezeichnung. Ein Zertifikat allein beweist noch nicht den Besitz des privaten Schlüssels. Die Gegenstelle muss diesen Besitz im Handshake nachweisen."
+  ],
+  [
+    "h",
+    "Zertifikatsfehler systematisch prüfen"
+  ],
+  [
+    "steps",
+    [
+      "Stimmt der angefragte Hostname mit dem Zertifikat überein?",
+      "Ist die Gültigkeitszeit passend und die Systemzeit korrekt?",
+      "Ist die Vertrauenskette vollständig und vertrauenswürdig?",
+      "Ist ein erneuertes Zertifikat am richtigen TLS-Endpunkt installiert?",
+      "Prüft der Client weitere Vorgaben wie Sperrstatus oder Verwendungszweck?"
+    ]
+  ],
+  [
+    "warn",
+    "Zertifikatsprüfungen nicht dauerhaft abschalten. Das beseitigt die Warnung, aber auch eine wichtige Identitätskontrolle. Ein gültiges Zertifikat beweist keine fehlerfreie oder ehrliche Anwendung."
+  ],
+  [
+    "qa",
+    "Ein Browser akzeptiert ein Zertifikat für shop.beispiel.test nicht beim Aufruf von api.beispiel.test. **Erläutern** Sie die Ursache und zwei geeignete Maßnahmen.",
+    [
+      "Der angefragte Hostname ist möglicherweise nicht vom Zertifikat abgedeckt. 1 Punkt.",
+      "Zertifikat mit passendem Subject Alternative Name ausstellen und am richtigen Endpunkt installieren. 1 Punkt.",
+      "Automatisierte Erneuerung und Prüfungen für alle benötigten Namen einrichten. 1 Punkt."
+    ],
+    3
+  ],
+  [
+    "see",
+    [
+      "infra-dns",
+      "infra-http",
+      "infra-monitoring"
+    ]
+  ]
+]);

@@ -22,20 +22,20 @@ AP2.page('ps-tco', {
       ['Managed Server', '29 € · 48 Monate + 39 €', '**1.431 €**'],
     ]],
     ['p', 'Die **Miete ist deutlich günstiger**. Weitere Punkte für die Entscheidung:'],
-    ['procon', 'Managed Server / Cloud mieten', ['Professioneller Anbieter: **hohe Verfügbarkeit**, redundante Hardware, automatischer Hardwaretausch', 'Administration und Updates übernimmt der Anbieter (kein eigenes Know-how nötig)', 'Aktuelle Sicherheitstechnik und SSL-Zertifikat inklusive', 'Kosten **planbar** (monatliche Rate), keine Anfangsinvestition', 'Skalierbar: mehr Leistung bei Bedarf'], ['**Datenschutz**: personenbezogene Daten liegen beim Anbieter (Auftragsverarbeitungsvertrag nach DSGVO nötig, Serverstandort EU prüfen)', '**Abhängigkeit** vom Anbieter (Preiserhöhungen, Insolvenz, Vendor-Lock-in)', 'Zugriff nur über das **Internet**', 'Weniger Kontrolle über Hardware und Konfiguration']],
+    ['procon', 'Managed Server / Cloud mieten', ['Professioneller Anbieter: **hohe Verfügbarkeit**, redundante Hardware, automatischer Hardwaretausch', 'Administration und Updates kann der Anbieter im vereinbarten Umfang übernehmen. Für Rechte, Daten und Kontrolle bleibt eigenes Wissen nötig.', 'Sicherheitstechnik und TLS-Zertifikate können enthalten sein; Vertrag und Konfiguration prüfen.', 'Kosten **planbar** (monatliche Rate), keine Anfangsinvestition', 'Skalierbar: mehr Leistung bei Bedarf'], ['**Datenschutz**: personenbezogene Daten liegen beim Anbieter (Auftragsverarbeitungsvertrag nach DSGVO nötig, Serverstandort EU prüfen)', '**Abhängigkeit** vom Anbieter (Preiserhöhungen, Insolvenz, Vendor-Lock-in)', 'Zugriff nur über das **Internet**', 'Weniger Kontrolle über Hardware und Konfiguration']],
     ['h', 'Inhouse oder Outsourcing? (Sommer 2025)'],
     ['table', ['Argument für Inhouse-Entwicklung/-Betreuung', 'Erläuterung'], [
       ['Kosten', 'Langfristig oft günstiger, kein Gewinnaufschlag des Dienstleisters'],
       ['Kompatibilität', 'Eigenes Team kennt die übrige Software, Integration klappt besser'],
       ['Qualität und Image', 'Schlechte Leistung eines Dienstleisters fällt auf das eigene Unternehmen zurück'],
       ['Know-how', 'Wissen bleibt im Unternehmen und kann weiter genutzt werden'],
-      ['Unabhängigkeit', 'Kein Risiko, dass der Dienstleister Preise erhöht oder ausfällt'],
+      ['Unabhängigkeit', 'Weniger Abhängigkeit vom Entwicklungsdienstleister; Abhängigkeiten von Personal und Werkzeugen bleiben.'],
       ['Auslastung', 'Eigene Mitarbeiter werden beschäftigt, Arbeitsplätze gesichert'],
     ]],
     ['table', ['Argument für Outsourcing', 'Erläuterung'], [
       ['Spezialwissen', 'Dienstleister hat Erfahrung und Fachleute'],
       ['Konzentration aufs Kerngeschäft', 'Eigene Mitarbeiter bleiben für wichtigere Aufgaben frei'],
-      ['Fixkosten werden variabel', 'Man zahlt nur, was man braucht'],
+      ['Fixkosten werden variabel', 'Nutzungsabhängige Preise sind möglich; Mindestmengen und Vertragslaufzeiten prüfen.'],
       ['Schnellere Umsetzung', 'Keine eigene Einarbeitung nötig'],
     ]],
     ['h', 'Cloud-Servicemodelle'],
@@ -60,3 +60,85 @@ AP2.page('ps-tco', {
     ['see', ['ps-kosten', 'ps-kostenarten', 'infra-usv', 'ps-itsm', 'ps-dsgvo']],
   ],
 });
+
+AP2.add('ps-tco', [
+  [
+    "h",
+    "Make-or-Buy mit Softwarekosten vergleichen"
+  ],
+  [
+    "table",
+    [
+      "Kosten über drei Jahre",
+      "Eigenentwicklung",
+      "Standardsoftware"
+    ],
+    [
+      [
+        "Entwicklung beziehungsweise Einführung",
+        "400 h × 80 Euro = 32.000 Euro",
+        "8.000 Euro"
+      ],
+      [
+        "Anpassung",
+        "In Entwicklung enthalten",
+        "80 h × 80 Euro = 6.400 Euro"
+      ],
+      [
+        "Wartung beziehungsweise Lizenz",
+        "60 h/Jahr × 80 Euro × 3 = 14.400 Euro",
+        "6.000 Euro/Jahr × 3 = 18.000 Euro"
+      ],
+      [
+        "Migration und Schulung",
+        "4.000 Euro",
+        "4.000 Euro"
+      ],
+      [
+        "Summe",
+        "50.400 Euro",
+        "36.400 Euro"
+      ]
+    ]
+  ],
+  [
+    "p",
+    "Nach diesen Aufgabenwerten spart die Standardsoftware 14.000 Euro. Beide Varianten müssen denselben fachlichen Umfang erfüllen. Fehlende Funktionen, Exportfähigkeit und Schnittstellen können die Entscheidung verändern."
+  ],
+  [
+    "h",
+    "Versteckte Kosten und Ausstieg"
+  ],
+  [
+    "list",
+    [
+      "Datenbereinigung und Migration benötigen Fachzeit.",
+      "Updates können Anpassungen und Regressionstests auslösen.",
+      "Laufende Lizenzkosten können mit Nutzerzahl oder Datenmenge steigen.",
+      "Datenexport, Kündigung und Wechsel verursachen Aufwand.",
+      "Interne Personalkosten verschwinden bei Fremdvergabe nicht automatisch."
+    ]
+  ],
+  [
+    "qa",
+    "Die Standardsoftware verursacht zusätzlich monatlich 200 Euro Schnittstellenkosten. **Berechnen** Sie die neue TCO über drei Jahre und den Abstand zur Eigenentwicklung.",
+    [
+      "Zusatzkosten: 200 × 12 × 3 = **7.200 Euro**. 1 Punkt.",
+      "Neue TCO: 36.400 + 7.200 = **43.600 Euro**. 1 Punkt.",
+      "Abstand: 50.400 − 43.600 = **6.800 Euro** zugunsten der Standardsoftware. 1 Punkt."
+    ],
+    3
+  ],
+  [
+    "warn",
+    "Eine Miete enthält nicht automatisch Administration, Backups, sichere Konfiguration und alle Updates. Prüfe den vereinbarten Leistungsumfang. Die Beispielrechnung zeigt nur die ausdrücklich angegebenen Kosten."
+  ],
+  [
+    "see",
+    [
+      "ps-nutzwert",
+      "infra-cloud",
+      "ps-migration"
+    ]
+  ]
+]);

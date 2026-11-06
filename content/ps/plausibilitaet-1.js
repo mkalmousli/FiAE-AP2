@@ -56,7 +56,7 @@ AP2.page('ps-plausibilitaet', {
     ['h', 'Prüfungsfallen'],
     ['warn', '**Plausibel ist nicht richtig.** Eine Spannung von 3,9 V ist plausibel. Sie kann trotzdem falsch gemessen sein. Die Prüfung findet nur **unmögliche** Werte.'],
     ['warn', '**Grenzen genau lesen.** „von 2,5 bis 4,2 V“ heißt meist: Grenzen **gehören dazu** (>= und <=). Schreibe die Annahme in die Antwort.'],
-    ['tip', 'Im Struktogramm ist die Prüfung eine **Verzweigung** (Raute). Ungültig: Fehlerpfad (ablehnen, zählen). Gültig: weiterverarbeiten.'],
+    ['tip', 'Im Struktogramm ist die Prüfung ein **Auswahlblock mit zwei Bereichen**. Im Programmablaufplan verwendet man eine Raute. Ungültig: Fehlerpfad (ablehnen, zählen). Gültig: weiterverarbeiten.'],
     ['h', 'Aufgaben im Prüfungsstil'],
     ['qa', '**Erläutern** Sie, warum eine Plausibilitätsprüfung nicht beweist, dass ein Messwert richtig ist.', ['Sie prüft nur, ob der Wert **im möglichen Bereich** liegt.', 'Ein falsch gemessener Wert kann trotzdem im Bereich liegen, z. B. 3,9 V statt 3,7 V.'], 2],
     ['qa', '**Nennen** Sie drei Arten von Plausibilitätsprüfungen.', ['Wertebereich (min bis max)', 'Typ/Format (Zahl, Datum)', 'Pflichtfeld oder Abhängigkeit (Ende nach Anfang)'], 3],
@@ -70,3 +70,79 @@ AP2.page('ps-plausibilitaet', {
     ]],
   ],
 });
+
+AP2.add('ps-plausibilitaet', [
+  [
+    "h",
+    "Mehrstufig und serverseitig prüfen"
+  ],
+  [
+    "table",
+    [
+      "Stufe",
+      "Beispiel",
+      "Warum?"
+    ],
+    [
+      [
+        "Technischer Typ",
+        "Ist der Wert vorhanden und eine endliche Zahl?",
+        "null, NaN und unendliche Werte nicht verarbeiten"
+      ],
+      [
+        "Format und Bereich",
+        "Liegt Spannung zwischen 2,5 und 4,2 Volt?",
+        "Unmögliche Werte ablehnen"
+      ],
+      [
+        "Fachlicher Zusammenhang",
+        "Liegt das Enddatum nach dem Startdatum?",
+        "Einzelwerte können stimmen, Kombination kann falsch sein"
+      ],
+      [
+        "Berechtigung",
+        "Darf diese Person das Gerät ändern?",
+        "Gültige Daten bedeuten keine Zugriffsberechtigung"
+      ]
+    ]
+  ],
+  [
+    "p",
+    "Clientprüfungen geben schnelle Rückmeldung. Der Server muss trotzdem selbst prüfen. Eine Anfrage kann die Oberfläche umgehen. Datenbankregeln sichern zusätzlich dauerhaft gültige Zustände."
+  ],
+  [
+    "h",
+    "Fehlende Werte sicher behandeln"
+  ],
+  [
+    "code",
+    "java",
+    "boolean pruefeWert(Double spannung) {\n    return spannung != null\n        && Double.isFinite(spannung)\n        && spannung >= 2.5\n        && spannung <= 4.2;\n}"
+  ],
+  [
+    "note",
+    "Das logische UND wertet in Java von links nach rechts kurzschließend aus. Bei null wird der Rest nicht mehr geprüft. So entsteht keine NullPointerException durch das Entpacken von Double."
+  ],
+  [
+    "qa",
+    "Die Liste enthält null, 3,7, NaN und 4,3 Volt. **Bestimmen** Sie die gültigen Werte mit der neuen Prüfung. **Begründen** Sie die Serverprüfung.",
+    [
+      "Nur **3,7 Volt** ist gültig. 1 Punkt.",
+      "null fehlt; NaN ist keine endliche Zahl; 4,3 liegt außerhalb des Bereichs. 1 Punkt.",
+      "Der Client kann umgangen oder verändert werden. Deshalb prüft der Server erneut. 1 Punkt."
+    ],
+    3
+  ],
+  [
+    "warn",
+    "Ein Struktogramm nutzt verschachtelte Kästen. Eine Raute gehört zum Programmablaufplan. Verwechsle die Darstellungen nicht."
+  ],
+  [
+    "see",
+    [
+      "ps-testentwurf",
+      "ps-anforderungen",
+      "infra-websec"
+    ]
+  ]
+]);

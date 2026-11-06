@@ -29,3 +29,13 @@ AP2.page('ps-struktogramm', {
     ['diagram', AP2.dg.nsd([['until', 'bis eingabe > 0', [['act', 'eingabe lesen']]]], {w: 460, cap: 'Fußgesteuerte Schleife: Der Rumpf läuft mindestens einmal, die Bedingung steht unten.'})],
   ],
 });
+
+AP2.add('ps-struktogramm', [
+  ['diagram', AP2.dg.nsd([['act', 'summe = 0; anzahl = 0'], ['for', 'für jeden wert in werte', [['if', '0 <= wert UND wert <= 100', [['act', 'summe = summe + wert'], ['act', 'anzahl = anzahl + 1']], []]]], ['if', 'anzahl > 0', [['act', 'mittelwert = summe / anzahl'], ['act', 'mittelwert ausgeben']], [['act', 'keine gültigen Werte ausgeben']]]], {w: 680, cap: 'Messwertauswertung mit Bereichsprüfung und Schutz vor Division durch null'})],
+  ["h", "Mehrstufiges Beispiel: gültige Messwerte auswerten"],
+  ["p", "Die Liste enthält 12, −1, 18, 101 und 20. Gültig sind Werte von null bis 100 einschließlich. Gesucht sind Anzahl und Mittelwert gültiger Werte. Bei leerer gültiger Menge wird „keine gültigen Werte“ ausgegeben."],
+  ["table", ["Wert", "Gültig?", "Summe danach", "Anzahl danach"], [["12", "Ja", "12", "1"], ["−1", "Nein", "12", "1"], ["18", "Ja", "30", "2"], ["101", "Nein", "30", "2"], ["20", "Ja", "50", "3"]]],
+  ["p", "Ergebnis: 50 / 3 ≈ 16,67. Die Division benötigt einen passenden Dezimaltyp. Die Prüfung anzahl > 0 verhindert eine Division durch null."],
+  ["qa", "**Bestimmen** Sie Anzahl und Mittelwert für die Liste −5, 0, 100, 105. **Nennen** Sie zwei wichtige Testfälle.", ["Gültig sind 0 und 100. Anzahl = **2**. 1 Punkt.", "Summe = 100. Mittelwert = 100 / 2 = **50**. 1 Punkt.", "Testfall: leere Liste oder ausschließlich ungültige Werte. 1 Punkt.", "Testfall: gültige Grenzwerte 0 und 100 mit Nachbarwerten −1 und 101. 1 Punkt."], 4],
+  ["see", ["ps-testentwurf", "ps-plausibilitaet"]]
+]);

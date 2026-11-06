@@ -29,6 +29,27 @@
     return AP2.press(el, {fn: () => AP2.router.go(page.id), label: label + ': ' + page.t, base: (c) => ({backgroundColor: c.surface, borderColor: c.border}),
       hover: (c) => ({borderColor: c.accent, backgroundColor: c.hover})});
   };
+  // Lesezeit (ca. 200 Wörter/Min.) und einklappbares Inhaltsverzeichnis aus den Überschriften der Seite.
+  const readInfo = (body, p, root) => {
+    const words = (body.textContent || '').trim().split(/\s+/).length;
+    const info = AP2.tint(h('div', {text: 'Lesezeit ca. ' + Math.max(1, Math.round(words / 200)) + ' Min.', style: {fontSize: S.f.sm, margin: '0 0 ' + S.sp[4]}}), 'text3');
+    const wrap = h('div');
+    wrap.appendChild(info);
+    const heads = Array.prototype.slice.call(body.querySelectorAll('h2'));
+    if (heads.length >= 3) {
+      const det = h('details', {style: {margin: '0 0 ' + S.sp[4]}});
+      const sum = AP2.tint(h('summary', {text: 'Inhalt dieser Seite (' + heads.length + ')', style: {cursor: 'pointer', fontSize: S.f.sm, fontWeight: S.fw.med}}), 'text2');
+      const list = h('ol', {style: {margin: S.sp[2] + ' 0 0', paddingLeft: '22px', fontSize: S.f.sm, lineHeight: S.lh.body}});
+      heads.forEach((hd) => {
+        const a = AP2.tint(h('a', {text: hd.textContent, attrs: {href: '#'}, style: {textDecoration: 'none'}}), 'accent');
+        a.addEventListener('click', (ev) => { ev.preventDefault(); const t = hd.parentNode; t.style.scrollMarginTop = '80px'; t.scrollIntoView({behavior: 'smooth', block: 'start'}); });
+        list.appendChild(h('li', {}, [a]));
+      });
+      det.appendChild(sum); det.appendChild(list);
+      wrap.appendChild(det);
+    }
+    return wrap;
+  };
   const nav = (id) => {
     const near = AP2.store.neighbors(id);
     const row = h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[3], marginTop: S.sp[7]}});
@@ -53,7 +74,9 @@
     if (p.d) root.appendChild(AP2.blocks.def(p.d));
     if (p.m) root.appendChild(AP2.blocks.merk(p.m));
     if (p.cheat) root.appendChild(AP2.blocks.cheat(p.cheat));
-    root.appendChild(AP2.renderBlocks(p.blocks));
+    const body = AP2.renderBlocks(p.blocks);
+    root.appendChild(readInfo(body, p, root));
+    root.appendChild(body);
     root.appendChild(AP2.gk.panel([h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[3], alignItems: 'center', justifyContent: 'space-between'}}, [
       h('div', {}, [AP2.gk.kicker('Seite geschafft?', 'accent'), AP2.tint(h('div', {text: 'Markiere sie als erledigt (+' + AP2.game.XP.page + ' XP) und festige sie im Trainer.', style: {fontSize: S.f.sm, marginTop: '2px'}}), 'text2')]),
       h('div', {style: {display: 'flex', flexWrap: 'wrap', gap: S.sp[2]}}, [doneButton(p.id), m.total ? AP2.btn({text: 'Trainieren', icon: AP2.icon('play', 16), kind: 'primary', small: true, fn: () => AP2.router.go('trainer/seite/' + p.id)}) : null])])], {marginTop: S.sp[7]}));

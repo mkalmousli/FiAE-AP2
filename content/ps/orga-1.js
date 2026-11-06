@@ -29,3 +29,95 @@ AP2.page('ps-orga', {
     ['procon', 'Einfluss-Projektorganisation', ['Schnell eingerichtet, kaum Umstellung', 'Keine Konflikte um Weisungen', 'Gut für kleine, kurze Projekte'], ['Projektleiter hat wenig Durchsetzungskraft', 'Verantwortung unklar', 'Abteilungsinteressen gehen oft vor Projektinteressen']],
   ],
 });
+
+AP2.add('ps-orga', [
+  [
+    "h",
+    "Verantwortung mit RACI klären"
+  ],
+  [
+    "p",
+    "RACI ordnet Aufgaben Rollen zu. Responsible führt aus. Accountable trägt die Ergebnisverantwortung. Consulted wird fachlich einbezogen. Informed erhält Informationen. Die Schreibweise ersetzt keine vereinbarte Entscheidungsbefugnis."
+  ],
+  [
+    "table",
+    [
+      "Aufgabe",
+      "Projektleitung",
+      "Entwicklung",
+      "Fachseite",
+      "Betrieb"
+    ],
+    [
+      [
+        "Anforderungen freigeben",
+        "C",
+        "C",
+        "A/R",
+        "I"
+      ],
+      [
+        "Schnittstelle entwickeln",
+        "A",
+        "R",
+        "C",
+        "C"
+      ],
+      [
+        "Betriebsübergabe bestätigen",
+        "C",
+        "C",
+        "I",
+        "A/R"
+      ]
+    ]
+  ],
+  [
+    "p",
+    "Für diese Tabelle gilt: Jede Aufgabe hat genau eine accountable Rolle. Mehrere responsible Rollen sind möglich, müssen aber koordiniert werden. A/R bedeutet, dass eine Rolle beide Aufgaben übernimmt."
+  ],
+  [
+    "h",
+    "Ressourcenkonflikt in der Matrixorganisation"
+  ],
+  [
+    "p",
+    "Eine Entwicklerin ist zu 60 Prozent im Projekt eingeplant. Die Linienleitung verlangt gleichzeitig eine dringende Wartung. Die Projektleitung und Linienleitung müssen die Priorität gemeinsam klären. Eine stille Doppelplanung führt zu unrealistischen Terminen."
+  ],
+  [
+    "qa",
+    "**Beschreiben** Sie vier Schritte zur Lösung dieses Kapazitätskonflikts.",
+    [
+      "- Tatsächlich verfügbare Stunden und beide Aufgaben erfassen.",
+      "- Auswirkungen auf Betrieb und Projekttermin bewerten.",
+      "- Priorität mit entscheidungsbefugten Rollen verbindlich klären.",
+      "- Kapazitätsplan und betroffene Termine aktualisieren und mitteilen.",
+      "Je passendem Schritt 1 Punkt."
+    ],
+    4
+  ],
+  [
+    "quiz",
+    [
+      {
+        "q": "Welche RACI-Rolle führt eine Aufgabe aus?",
+        "o": [
+          "Responsible",
+          "Informed",
+          "Consulted",
+          "Keine Rolle"
+        ],
+        "a": 0,
+        "e": "Accountable trägt die Ergebnisverantwortung. Responsible arbeitet an der Aufgabe."
+      }
+    ]
+  ],
+  [
+    "see",
+    [
+      "ps-stakeholder",
+      "ps-aufwand",
+      "ps-aenderungen"
+    ]
+  ]
+]);

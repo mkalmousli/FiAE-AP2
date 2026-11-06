@@ -14,10 +14,10 @@ AP2.page('ps-itsm', {
       ['**Event** (Ereignis)', 'Jede erkennbare **Zustandsänderung** eines IT-Systems, die für das Management relevant ist. Kann informativ, eine Warnung oder ein Ausnahmefall sein.', 'Backup erfolgreich abgeschlossen; Festplatte zu 85 % voll; Benutzer meldet sich an'],
       ['**Incident** (Störung)', 'Eine **ungeplante Unterbrechung** oder **Qualitätsminderung** eines IT-Service. Ziel: Service **so schnell wie möglich** wiederherstellen.', 'Drucker druckt nicht; E-Mail-Server nicht erreichbar; Anwendung stürzt ab'],
       ['**Service Request** (Serviceanfrage)', 'Eine **Standardanfrage** eines Benutzers, die nicht durch eine Störung ausgelöst wird und nach einem festen Ablauf erledigt wird.', 'Passwort zurücksetzen; neuen Monitor bestellen; Zugriff auf einen Ordner'],
-      ['**Problem**', 'Die **unbekannte Ursache** eines oder mehrerer Incidents. Ziel: Ursache finden und dauerhaft beseitigen.', 'Warum fällt der Server jeden Montag aus?'],
+      ['**Problem**', 'Eine Ursache oder mögliche Ursache eines oder mehrerer Incidents. Ziel: Ursache finden und dauerhaft beseitigen.', 'Warum fällt der Server jeden Montag aus?'],
       ['**Change**', 'Eine **geplante Änderung** an der IT, die bewertet und genehmigt wird.', 'Update des Betriebssystems, neue Firewall-Regel'],
     ]],
-    ['p', 'Ein **Service Desk** ist die zentrale Anlaufstelle (Single Point of Contact). Tickets werden nach **Priorität** bearbeitet; Priorität = **Auswirkung (Impact) x Dringlichkeit (Urgency)**. Kann der First-Level-Support nicht helfen, wird an den Second Level (Spezialisten) oder Third Level (Hersteller) **eskaliert**.'],
+    ['p', 'Ein **Service Desk** ist die zentrale Anlaufstelle (Single Point of Contact). Tickets werden nach **Priorität** bearbeitet; Die Priorität ergibt sich aus einer vereinbarten Matrix für **Auswirkung (Impact)** und **Dringlichkeit (Urgency)**. Kann der First-Level-Support nicht helfen, wird an den Second Level (Spezialisten) oder Third Level (Hersteller) **eskaliert**.'],
     ['h', 'Statusmeldungen und Dringlichkeitsstufen (Syslog)'],
     ['p', 'Server, Router und Firewalls schreiben Meldungen in ein Protokoll (zum Beispiel per **Syslog**, RFC 5424). Jede Meldung hat einen **Schweregrad** von 0 (am dringendsten) bis 7. In AP1-Aufgaben sind Meldungen den Stufen zuzuordnen.'],
     ['table', ['Stufe', 'Name', 'Bedeutung', 'Beispielmeldung'], [
@@ -36,7 +36,7 @@ AP2.page('ps-itsm', {
       '**Leistungsbeschreibung:** Welche Services (Hosting, Support, Backup)?',
       '**Servicezeiten:** zum Beispiel Mo bis Fr 8 bis 18 Uhr oder 24/7.',
       '**Verfügbarkeit:** zum Beispiel 99,9 % pro Jahr (= höchstens 8,76 Stunden Ausfall).',
-      '**Reaktionszeit:** Zeit bis zur ersten Rückmeldung; **Wiederherstellungszeit** (Entstördauer, MTTR): Zeit bis der Service wieder läuft, gestaffelt nach Priorität.',
+      '**Reaktionszeit:** Zeit bis zur ersten Rückmeldung; **Wiederherstellungszeit** (Entstördauer, MTTR): Zeit bis der Service wieder läuft, gestaffelt nach Priorität. MTTR ist dagegen ein gemessener Mittelwert.',
       '**Datensicherung:** RPO/RTO, Aufbewahrung.',
       '**Eskalationswege, Ansprechpartner, Berichte** (Reporting).',
       '**Vertragsstrafen/Gutschriften** (Pönale) bei Unterschreitung, Laufzeit, Kündigung.',
@@ -84,3 +84,76 @@ AP2.page('ps-itsm', {
     ['see', ['infra-verfuegbarkeit', 'ps-tco', 'ps-vertraege', 'ps-dsgvo']],
   ],
 });
+
+AP2.add('ps-itsm', [
+  [
+    "h",
+    "Incident und Problem an einem Ablauf unterscheiden"
+  ],
+  [
+    "p",
+    "Der Bestelldienst antwortet nicht. Ein Neustart stellt ihn wieder her. Der Incident kann nach Prüfung geschlossen werden. Die unbekannte Ursache wird weiterhin als Problem untersucht. Ein Workaround behebt also nicht zwingend die Ursache."
+  ],
+  [
+    "table",
+    [
+      "Zeitpunkt",
+      "Maßnahme",
+      "Zweck"
+    ],
+    [
+      [
+        "09:00",
+        "Störung aufnehmen und Wirkung prüfen",
+        "Incident einstufen"
+      ],
+      [
+        "09:05",
+        "Bereitschaft alarmieren",
+        "Schnell reagieren"
+      ],
+      [
+        "09:15",
+        "Geprüften Workaround anwenden",
+        "Service wiederherstellen"
+      ],
+      [
+        "09:25",
+        "Fachliche Funktion bestätigen",
+        "Wiederherstellung nachweisen"
+      ],
+      [
+        "Später",
+        "Ursache analysieren und Änderung testen",
+        "Dauerhafte Lösung umsetzen"
+      ]
+    ]
+  ],
+  [
+    "h",
+    "SLA-Kennzahlen getrennt prüfen"
+  ],
+  [
+    "qa",
+    "Ein Incident wird um 09:00 Uhr gemeldet. Der Support reagiert um 09:20 Uhr. Um 11:10 Uhr läuft der Dienst wieder. Vereinbart sind 30 Minuten Reaktion und zwei Stunden Wiederherstellung ab Meldung. **Berechnen** und **beurteilen** Sie beide Ziele.",
+    [
+      "Reaktion: 09:20 − 09:00 = **20 Minuten**. 1 Punkt.",
+      "20 ≤ 30: Reaktionsziel eingehalten. 1 Punkt.",
+      "Wiederherstellung: 11:10 − 09:00 = **130 Minuten**. 1 Punkt.",
+      "130 > 120: Wiederherstellungsziel um zehn Minuten verfehlt. 1 Punkt."
+    ],
+    4
+  ],
+  [
+    "warn",
+    "Ein Incident kann auch nur eine Qualitätsminderung sein. Der Dienst muss nicht vollständig ausgefallen sein. Eine Priorität entsteht aus vereinbarten Kriterien für Auswirkung und Dringlichkeit."
+  ],
+  [
+    "see",
+    [
+      "infra-monitoring",
+      "ps-aenderungen",
+      "ps-abnahme"
+    ]
+  ]
+]);

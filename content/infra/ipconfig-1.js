@@ -1,7 +1,7 @@
 AP2.page('infra-ipconfig', {
   b: 'infra', g: 'IP-Adressierung', t: 'IP-Konfiguration, DHCP-Vergabearten, NAT und Fehlersuche',
   d: 'Damit ein Gerät im Netz und im Internet arbeiten kann, braucht es vier Angaben: **IP-Adresse**, **Subnetzmaske** (bzw. Präfix), **Standardgateway** (Router ins andere Netz) und **DNS-Server**. Diese vergibt meist ein **DHCP-Server** im vierstufigen Ablauf **DORA** (Discover, Offer, Request, Acknowledge), entweder **manuell** (fest per MAC-Adresse), **automatisch** (dauerhaft dieselbe Adresse) oder **dynamisch** (für eine Lease-Zeit). Private Adressen (10/8, 172.16/12, 192.168/16) werden am Router per **NAT** in eine öffentliche Adresse übersetzt. Viele Prüfungsaufgaben drehen sich um **Fehlersuche**: falsches Subnetz, fehlendes Gateway, doppelte Adressen.',
-  m: '**IP + Maske + Gateway + DNS.** **DORA: Discover (Broadcast) - Offer - Request (Broadcast) - Acknowledge.** **Gleiche Netz-ID = direkt erreichbar, sonst über das Gateway.** **Gateway muss im eigenen Subnetz liegen.** **Private IPs sind im Internet nicht routbar -> NAT/Portweiterleitung/VPN.** **169.254.x.x = kein DHCP-Server gefunden (APIPA).**',
+  m: '**IP + Maske + Gateway + DNS.** **DORA: Discover (Broadcast) - Offer - Request (Broadcast) - Acknowledge.** **Gleiche Netz-ID = direkt erreichbar, sonst über das Gateway.** **Gateway muss im eigenen Subnetz liegen.** **Private IPs sind im Internet nicht routbar -> NAT/Portweiterleitung/VPN.** **169.254.x.x kann auf fehlgeschlagene automatische Konfiguration hinweisen (APIPA).**',
   cheat: [
     ['Pflichtangaben', ['IP-Adresse', 'Subnetzmaske / Präfix', 'Standardgateway', 'DNS-Server (+ Lease-Zeit)']],
     ['DHCP-Vergabearten', ['**manuell/statisch**: Liste MAC -> IP', '**automatisch**: erste Vergabe, dann immer dieselbe', '**dynamisch**: Lease, danach evtl. andere', 'Reservierung = manuell im DHCP']],
@@ -84,3 +84,57 @@ AP2.page('infra-ipconfig', {
     ['see', ['infra-ports', 'infra-subnetting', 'infra-vlan', 'infra-vpn', 'infra-ipv6']],
   ],
 });
+
+AP2.add("infra-ipconfig", [
+  [
+    "h",
+    "Fehlersuche: Aussage und Beweis unterscheiden"
+  ],
+  [
+    "table",
+    [
+      "Beobachtung",
+      "Zulässige Aussage",
+      "Nicht bewiesen"
+    ],
+    [
+      [
+        "Ping an Server-IP klappt",
+        "ICMP-Antwort wurde empfangen",
+        "HTTPS und Fachfunktion sind korrekt"
+      ],
+      [
+        "DNS liefert eine Adresse",
+        "Ein DNS-Server hat geantwortet",
+        "Die Adresse ist aktuell und der Dienst erreichbar"
+      ],
+      [
+        "169.254-Adresse vorhanden",
+        "Link-Local-Konfiguration ist aktiv",
+        "DHCP-Server ist sicher abgeschaltet"
+      ],
+      [
+        "TCP-Port 443 erreichbar",
+        "TCP-Verbindung zu diesem Ziel ist möglich",
+        "Zertifikat und Anmeldung funktionieren"
+      ]
+    ]
+  ],
+  [
+    "p",
+    "Ein Standardgateway ist nur nötig, wenn passende Ziele nicht direkt erreichbar sind. DNS ist für die verwendeten Namen nötig. Andere Routen können vor der Default-Route greifen. Das Gateway muss über einen erreichbaren nächsten Hop nutzbar sein."
+  ],
+  [
+    "warn",
+    "Ein fehlendes Standardgateway ersetzt keine Firewall. Ein Angreifer mit Kontrolle über einen Rechner kann dessen Routen ändern. Zugriffsschutz braucht überprüfte Regeln und Berechtigungen."
+  ],
+  [
+    "see",
+    [
+      "infra-dhcp",
+      "infra-dns",
+      "infra-http",
+      "infra-monitoring"
+    ]
+  ]
+]);

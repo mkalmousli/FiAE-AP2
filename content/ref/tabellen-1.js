@@ -1,0 +1,48 @@
+AP2.page('ref-tabellen', {b: 'ref', g: 'Referenz', t: 'Tabellen: Einheiten, Ports, Codes', d: 'Einheiten, Zweierpotenzen, Ports, HTTP-Codes, Subnetzmasken', m: 'Wichtige Werte **auswendig** lernen.', blocks: [
+  ['p', 'Diese Tabellen helfen bei Rechenaufgaben. Lerne die wichtigsten Werte auswendig.'],
+  ['h', 'Einheiten'],
+  ['table', ['Einheit', 'Dezimal (SI)', 'Binär (IEC)'], [
+    ['Kilo', '1 kB = 1.000 Byte', '1 KiB = 1.024 Byte'],
+    ['Mega', '1 MB = 1.000 kB', '1 MiB = 1.024 KiB'],
+    ['Giga', '1 GB = 1.000 MB', '1 GiB = 1.024 MiB'],
+    ['Tera', '1 TB = 1.000 GB', '1 TiB = 1.024 GiB'],
+    ['Bit und Byte', '1 Byte = 8 Bit', ''],
+  ]],
+  ['note', 'Datenraten in **Bit** pro Sekunde (Mbit/s), Dateien in **Byte**. 100 Mbit/s = 12,5 MB/s (Teile durch 8).'],
+  ['h', 'Zweierpotenzen'],
+  ['table', ['n', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '16'], [
+    ['2 hoch n', '1', '2', '4', '8', '16', '32', '64', '128', '256', '512', '1.024', '65.536'],
+  ]],
+  ['h', 'Wichtige Ports'],
+  ['table', ['Port', 'Dienst', 'Protokoll'], [
+    ['20/21', 'FTP', 'TCP'], ['22', 'SSH, SFTP', 'TCP'], ['23', 'Telnet (unsicher)', 'TCP'], ['25', 'SMTP (E-Mail senden)', 'TCP'],
+    ['53', 'DNS', 'UDP/TCP'], ['67/68', 'DHCP', 'UDP'], ['80', 'HTTP', 'TCP'], ['110', 'POP3', 'TCP'],
+    ['123', 'NTP (Zeit)', 'UDP'], ['143', 'IMAP', 'TCP'], ['443', 'HTTPS', 'TCP'], ['445', 'SMB (Dateifreigabe)', 'TCP'],
+    ['3306', 'MySQL', 'TCP'], ['3389', 'RDP (Fernwartung)', 'TCP'],
+  ]],
+  ['h', 'HTTP-Statuscodes'],
+  ['table', ['Code', 'Bedeutung'], [
+    ['200', 'OK'], ['201', 'Erstellt'], ['301', 'Dauerhaft umgezogen'], ['304', 'Nicht verändert (Cache)'],
+    ['400', 'Falsche Anfrage'], ['401', 'Nicht angemeldet'], ['403', 'Verboten (keine Rechte)'], ['404', 'Nicht gefunden'],
+    ['500', 'Serverfehler'], ['503', 'Dienst nicht verfügbar'],
+  ]],
+  ['p', 'Merke: 2xx = Erfolg, 3xx = Umleitung, 4xx = Fehler beim Client, 5xx = Fehler beim Server.'],
+  ['h', 'Subnetzmasken (IPv4)'],
+  ['table', ['CIDR', 'Maske', 'Adressen', 'Nutzbare Hosts'], [
+    ['/24', '255.255.255.0', '256', '254'], ['/25', '255.255.255.128', '128', '126'], ['/26', '255.255.255.192', '64', '62'],
+    ['/27', '255.255.255.224', '32', '30'], ['/28', '255.255.255.240', '16', '14'], ['/29', '255.255.255.248', '8', '6'],
+    ['/30', '255.255.255.252', '4', '2'], ['/16', '255.255.0.0', '65.536', '65.534'], ['/8', '255.0.0.0', '16.777.216', '16.777.214'],
+  ]],
+  ['p', 'Hosts = 2 hoch (32 - Präfix) minus 2 (Netz- und Broadcast-Adresse).'],
+  ['h', 'Private IPv4-Bereiche'],
+  ['table', ['Bereich', 'Netz'], [['10.0.0.0 bis 10.255.255.255', '10.0.0.0/8'], ['172.16.0.0 bis 172.31.255.255', '172.16.0.0/12'], ['192.168.0.0 bis 192.168.255.255', '192.168.0.0/16']]],
+  ['h', 'ASCII (Auswahl)'],
+  ['table', ['Zeichen', 'Dezimal', 'Hex'], [['0', '48', '30'], ['A', '65', '41'], ['a', '97', '61'], ['Leerzeichen', '32', '20'], ['Zeilenumbruch (LF)', '10', '0A']]],
+  ['quiz', [
+    {q: 'Wie viele nutzbare Hosts hat ein /28-Netz?', o: ['14', '16', '30', '28'], a: 0, e: '2 hoch 4 = 16, minus 2 = 14.'},
+    {q: 'Welcher Port gehört zu HTTPS?', o: ['443', '80', '22', '53'], a: 0, e: '80 ist HTTP.'},
+    {q: 'Was bedeutet der HTTP-Code 404?', o: ['Seite nicht gefunden', 'Serverfehler', 'Nicht angemeldet', 'OK'], a: 0, e: '4xx sind Clientfehler.'},
+    {q: 'Eine Leitung hat 200 Mbit/s. Wie viele MB pro Sekunde sind das?', o: ['25', '200', '1.600', '8'], a: 0, e: '200 / 8 = 25.'},
+    {q: 'Welche Adresse ist privat?', o: ['172.20.5.1', '172.40.5.1', '8.8.8.8', '193.168.0.1'], a: 0, e: '172.16 bis 172.31 ist privat.'},
+  ]],
+]});

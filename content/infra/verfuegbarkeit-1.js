@@ -33,3 +33,87 @@ Ausfallzeit pro Jahr = (1 - 0,998) mal 8760 h = ca. 17,5 Stunden`],
     ['tool', 'avail'],
   ],
 });
+
+AP2.add('infra-verfuegbarkeit', [
+  [
+    "h",
+    "Gemessene Verfügbarkeit und Zielwert"
+  ],
+  [
+    "p",
+    "Für einen Messzeitraum gilt: Verfügbarkeit = (Messzeit − Ausfallzeit) / Messzeit. Das SLA legt fest, was als Ausfall zählt. Ebenso wichtig sind Messpunkt, Servicezeit und Wartungsregel."
+  ],
+  [
+    "table",
+    [
+      "Begriff",
+      "Bedeutung"
+    ],
+    [
+      [
+        "SLA-Ziel",
+        "Vereinbarte Qualität eines Dienstes"
+      ],
+      [
+        "RTO",
+        "Geplante maximale Wiederanlaufdauer nach einer Unterbrechung"
+      ],
+      [
+        "MTTR",
+        "Statistischer Mittelwert der betrachteten Reparatur- oder Wiederherstellungszeiten"
+      ],
+      [
+        "Reaktionszeit",
+        "Zeit bis zur vereinbarten ersten Bearbeitung oder Rückmeldung"
+      ]
+    ]
+  ],
+  [
+    "warn",
+    "MTTR ist ein Mittelwert. Ein RTO ist ein Ziel. Eine kurze Reaktionszeit garantiert keine schnelle Wiederherstellung."
+  ],
+  [
+    "qa",
+    "Ein Dienst wird 30 Tage rund um die Uhr gemessen. Das SLA fordert 99,95 Prozent. Ausfälle dauern 12 und 18 Minuten. Wartung zählt vollständig mit. **Berechnen** und **beurteilen** Sie das Ergebnis.",
+    [
+      "Messzeit: 30 × 24 × 60 = **43.200 Minuten**. 1 Punkt.",
+      "Erlaubter Ausfall: 43.200 × 0,0005 = **21,6 Minuten**. 1 Punkt.",
+      "Tatsächlicher Ausfall: 12 + 18 = **30 Minuten**. 1 Punkt.",
+      "Verfügbarkeit: (43.200 − 30) / 43.200 × 100 ≈ **99,9306 Prozent**. 1 Punkt.",
+      "Ziel verfehlt: 30 − 21,6 = **8,4 Minuten** zu viel Ausfall. 1 Punkt."
+    ],
+    5
+  ],
+  [
+    "h",
+    "Grenzen der Redundanzrechnung"
+  ],
+  [
+    "p",
+    "Die einfache Parallelformel setzt unabhängige Ausfälle voraus. Außerdem muss eine einzelne Komponente den Dienst tragen können. Umschalten und gemeinsame Abhängigkeiten müssen berücksichtigt werden. Zwei Server an derselben defekten Stromversorgung helfen nicht."
+  ],
+  [
+    "quiz",
+    [
+      {
+        "q": "Welche Aussage ist richtig?",
+        "o": [
+          "Ein gemeinsamer Ausfallgrund kann beide redundanten Server treffen",
+          "Zwei Server garantieren immer 100 Prozent",
+          "MTTR ist immer die längste Reparaturzeit",
+          "Reaktionszeit und Ausfalldauer sind identisch"
+        ],
+        "a": 0,
+        "e": "Gemeinsame Stromversorgung, Softwarefehler und Fehlkonfiguration können Redundanz unwirksam machen."
+      }
+    ]
+  ],
+  [
+    "see",
+    [
+      "infra-monitoring",
+      "ps-abnahme",
+      "ps-risiko"
+    ]
+  ]
+]);

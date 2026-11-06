@@ -1,6 +1,6 @@
 AP2.add('infra-verfuegbarkeit', [
   ['h', 'Reihen- und Parallelschaltung'],
-  ['p', 'Besteht ein System aus mehreren Komponenten, hängt die **Gesamtverfügbarkeit** von der Anordnung ab.'],
+  ['p', 'Die Gesamtverfügbarkeit hängt von der Anordnung ab. Die folgenden Produktformeln setzen **unabhängige Ausfälle** voraus. Beim Parallelbetrieb muss eine Komponente genügen. Umschaltfehler und gemeinsame Abhängigkeiten werden im einfachen Modell ausgeblendet.'],
   ['diagram', {w: 720, h: 270, keep: 540, cap: 'Oben: Reihenschaltung, jede Komponente muss laufen. Unten: Parallelschaltung (Redundanz), nur eine muss laufen.', nodes: [
     {id: 'a1', k: 'round', x: 130, y: 50, t: ['Server', '99 %'], w: 120, h: 50}, {id: 'a2', k: 'round', x: 330, y: 50, t: ['Switch', '99 %'], w: 120, h: 50}, {id: 'a3', k: 'round', x: 530, y: 50, t: ['Datenbank', '99 %'], w: 120, h: 50}, {id: 'ta', k: 'text', x: 360, y: 105, t: 'Reihe: 0,99 mal 0,99 mal 0,99 = 97,03 %', fs: 12, b: true, tc: 'bad'},
     {id: 'b1', k: 'round', x: 280, y: 170, t: ['Server 1', '99 %'], w: 120, h: 44}, {id: 'b2', k: 'round', x: 280, y: 230, t: ['Server 2', '99 %'], w: 120, h: 44}, {id: 'in', k: 'dot', x: 130, y: 200}, {id: 'out', k: 'dot', x: 430, y: 200}, {id: 'tb', k: 'text', x: 580, y: 200, t: ['Parallel: 1 - 0,01 mal 0,01', '= 99,99 %'], fs: 12, b: true, tc: 'ok'},
@@ -16,7 +16,7 @@ AP2.add('infra-verfuegbarkeit', [
     ['Verfügbarkeit', '99,9 % pro Monat, gemessen an der Erreichbarkeit des Dienstes'],
     ['Messzeitraum und Wartungsfenster', 'Wartung zählt nicht als Ausfall, wenn sie sonntags 2 bis 4 Uhr stattfindet'],
     ['Reaktionszeit', 'Störungen der Priorität 1 werden innerhalb von 30 Minuten bearbeitet'],
-    ['Wiederherstellungszeit (MTTR / RTO)', 'Kritische Störungen innerhalb von 4 Stunden behoben'],
+    ['Wiederherstellungsziel; getrennt vom Mittelwert MTTR', 'Kritische Störungen innerhalb von 4 Stunden behoben'],
     ['Servicezeiten', '24/7 oder Montag bis Freitag 8 bis 18 Uhr'],
     ['Sanktionen', 'Gutschrift von 10 Prozent der Monatsgebühr bei Unterschreitung'],
     ['Berichte und Kennzahlen', 'Monatlicher Verfügbarkeitsbericht'],
