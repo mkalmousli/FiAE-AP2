@@ -1,6 +1,6 @@
 // Service Worker: offline lernen und sofort starten. Versionierte Dateien (?v=) kommen aus dem Cache,
 // alles andere zuerst aus dem Netz mit Cache als Rückfall. build.mjs setzt VERSION.
-const VERSION = 'ffd8941650';
+const VERSION = '470508c8e2';
 const CACHE = 'ap2-' + VERSION;
 const CORE = ['./', 'index.html', 'main.js', 'bundle.js?v=' + VERSION, 'manifest.webmanifest', 'icon.svg'];
 

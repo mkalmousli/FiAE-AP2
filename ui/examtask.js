@@ -108,12 +108,27 @@
     },
   };
   inputs.order = inputs.match;
+  // Hilfe auf Deutsch (aufklappbar): Operator, Vorgehen und schwierige Wörter einfach erklärt.
+  const examHelp = (task) => {
+    const body = h('div', {style: {display: 'none', padding: '12px 16px', borderRadius: S.r.sm, marginTop: S.sp[2], borderLeft: '4px solid'}});
+    AP2.theme.bind(body, (n, c) => { n.style.backgroundColor = c.surface2; n.style.borderLeftColor = c.accent; });
+    if (task.op) body.appendChild(AP2.tint(h('div', {style: {fontSize: S.f.sm, marginBottom: S.sp[2], lineHeight: S.lh.body}}, [h('b', {text: 'Das Signalwort: '}), AP2.rich(task.op)]), 'text'));
+    if (task.hint) body.appendChild(AP2.tint(h('div', {style: {fontSize: S.f.sm, marginBottom: S.sp[2], lineHeight: S.lh.body}}, [h('b', {text: 'So gehst du vor: '}), AP2.rich(task.hint)]), 'text'));
+    if (task.words) body.appendChild(AP2.blocks.table(['Wort', 'Einfach erklärt'], task.words));
+    const btn = AP2.btn({text: 'Hilfe auf Deutsch', small: true, kind: 'soft', fn: () => {
+      const open = body.style.display === 'none';
+      body.style.display = open ? 'block' : 'none';
+      btn.firstChild.textContent = open ? 'Hilfe ausblenden' : 'Hilfe auf Deutsch';
+    }});
+    return h('div', {style: {margin: '0 0 ' + S.sp[3]}}, [btn, body]);
+  };
   AP2.examTask = (task, num, store, key, onPts) => {
     const kind = bound(task);
     const head = h('div', {style: {display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: S.sp[3], marginBottom: S.sp[3]}},
       [h('div', {style: {display: 'flex', gap: S.sp[3], alignItems: 'center'}}, [tag('Aufgabe ' + num, 'accent'), task.topic ? tag(task.topic, 'text3') : null]), pill(task.pts)]);
     const ctx = task.ctx ? h('div', {}, [AP2.renderBlocks(task.ctx)]) : null;
     const q = AP2.tint(h('div', {style: {fontSize: S.f.md, fontWeight: S.fw.semi, lineHeight: S.lh.body, margin: '0 0 ' + S.sp[3]}}, [AP2.rich(task.q)]), 'text');
+    const help = task.words || task.hint || task.op ? examHelp(task) : null;
     let answer;
     let auto = null;
     if (kind) {
@@ -145,7 +160,7 @@
     }});
     // Suchtreffer in der Lösung: bei gebundenen Aufgaben nur aufklappen, nicht bewerten.
     sol.ap2Reveal = () => { if (kind) sol.style.display = 'block'; else if (sol.style.display === 'none') toggle.click(); };
-    const card = h('div', {style: {padding: '18px 20px', borderRadius: S.r.md, border: '1px solid', margin: '0 0 ' + S.sp[4]}}, [head, ctx, q, answer.el, h('div', {style: {marginTop: S.sp[3]}}, [toggle]), sol]);
+    const card = h('div', {style: {padding: '18px 20px', borderRadius: S.r.md, border: '1px solid', margin: '0 0 ' + S.sp[4]}}, [head, ctx, q, help, answer.el, h('div', {style: {marginTop: S.sp[3]}}, [toggle]), sol]);
     card.ap2Check = kind ? () => { check(); sol.style.display = 'block'; toggle.firstChild.textContent = 'Erneut auswerten'; } : null;
     return AP2.theme.bind(card, (n, c) => { n.style.backgroundColor = c.surface; n.style.borderColor = c.border; });
   };

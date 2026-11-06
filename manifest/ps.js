@@ -1,6 +1,6 @@
 // Reihenfolge = Lernpfad: Projekt planen, Anforderungen, Modellieren, Architektur, Daten, Oberfläche, Qualität, Recht, Werkzeuge, Kaufmännisches.
 AP2.pages('ps', {
-  phasen: 3, vorgehen: 2, stakeholder: 1, netzplan: 3, gantt: 1, aufwand: 2, kosten: 2, orga: 2, scrum: 3,
+  plausibilitaet: 1, dbzugriff: 1, phasen: 3, vorgehen: 2, stakeholder: 1, netzplan: 3, gantt: 1, aufwand: 2, kosten: 2, orga: 2, scrum: 3,
   lastenheft: 2, istsoll: 1, usecase: 2, epk: 1,
   umlueberblick: 1, klassen: 3, aktivitaet: 2, sequenz: 2, zustand: 2, struktogramm: 2,
   architektur: 1,

@@ -1,6 +1,6 @@
 // Einstieg: im Betrieb eine gebündelte Datei (bundle.js, erzeugt von build.mjs), lokal alle Einzeldateien laut Manifest.
 // Lokal (localhost) oder mit ?dev lädt immer die Einzeldateien, damit Änderungen ohne Build sichtbar sind; ?bundle erzwingt das Bündel.
-const VERSION = 'ffd8941650';
+const VERSION = '470508c8e2';
 // Seitenteile: pages('ps', {phasen: 3}) lädt content/ps/phasen-1.js bis phasen-3.js.
 const freshAP2 = () => {
   window.AP2 = {files: [], blocks: {}, tools: {}};
@@ -19,7 +19,7 @@ EventTarget.prototype.addEventListener = function (type, fn, opts) {
 };
 window.setInterval = function () { const id = nativeInterval.apply(window, arguments); tracked.t.push(id); return id; };
 (function () {
-  const names = ['core', 'ui', 'viz', 'tools', 'ps', 'infra', 'eua', 'wiso', 'de', 'exam', 'course', 'ref', 'last'];
+  const names = ['core', 'ui', 'viz', 'tools', 'ps', 'infra', 'eua', 'wiso', 'de', 'gk', 'exam', 'course', 'ref', 'last'];
   // Ladeanzeige: Fortschritt, geglättete Restzeit (ETA) und aktuelle Datei.
   const $ = (id) => document.getElementById(id);
   const style = document.createElement('style');

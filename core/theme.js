@@ -19,7 +19,7 @@
   // Farbcode der Prüfungsbereiche [hell, dunkel]: Auf jeder Seite übernimmt die Oberfläche die Farbe ihres Fachs.
   const BLOCK = {
     ps: ['#4f46e5', '#8b85ff'], infra: ['#0d9488', '#2dd4bf'], eua: ['#ea580c', '#fb923c'], wiso: ['#16a34a', '#4ade80'],
-    de: ['#db2777', '#f472b6'], exam: ['#dc2626', '#f87171'], course: ['#2563eb', '#60a5fa'], ref: ['#7c3aed', '#c4b5fd'],
+    de: ['#db2777', '#f472b6'], gk: ['#0891b2', '#22d3ee'], exam: ['#dc2626', '#f87171'], course: ['#2563eb', '#60a5fa'], ref: ['#7c3aed', '#c4b5fd'],
   };
   // Kategorie-Palette für farbige Begriffe, Karten und Schritte (unabhängig vom Fach).
   const CAT = [['#4f46e5', '#8b85ff'], ['#0d9488', '#2dd4bf'], ['#ea580c', '#fb923c'], ['#16a34a', '#4ade80'], ['#db2777', '#f472b6'], ['#2563eb', '#60a5fa'], ['#ca8a04', '#facc15']];

@@ -8,7 +8,7 @@ import {fileURLToPath} from 'node:url';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
-const NAMES = ['core', 'ui', 'viz', 'tools', 'ps', 'infra', 'eua', 'wiso', 'de', 'exam', 'course', 'ref', 'last'];
+const NAMES = ['core', 'ui', 'viz', 'tools', 'ps', 'infra', 'eua', 'wiso', 'de', 'gk', 'exam', 'course', 'ref', 'last'];
 
 // Manifeste in einer Sandbox ausführen, um die Dateiliste zu erhalten.
 const box = {AP2: {files: [], blocks: {}, tools: {}}};

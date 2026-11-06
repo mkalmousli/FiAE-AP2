@@ -6,6 +6,7 @@
     {id: 'eua', icon: 'code', short: 'Algorithmen', t: 'Entwicklung und Algorithmen', s: 'Programmierung, OOP, Datenstrukturen, Algorithmen, Muster, SQL'},
     {id: 'wiso', icon: 'briefcase', short: 'WiSo', t: 'Wirtschafts- und Sozialkunde', s: 'Ausbildung, Arbeitsrecht, Mitbestimmung, Sozialversicherung, Wirtschaft'},
     {id: 'de', icon: 'pen', short: 'Deutsch', t: 'Deutsch', s: 'Textformen, Kommunikation, Präsentation, Sprachrichtigkeit'},
+    {id: 'gk', icon: 'user', short: 'GK', t: 'Gemeinschaftskunde', s: 'Wahlen, Grundgesetz, Bundespolitik, EU, Demografie, Gleichstellung, KI und Arbeitswelt'},
     {id: 'exam', icon: 'trophy', short: 'Prüfungen', t: 'Probeprüfungen', s: 'Realistische Prüfungen mit Zeitlimit, Selbstbewertung und Note'},
     {id: 'course', icon: 'book', short: 'Kurse', t: 'Programmierkurse', s: 'Python, Java, C#, SQL, HTML und CSS in 56 ausführlichen Kapiteln'},
     {id: 'ref', icon: 'bookmark', short: 'Nachschlagen', t: 'Nachschlagen', s: 'Prüfungsablauf, Projektarbeit, Glossar, Formeln, Strategie'},

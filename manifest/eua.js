@@ -1,6 +1,6 @@
 // Reihenfolge = Lernpfad: Grundlagen, Ablaufdarstellung, OOP, Muster, Datenstrukturen, Algorithmen, Testen, Fehler, SQL, Web, Hardware, KI, Prüfungspraxis.
 AP2.pages('eua', {
-  paradigmen: 1, datentypen: 2, kontroll: 2, funktionen: 2, rekursion: 2, pap: 2, pseudocode: 2,
+  normalisierung: 1, paradigmen: 1, datentypen: 2, kontroll: 2, funktionen: 2, rekursion: 2, pap: 2, pseudocode: 2,
   oop: 2, saeulen: 2, interface: 2, konstruktor: 2, patterns: 4,
   listen: 2, stackqueue: 2, baeume: 2, hash: 2,
   sortieren: 3, suchen: 2, onotation: 2,

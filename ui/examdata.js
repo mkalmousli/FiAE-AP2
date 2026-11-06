@@ -31,6 +31,9 @@
     wiso: [['list', ['Bearbeitungszeit **60 Minuten**, **100 Punkte**. Die Aufgaben sind **gebunden**: Sie kreuzen die richtige(n) Antwort(en) an, tragen Kennziffern ein oder geben ein Rechenergebnis ein.', 'Bei Zuordnungs- und Reihenfolgeaufgaben gibt es Punkte **anteilig** je richtiger Zuordnung, sonst nur für die vollständig richtige Lösung.',
       'Rechenergebnisse ohne Einheit und Tausenderpunkt eingeben (Komma oder Punkt als Dezimaltrennzeichen). Runden Sie wie in der Aufgabe angegeben.', 'Mit **"Prüfung abgeben"** am Ende werden alle Aufgaben auf einmal ausgewertet, wie beim Einlesen des Markierungsbogens.',
       'Rechtsstand und Werte: **2026**. Gesetzliche Werte, die sich jährlich ändern (Beitragssätze, Grenzen), stehen in der Aufgabe.']]],
+    dgk: [['list', ['Dieser Teil hat zwei Fächer der Berufsschule: **Deutsch** (120 Minuten, 50 Punkte: Teil 1 Textverständnis und Sprachgebrauch 25, Teil 2 Schreibaufgabe 25) und **Gemeinschaftskunde** (60 Minuten, 30 Punkte).', 'Hilfsmittel: **keine**. Antworten in **ganzen Sätzen**, wenn nichts anderes verlangt ist.',
+      'Lesen Sie zuerst die **Materialien** (Texte, Schaubilder, Karikaturen). Fast alle Antworten stehen **im Material**. Geben Sie die **Zeile** oder Stelle an, wenn Sie belegen sollen.', 'Achten Sie auf die **Zahl**: „zwei Argumente“ heißt genau zwei. Bei Auswahlaufgaben zählt **jedes falsche Kreuz** als Minuspunkt; eine Aufgabe kann aber nie weniger als 0 Punkte geben.',
+      'Die **Schreibaufgabe** wird nach **Inhalt, Aufbau und Sprache** bewertet. Rechtschreibung und Zeichensetzung zählen mit.']]],
   };
   AP2.exam = {GRADES, grade, store, start, part, end, COVER};
 })();
